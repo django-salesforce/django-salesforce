@@ -1,7 +1,6 @@
 from django import http
 
-from fu_web.salesforce import models
+from fu_web.salesforce import authenticate, models
 
 def test(request):
-	result = models.Account.objects.filter(active=1)
-	return http.HttpResponse(repr(result))
+	return http.HttpResponse(authenticate())
