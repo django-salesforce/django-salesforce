@@ -1,7 +1,10 @@
-import logging
+import logging, urllib
 
 from django.conf import settings
 from django.db import models
+from django.db.models.sql import compiler
+
+from fu_web.salesforce.backends.salesforce import base
 
 import django_roa
 
@@ -9,9 +12,13 @@ log = logging.getLogger(__name__)
 
 class SalesforceModel(django_roa.Model):
 	@staticmethod
-	def get_resource_url_list():
-		result = u'%s%s' % (settings.SF_SERVER, '/services/data/v23.0/query')
-		log.warning(result)
+	def get_resource_url_list(queryset, server=settings.SF_SERVER):
+		conn = base.DatabaseWrapper()
+		sql, params = compiler.SQLCompiler(queryset.query, conn, None).as_sql()
+		result = u'%s%s?%s' % (server, '/services/data/v23.0/query', urllib.urlencode(dict(
+			q	= sql % params,
+		)))
+		log.warn(result)
 		return result
 	
 	def get_resource_url_count(self):
@@ -25,6 +32,6 @@ class SalesforceModel(django_roa.Model):
 		return u"%s%s/" % (self.get_resource_url_list(), self.pk)
 
 class Account(SalesforceModel):
-	name = models.CharField(max_length=100)
+	Name = models.CharField(max_length=100)
 
 
