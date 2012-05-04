@@ -34,6 +34,7 @@ class SQLCompiler(compiler.SQLCompiler):
 				# Extra tables can end up in self.tables, but not in the
 				# alias_map if they aren't in a join. That's OK. We skip them.
 				continue
+			#TODO: change this so the right stuff just ends up in alias_map
 			if(name.startswith('salesforce_')):
 				name = name[11:]
 				name = ''.join([x.capitalize() for x in name.split('_')])
@@ -111,5 +112,5 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.validation = DatabaseValidation(self)
 	
 	def quote_name(self, name):
-		return name # Quoting once is enough.
+		return name
 

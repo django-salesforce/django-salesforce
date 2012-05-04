@@ -1,0 +1,22 @@
+{% extends "fu_web_layout.html" %}
+{% load url from future %}
+{% load i18n %}
+{% load fu_tags %}
+
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="salesforce">
+
+<div class="content">
+	<div id="content-wrapper">
+	{% for account in accounts %}
+	<div class="account">
+		{{ account.Name }}
+	</div>
+	{% endfor %}
+	</div>
+</div>
+
+</div>
+{% endblock %}
