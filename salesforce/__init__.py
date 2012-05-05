@@ -1,3 +1,9 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+#
+
 import logging, threading, urllib, traceback, copy
 
 from django.conf import settings

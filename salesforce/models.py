@@ -1,3 +1,9 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+#
+
 import logging, urllib
 
 from django.conf import settings

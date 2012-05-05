@@ -1,3 +1,9 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+#
+
 """
 This file demonstrates writing tests using the unittest module. These will pass
 when you run "manage.py test".

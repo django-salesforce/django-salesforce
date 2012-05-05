@@ -1,3 +1,9 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+#
+
 from django.conf import settings
 from django import template, shortcuts, http
 
