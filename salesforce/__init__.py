@@ -29,7 +29,7 @@ oauth_data = None
 
 def configure_roa():
 	django_roa.Manager = SalesforceManager
-	serializers.register_serializer('salesforce', 'fu_web.salesforce.sfjson')
+	serializers.register_serializer('salesforce', 'salesforce.rest')
 
 def authenticate():
 	global oauth_data

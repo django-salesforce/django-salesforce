@@ -10,7 +10,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models.sql import compiler
 
-from fu_web.salesforce.backends.salesforce import base
+from salesforce.backends.salesforce import base
 
 import django_roa
 

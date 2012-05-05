@@ -7,7 +7,7 @@
 from django.conf import settings
 from django import template, shortcuts, http
 
-from fu_web.salesforce import authenticate, models
+from salesforce import authenticate, models
 
 def list_accounts(request):
 	return shortcuts.render_to_response('list-accounts.html', dict(

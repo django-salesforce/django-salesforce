@@ -55,6 +55,7 @@ class DatabaseError(Exception):
 class IntegrityError(DatabaseError):
 	pass
 
+#TODO: remove psycopg2 dependency
 class DatabaseOperations(PostgresqlDatabaseOperations):
 	pass
 
