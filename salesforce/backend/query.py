@@ -1,14 +1,21 @@
-import copy
+import copy, urllib
 
 from django.core import serializers
+from django.conf import settings
 from django.db.models import query as django_query
 from django.utils.encoding import force_unicode
-
+from django.db.backends.signals import connection_created
+ 
 import restkit
 
 from django_roa.db import query, exceptions
 
 from salesforce import sfauth
+
+try:
+	import json
+except ImportError, e:
+	import simplejson as json
 
 class SalesforceQuerySet(django_query.QuerySet):
 	def iterator(self):
@@ -16,12 +23,25 @@ class SalesforceQuerySet(django_query.QuerySet):
 		An iterator over the results from applying this QuerySet to the
 		remote web service.
 		"""
-		import pdb; pdb.set_trace()
+		sql, params = base.SQLCompiler(self.query, conn, None).as_sql()
+		cursor = CursorWrapper()
+		cursor.execute(rendered_query, params)
+		return cursor.fetchmany()
+
+class CursorWrapper(object):
+	def __init__(self, settings_dict=dict()):
+		connection_created.send(sender=self.__class__, connection=self)
+		self.oauth = sfauth.authenticate(settings_dict)
+	
+	def execute(self, q, args=None):
 		headers = copy.copy(query.ROA_HEADERS)
+		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		
-		oauth = sfauth.authenticate()
-		headers['Authorization'] = 'OAuth %s' % oauth['access_token']
-		resource = restkit.Resource(self.model.get_resource_url_list(self, server=oauth['instance_url']))
+		url = u'%s%s?%s' % (self.oauth['instance_url'], '/services/data/v23.0/query', urllib.urlencode(dict(
+			q	= q % args,
+		)))
+		
+		resource = restkit.Resource(url)
 		
 		try:
 			response = resource.get(headers=headers)
@@ -35,21 +55,39 @@ class SalesforceQuerySet(django_query.QuerySet):
 		for local_name, remote_name in query.ROA_MODEL_NAME_MAPPING:
 			response = response.replace(remote_name, local_name)
 		
-		ROA_FORMAT = getattr(settings, "ROA_FORMAT", 'json')
-		for res in serializers.deserialize(ROA_FORMAT, response):
-			obj = res.object
-			yield obj
+		ROA_FORMAT = getattr(settings, "ROA_FORMAT", 'salesforce')
+		
+		def _iterate(d):
+			d = json.loads(d)
+			for record in d['records']:
+				attribs = record.pop('attributes')
+				yield record.values()
+	
+		# self.results = serializers.deserialize(ROA_FORMAT, response)
+		self.results = _iterate(response)
+	
+	def fetchone(self):
+		res = self.results.next()
+		return res
+	
+	def fetchmany(self, size):
+		result = []
+		for index in range(size):
+			try:
+				if(index == size-1):
+					return result
+				result.append(self.fetchone())
+			except StopIteration:
+				pass
+		return result
 
-class CursorWrapper(object):
-	def __init__(self, settings_dict):
-		self.settings_dict = settings_dict
-		connection_created.send(sender=self.__class__, connection=self)
-		self.oauth = sfauth.authenticate(self.settings_dict)
-	
-	def execute(self, query, args=None):
-		pass
-	
-	def executemany(self, query, args=None):
-		pass
+	def fetchall(self):
+		result = []
+		for index in range(size):
+			try:
+				result.append(self.fetchone())
+			except StopIteration:
+				pass
+		return result
 
 serializers.register_serializer('salesforce', 'salesforce.rest')

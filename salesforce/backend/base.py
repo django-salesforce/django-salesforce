@@ -13,7 +13,6 @@ import logging
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
-from django.db.backends.signals import connection_created
 
 from django.db.backends.postgresql_psycopg2.base import PostgresqlDatabaseOperations
 
@@ -21,7 +20,6 @@ from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
-from salesforce.backend.query import CursorWrapper
 
 from salesforce import sfauth
 
@@ -85,6 +83,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.validation = DatabaseValidation(self)
 	
 	def _cursor(self):
+		from salesforce.backend.query import CursorWrapper
 		cursor = CursorWrapper(self.settings_dict)
 		return cursor
 	
