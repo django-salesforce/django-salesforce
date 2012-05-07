@@ -21,6 +21,7 @@ from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
+from salesforce.backend.query import CursorWrapper
 
 from salesforce import sfauth
 
@@ -37,7 +38,7 @@ class IntegrityError(DatabaseError):
 
 #TODO: remove psycopg2 dependency
 class DatabaseOperations(PostgresqlDatabaseOperations):
-	pass
+	compiler_module = "salesforce.backend.compiler"
 
 class DatabaseFeatures(BaseDatabaseFeatures):
 	empty_fetchmany_value = ()
@@ -76,8 +77,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 	def __init__(self, settings_dict, alias='default'):
 		super(DatabaseWrapper, self).__init__(settings_dict, alias)
 		
-		connection_created.send(sender=self.__class__, connection=self)
-		
 		self.features = DatabaseFeatures(self)
 		self.ops = DatabaseOperations(self)
 		self.client = DatabaseClient(self)
@@ -92,8 +91,5 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 	def quote_name(self, name):
 		return name
 
-class CursorWrapper(object):
-	def __init__(self, settings_dict):
-		self.settings_dict = settings_dict
-		sfauth.authenticate(self.settings_dict)
+
 

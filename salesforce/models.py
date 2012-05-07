@@ -14,6 +14,9 @@ from django.db.models.sql import compiler
 from salesforce.backend import base
 
 import django_roa
+from salesforce.backend import manager
+if(django_roa.Manager != manager.SalesforceManager):
+	django_roa.Manager = manager.SalesforceManager
 
 log = logging.getLogger(__name__)
 

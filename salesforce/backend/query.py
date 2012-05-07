@@ -40,4 +40,16 @@ class SalesforceQuerySet(django_query.QuerySet):
 			obj = res.object
 			yield obj
 
+class CursorWrapper(object):
+	def __init__(self, settings_dict):
+		self.settings_dict = settings_dict
+		connection_created.send(sender=self.__class__, connection=self)
+		self.oauth = sfauth.authenticate(self.settings_dict)
+	
+	def execute(self, query, args=None):
+		pass
+	
+	def executemany(self, query, args=None):
+		pass
+
 serializers.register_serializer('salesforce', 'salesforce.rest')

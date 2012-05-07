@@ -10,7 +10,7 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASES = {
-	'salesforce': {
+	'default': {
 		'ENGINE': 'salesforce.backend',
 		"CONSUMER_KEY" : '',
 		"CONSUMER_SECRET" : '',

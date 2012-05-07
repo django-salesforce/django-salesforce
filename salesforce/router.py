@@ -5,10 +5,12 @@ class ModelRouter(object):
 	Database router for Salesforce models.
 	"""
 	def db_for_read(self, model, **hints):
-		return isinstance(model, models.SalesforceModel)
+		if isinstance(model, models.SalesforceModel):
+			return 'salesforce'
 
 	def db_for_write(self, model, **hints):
-		return isinstance(model, models.SalesforceModel)
+		if isinstance(model, models.SalesforceModel):
+			return 'salesforce'
 
 	def allow_relation(self, obj1, obj2, **hints):
 		return None
