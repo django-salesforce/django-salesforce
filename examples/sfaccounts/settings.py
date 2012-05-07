@@ -10,7 +10,7 @@ ADMINS = (
 MANAGERS = ADMINS
 
 DATABASES = {
-	'default': {
+	'salesforce': {
 		'ENGINE': 'salesforce.backend',
 		"CONSUMER_KEY" : '',
 		"CONSUMER_SECRET" : '',
@@ -19,6 +19,10 @@ DATABASES = {
 		'HOST': 'https://test.salesforce.com',
 	}
 }
+
+DATABASE_ROUTERS = [
+	"salesforce.router.ModelRouter"
+],
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name

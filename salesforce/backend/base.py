@@ -22,7 +22,7 @@ from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
 
-from salesforce import rest
+from salesforce import sfauth
 
 log = logging.getLogger(__name__)
 
@@ -76,7 +76,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 	def __init__(self, settings_dict, alias='default'):
 		super(DatabaseWrapper, self).__init__(settings_dict, alias)
 		
-		rest.authenticate(settings_dict)
 		connection_created.send(sender=self.__class__, connection=self)
 		
 		self.features = DatabaseFeatures(self)
@@ -86,6 +85,15 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
 	
+	def _cursor(self):
+		cursor = CursorWrapper(self.settings_dict)
+		return cursor
+	
 	def quote_name(self, name):
 		return name
+
+class CursorWrapper(object):
+	def __init__(self, settings_dict):
+		self.settings_dict = settings_dict
+		sfauth.authenticate(self.settings_dict)
 

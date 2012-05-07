@@ -6,8 +6,9 @@ from django.utils.encoding import force_unicode
 
 import restkit
 
-import django_roa
-from django_roa.db import query, managers, exceptions
+from django_roa.db import query, exceptions
+
+from salesforce import sfauth
 
 class SalesforceQuerySet(django_query.QuerySet):
 	def iterator(self):
@@ -15,8 +16,10 @@ class SalesforceQuerySet(django_query.QuerySet):
 		An iterator over the results from applying this QuerySet to the
 		remote web service.
 		"""
+		import pdb; pdb.set_trace()
 		headers = copy.copy(query.ROA_HEADERS)
-		oauth = authenticate()
+		
+		oauth = sfauth.authenticate()
 		headers['Authorization'] = 'OAuth %s' % oauth['access_token']
 		resource = restkit.Resource(self.model.get_resource_url_list(self, server=oauth['instance_url']))
 		
@@ -36,12 +39,5 @@ class SalesforceQuerySet(django_query.QuerySet):
 		for res in serializers.deserialize(ROA_FORMAT, response):
 			obj = res.object
 			yield obj
-
-class SalesforceManager(managers.ROAManager):
-	def get_query_set(self):
-		"""
-		Returns a QuerySet which access remote resources.
-		"""
-		return SalesforceQuerySet(self.model)
 
 serializers.register_serializer('salesforce', 'salesforce.rest')
