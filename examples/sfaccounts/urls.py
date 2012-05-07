@@ -5,7 +5,7 @@
 # See LICENSE.md for details
 #
 
-from django.conf.urls import patterns, include, url
+from django.conf.urls.defaults import patterns, url, include
 
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin

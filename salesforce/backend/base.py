@@ -12,43 +12,22 @@ Salesforce database backend for Django.
 import logging
 
 from django.core.exceptions import ImproperlyConfigured
-from django.db.backends import BaseDatabaseWrapper, BaseDatabaseClient, BaseDatabaseIntrospection, BaseDatabaseFeatures, BaseDatabaseValidation
-from django.db.backends.creation import BaseDatabaseCreation
-from django.db.models.sql import compiler
+from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
+from django.db.backends.signals import connection_created
 
 from django.db.backends.postgresql_psycopg2.base import PostgresqlDatabaseOperations
-from django.db.backends.postgresql_psycopg2.base import PostgresqlDatabaseOperations
+
+from salesforce.backend.client import DatabaseClient
+from salesforce.backend.creation import DatabaseCreation
+from salesforce.backend.introspection import DatabaseIntrospection
+from salesforce.backend.validation import DatabaseValidation
+
+from salesforce import rest
 
 log = logging.getLogger(__name__)
 
 def complain(*args, **kwargs):
 	raise ImproperlyConfigured("Not yet implemented for the Salesforce backend.")
-
-class SQLCompiler(compiler.SQLCompiler):
-	def get_columns(self, with_aliases=False):
-		cols = compiler.SQLCompiler.get_columns(self, with_aliases)
-		return [x.split('.')[1].strip('"') for x in cols]
-	
-	def get_from_clause(self):
-		result = []
-		first = True
-		for alias in self.query.tables:
-			if not self.query.alias_refcount[alias]:
-				continue
-			try:
-				name, alias, join_type, lhs, lhs_col, col, nullable = self.query.alias_map[alias]
-			except KeyError:
-				# Extra tables can end up in self.tables, but not in the
-				# alias_map if they aren't in a join. That's OK. We skip them.
-				continue
-			#TODO: change this so the right stuff just ends up in alias_map
-			if(name.startswith('salesforce_')):
-				name = name[11:]
-				name = ''.join([x.capitalize() for x in name.split('_')])
-			connector = not first and ', ' or ''
-			result.append('%s%s' % (connector, name))
-			first = False
-		return result, []
 
 class DatabaseError(Exception):
 	pass
@@ -75,21 +54,6 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	requires_explicit_null_ordering_when_grouping = True
 	allows_primary_key_0 = False
 
-class DatabaseCreation(BaseDatabaseCreation):
-	pass
-
-class DatabaseValidation(BaseDatabaseValidation):
-	pass
-
-class DatabaseClient(BaseDatabaseClient):
-	runshell = complain
-
-class DatabaseIntrospection(BaseDatabaseIntrospection):
-	get_table_list = complain
-	get_table_description = complain
-	get_relations = complain
-	get_indexes = complain
-
 class DatabaseWrapper(BaseDatabaseWrapper):
 	vendor = 'salesforce'
 	operators = {
@@ -109,9 +73,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		'iendswith': 'LIKE %s',
 	}
 
-	def __init__(self, *args, **kwargs):
-		super(DatabaseWrapper, self).__init__(dict())
-
+	def __init__(self, settings_dict, alias='default'):
+		super(DatabaseWrapper, self).__init__(settings_dict, alias)
+		
+		rest.authenticate(settings_dict)
+		connection_created.send(sender=self.__class__, connection=self)
+		
 		self.features = DatabaseFeatures(self)
 		self.ops = DatabaseOperations(self)
 		self.client = DatabaseClient(self)

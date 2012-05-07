@@ -11,7 +11,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models.sql import compiler
 
-from salesforce.backends.salesforce import base
+from salesforce.backend import base
 
 import django_roa
 
@@ -24,7 +24,7 @@ class SalesforceModel(django_roa.Model):
 	Id = models.CharField(primary_key=True, max_length=100)
 	
 	@staticmethod
-	def get_resource_url_list(queryset, server=settings.SF_SERVER):
+	def get_resource_url_list(queryset, server):
 		conn = base.DatabaseWrapper()
 		sql, params = base.SQLCompiler(queryset.query, conn, None).as_sql()
 		rendered_query = sql % params
