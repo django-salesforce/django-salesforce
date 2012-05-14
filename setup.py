@@ -41,7 +41,7 @@ def autosetup():
 		# metadata for upload to PyPI
 		author			= "Phil Christensen",
 		author_email	= "phil@bubblehouse.org",
-		description		= "a Salesforce backend for Django's ORM using django-roa",
+		description		= "a Salesforce backend for Django's ORM",
 		license			= "MIT",
 		keywords		= "django salesforce orm backend",
 		url				= "https://github.com/philchristensen/django-salesforce",

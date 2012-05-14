@@ -1,6 +1,6 @@
-from django_roa.db import managers
+from django.db.models import manager
 
-class SalesforceManager(managers.ROAManager):
+class SalesforceManager(manager.Manager):
 	def get_query_set(self):
 		"""
 		Returns a QuerySet which access remote resources.

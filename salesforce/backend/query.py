@@ -9,8 +9,6 @@ from django.core.serializers import python
 
 import restkit
 
-from django_roa.db import query, exceptions
-
 from salesforce import sfauth
 from salesforce.backend import compiler
 
@@ -42,7 +40,6 @@ class SalesforceQuerySet(django_query.QuerySet):
 					fields  = record,
 				)
 		
-		ROA_FORMAT = getattr(settings, "ROA_FORMAT", 'salesforce')
 		response = cursor.fetchmany()
 		for res in python.Deserializer(_mkmodels(response)):
 			yield res.object
@@ -53,7 +50,7 @@ class CursorWrapper(object):
 		self.oauth = sfauth.authenticate(conn.settings_dict)
 	
 	def execute(self, q, args=None):
-		headers = copy.copy(query.ROA_HEADERS)
+		headers = dict()
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		
 		url = u'%s%s?%s' % (self.oauth['instance_url'], '/services/data/v23.0/query', urllib.urlencode(dict(
@@ -66,13 +63,9 @@ class CursorWrapper(object):
 			response = resource.get(headers=headers)
 		except restkit.ResourceNotFound:
 			return
-		except Exception, e:
-			raise exceptions.ROAException(e)
 		
 		body = response.body_string()
 		response = force_unicode(body).encode(settings.DEFAULT_CHARSET)
-		for local_name, remote_name in query.ROA_MODEL_NAME_MAPPING:
-			response = response.replace(remote_name, local_name)
 		
 		def _iterate(d):
 			d = json.loads(d)
@@ -113,5 +106,3 @@ class CursorWrapper(object):
 			except StopIteration:
 				pass
 		return result
-
-serializers.register_serializer('salesforce', 'salesforce.rest')
