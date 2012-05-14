@@ -1,20 +1,24 @@
 {% load url from future %}
 {% load i18n %}
 
-{% block page_title %}{{ title }}{% endblock %}
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+	<title>list salesforce accounts</title>
+</head>
+<body>
 
-{% block content %}
 <div class="salesforce">
-
-<div class="content">
-	<div id="content-wrapper">
-	{% for account in accounts %}
-	<div class="account">
-		{{ account.Name }}
-	</div>
-	{% endfor %}
+	<div class="content">
+		<div id="content-wrapper">
+		{% for account in accounts %}
+		<div class="account">
+			{{ account.Name }}
+		</div>
+		{% endfor %}
+		</div>
 	</div>
 </div>
 
-</div>
-{% endblock %}
+</body>
+</html>

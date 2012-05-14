@@ -1,11 +1,12 @@
-import copy, urllib
+import copy, urllib, logging
 
 from django.core import serializers
 from django.conf import settings
 from django.db.models import query as django_query
 from django.utils.encoding import force_unicode
 from django.db.backends.signals import connection_created
- 
+from django.core.serializers import python
+
 import restkit
 
 from django_roa.db import query, exceptions
@@ -18,6 +19,8 @@ try:
 except ImportError, e:
 	import simplejson as json
 
+log = logging.getLogger(__name__)
+
 class SalesforceQuerySet(django_query.QuerySet):
 	def iterator(self):
 		"""
@@ -26,9 +29,23 @@ class SalesforceQuerySet(django_query.QuerySet):
 		"""
 		from django.db import connections
 		sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
+		log.debug(sql % params)
 		cursor = CursorWrapper(connections[self.db])
-		cursor.execute(rendered_query, params)
-		return cursor.fetchmany()
+		cursor.execute(sql, params)
+
+		def _mkmodels(data):
+			for record in data:
+				attribs = record.pop('attributes')
+				yield dict(
+					model	= 'salesforce.%s' % attribs['type'],
+					pk		= record.pop('Id'),
+					fields  = record,
+				)
+		
+		ROA_FORMAT = getattr(settings, "ROA_FORMAT", 'salesforce')
+		response = cursor.fetchmany()
+		for res in python.Deserializer(_mkmodels(response)):
+			yield res.object
 
 class CursorWrapper(object):
 	def __init__(self, conn):
@@ -57,28 +74,33 @@ class CursorWrapper(object):
 		for local_name, remote_name in query.ROA_MODEL_NAME_MAPPING:
 			response = response.replace(remote_name, local_name)
 		
-		ROA_FORMAT = getattr(settings, "ROA_FORMAT", 'salesforce')
-		
 		def _iterate(d):
 			d = json.loads(d)
 			for record in d['records']:
-				attribs = record.pop('attributes')
-				yield record.values()
+				yield record
 	
-		# self.results = serializers.deserialize(ROA_FORMAT, response)
 		self.results = _iterate(response)
 	
 	def fetchone(self):
-		res = self.results.next()
-		return res
+		try:
+			res = self.results.next()
+			return res
+		except StopIteration:
+			return None
 	
-	def fetchmany(self, size):
+	def fetchmany(self, size=0):
 		result = []
-		for index in range(size):
+		counter = 0
+		while(True):
 			try:
-				if(index == size-1):
+				if(counter == size-1):
 					return result
-				result.append(self.fetchone())
+				if(size != 0):
+					counter += 1
+				row = self.fetchone()
+				if not(row):
+					return result
+				result.append(row)
 			except StopIteration:
 				pass
 		return result

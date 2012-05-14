@@ -16,9 +16,7 @@ def list_accounts(request):
 	from salesforce import models
 	accounts = models.Account.objects.all()[0:5]
 	
-	print accounts
-	
 	return shortcuts.render_to_response('list-accounts.html', dict(
-		title           = "Password Reset",
+		title           = "List First 5 Accounts",
 		accounts        = accounts,
 	), context_instance=template.RequestContext(request))

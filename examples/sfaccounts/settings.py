@@ -156,6 +156,11 @@ LOGGING = {
 			'level': 'DEBUG',
 			'propagate': True,
 		},
+		'salesforce': {
+			'handlers': ['console'],
+			'level': 'DEBUG',
+			'propagate': True,
+		},
 	}
 }
 
