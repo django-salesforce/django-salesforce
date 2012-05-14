@@ -29,6 +29,8 @@ def authenticate(settings_dict=dict()):
 		consumer = oauth2.Consumer(key=settings_dict['CONSUMER_KEY'], secret=settings_dict['CONSUMER_SECRET'])
 		client = oauth2.Client(consumer)
 		url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
+		
+		log.debug("Attempting authentication to %s" % url)
 		response, content = client.request(url, 'POST', body=urllib.urlencode(dict(
 			grant_type		= 'password',
 			client_id		= settings_dict['CONSUMER_KEY'],
@@ -36,6 +38,7 @@ def authenticate(settings_dict=dict()):
 			username		= settings_dict['USER'],
 			password		= settings_dict['PASSWORD'],
 		)))
+		log.debug("successfully authenticated %s" % settings_dict['USER'])
 		if(response['status'] == '200'):
 			oauth_data = json.loads(content)
 		else:

@@ -136,6 +136,10 @@ LOGGING = {
 	'version': 1,
 	'disable_existing_loggers': False,
 	'handlers': {
+		"console": {
+			"class": "logging.StreamHandler",
+			"level": "DEBUG",
+		},
 		'mail_admins': {
 			'level': 'ERROR',
 			'class': 'django.utils.log.AdminEmailHandler'
@@ -145,6 +149,11 @@ LOGGING = {
 		'django.request': {
 			'handlers': ['mail_admins'],
 			'level': 'ERROR',
+			'propagate': True,
+		},
+		'sfaccounts': {
+			'handlers': ['console'],
+			'level': 'DEBUG',
 			'propagate': True,
 		},
 	}

@@ -11,6 +11,7 @@ import restkit
 from django_roa.db import query, exceptions
 
 from salesforce import sfauth
+from salesforce.backend import compiler
 
 try:
 	import json
@@ -23,15 +24,16 @@ class SalesforceQuerySet(django_query.QuerySet):
 		An iterator over the results from applying this QuerySet to the
 		remote web service.
 		"""
-		sql, params = base.SQLCompiler(self.query, conn, None).as_sql()
-		cursor = CursorWrapper()
+		from django.db import connections
+		sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
+		cursor = CursorWrapper(connections[self.db])
 		cursor.execute(rendered_query, params)
 		return cursor.fetchmany()
 
 class CursorWrapper(object):
-	def __init__(self, settings_dict=dict()):
+	def __init__(self, conn):
 		connection_created.send(sender=self.__class__, connection=self)
-		self.oauth = sfauth.authenticate(settings_dict)
+		self.oauth = sfauth.authenticate(conn.settings_dict)
 	
 	def execute(self, q, args=None):
 		headers = copy.copy(query.ROA_HEADERS)
