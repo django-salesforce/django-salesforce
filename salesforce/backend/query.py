@@ -4,6 +4,7 @@ from django.core import serializers, exceptions
 from django.conf import settings
 from django.db.models import query
 from django.db.models.sql import Query
+from django.db.models.sql.constants import GET_ITERATOR_CHUNK_SIZE
 from django.utils.encoding import force_unicode
 from django.db.backends.signals import connection_created
 from django.core.serializers import python
@@ -49,7 +50,7 @@ class SalesforceQuerySet(query.QuerySet):
 					fields	= record,
 				)
 		
-		response = cursor.fetchmany()
+		response = cursor.fetchmany(GET_ITERATOR_CHUNK_SIZE)
 		for res in python.Deserializer(_mkmodels(response)):
 			yield res.object
 
