@@ -5,6 +5,10 @@
 # See LICENSE.md for details
 #
 
+"""
+Salesforce object query customizations.
+"""
+
 import copy, urllib, logging, types, datetime, decimal
 
 from django.core import serializers, exceptions
@@ -29,14 +33,19 @@ except ImportError, e:
 log = logging.getLogger(__name__)
 
 def quoted_string_literal(s, d):
-	# okay, so, according to the SQL standard, this should be all you need to do to escape
-	# any kind of string.
+	"""
+	According to the SQL standard, this should be all you need to do to escape any kind of string.
+	"""
 	try:
 		return "'%s'" % (s.replace("'", "''"),)
 	except TypeError, e:
 		raise NotImplementedError("Cannot quote %r objects: %r" % (type(s), s))
 
 class SalesforceQuerySet(query.QuerySet):
+	"""
+	Use a custom SQL compiler to generate SOQL-compliant queries.
+	"""
+	
 	def iterator(self):
 		"""
 		An iterator over the results from applying this QuerySet to the
@@ -62,21 +71,39 @@ class SalesforceQuerySet(query.QuerySet):
 			yield res.object
 
 class SalesforceQuery(Query):
+	"""
+	Override aggregates.
+	"""
 	from salesforce.backend import aggregates
 	aggregates_module = aggregates
 
 class CursorWrapper(object):
+	"""
+	A wrapper that emulates the behavior of a database cursor.
+	
+	This is the class that is actually responsible for making connections
+	to the SF REST API
+	"""
 	def __init__(self, conn):
+		"""
+		Connect to the Salesforce API.
+		"""
 		connection_created.send(sender=self.__class__, connection=self)
 		self.oauth = sfauth.authenticate(conn.settings_dict)
 		self.results = iter([])
 	
 	def process_args(self, args):
+		"""
+		Perform necessary quoting on the arg list.
+		"""
 		def _escape(item, conv):
 			return conv.get(type(item), conv[str])(item, conv)
 		return [_escape(x, conversions) for x in args]
 	
 	def execute(self, q, args=None):
+		"""
+		Send a query to the Salesforce API.
+		"""
 		headers = dict()
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		
@@ -117,6 +144,9 @@ class CursorWrapper(object):
 		self.results = _iterate(response)
 	
 	def fetchone(self):
+		"""
+		Fetch a single result from a previously executed query.
+		"""
 		try:
 			res = self.results.next()
 			return res
@@ -124,6 +154,9 @@ class CursorWrapper(object):
 			return None
 	
 	def fetchmany(self, size=0):
+		"""
+		Fetch multiple results from a previously executed query.
+		"""
 		result = []
 		counter = 0
 		while(True):
@@ -141,6 +174,9 @@ class CursorWrapper(object):
 		return result
 
 	def fetchall(self):
+		"""
+		Fetch all results from a previously executed query.
+		"""
 		result = []
 		for index in range(size):
 			try:
@@ -150,6 +186,8 @@ class CursorWrapper(object):
 		return result
 
 string_literal = quoted_string_literal
+
+# supported types
 conversions = {
 	int: lambda s,d: str(s),
 	long: lambda s,d: str(s),

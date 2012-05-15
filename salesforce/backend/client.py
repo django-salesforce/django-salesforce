@@ -5,6 +5,10 @@
 # See LICENSE.md for details
 #
 
+"""
+TODO: command-line SOQL interface.
+"""
+
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseClient
 

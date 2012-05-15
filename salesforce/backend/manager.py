@@ -5,6 +5,12 @@
 # See LICENSE.md for details
 #
 
+"""
+Salesforce object manager.
+
+Use a custom QuerySet to generate SOQL queries and results.
+"""
+
 from django.db.models import manager
 
 from salesforce.backend import compiler
@@ -12,7 +18,7 @@ from salesforce.backend import compiler
 class SalesforceManager(manager.Manager):
 	def get_query_set(self):
 		"""
-		Returns a QuerySet which access remote resources.
+		Returns a QuerySet which access remote SF objects.
 		"""
 		from salesforce.backend import query
 		q = query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)

@@ -33,9 +33,15 @@ class IntegrityError(DatabaseError):
 	pass
 
 class DatabaseFeatures(BaseDatabaseFeatures):
+	"""
+	Features this database provides.
+	"""
 	allows_group_by_pk = True
 
 class DatabaseWrapper(BaseDatabaseWrapper):
+	"""
+	Core class that provides all DB support.
+	"""
 	vendor = 'salesforce'
 	operators = {
 		'exact': '= %s',
@@ -65,9 +71,15 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.validation = DatabaseValidation(self)
 	
 	def _cursor(self):
+		"""
+		Return a fake cursor for accessing the Salesforce API with SOQL.
+		"""
 		from salesforce.backend.query import CursorWrapper
 		cursor = CursorWrapper(self)
 		return cursor
 	
 	def quote_name(self, name):
+		"""
+		Do not quote column and table names in the SOQL dialect.
+		"""
 		return name

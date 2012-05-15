@@ -5,16 +5,31 @@
 # See LICENSE.md for details
 #
 
+"""
+Generate queries using the SOQL dialect.
+"""
+
 from django.db.models.sql import compiler, query, where
 
 def process_column(name):
+	"""
+	Convert a Djangofied column name into a Salesforce-compliant column name.
+	
+	TODO: this is sketchy
+	"""
 	if(name.startswith('salesforce_')):
 		name = name[11:]
 		name = ''.join([x.capitalize() for x in name.split('_')])
 	return name
 
 class SQLCompiler(compiler.SQLCompiler):
+	"""
+	A subclass of the default SQL compiler for the SOQL dialect.
+	"""
 	def get_columns(self, with_aliases=False):
+		"""
+		Remove table names and strip quotes from column names.
+		"""
 		cols = compiler.SQLCompiler.get_columns(self, with_aliases)
 		result = []
 		for col in cols:
@@ -26,6 +41,9 @@ class SQLCompiler(compiler.SQLCompiler):
 		return result
 	
 	def get_from_clause(self):
+		"""
+		Return the FROM clause, converted the SOQL dialect.
+		"""
 		result = []
 		first = True
 		for alias in self.query.tables:
@@ -47,8 +65,7 @@ class SQLCompiler(compiler.SQLCompiler):
 	def quote_name_unless_alias(self, name):
 		"""
 		A wrapper around connection.ops.quote_name that doesn't quote aliases
-		for table names. This avoids problems with some SQL dialects that treat
-		quoted strings specially (e.g. PostgreSQL).
+		for table names. Mostly used during the ORDER BY clause.
 		"""
 		name = process_column(name)
 		r = self.connection.ops.quote_name(name)
@@ -59,9 +76,7 @@ class SQLCompiler(compiler.SQLCompiler):
 class SalesforceWhereNode(where.WhereNode):
 	def sql_for_columns(self, data, qn, connection):
 		"""
-		Returns the SQL fragment used for the left-hand side of a column
-		constraint (for example, the "T1.foo" portion in the clause
-		"WHERE ... T1.foo = 6").
+		Don't attempt to quote column names.
 		"""
 		table_alias, name, db_type = data
 		return connection.ops.field_cast_sql(db_type) % name

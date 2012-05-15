@@ -5,9 +5,16 @@
 # See LICENSE.md for details
 #
 
+"""
+Aggregates like COUNT(), MAX(), MIN() are customized here.
+"""
+
 from django.db.models.sql.aggregates import *
 
 class Count(Aggregate):
+	"""
+	A customized Count class that uses the COUNT() syntax instead of COUNT(*).
+	"""
 	is_ordinal = True
 	sql_function = 'COUNT'
 	sql_template = '%(function)s(%(distinct)s%(field)s)'

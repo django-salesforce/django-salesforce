@@ -5,3 +5,6 @@
 # See LICENSE.md for details
 #
 
+"""
+Database backend for the Salesforce API.
+"""

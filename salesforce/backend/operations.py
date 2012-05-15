@@ -9,6 +9,10 @@ import re
 
 from django.db.backends import BaseDatabaseOperations
 
+"""
+Default database operations, with unquoted names.
+"""
+
 class DatabaseOperations(BaseDatabaseOperations):
 	compiler_module = "salesforce.backend.compiler"
 	
@@ -20,8 +24,9 @@ class DatabaseOperations(BaseDatabaseOperations):
 		return name
 	
 	def check_aggregate_support(self, aggregate_func):
-		"""Check that the backend supports the provided aggregate
-
+		"""
+		Check that the backend supports the provided aggregate
+		
 		This is used on specific backends to rule out known aggregates
 		that are known to have faulty implementations. If the named
 		aggregate function has a known problem, the backend should
