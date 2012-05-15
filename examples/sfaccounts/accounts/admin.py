@@ -1,3 +1,10 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+# See LICENSE.md for details
+#
+
 from django.contrib import admin
 from django.db import models
 from django.forms import widgets

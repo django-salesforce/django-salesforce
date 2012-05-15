@@ -1,3 +1,10 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+# See LICENSE.md for details
+#
+
 from django.db.models.sql import compiler, query, where
 
 def process_column(name):

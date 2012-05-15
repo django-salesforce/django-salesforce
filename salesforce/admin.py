@@ -1,3 +1,10 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+# See LICENSE.md for details
+#
+
 from django.contrib.admin import options
 from django.conf import settings
 from django.db import utils
