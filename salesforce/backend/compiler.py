@@ -1,9 +1,22 @@
 from django.db.models.sql import compiler, query, where
 
+def process_column(name):
+	if(name.startswith('salesforce_')):
+		name = name[11:]
+		name = ''.join([x.capitalize() for x in name.split('_')])
+	return name
+
 class SQLCompiler(compiler.SQLCompiler):
 	def get_columns(self, with_aliases=False):
 		cols = compiler.SQLCompiler.get_columns(self, with_aliases)
-		return [x.split('.')[1].strip('"') for x in cols]
+		result = []
+		for col in cols:
+			if('.' in col):
+				name = col.split('.')[1]
+			else:
+				name = col
+			result.append(name.strip('"'))
+		return result
 	
 	def get_from_clause(self):
 		result = []
@@ -18,13 +31,23 @@ class SQLCompiler(compiler.SQLCompiler):
 				# alias_map if they aren't in a join. That's OK. We skip them.
 				continue
 			#TODO: change this so the right stuff just ends up in alias_map
-			if(name.startswith('salesforce_')):
-				name = name[11:]
-				name = ''.join([x.capitalize() for x in name.split('_')])
+			name = process_column(name)
 			connector = not first and ', ' or ''
 			result.append('%s%s' % (connector, name))
 			first = False
 		return result, []
+	
+	def quote_name_unless_alias(self, name):
+		"""
+		A wrapper around connection.ops.quote_name that doesn't quote aliases
+		for table names. This avoids problems with some SQL dialects that treat
+		quoted strings specially (e.g. PostgreSQL).
+		"""
+		name = process_column(name)
+		r = self.connection.ops.quote_name(name)
+		self.quote_cache[name] = r
+		return r
+
 
 class SalesforceWhereNode(where.WhereNode):
 	def sql_for_columns(self, data, qn, connection):

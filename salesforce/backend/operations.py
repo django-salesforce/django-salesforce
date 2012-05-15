@@ -10,6 +10,15 @@ class DatabaseOperations(BaseDatabaseOperations):
 		self.connection = connection
 
 	def quote_name(self, name):
-		if name.startswith('"') and name.endswith('"'):
-			return name # Quoting once is enough.
-		return '"%s"' % name
+		return name
+	
+	def check_aggregate_support(self, aggregate_func):
+		"""Check that the backend supports the provided aggregate
+
+		This is used on specific backends to rule out known aggregates
+		that are known to have faulty implementations. If the named
+		aggregate function has a known problem, the backend should
+		raise NotImplemented.
+		"""
+		pass
+

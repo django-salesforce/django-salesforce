@@ -33,7 +33,7 @@ class IntegrityError(DatabaseError):
 	pass
 
 class DatabaseFeatures(BaseDatabaseFeatures):
-	pass
+	allows_group_by_pk = True
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	vendor = 'salesforce'
@@ -66,7 +66,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 	
 	def _cursor(self):
 		from salesforce.backend.query import CursorWrapper
-		cursor = CursorWrapper(self.settings_dict)
+		cursor = CursorWrapper(self)
 		return cursor
 	
 	def quote_name(self, name):

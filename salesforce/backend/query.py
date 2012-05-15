@@ -3,6 +3,7 @@ import copy, urllib, logging, types, datetime, decimal
 from django.core import serializers, exceptions
 from django.conf import settings
 from django.db.models import query
+from django.db.models.sql import Query
 from django.utils.encoding import force_unicode
 from django.db.backends.signals import connection_created
 from django.core.serializers import python
@@ -51,6 +52,10 @@ class SalesforceQuerySet(query.QuerySet):
 		response = cursor.fetchmany()
 		for res in python.Deserializer(_mkmodels(response)):
 			yield res.object
+
+class SalesforceQuery(Query):
+	from salesforce.backend import aggregates
+	aggregates_module = aggregates
 
 class CursorWrapper(object):
 	def __init__(self, conn):
