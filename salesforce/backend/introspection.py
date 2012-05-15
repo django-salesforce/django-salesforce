@@ -5,8 +5,10 @@ def complain(*args, **kwargs):
 	raise ImproperlyConfigured("DatabaseIntrospection: Not yet implemented for the Salesforce backend.")
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
-	get_table_list = complain
-	get_table_description = complain
-	get_relations = complain
-	get_indexes = complain
-
+	def get_field_type(self, data_type, description):
+		"""
+		Hook for a database backend to use the cursor description to
+		match a Django field type to a database column.
+		"""
+		import pdb; pdb.set_trace()
+	

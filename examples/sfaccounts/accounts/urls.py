@@ -8,5 +8,6 @@
 from django.conf.urls.defaults import patterns, url, include
 
 urlpatterns = patterns('sfaccounts.accounts.views',
-	url(r'^$', 'list_accounts', name='sf_accounts'),
+	url(r'^$', 'list_accounts', name='list_accounts'),
+	url(r'^search/$', 'search_accounts', name='search_accounts'),
 )

@@ -20,13 +20,11 @@ from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
+from salesforce.backend.operations import DatabaseOperations
 
 from salesforce import sfauth
 
 log = logging.getLogger(__name__)
-
-def complain(*args, **kwargs):
-	raise ImproperlyConfigured("Not yet implemented for the Salesforce backend.")
 
 class DatabaseError(Exception):
 	pass
@@ -34,24 +32,8 @@ class DatabaseError(Exception):
 class IntegrityError(DatabaseError):
 	pass
 
-#TODO: remove psycopg2 dependency
-class DatabaseOperations(PostgresqlDatabaseOperations):
-	compiler_module = "salesforce.backend.compiler"
-
 class DatabaseFeatures(BaseDatabaseFeatures):
-	empty_fetchmany_value = ()
-	update_can_self_select = False
-	allows_group_by_pk = True
-	related_fields_match_type = True
-	allow_sliced_subqueries = False
-	supports_forward_references = False
-	supports_long_model_names = False
-	supports_microsecond_precision = False
-	supports_regex_backreferencing = False
-	supports_date_lookup_using_string = False
-	supports_timezones = False
-	requires_explicit_null_ordering_when_grouping = True
-	allows_primary_key_0 = False
+	pass
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	vendor = 'salesforce'
@@ -89,6 +71,3 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 	
 	def quote_name(self, name):
 		return name
-
-
-

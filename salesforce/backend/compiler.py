@@ -1,4 +1,4 @@
-from django.db.models.sql import compiler
+from django.db.models.sql import compiler, query, where
 
 class SQLCompiler(compiler.SQLCompiler):
 	def get_columns(self, with_aliases=False):
@@ -25,6 +25,16 @@ class SQLCompiler(compiler.SQLCompiler):
 			result.append('%s%s' % (connector, name))
 			first = False
 		return result, []
+
+class SalesforceWhereNode(where.WhereNode):
+	def sql_for_columns(self, data, qn, connection):
+		"""
+		Returns the SQL fragment used for the left-hand side of a column
+		constraint (for example, the "T1.foo" portion in the clause
+		"WHERE ... T1.foo = 6").
+		"""
+		table_alias, name, db_type = data
+		return connection.ops.field_cast_sql(db_type) % name
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
 	pass

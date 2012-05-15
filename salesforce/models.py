@@ -22,11 +22,13 @@ class SalesforceModel(models.Model):
 	
 	class Meta:
 		abstract = True
+		managed = False
 	
 	Id = models.CharField(primary_key=True, max_length=100)
 
 class Account(SalesforceModel):
 	Name = models.CharField(max_length=100)
+	PersonEmail = models.CharField(max_length=100)
 	
 	def __unicode__(self):
 		return self.Name
