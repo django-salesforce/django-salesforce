@@ -5,3 +5,8 @@
 # See LICENSE.md for details
 #
 
+"""
+A database backend for the Django ORM.
+
+Allows access to all Salesforce objects accessible via the SOQL API.
+"""

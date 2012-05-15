@@ -5,6 +5,14 @@
 # See LICENSE.md for details
 #
 
+"""
+Django models for accessing Salesforce objects.
+
+The Salesforce database is somewhat un-UNIXy or non-Pythonic, in that
+column names are all in CamelCase. No attempt is made to work around this
+issue, but normal use of `db_column` and `table_name` parameters should work.
+"""
+
 import logging, urllib
 
 from django.conf import settings
@@ -18,6 +26,16 @@ from salesforce.backend import manager
 log = logging.getLogger(__name__)
 
 class SalesforceModel(models.Model):
+	"""
+	Abstract model class for Salesforce objects.
+	
+	For convenience, this is encapsulated as a superclass, but if you
+	need to inherit from another model class for some reason, you'll need
+	override the 'objects' manager instance with the SalesforceManager,
+	as well as create some kind of solution for routing to the proper
+	database connection (salesforce.router.ModelRouter only looks for
+	SalesforceModel subclasses).
+	"""
 	objects = manager.SalesforceManager()
 	
 	class Meta:
@@ -27,6 +45,9 @@ class SalesforceModel(models.Model):
 	Id = models.CharField(primary_key=True, max_length=100)
 
 class Account(SalesforceModel):
+	"""
+	Default Salesforce Account model.
+	"""
 	Name = models.CharField(max_length=100)
 	PersonEmail = models.CharField(max_length=100)
 	

@@ -5,6 +5,10 @@
 # See LICENSE.md for details
 #
 
+"""
+oauth login support for the Salesforce API
+"""
+
 import copy, logging, threading, urllib
 
 try:
@@ -20,6 +24,16 @@ oauth_lock = threading.Lock()
 oauth_data = None
 
 def authenticate(settings_dict=dict()):
+	"""
+	Authenticate to the Salesforce API with the provided credentials.
+	
+	This function can be called multiple times, but will only make
+	an external request once per the lifetime of the process. Subsequent
+	calls to authenticate() will return the original oauth response.
+	
+	This function is thread-safe.
+	"""
+	# if another thread is in this method, wait for it to finish.
 	oauth_lock.acquire()
 	try:
 		global oauth_data
@@ -30,7 +44,7 @@ def authenticate(settings_dict=dict()):
 		client = oauth2.Client(consumer)
 		url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
 		
-		log.debug("Attempting authentication to %s" % url)
+		log.debug("attempting authentication to %s" % url)
 		response, content = client.request(url, 'POST', body=urllib.urlencode(dict(
 			grant_type		= 'password',
 			client_id		= settings_dict['CONSUMER_KEY'],
@@ -46,5 +60,6 @@ def authenticate(settings_dict=dict()):
 		
 		return oauth_data
 	finally:
+		# always release the lock no matter what happens in the previous block
 		oauth_lock.release()
 

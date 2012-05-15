@@ -5,11 +5,24 @@
 # See LICENSE.md for details
 #
 
+"""
+Multi-database support for the Django admin.
+"""
+
 from django.contrib.admin import options
 from django.conf import settings
 from django.db import utils
 
 class RoutedModelAdmin(options.ModelAdmin):
+	"""
+	ModelAdmin subclass that allows use of multiple database connections.
+	
+	To use the Django admin with Salesforce models, you'll need at least two databases,
+	unless you somehow were to save all the django_session and assorted tables in SF.
+	
+	Unfortunately, at least as far as Django 1.3, the admin doesn't normally make use
+	of the DATABASE_ROUTERS setting, so this custom ModelAdmin subclass makes up for it.
+	"""
 	router = utils.ConnectionRouter(settings.DATABASE_ROUTERS)
 	
 	def save_model(self, request, obj, form, change):
