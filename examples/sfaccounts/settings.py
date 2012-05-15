@@ -31,6 +31,7 @@ DATABASES = {
 	}
 }
 
+SALESFORCE_DB_ALIAS = 'salesforce'
 DATABASE_ROUTERS = [
 	"salesforce.router.ModelRouter"
 ]
