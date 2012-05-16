@@ -22,7 +22,7 @@ from django.core.serializers import python
 
 import restkit
 
-from salesforce import sfauth
+from salesforce import auth
 from salesforce.backend import compiler
 
 try:
@@ -89,7 +89,7 @@ class CursorWrapper(object):
 		Connect to the Salesforce API.
 		"""
 		connection_created.send(sender=self.__class__, connection=self)
-		self.oauth = sfauth.authenticate(conn.settings_dict)
+		self.oauth = auth.authenticate(conn.settings_dict)
 		self.results = iter([])
 	
 	def process_args(self, args):

@@ -22,8 +22,6 @@ from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 
-from salesforce import sfauth
-
 log = logging.getLogger(__name__)
 
 class DatabaseError(Exception):
