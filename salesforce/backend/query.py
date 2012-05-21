@@ -41,6 +41,14 @@ def quoted_string_literal(s, d):
 	except TypeError, e:
 		raise NotImplementedError("Cannot quote %r objects: %r" % (type(s), s))
 
+def process_args(args):
+	"""
+	Perform necessary quoting on the arg list.
+	"""
+	def _escape(item, conv):
+		return conv.get(type(item), conv[str])(item, conv)
+	return tuple([_escape(x, conversions) for x in args])
+
 class SalesforceQuerySet(query.QuerySet):
 	"""
 	Use a custom SQL compiler to generate SOQL-compliant queries.
@@ -53,7 +61,7 @@ class SalesforceQuerySet(query.QuerySet):
 		"""
 		from django.db import connections
 		sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
-		log.debug(sql % params)
+		log.debug(sql % process_args(params))
 		cursor = CursorWrapper(connections[self.db])
 		cursor.execute(sql, params)
 
@@ -92,14 +100,6 @@ class CursorWrapper(object):
 		self.oauth = auth.authenticate(conn.settings_dict)
 		self.results = iter([])
 	
-	def process_args(self, args):
-		"""
-		Perform necessary quoting on the arg list.
-		"""
-		def _escape(item, conv):
-			return conv.get(type(item), conv[str])(item, conv)
-		return [_escape(x, conversions) for x in args]
-	
 	def execute(self, q, args=None):
 		"""
 		Send a query to the Salesforce API.
@@ -107,9 +107,8 @@ class CursorWrapper(object):
 		headers = dict()
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		
-		processed_args = self.process_args(args)
 		url = u'%s%s?%s' % (self.oauth['instance_url'], '/services/data/v23.0/query', urllib.urlencode(dict(
-			q	= q % tuple(processed_args),
+			q	= q % process_args(args),
 		)))
 		
 		resource = restkit.Resource(url)
