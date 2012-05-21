@@ -35,6 +35,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	Features this database provides.
 	"""
 	allows_group_by_pk = True
+	supports_unspecified_pk = False
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	"""
@@ -68,12 +69,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
 	
-	def _cursor(self):
+	def cursor(self, query):
 		"""
 		Return a fake cursor for accessing the Salesforce API with SOQL.
 		"""
 		from salesforce.backend.query import CursorWrapper
-		cursor = CursorWrapper(self)
+		cursor = CursorWrapper(self, query)
 		return cursor
 	
 	def quote_name(self, name):

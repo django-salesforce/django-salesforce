@@ -42,7 +42,7 @@ class SalesforceModel(models.Model):
 		abstract = True
 		managed = False
 	
-	Id = models.CharField(primary_key=True, max_length=100)
+	Id = models.CharField(primary_key=True, max_length=100, null=True)
 
 class Account(SalesforceModel):
 	"""
@@ -53,3 +53,14 @@ class Account(SalesforceModel):
 	
 	def __unicode__(self):
 		return self.Name
+
+class Lead(SalesforceModel):
+	"""
+	Default Salesforce Lead model.
+	"""
+	FirstName = models.CharField(max_length=100)
+	LastName = models.CharField(max_length=100)
+	Email = models.CharField(max_length=100)
+	
+	def __unicode__(self):
+		return self.FirstName + ' ' + self.LastName

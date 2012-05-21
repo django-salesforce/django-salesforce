@@ -32,6 +32,8 @@ except ImportError, e:
 
 log = logging.getLogger(__name__)
 
+API_STUB = '/services/data/v23.0'
+
 def quoted_string_literal(s, d):
 	"""
 	According to the SQL standard, this should be all you need to do to escape any kind of string.
@@ -53,7 +55,6 @@ class SalesforceQuerySet(query.QuerySet):
 	"""
 	Use a custom SQL compiler to generate SOQL-compliant queries.
 	"""
-	
 	def iterator(self):
 		"""
 		An iterator over the results from applying this QuerySet to the
@@ -62,7 +63,7 @@ class SalesforceQuerySet(query.QuerySet):
 		from django.db import connections
 		sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
 		log.debug(sql % process_args(params))
-		cursor = CursorWrapper(connections[self.db])
+		cursor = CursorWrapper(connections[self.db], self.query)
 		cursor.execute(sql, params)
 
 		def _mkmodels(data):
@@ -92,29 +93,59 @@ class CursorWrapper(object):
 	This is the class that is actually responsible for making connections
 	to the SF REST API
 	"""
-	def __init__(self, conn):
+	def __init__(self, conn, query):
 		"""
 		Connect to the Salesforce API.
 		"""
 		connection_created.send(sender=self.__class__, connection=self)
 		self.oauth = auth.authenticate(conn.settings_dict)
+		self.query = query
 		self.results = iter([])
 	
 	def execute(self, q, args=None):
 		"""
 		Send a query to the Salesforce API.
 		"""
+		from salesforce.backend import base
+		
 		headers = dict()
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		
-		url = u'%s%s?%s' % (self.oauth['instance_url'], '/services/data/v23.0/query', urllib.urlencode(dict(
-			q	= q % process_args(args),
-		)))
+		debug_sql = q % process_args(args)
+		
+		url = None
+		post_data = dict()
+		if(q.upper().startswith('SELECT')):
+			method = 'query'
+			url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urllib.urlencode(dict(
+				q	= debug_sql,
+			)))
+		elif(q.upper().startswith('INSERT')):
+			method = 'insert'
+			table = compiler.process_name(self.query.model._meta.db_table)
+			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
+			post_data = dict(zip(self.query.columns, self.query.params))
+			headers['Content-Type'] = 'application/json'
+		elif(q.upper().startswith('DELETE')):
+			method = 'delete'
+			pk = self.query.where.children[0][-1][0]
+			table = compiler.process_name(self.query.model._meta.db_table)
+			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+		else:
+			raise base.DatabaseError("Unsupported query: %s" % debug_sql)
 		
 		resource = restkit.Resource(url)
+		log.debug('Hitting API URL: %s' % url)
 		
 		try:
-			response = resource.get(headers=headers)
+			if(method == 'query'):
+				response = resource.get(headers=headers)
+			elif(method == 'insert'):
+				response = resource.post(headers=headers, payload=json.dumps(post_data))
+			elif(method == 'delete'):
+				response = resource.delete(headers=headers)
+			else:
+				response = resource.request(headers=headers)
 		except restkit.ResourceNotFound, e:
 			log.error("Couldn't connect to Salesforce API (404): %s" % e)
 			return
@@ -129,8 +160,10 @@ class CursorWrapper(object):
 				raise exceptions.FieldError(data['message'])
 			elif(data['errorCode'] == 'MALFORMED_QUERY'):
 				raise SyntaxError(data['message'])
+			elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
+				raise base.IntegrityError(data['message'])
 			else:
-				raise RuntimeError(str(data))
+				raise base.DatabaseError(str(data))
 		
 		body = response.body_string()
 		response = force_unicode(body).encode(settings.DEFAULT_CHARSET)

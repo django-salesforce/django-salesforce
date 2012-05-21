@@ -9,9 +9,9 @@
 Generate queries using the SOQL dialect.
 """
 
-from django.db.models.sql import compiler, query, where
+from django.db.models.sql import compiler, query, where, constants
 
-def process_column(name):
+def process_name(name):
 	"""
 	Convert a Djangofied column name into a Salesforce-compliant column name.
 	
@@ -56,7 +56,7 @@ class SQLCompiler(compiler.SQLCompiler):
 				# alias_map if they aren't in a join. That's OK. We skip them.
 				continue
 			#TODO: change this so the right stuff just ends up in alias_map
-			name = process_column(name)
+			name = process_name(name)
 			connector = not first and ', ' or ''
 			result.append('%s%s' % (connector, name))
 			first = False
@@ -67,10 +67,57 @@ class SQLCompiler(compiler.SQLCompiler):
 		A wrapper around connection.ops.quote_name that doesn't quote aliases
 		for table names. Mostly used during the ORDER BY clause.
 		"""
-		name = process_column(name)
+		name = process_name(name)
 		r = self.connection.ops.quote_name(name)
 		self.quote_cache[name] = r
 		return r
+	
+	def execute_sql(self, result_type=constants.MULTI):
+		"""
+		Run the query against the database and returns the result(s). The
+		return value is a single data item if result_type is SINGLE, or an
+		iterator over the results if the result_type is MULTI.
+
+		result_type is either MULTI (use fetchmany() to retrieve all rows),
+		SINGLE (only retrieve a single row), or None. In this last case, the
+		cursor is returned if any query is executed, since it's used by
+		subclasses such as InsertQuery). It's possible, however, that no query
+		is needed, as the filters describe an empty set. In that case, None is
+		returned, to avoid any unnecessary database interaction.
+		"""
+		try:
+			sql, params = self.as_sql()
+			if not sql:
+				raise EmptyResultSet
+		except EmptyResultSet:
+			if result_type == constants.MULTI:
+				return empty_iter()
+			else:
+				return
+
+		cursor = self.connection.cursor(self.query)
+		cursor.execute(sql, params)
+
+		if not result_type:
+			return cursor
+		if result_type == constants.SINGLE:
+			if self.query.ordering_aliases:
+				return cursor.fetchone()[:-len(self.query.ordering_aliases)]
+			return cursor.fetchone()
+
+		# The MULTI case.
+		if self.query.ordering_aliases:
+			result = order_modified_iter(cursor, len(self.query.ordering_aliases),
+					self.connection.features.empty_fetchmany_value)
+		else:
+			result = iter((lambda: cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)),
+					self.connection.features.empty_fetchmany_value)
+		if not self.connection.features.can_use_chunked_reads:
+			# If we are using non-chunked reads, we return the same data
+			# structure as normally, but ensure it is all read into memory
+			# before going any further.
+			return list(result)
+		return result
 
 
 class SalesforceWhereNode(where.WhereNode):
