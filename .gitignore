@@ -4,3 +4,4 @@
 local_settings.py
 build
 *.egg-info
+salesforce_testrunner_db

@@ -1,11 +1,4 @@
-# django-salesforce
-#
-# by Phil Christensen
-# (c) 2012 Working Today
-# See LICENSE.md for details
-#
-
-# Django settings for sfaccounts project.
+# Django settings for testrunner project.
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -30,11 +23,6 @@ DATABASES = {
 		'HOST': 'https://test.salesforce.com',
 	}
 }
-
-SALESFORCE_DB_ALIAS = 'salesforce'
-DATABASE_ROUTERS = [
-	"salesforce.router.ModelRouter"
-]
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -99,7 +87,7 @@ STATICFILES_FINDERS = (
 )
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = '5zm(z$rg2jhq%^tz!q(1j%ay$6y9jd21_2!@_$4-2(9fl9$4$v'
+SECRET_KEY = '6$y&o(28l)#o1_2rafojb_&zxi*jnivkv)ygj#!01kt0ypsxe$'
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = (
@@ -116,7 +104,7 @@ MIDDLEWARE_CLASSES = (
 	'django.contrib.messages.middleware.MessageMiddleware',
 )
 
-ROOT_URLCONF = 'sfaccounts.urls'
+ROOT_URLCONF = 'salesforce.testrunner.urls'
 
 TEMPLATE_DIRS = (
 	# Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
@@ -131,12 +119,17 @@ INSTALLED_APPS = (
 	'django.contrib.sites',
 	'django.contrib.messages',
 	'django.contrib.staticfiles',
-	'django.contrib.admin',
+	# Uncomment the next line to enable the admin:
+	# 'django.contrib.admin',
 	# Uncomment the next line to enable admin documentation:
 	# 'django.contrib.admindocs',
 	'salesforce',
-	'sfaccounts.accounts'
 )
+
+SALESFORCE_DB_ALIAS = 'salesforce'
+DATABASE_ROUTERS = [
+	"salesforce.router.ModelRouter"
+]
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
@@ -147,10 +140,6 @@ LOGGING = {
 	'version': 1,
 	'disable_existing_loggers': False,
 	'handlers': {
-		"console": {
-			"class": "logging.StreamHandler",
-			"level": "DEBUG",
-		},
 		'mail_admins': {
 			'level': 'ERROR',
 			'class': 'django.utils.log.AdminEmailHandler'
@@ -162,20 +151,10 @@ LOGGING = {
 			'level': 'ERROR',
 			'propagate': True,
 		},
-		'sfaccounts': {
-			'handlers': ['console'],
-			'level': 'DEBUG',
-			'propagate': True,
-		},
-		'salesforce': {
-			'handlers': ['console'],
-			'level': 'DEBUG',
-			'propagate': True,
-		},
 	}
 }
 
 try:
-	from local_settings import *
+	from salesforce.testrunner.local_settings import *
 except ImportError, exp:
 	pass
