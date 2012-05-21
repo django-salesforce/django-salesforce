@@ -39,7 +39,7 @@ def authenticate(settings_dict=dict()):
 		global oauth_data
 		if(oauth_data):
 			return oauth_data
-		print settings_dict
+		
 		consumer = oauth2.Consumer(key=settings_dict['CONSUMER_KEY'], secret=settings_dict['CONSUMER_SECRET'])
 		client = oauth2.Client(consumer)
 		url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
