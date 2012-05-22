@@ -52,11 +52,12 @@ def authenticate(settings_dict=dict()):
 			username		= settings_dict['USER'],
 			password		= settings_dict['PASSWORD'],
 		)))
-		log.info("successfully authenticated %s" % settings_dict['USER'])
+		
 		if(response['status'] == '200'):
+			log.info("successfully authenticated %s" % settings_dict['USER'])
 			oauth_data = json.loads(content)
 		else:
-			log.error("HTTP Error in authenticate(): %s" % oauth_data)
+			log.error("HTTP Error in authenticate(): %s: %s" % (oauth_data, response.__dict__)
 		
 		return oauth_data
 	finally:
