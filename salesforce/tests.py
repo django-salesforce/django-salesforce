@@ -12,7 +12,16 @@ from salesforce.models import Account, Lead
 import logging
 log = logging.getLogger(__name__)
 
-class AccountsTest(TestCase):
+test_email = 'test-q078hv5osagadskfjhfg@example.com'
+
+class BasicSOQLTest(TestCase):
+	def setUp(self):
+		self.test_lead = Lead(FirstName="Test", LastName="User", Email=test_email)
+		self.test_lead.save()
+	
+	def tearDown(self):
+		self.test_lead.delete()
+	
 	def test_select_all(self):
 		"""
 		Get the first five account records.
@@ -22,19 +31,39 @@ class AccountsTest(TestCase):
 	
 	def test_select_one(self):
 		"""
-		Get phil's account record.
+		Get the test lead record.
 		"""
-		account = Account.objects.get(PersonEmail='phil@bubblehouse.org')
-		self.assertEqual(account.Name, 'Philip Christensen')
+		lead = Lead.objects.get(Email=test_email)
+		self.assertEqual(lead.FirstName, 'Test')
+		self.assertEqual(lead.LastName, 'User')
 	
-	def test_insert_and_delete_lead(self):
+	def test_insert(self):
 		"""
-		Create a test account record, then delete it.
+		Create a test lead record, and make sure it ends up with a valid Salesforce ID.
 		"""
-		test_email = 'test-5wl6ie4sdf645rtf67un@example.com'
+		test_lead = Lead(FirstName="Test2", LastName="User2", Email='test-3408f7hc5pu0823@example.com')
+		test_lead.save()
+		self.assertEqual(len(test_lead.pk), 18)
+	
+	def test_delete(self):
+		"""
+		Create a test lead record, then delete it.
+		"""
+		test_lead = Lead(FirstName="Test", LastName="User", Email='test-54wo89fg67aiwduyfg@example.com')
+		test_lead.save()
+		test_lead.delete()
 		
-		test_lead = Lead(FirstName="Test", LastName="User", Email=test_email)
+		self.assertRaises(Lead.DoesNotExist, Lead.objects.get, Email='test-54wo89fg67aiwduyfg@example.com')
+	
+	def test_update(self):
+		"""
+		Create a test lead record, then delete it.
+		"""
+		test_lead = Lead.objects.get(Email=test_email)
+		self.assertEquals(test_lead.FirstName, 'Test')
+		
+		test_lead.FirstName = 'Tested'
 		test_lead.save()
 		
-		fetched_account = Lead.objects.get(Email=test_email)
-		fetched_account.delete()
+		fetched_lead = Lead.objects.get(Email=test_email)
+		self.assertEqual(fetched_lead.FirstName, 'Tested')

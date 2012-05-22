@@ -19,9 +19,8 @@ from django.conf import settings
 from django.db import models
 from django.db.models.sql import compiler
 
-from salesforce.backend import base
-
-from salesforce.backend import manager
+from salesforce.backend import base, manager
+from salesforce import fields
 
 log = logging.getLogger(__name__)
 
@@ -36,13 +35,13 @@ class SalesforceModel(models.Model):
 	database connection (salesforce.router.ModelRouter only looks for
 	SalesforceModel subclasses).
 	"""
-	objects = manager.SalesforceManager()
+	_base_manager = objects = manager.SalesforceManager()
 	
 	class Meta:
 		abstract = True
 		managed = False
 	
-	Id = models.CharField(primary_key=True, max_length=100, null=True)
+	Id = fields.SalesforceIdField(primary_key=True)
 
 class Account(SalesforceModel):
 	"""

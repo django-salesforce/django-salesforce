@@ -10,6 +10,7 @@ Generate queries using the SOQL dialect.
 """
 
 from django.db.models.sql import compiler, query, where, constants
+from django.db.models.sql.datastructures import EmptyResultSet
 
 def process_name(name):
 	"""
@@ -107,7 +108,7 @@ class SQLCompiler(compiler.SQLCompiler):
 
 		# The MULTI case.
 		if self.query.ordering_aliases:
-			result = order_modified_iter(cursor, len(self.query.ordering_aliases),
+			result = compiler.order_modified_iter(cursor, len(self.query.ordering_aliases),
 					self.connection.features.empty_fetchmany_value)
 		else:
 			result = iter((lambda: cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)),

@@ -14,8 +14,7 @@ import copy, urllib, logging, types, datetime, decimal
 from django.core import serializers, exceptions
 from django.conf import settings
 from django.db.models import query
-from django.db.models.sql import Query
-from django.db.models.sql.constants import GET_ITERATOR_CHUNK_SIZE
+from django.db.models.sql import Query, constants
 from django.utils.encoding import force_unicode
 from django.db.backends.signals import connection_created
 from django.core.serializers import python
@@ -75,7 +74,7 @@ class SalesforceQuerySet(query.QuerySet):
 					fields	= record,
 				)
 		
-		response = cursor.fetchmany(GET_ITERATOR_CHUNK_SIZE)
+		response = cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)
 		for res in python.Deserializer(_mkmodels(response)):
 			yield res.object
 
@@ -85,6 +84,12 @@ class SalesforceQuery(Query):
 	"""
 	from salesforce.backend import aggregates
 	aggregates_module = aggregates
+	
+	def has_results(self, using):
+		q = self.clone()
+		# import pdb; pdb.set_trace()
+		compiler = q.get_compiler(using=using)
+		return bool(compiler.execute_sql(constants.SINGLE))
 
 class CursorWrapper(object):
 	"""
@@ -101,6 +106,7 @@ class CursorWrapper(object):
 		self.oauth = auth.authenticate(conn.settings_dict)
 		self.query = query
 		self.results = iter([])
+		self.rowcount = None
 	
 	def execute(self, q, args=None):
 		"""
@@ -124,7 +130,14 @@ class CursorWrapper(object):
 			method = 'insert'
 			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
-			post_data = dict(zip(self.query.columns, self.query.params))
+			post_data = dict([x for x in zip(self.query.columns, self.query.params) if x[0] != 'Id'])
+			headers['Content-Type'] = 'application/json'
+		elif(q.upper().startswith('UPDATE')):
+			method = 'update'
+			pk = self.query.where.children[0].children[0][-1]
+			table = compiler.process_name(self.query.model._meta.db_table)
+			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+			post_data = dict([(x[0].name, x[2]) for x in self.query.values if x[0].name != 'Id'])
 			headers['Content-Type'] = 'application/json'
 		elif(q.upper().startswith('DELETE')):
 			method = 'delete'
@@ -135,7 +148,7 @@ class CursorWrapper(object):
 			raise base.DatabaseError("Unsupported query: %s" % debug_sql)
 		
 		resource = restkit.Resource(url)
-		log.debug('Hitting API URL: %s' % url)
+		log.debug('Request API URL: %s' % url)
 		
 		try:
 			if(method == 'query'):
@@ -144,8 +157,8 @@ class CursorWrapper(object):
 				response = resource.post(headers=headers, payload=json.dumps(post_data))
 			elif(method == 'delete'):
 				response = resource.delete(headers=headers)
-			else:
-				response = resource.request(headers=headers)
+			else:#(method == 'update')
+				response = resource.request(method='patch', headers=headers, payload=json.dumps(post_data))
 		except restkit.ResourceNotFound, e:
 			log.error("Couldn't connect to Salesforce API (404): %s" % e)
 			return
@@ -162,18 +175,37 @@ class CursorWrapper(object):
 				raise SyntaxError(data['message'])
 			elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
 				raise base.IntegrityError(data['message'])
+			elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
+				raise base.DatabaseError("[%s] %s" % (url, data['message']))
 			else:
 				raise base.DatabaseError(str(data))
 		
 		body = response.body_string()
-		response = force_unicode(body).encode(settings.DEFAULT_CHARSET)
+		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
+		
+		try:
+			data = json.loads(jsrc)
+		except Exception, e:
+			if(method not in ('delete', 'update')):
+				raise e
+			else:
+				data = []
 		
 		def _iterate(d):
-			d = json.loads(d)
 			for record in d['records']:
 				yield record
-	
-		self.results = _iterate(response)
+		
+		if('totalSize' in data):
+			self.rowcount = data['totalSize']
+		elif('errorCode' in data):
+			raise base.DatabaseError(data['message'])
+		elif(method == 'insert'):
+			if(data['success']):
+				self.lastrowid = data['id']
+			else:
+				raise base.DatabaseError(data['errors'])
+		
+		self.results = _iterate(data)
 	
 	def fetchone(self):
 		"""

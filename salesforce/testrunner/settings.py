@@ -157,7 +157,7 @@ LOGGING = {
 		},
 		'salesforce': {
 			'handlers': ['console'],
-			'level': 'DEBUG',
+			'level': 'INFO',
 			'propagate': True,
 		},
 		'salesforce.testrunner': {
