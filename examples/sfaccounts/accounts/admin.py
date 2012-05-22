@@ -14,6 +14,6 @@ from salesforce import models
 from salesforce.admin import RoutedModelAdmin
 
 class AccountAdmin(RoutedModelAdmin):
-	pass
+	list_display = ('Name', 'Salutation', 'FirstName', 'LastName', 'PersonEmail')
 
 admin.site.register(models.Account, AccountAdmin)
