@@ -57,7 +57,7 @@ def authenticate(settings_dict=dict()):
 			log.info("successfully authenticated %s" % settings_dict['USER'])
 			oauth_data = json.loads(content)
 		else:
-			log.error("HTTP Error in authenticate(): %s: %s" % (oauth_data, response.__dict__)
+			log.error("HTTP Error in authenticate(): %s: %s" % (oauth_data, response.__dict__))
 		
 		return oauth_data
 	finally:
