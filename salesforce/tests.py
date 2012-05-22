@@ -7,7 +7,7 @@
 
 from django.test import TestCase
 
-from salesforce.models import Account, Lead
+from salesforce.models import Account, Lead, ChargentOrder
 
 import logging
 log = logging.getLogger(__name__)
@@ -67,3 +67,9 @@ class BasicSOQLTest(TestCase):
 		
 		fetched_lead = Lead.objects.get(Email=test_email)
 		self.assertEqual(fetched_lead.FirstName, 'Tested')
+
+class ChargentTest(TestCase):
+	def test_query_orders(self):
+		orders = ChargentOrder.objects.all()[0:5]
+		self.assertEqual(len(orders), 5)
+

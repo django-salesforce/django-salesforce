@@ -64,14 +64,14 @@ class SalesforceQuerySet(query.QuerySet):
 		log.debug(sql % process_args(params))
 		cursor = CursorWrapper(connections[self.db], self.query)
 		cursor.execute(sql, params)
-
+		
 		def _mkmodels(data):
 			for record in data:
 				attribs = record.pop('attributes')
 				yield dict(
-					model	= 'salesforce.%s' % attribs['type'],
+					model	= 'salesforce.%s' % self.model.__name__,
 					pk		= record.pop('Id'),
-					fields	= record,
+					fields	= dict([(x.name, record[x.column]) for x in self.model._meta.fields if not x.primary_key]),
 				)
 		
 		response = cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)
