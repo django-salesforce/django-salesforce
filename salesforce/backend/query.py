@@ -61,7 +61,6 @@ class SalesforceQuerySet(query.QuerySet):
 		"""
 		from django.db import connections
 		sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
-		log.debug(sql % process_args(params))
 		cursor = CursorWrapper(connections[self.db], self.query)
 		cursor.execute(sql, params)
 		
@@ -116,14 +115,15 @@ class CursorWrapper(object):
 		headers = dict()
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		
-		debug_sql = q % process_args(args)
+		processed_sql = q % process_args(args)
+		log.debug(processed_sql)
 		
 		url = None
 		post_data = dict()
 		if(q.upper().startswith('SELECT')):
 			method = 'query'
 			url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urllib.urlencode(dict(
-				q	= debug_sql,
+				q	= processed_sql,
 			)))
 		elif(q.upper().startswith('INSERT')):
 			method = 'insert'
