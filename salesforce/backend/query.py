@@ -31,7 +31,7 @@ except ImportError, e:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v23.0'
+API_STUB = '/services/data/v24.0'
 
 def quoted_string_literal(s, d):
 	"""
@@ -87,7 +87,6 @@ class SalesforceQuery(Query):
 	
 	def has_results(self, using):
 		q = self.clone()
-		# import pdb; pdb.set_trace()
 		compiler = q.get_compiler(using=using)
 		return bool(compiler.execute_sql(constants.SINGLE))
 
@@ -204,6 +203,10 @@ class CursorWrapper(object):
 				self.lastrowid = data['id']
 			else:
 				raise base.DatabaseError(data['errors'])
+		
+		if('count()' in q.lower()):
+			# COUNT() queries in SOQL are a special case, as they don't actually return rows
+			data['records'] = [{self.rowcount:'COUNT'}]
 		
 		self.results = _iterate(data)
 	
