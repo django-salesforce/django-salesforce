@@ -9,7 +9,7 @@
 Salesforce database backend for Django.
 """
 
-import logging
+import logging, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
@@ -62,12 +62,26 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 	def __init__(self, settings_dict, alias='default'):
 		super(DatabaseWrapper, self).__init__(settings_dict, alias)
 		
+		self.validate_settings(settings_dict)
+		
 		self.features = DatabaseFeatures(self)
 		self.ops = DatabaseOperations(self)
 		self.client = DatabaseClient(self)
 		self.creation = DatabaseCreation(self)
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
+	
+	def validate_settings(self, d):
+		for k in ('ENGINE', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD', 'HOST'):
+			if(k not in d):
+				raise ImproperlyConfigured("Required '%s' key missing from '%s' database settings." % (k, self.alias))
+			elif not(d[k]):
+				raise ImproperlyConfigured("'%s' key is the empty string in '%s' database settings." % (k, self.alias))
+		
+		try:
+			urlparse.urlparse(d['HOST'])
+		except Exception, e:
+			raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" % (self.alias, e))
 	
 	def cursor(self, query):
 		"""
