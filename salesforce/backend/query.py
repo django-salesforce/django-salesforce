@@ -18,6 +18,7 @@ from django.db.models.sql import Query, constants
 from django.utils.encoding import force_unicode
 from django.db.backends.signals import connection_created
 from django.core.serializers import python
+from django.core.exceptions import ImproperlyConfigured
 
 import restkit
 
@@ -67,8 +68,17 @@ class SalesforceQuerySet(query.QuerySet):
 		def _mkmodels(data):
 			for record in data:
 				attribs = record.pop('attributes')
+				
+				mod = self.model.__module__.split('.')
+				if(mod[-1] == 'models'):
+					app_name = mod[-2]
+				elif(hasattr(self.model._meta, 'app_name')):
+					app_name = getattr(self.model._meta, 'app_name')
+				else:
+					raise ImproperlyConfigured("Can't discover the app_name for %s, you must specify it via model meta options.")
+				
 				yield dict(
-					model	= 'salesforce.%s' % self.model.__name__,
+					model	= '.'.join([app_name, self.model.__name__]),
 					pk		= record.pop('Id'),
 					fields	= dict([(x.name, record[x.column]) for x in self.model._meta.fields if not x.primary_key]),
 				)
