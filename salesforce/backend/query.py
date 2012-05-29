@@ -33,6 +33,7 @@ except ImportError, e:
 log = logging.getLogger(__name__)
 
 API_STUB = '/services/data/v24.0'
+SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.000+0000'
 
 def quoted_string_literal(s, d):
 	"""
@@ -77,13 +78,26 @@ class SalesforceQuerySet(query.QuerySet):
 				else:
 					raise ImproperlyConfigured("Can't discover the app_name for %s, you must specify it via model meta options.")
 				
+				fields = dict()
+				for x in self.model._meta.fields:
+					if not x.primary_key:
+						field_val = record[x.column]
+						db_type = x.db_type(connection=connections[self.db])
+						if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
+							d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
+							fields[x.name] = d.strftime('%Y-%m-%d %H:%M:%S')
+						else:
+							fields[x.name] = field_val
+				
 				yield dict(
 					model	= '.'.join([app_name, self.model.__name__]),
 					pk		= record.pop('Id'),
-					fields	= dict([(x.name, record[x.column]) for x in self.model._meta.fields if not x.primary_key]),
+					fields	= fields,
 				)
 		
 		response = cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)
+		if response is None:
+			raise StopIteration
 		for res in python.Deserializer(_mkmodels(response)):
 			yield res.object
 
@@ -200,10 +214,6 @@ class CursorWrapper(object):
 			else:
 				data = []
 		
-		def _iterate(d):
-			for record in d['records']:
-				yield record
-		
 		if('totalSize' in data):
 			self.rowcount = data['totalSize']
 		elif('errorCode' in data):
@@ -218,6 +228,10 @@ class CursorWrapper(object):
 			# COUNT() queries in SOQL are a special case, as they don't actually return rows
 			data['records'] = [{self.rowcount:'COUNT'}]
 		
+		def _iterate(d):
+			for record in d['records']:
+				yield record
+		#import pdb; pdb.set_trace()
 		self.results = _iterate(data)
 	
 	def fetchone(self):
@@ -234,7 +248,7 @@ class CursorWrapper(object):
 		"""
 		Fetch multiple results from a previously executed query.
 		"""
-		result = []
+		result = None
 		counter = 0
 		while(True):
 			try:
@@ -245,6 +259,7 @@ class CursorWrapper(object):
 				row = self.fetchone()
 				if not(row):
 					return result
+				result = [] if result is None else result
 				result.append(row)
 			except StopIteration:
 				pass
@@ -257,7 +272,10 @@ class CursorWrapper(object):
 		result = []
 		for index in range(size):
 			try:
-				result.append(self.fetchone())
+				row = self.fetchone()
+				if(row is None):
+					return None
+				result.append(row)
 			except StopIteration:
 				pass
 		return result
@@ -276,7 +294,7 @@ conversions = {
 	unicode: lambda s,d: string_literal(s.encode(), d),
 	bool: lambda s,d: str(int(s)),
 	datetime.date: lambda d,c: string_literal(date.strftime(d, "%Y-%m-%d"), c),
-	datetime.datetime: lambda d,c: string_literal(date.strftime(d, "%Y-%m-%dT%H:%M:%S.000-0000"), c),
+	datetime.datetime: lambda d,c: string_literal(date.strftime(d, "%Y-%m-%dT%H:%M:%S.000+0000"), c),
 	datetime.timedelta: lambda v,c: string_literal('%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60)),
 	decimal.Decimal: lambda s,d: str(s),
 }
