@@ -17,10 +17,11 @@ from django.db.models import query
 from django.db.models.sql import Query, constants
 from django.utils.encoding import force_unicode
 from django.db.backends.signals import connection_created
-from django.core.serializers import python
+from django.core.serializers import python, json as django_json
 from django.core.exceptions import ImproperlyConfigured
 
 import restkit
+import pytz
 
 from salesforce import auth
 from salesforce.backend import compiler
@@ -50,7 +51,15 @@ def process_args(args):
 	"""
 	def _escape(item, conv):
 		return conv.get(type(item), conv[str])(item, conv)
-	return tuple([_escape(x, conversions) for x in args])
+	return tuple([_escape(x, sql_conversions) for x in args])
+
+def process_json_args(args):
+	"""
+	Perform necessary JSON quoting on the arg list.
+	"""
+	def _escape(item, conv):
+		return conv.get(type(item), conv[str])(item, conv)
+	return tuple([_escape(x, json_conversions) for x in args])
 
 class SalesforceQuerySet(query.QuerySet):
 	"""
@@ -141,7 +150,6 @@ class CursorWrapper(object):
 		
 		processed_sql = q % process_args(args)
 		log.debug(processed_sql)
-		
 		url = None
 		post_data = dict()
 		if(q.upper().startswith('SELECT')):
@@ -153,14 +161,21 @@ class CursorWrapper(object):
 			method = 'insert'
 			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
-			post_data = dict([x for x in zip(self.query.columns, self.query.params) if x[0] != 'Id'])
+			processed_params = process_json_args(self.query.params)
+			post_data = dict([x for x in zip(self.query.columns, processed_params) if x[0] != 'Id'])
 			headers['Content-Type'] = 'application/json'
 		elif(q.upper().startswith('UPDATE')):
 			method = 'update'
 			pk = self.query.where.children[0].children[0][-1]
 			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
-			post_data = dict([(x[0].name, x[2]) for x in self.query.values if x[0].name != 'Id'])
+			
+			post_data = dict()
+			for x in self.query.values:
+				if x[0].name == 'Id':
+					continue
+				[arg] = process_json_args([x[2]])
+				post_data[x[0].name] = arg
 			headers['Content-Type'] = 'application/json'
 		elif(q.upper().startswith('DELETE')):
 			method = 'delete'
@@ -201,7 +216,7 @@ class CursorWrapper(object):
 			elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
 				raise base.DatabaseError("[%s] %s" % (url, data['message']))
 			else:
-				raise base.DatabaseError(str(data))
+				raise base.SalesforceError(str(data))
 		
 		body = response.body_string()
 		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
@@ -281,20 +296,39 @@ class CursorWrapper(object):
 		return result
 
 string_literal = quoted_string_literal
+def date_literal(d, c):
+	import time
+	tz = pytz.timezone(settings.TIME_ZONE)
+	nd = tz.localize(d, is_dst=time.daylight)
+	tzname = datetime.datetime.strftime(nd, "%z").replace(':', '')
+	return datetime.datetime.strftime(nd, "%Y-%m-%dT%H:%M:%S.000") + tzname
 
 # supported types
-conversions = {
+sql_conversions = {
 	int: lambda s,d: str(s),
 	long: lambda s,d: str(s),
 	float: lambda o,d: '%.15g' % o,
 	types.NoneType: lambda s,d: 'NULL',
-	list: lambda s,d: '(%s)' % ','.join([escape_item(x, conversions) for x in s]),
-	tuple: lambda s,d: '(%s)' % ','.join([escape_item(x, conversions) for x in s]),
 	str: lambda o,d: string_literal(o, d), # default
 	unicode: lambda s,d: string_literal(s.encode(), d),
 	bool: lambda s,d: str(int(s)),
-	datetime.date: lambda d,c: string_literal(date.strftime(d, "%Y-%m-%d"), c),
-	datetime.datetime: lambda d,c: string_literal(date.strftime(d, "%Y-%m-%dT%H:%M:%S.000+0000"), c),
+	datetime.date: lambda d,c: string_literal(datetime.date.strftime(d, "%Y-%m-%d"), c),
+	datetime.datetime: lambda d,c: string_literal(date_literal(d, c), c),
 	datetime.timedelta: lambda v,c: string_literal('%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60)),
+	decimal.Decimal: lambda s,d: str(s),
+}
+
+# supported types
+json_conversions = {
+	int: lambda s,d: str(s),
+	long: lambda s,d: str(s),
+	float: lambda o,d: '%.15g' % o,
+	types.NoneType: lambda s,d: 'NULL',
+	str: lambda o,d: o, # default
+	unicode: lambda s,d: s.encode(),
+	bool: lambda s,d: str(int(s)),
+	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
+	datetime.datetime: date_literal,
+	datetime.timedelta: lambda v,c: '%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60),
 	decimal.Decimal: lambda s,d: str(s),
 }

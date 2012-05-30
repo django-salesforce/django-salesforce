@@ -27,6 +27,9 @@ log = logging.getLogger(__name__)
 class DatabaseError(Exception):
 	pass
 
+class SalesforceError(DatabaseError):
+	pass
+
 class IntegrityError(DatabaseError):
 	pass
 

@@ -87,6 +87,7 @@ class Account(SalesforceModel):
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Description = models.TextField()
 	PersonEmail = models.CharField(max_length=100)
+	PersonLastCURequestDate = models.DateTimeField()
 	
 	def __unicode__(self):
 		return self.Name

@@ -2,3 +2,4 @@ restkit>=4.1.2
 setuptools-git>=0.4.2
 simplejson>=2.5.0
 oauth2>=1.5.211
+pytz>=2012c

@@ -5,6 +5,8 @@
 # See LICENSE.md for details
 #
 
+import datetime
+
 from django.test import TestCase
 
 from salesforce.models import Account, Lead, ChargentOrder
@@ -12,11 +14,11 @@ from salesforce.models import Account, Lead, ChargentOrder
 import logging
 log = logging.getLogger(__name__)
 
-test_email = 'test-q078hv5osagadskfjhfg@example.com'
+test_email = 'test-djsf-unittests-email@example.com'
 
 class BasicSOQLTest(TestCase):
 	def setUp(self):
-		self.test_lead = Lead(FirstName="Test", LastName="User", Email=test_email)
+		self.test_lead = Lead(FirstName="User", LastName="Unittest General", Email=test_email)
 		self.test_lead.save()
 	
 	def tearDown(self):
@@ -29,19 +31,32 @@ class BasicSOQLTest(TestCase):
 		accounts = Account.objects.all()[0:5]
 		self.assertEqual(len(accounts), 5)
 	
+	def test_save_date(self):
+		"""
+		Get the first five account records.
+		"""
+		self.skipTest("Need to find a suitable model with permissions to update a datetime field.")
+		
+		account = Account.objects.all()[0]
+		account.PersonLastCURequestDate = now = datetime.datetime.now()
+		account.save()
+		
+		saved = Account.objects.get(pk=account.pk)
+		self.assertEqual(account.PersonLastCURequestDate, now)
+	
 	def test_select_one(self):
 		"""
 		Get the test lead record.
 		"""
 		lead = Lead.objects.get(Email=test_email)
-		self.assertEqual(lead.FirstName, 'Test')
-		self.assertEqual(lead.LastName, 'User')
+		self.assertEqual(lead.FirstName, 'User')
+		self.assertEqual(lead.LastName, 'Unittest General')
 	
 	def test_insert(self):
 		"""
 		Create a test lead record, and make sure it ends up with a valid Salesforce ID.
 		"""
-		test_lead = Lead(FirstName="Test2", LastName="User2", Email='test-3408f7hc5pu0823@example.com')
+		test_lead = Lead(FirstName="User", LastName="Unittest Inserts", Email='test-djsf-inserts-email@example.com')
 		test_lead.save()
 		self.assertEqual(len(test_lead.pk), 18)
 	
@@ -49,18 +64,18 @@ class BasicSOQLTest(TestCase):
 		"""
 		Create a test lead record, then delete it.
 		"""
-		test_lead = Lead(FirstName="Test", LastName="User", Email='test-54wo89fg67aiwduyfg@example.com')
+		test_lead = Lead(FirstName="User", LastName="Unittest Deletes", Email='test-djsf-delete-email@example.com')
 		test_lead.save()
 		test_lead.delete()
 		
-		self.assertRaises(Lead.DoesNotExist, Lead.objects.get, Email='test-54wo89fg67aiwduyfg@example.com')
+		self.assertRaises(Lead.DoesNotExist, Lead.objects.get, Email='test-djsf-delete-email@example.com')
 	
 	def test_update(self):
 		"""
 		Create a test lead record, then delete it.
 		"""
 		test_lead = Lead.objects.get(Email=test_email)
-		self.assertEquals(test_lead.FirstName, 'Test')
+		self.assertEquals(test_lead.FirstName, 'User')
 		
 		test_lead.FirstName = 'Tested'
 		test_lead.save()
