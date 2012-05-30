@@ -175,7 +175,7 @@ class CursorWrapper(object):
 				if x[0].name == 'Id':
 					continue
 				[arg] = process_json_args([x[2]])
-				post_data[x[0].name] = arg
+				post_data[x[0].db_column or x[0].name] = arg
 			headers['Content-Type'] = 'application/json'
 		elif(q.upper().startswith('DELETE')):
 			method = 'delete'
@@ -208,13 +208,13 @@ class CursorWrapper(object):
 		except restkit.RequestFailed, e:
 			data = json.loads(str(e))[0]
 			if(data['errorCode'] == 'INVALID_FIELD'):
-				raise exceptions.FieldError(data['message'])
+				raise base.SalesforceError(data['message'])
 			elif(data['errorCode'] == 'MALFORMED_QUERY'):
-				raise SyntaxError(data['message'])
+				raise base.SalesforceError(data['message'])
 			elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
-				raise base.IntegrityError(data['message'])
+				raise base.SalesforceError(data['message'])
 			elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
-				raise base.DatabaseError("[%s] %s" % (url, data['message']))
+				raise base.SalesforceError("[%s] %s" % (url, data['message']))
 			else:
 				raise base.SalesforceError(str(data))
 		
