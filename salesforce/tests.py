@@ -59,6 +59,7 @@ class BasicSOQLTest(TestCase):
 		test_lead = Lead(FirstName="User", LastName="Unittest Inserts", Email='test-djsf-inserts-email@example.com')
 		test_lead.save()
 		self.assertEqual(len(test_lead.pk), 18)
+		test_lead.delete()
 	
 	def test_delete(self):
 		"""
