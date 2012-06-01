@@ -61,6 +61,30 @@ def process_json_args(args):
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, json_conversions) for x in args])
 
+def handle_api_exceptions(f, *args, **kwargs):
+	try:
+		return f(*args, **kwargs)
+	except restkit.ResourceNotFound, e:
+		log.error("Couldn't connect to Salesforce API (404): %s" % e)
+		return
+	except restkit.ResourceGone, e:
+		log.error("Couldn't connect to Salesforce API (410): %s" % e)
+		return
+	except restkit.Unauthorized, e:
+		raise exceptions.PermissionDenied(str(e))
+	except restkit.RequestFailed, e:
+		data = json.loads(str(e))[0]
+		if(data['errorCode'] == 'INVALID_FIELD'):
+			raise base.SalesforceError(data['message'])
+		elif(data['errorCode'] == 'MALFORMED_QUERY'):
+			raise base.SalesforceError(data['message'])
+		elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
+			raise base.SalesforceError(data['message'])
+		elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
+			raise base.SalesforceError("[%s] %s" % (url, data['message']))
+		else:
+			raise base.SalesforceError(str(data))
+
 class SalesforceQuerySet(query.QuerySet):
 	"""
 	Use a custom SQL compiler to generate SOQL-compliant queries.
@@ -129,7 +153,7 @@ class CursorWrapper(object):
 	This is the class that is actually responsible for making connections
 	to the SF REST API
 	"""
-	def __init__(self, conn, query):
+	def __init__(self, conn, query=None):
 		"""
 		Connect to the Salesforce API.
 		"""
@@ -192,35 +216,14 @@ class CursorWrapper(object):
 		resource = restkit.Resource(url)
 		log.debug('Request API URL: %s' % url)
 		
-		try:
-			if(method == 'query'):
-				response = resource.get(headers=headers)
-			elif(method == 'insert'):
-				response = resource.post(headers=headers, payload=json.dumps(post_data))
-			elif(method == 'delete'):
-				response = resource.delete(headers=headers)
-			else:#(method == 'update')
-				response = resource.request(method='patch', headers=headers, payload=json.dumps(post_data))
-		except restkit.ResourceNotFound, e:
-			log.error("Couldn't connect to Salesforce API (404): %s" % e)
-			return
-		except restkit.ResourceGone, e:
-			log.error("Couldn't connect to Salesforce API (410): %s" % e)
-			return
-		except restkit.Unauthorized, e:
-			raise exceptions.PermissionDenied(str(e))
-		except restkit.RequestFailed, e:
-			data = json.loads(str(e))[0]
-			if(data['errorCode'] == 'INVALID_FIELD'):
-				raise base.SalesforceError(data['message'])
-			elif(data['errorCode'] == 'MALFORMED_QUERY'):
-				raise base.SalesforceError(data['message'])
-			elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
-				raise base.SalesforceError(data['message'])
-			elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
-				raise base.SalesforceError("[%s] %s" % (url, data['message']))
-			else:
-				raise base.SalesforceError(str(data))
+		if(method == 'query'):
+			response = handle_api_exceptions(resource.get, headers=headers)
+		elif(method == 'insert'):
+			response = handle_api_exceptions(resource.post, headers=headers, payload=json.dumps(post_data))
+		elif(method == 'delete'):
+			response = handle_api_exceptions(resource.delete, headers=headers)
+		else:#(method == 'update')
+			response = handle_api_exceptions(resource.request, method='patch', headers=headers, payload=json.dumps(post_data))
 		
 		body = response.body_string()
 		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)

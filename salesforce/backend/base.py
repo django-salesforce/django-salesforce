@@ -86,7 +86,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		except Exception, e:
 			raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" % (self.alias, e))
 	
-	def cursor(self, query):
+	def cursor(self, query=None):
 		"""
 		Return a fake cursor for accessing the Salesforce API with SOQL.
 		"""
