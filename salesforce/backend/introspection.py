@@ -32,7 +32,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		'boolean'                       : 'BooleanField',
 		'byte'                          : 'SmallIntegerField',
 		'date'                          : 'DateField',
-		'dateTime'                      : 'DateTimeField',
+		'datetime'                      : 'DateTimeField',
 		'double'                        : 'DecimalField',
 		'int'                           : 'IntegerField',
 		'string'                        : 'CharField',
@@ -103,8 +103,6 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	
 	def get_table_description(self, cursor, table_name):
 		"Returns a description of the table, with the DB-API cursor.description interface."
-		log.error('getting table description for %s' % table_name)
-		
 		result = []
 		for field in self.table_description_cache(table_name)['fields']:
 			result.append((
