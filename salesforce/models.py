@@ -86,6 +86,7 @@ class Account(SalesforceModel):
 	Website = models.CharField(max_length=255)
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Description = models.TextField()
+	IsPersonAccount = models.BooleanField()
 	PersonEmail = models.CharField(max_length=100)
 	# LastLogin = models.DateTimeField(db_column='Last_Login__c')
 	

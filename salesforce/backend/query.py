@@ -62,6 +62,7 @@ def process_json_args(args):
 	return tuple([_escape(x, json_conversions) for x in args])
 
 def handle_api_exceptions(f, *args, **kwargs):
+	from salesforce.backend import base
 	try:
 		return f(*args, **kwargs)
 	except restkit.ResourceNotFound, e:
@@ -318,7 +319,7 @@ sql_conversions = {
 	types.NoneType: lambda s,d: 'NULL',
 	str: lambda o,d: string_literal(o, d), # default
 	unicode: lambda s,d: string_literal(s.encode(), d),
-	bool: lambda s,d: str(int(s)),
+	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: string_literal(datetime.date.strftime(d, "%Y-%m-%d"), c),
 	datetime.datetime: lambda d,c: string_literal(date_literal(d, c), c),
 	datetime.timedelta: lambda v,c: string_literal('%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60)),
@@ -333,7 +334,7 @@ json_conversions = {
 	types.NoneType: lambda s,d: None,
 	str: lambda o,d: o, # default
 	unicode: lambda s,d: s.encode(),
-	bool: lambda s,d: str(int(s)),
+	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: date_literal,
 	datetime.timedelta: lambda v,c: '%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60),
