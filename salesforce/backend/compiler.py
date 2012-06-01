@@ -18,8 +18,8 @@ def process_name(name):
 	
 	TODO: this is sketchy
 	"""
-	if(name.startswith('salesforce_')):
-		name = name[11:]
+	if(name.startswith('example_')):
+		name = name[8:]
 		name = ''.join([x.capitalize() for x in name.split('_')])
 	return name
 

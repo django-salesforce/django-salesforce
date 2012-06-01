@@ -9,7 +9,7 @@ import datetime
 
 from django.test import TestCase
 
-from salesforce.models import Account, Lead, ChargentOrder
+from salesforce.testrunner.example.models import Account, Lead, ChargentOrder
 
 import logging
 log = logging.getLogger(__name__)

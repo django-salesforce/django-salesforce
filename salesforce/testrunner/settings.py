@@ -124,6 +124,7 @@ INSTALLED_APPS = (
 	# Uncomment the next line to enable admin documentation:
 	# 'django.contrib.admindocs',
 	'salesforce',
+	'salesforce.testrunner.example',
 )
 
 SALESFORCE_DB_ALIAS = 'salesforce'

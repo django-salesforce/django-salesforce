@@ -1,0 +1,39 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+# See LICENSE.md for details
+#
+
+import logging
+
+from django.conf import settings
+from django import template, shortcuts, http
+
+from salesforce import models
+from sfaccounts.accounts import forms
+
+log = logging.getLogger(__name__)
+
+def list_accounts(request):
+	accounts = models.Account.objects.all()[0:5]
+	
+	return shortcuts.render_to_response('list-accounts.html', dict(
+		title           = "List First 5 Accounts",
+		accounts        = accounts,
+	), context_instance=template.RequestContext(request))
+
+def search_accounts(request):
+	account = None
+	if(request.method == 'POST'):
+		form = forms.SearchForm(request.POST)
+		if(form.is_valid()):
+			account = models.Account.objects.get(PersonEmail=form.cleaned_data['query'])
+	else:
+		form = forms.SearchForm()
+		
+	return shortcuts.render_to_response('search-accounts.html', dict(
+		title           = "Search Accounts by Email",
+		account         = account,
+		form            = form,
+	), context_instance=template.RequestContext(request))

@@ -1,0 +1,35 @@
+{% load url from future %}
+{% load i18n %}
+
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+	<title>list salesforce accounts</title>
+</head>
+<body>
+
+<a href="{% url 'list_accounts' %}">&lt; &lt; list accounts</a>
+
+<div class="salesforce">
+	<div class="content">
+		<form method="post" action="">
+		{% csrf_token %}
+		{{ form.as_p }}
+		<input type="submit" value="search">
+		</form>
+		{% if account %}
+		<div class="content">
+			<div id="content-wrapper">
+			<div class="account">
+				{{ account.Name }}
+			</div>
+			</div>
+		</div>
+		{% else %}
+		<strong>Enter an email to search for</strong>
+		{% endif %}
+	</div>
+</div>
+
+</body>
+</html>
