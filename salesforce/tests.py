@@ -18,7 +18,12 @@ test_email = 'test-djsf-unittests-email@example.com'
 
 class BasicSOQLTest(TestCase):
 	def setUp(self):
-		self.test_lead = Lead(FirstName="User", LastName="Unittest General", Email=test_email)
+		self.test_lead = Lead(
+			FirstName	= "User",
+			LastName	= "Unittest General",
+			Email		= test_email,
+			Status		= 'Open',
+		)
 		self.test_lead.save()
 	
 	def tearDown(self):

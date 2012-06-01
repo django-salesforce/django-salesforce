@@ -148,6 +148,15 @@ class CursorWrapper(object):
 		headers = dict()
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		
+		def _extract_values(method):
+			d = dict()
+			for x in self.query.values:
+				if x[0].name == 'Id':
+					continue
+				[arg] = process_json_args([x[[2,1][method=='insert']]])
+				d[x[0].db_column or x[0].name] = arg
+			return d
+		
 		processed_sql = q % process_args(args)
 		log.debug(processed_sql)
 		url = None
@@ -161,24 +170,19 @@ class CursorWrapper(object):
 			method = 'insert'
 			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
-			processed_params = process_json_args(self.query.params)
-			post_data = dict([x for x in zip(self.query.columns, processed_params) if x[0] != 'Id'])
+			post_data = _extract_values(method)
 			headers['Content-Type'] = 'application/json'
 		elif(q.upper().startswith('UPDATE')):
 			method = 'update'
+			# this will break in multi-row updates
 			pk = self.query.where.children[0].children[0][-1]
 			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
-			
-			post_data = dict()
-			for x in self.query.values:
-				if x[0].name == 'Id':
-					continue
-				[arg] = process_json_args([x[2]])
-				post_data[x[0].db_column or x[0].name] = arg
+			post_data = _extract_values(method)
 			headers['Content-Type'] = 'application/json'
 		elif(q.upper().startswith('DELETE')):
 			method = 'delete'
+			# this will break in multi-row updates
 			pk = self.query.where.children[0][-1][0]
 			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
@@ -323,7 +327,7 @@ json_conversions = {
 	int: lambda s,d: str(s),
 	long: lambda s,d: str(s),
 	float: lambda o,d: '%.15g' % o,
-	types.NoneType: lambda s,d: 'NULL',
+	types.NoneType: lambda s,d: None,
 	str: lambda o,d: o, # default
 	unicode: lambda s,d: s.encode(),
 	bool: lambda s,d: str(int(s)),
