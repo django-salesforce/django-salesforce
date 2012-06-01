@@ -27,6 +27,35 @@ except ImportError, e:
 log = logging.getLogger(__name__)
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
+	data_types_reverse = {
+		'base64'                        : 'TextField',
+		'boolean'                       : 'BooleanField',
+		'byte'                          : 'SmallIntegerField',
+		'date'                          : 'DateField',
+		'dateTime'                      : 'DateTimeField',
+		'double'                        : 'DecimalField',
+		'int'                           : 'IntegerField',
+		'string'                        : 'CharField',
+		'time'                          : 'TimeField',
+		'anyType'                       : 'CharField',
+		'calculated'                    : 'CharField',
+		'combobox'                      : 'CharField',
+		'currency'                      : 'CharField',
+		'datacategorygroupreference'    : 'CharField',
+		'email'                         : 'CharField',
+		'encryptedstring'               : 'CharField',
+		'id'                            : 'CharField',
+		'masterrecord'                  : 'CharField',
+		'multipicklist'                 : 'CharField',
+		'percent'                       : 'DecimalField',
+		'phone'                         : 'CharField',
+		'picklist'                      : 'CharField',
+		'reference'                     : 'CharField',
+		'combobox'                      : 'CharField',
+		'textarea'                      : 'TextField',
+		'url'                           : 'CharField',
+	}
+	
 	def __init__(self, conn):
 		BaseDatabaseIntrospection.__init__(self, conn)
 		from salesforce import auth
