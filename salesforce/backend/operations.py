@@ -19,6 +19,13 @@ class DatabaseOperations(BaseDatabaseOperations):
 	def __init__(self, connection):
 		super(DatabaseOperations, self).__init__()
 		self.connection = connection
-
+	
 	def quote_name(self, name):
 		return name
+	
+	def value_to_db_datetime(self, value):
+		"""
+		We let the JSON serializer handle dates for us.
+		"""
+		return value
+

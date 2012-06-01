@@ -66,7 +66,7 @@ class Account(SalesforceModel):
 		'Partner', 'Press', 'Prospect', 'Reseller', 'Other'
 	]
 	
-	Name = models.CharField(max_length=255)
+	#Name = models.CharField(max_length=255)
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
 	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
@@ -87,7 +87,7 @@ class Account(SalesforceModel):
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Description = models.TextField()
 	PersonEmail = models.CharField(max_length=100)
-	PersonLastCURequestDate = models.DateTimeField()
+	# LastLogin = models.DateTimeField(db_column='Last_Login__c')
 	
 	def __unicode__(self):
 		return self.Name

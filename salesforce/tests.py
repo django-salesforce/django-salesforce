@@ -36,18 +36,37 @@ class BasicSOQLTest(TestCase):
 		accounts = Account.objects.all()[0:5]
 		self.assertEqual(len(accounts), 5)
 	
-	def test_save_date(self):
+	def test_update_date(self):
 		"""
 		Get the first five account records.
 		"""
-		self.skipTest("Need to find a suitable model with permissions to update a datetime field.")
+		self.skipTest("Need to find a suitable *standard* model field to test datetime updates.")
 		
 		account = Account.objects.all()[0]
-		account.PersonLastCURequestDate = now = datetime.datetime.now()
+		account.LastLogin = now = datetime.datetime.now()
 		account.save()
 		
 		saved = Account.objects.get(pk=account.pk)
-		self.assertEqual(account.PersonLastCURequestDate, now)
+		self.assertEqual(account.LastLogin, now)
+	
+	def test_insert_date(self):
+		"""
+		Get the first five account records.
+		"""
+		self.skipTest("Need to find a suitable *standard* model field to test datetime inserts.")
+		
+		now = datetime.datetime.now()
+		account = Account(
+			FirstName = 'Joe',
+			LastName = 'Freelancer',
+			LastLogin = now,
+		)
+		account.save()
+		
+		saved = Account.objects.get(pk=account.pk)
+		self.assertEqual(account.LastLogin, now)
+		
+		saved.delete()
 	
 	def test_select_one(self):
 		"""
