@@ -10,8 +10,7 @@ import logging
 from django.conf import settings
 from django import template, shortcuts, http
 
-from salesforce import models
-from sfaccounts.accounts import forms
+from salesforce.testrunner.example import models, forms
 
 log = logging.getLogger(__name__)
 

@@ -119,10 +119,8 @@ INSTALLED_APPS = (
 	'django.contrib.sites',
 	'django.contrib.messages',
 	'django.contrib.staticfiles',
-	# Uncomment the next line to enable the admin:
-	# 'django.contrib.admin',
-	# Uncomment the next line to enable admin documentation:
-	# 'django.contrib.admindocs',
+	'django.contrib.admin',
+	'django.contrib.admindocs',
 	'salesforce',
 	'salesforce.testrunner.example',
 )
@@ -158,7 +156,7 @@ LOGGING = {
 		},
 		'salesforce': {
 			'handlers': ['console'],
-			'level': 'INFO',
+			'level': 'DEBUG',
 			'propagate': True,
 		},
 		'salesforce.testrunner': {

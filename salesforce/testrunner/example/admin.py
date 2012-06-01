@@ -14,5 +14,5 @@ from salesforce.testrunner.example import models
 from salesforce.admin import RoutedModelAdmin
 
 class AccountAdmin(RoutedModelAdmin):
-	list_display = ('Name', 'Salutation', 'FirstName', 'LastName', 'PersonEmail')
+	list_display = ('Salutation', 'FirstName', 'LastName', 'PersonEmail')
 admin.site.register(models.Account, AccountAdmin)

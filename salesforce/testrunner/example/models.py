@@ -56,7 +56,7 @@ class Account(SalesforceModel):
 	# LastLogin = models.DateTimeField(db_column='Last_Login__c')
 	
 	def __unicode__(self):
-		return self.Name
+		return self.FirstName + ' ' + self.LastName
 
 class Lead(SalesforceModel):
 	"""
