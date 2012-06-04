@@ -18,6 +18,9 @@ test_email = 'test-djsf-unittests-email@example.com'
 
 class BasicSOQLTest(TestCase):
 	def setUp(self):
+		"""
+		Create our test lead record.
+		"""
 		self.test_lead = Lead(
 			FirstName	= "User",
 			LastName	= "Unittest General",
@@ -27,6 +30,9 @@ class BasicSOQLTest(TestCase):
 		self.test_lead.save()
 	
 	def tearDown(self):
+		"""
+		Clean up our test lead record.
+		"""
 		self.test_lead.delete()
 	
 	def test_select_all(self):
@@ -37,6 +43,9 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(len(accounts), 5)
 	
 	def test_update_date(self):
+		"""
+		Test updating a date.
+		"""
 		self.skipTest("Need to find a suitable *standard* model field to test datetime updates.")
 		
 		account = Account.objects.all()[0]
@@ -47,6 +56,9 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(account.LastLogin, now)
 	
 	def test_insert_date(self):
+		"""
+		Test inserting a date.
+		"""
 		self.skipTest("Need to find a suitable *standard* model field to test datetime inserts.")
 		
 		now = datetime.datetime.now()
@@ -64,7 +76,7 @@ class BasicSOQLTest(TestCase):
 		
 		saved.delete()
 	
-	def test_select_one(self):
+	def test_get(self):
 		"""
 		Get the test lead record.
 		"""
@@ -74,7 +86,7 @@ class BasicSOQLTest(TestCase):
 	
 	def test_insert(self):
 		"""
-		Create a test lead record, and make sure it ends up with a valid Salesforce ID.
+		Create a lead record, and make sure it ends up with a valid Salesforce ID.
 		"""
 		test_lead = Lead(FirstName="User", LastName="Unittest Inserts", Email='test-djsf-inserts-email@example.com')
 		test_lead.save()
@@ -83,7 +95,7 @@ class BasicSOQLTest(TestCase):
 	
 	def test_delete(self):
 		"""
-		Create a test lead record, then delete it.
+		Create a lead record, then delete it, and make sure it's gone.
 		"""
 		test_lead = Lead(FirstName="User", LastName="Unittest Deletes", Email='test-djsf-delete-email@example.com')
 		test_lead.save()
@@ -93,7 +105,7 @@ class BasicSOQLTest(TestCase):
 	
 	def test_update(self):
 		"""
-		Create a test lead record, then delete it.
+		Update the test lead record, then delete it.
 		"""
 		test_lead = Lead.objects.get(Email=test_email)
 		self.assertEquals(test_lead.FirstName, 'User')
@@ -104,8 +116,10 @@ class BasicSOQLTest(TestCase):
 		fetched_lead = Lead.objects.get(Email=test_email)
 		self.assertEqual(fetched_lead.FirstName, 'Tested')
 
-class ChargentTest(TestCase):
-	def test_query_orders(self):
+	def test_custom_objects(self):
+		"""
+		Make sure custom objects work.
+		"""
 		orders = ChargentOrder.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
 

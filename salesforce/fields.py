@@ -1,9 +1,23 @@
+# django-salesforce
+#
+# by Phil Christensen
+# (c) 2012 Working Today
+# See LICENSE.md for details
+#
+
+"""
+Adds support for Salesforce primary keys.
+"""
+
 from django.core import exceptions
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
 from django.utils.encoding import smart_unicode
 
 class SalesforceIdField(fields.Field):
+	"""
+	An AutoField that works with Salesforce primary keys.
+	"""
 	description = _("Text")
 	
 	empty_strings_allowed = True
