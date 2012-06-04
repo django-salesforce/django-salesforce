@@ -184,6 +184,8 @@ class CursorWrapper(object):
 		log.debug(processed_sql)
 		url = None
 		post_data = dict()
+		table = self.query.model._meta.db_table
+		
 		if(q.upper().startswith('SELECT')):
 			method = 'query'
 			url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urllib.urlencode(dict(
@@ -191,7 +193,6 @@ class CursorWrapper(object):
 			)))
 		elif(q.upper().startswith('INSERT')):
 			method = 'insert'
-			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
 			post_data = _extract_values(method)
 			headers['Content-Type'] = 'application/json'
@@ -199,7 +200,6 @@ class CursorWrapper(object):
 			method = 'update'
 			# this will break in multi-row updates
 			pk = self.query.where.children[0].children[0][-1]
-			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 			post_data = _extract_values(method)
 			headers['Content-Type'] = 'application/json'
@@ -207,7 +207,6 @@ class CursorWrapper(object):
 			method = 'delete'
 			# this will break in multi-row updates
 			pk = self.query.where.children[0][-1][0]
-			table = compiler.process_name(self.query.model._meta.db_table)
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % debug_sql)
@@ -252,7 +251,7 @@ class CursorWrapper(object):
 		def _iterate(d):
 			for record in d['records']:
 				yield record
-		#import pdb; pdb.set_trace()
+		
 		self.results = _iterate(data)
 	
 	def fetchone(self):

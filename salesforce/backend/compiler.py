@@ -56,8 +56,6 @@ class SQLCompiler(compiler.SQLCompiler):
 				# Extra tables can end up in self.tables, but not in the
 				# alias_map if they aren't in a join. That's OK. We skip them.
 				continue
-			#TODO: change this so the right stuff just ends up in alias_map
-			name = process_name(name)
 			connector = not first and ', ' or ''
 			result.append('%s%s' % (connector, name))
 			first = False
@@ -68,7 +66,6 @@ class SQLCompiler(compiler.SQLCompiler):
 		A wrapper around connection.ops.quote_name that doesn't quote aliases
 		for table names. Mostly used during the ORDER BY clause.
 		"""
-		name = process_name(name)
 		r = self.connection.ops.quote_name(name)
 		self.quote_cache[name] = r
 		return r
