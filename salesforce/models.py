@@ -50,5 +50,5 @@ class SalesforceModel(models.Model):
 		abstract = True
 		managed = False
 	
-	Id = fields.SalesforceIdField(primary_key=True)
+	Id = fields.SalesforceAutoField(primary_key=True)
 

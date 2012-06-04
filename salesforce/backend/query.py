@@ -174,7 +174,7 @@ class CursorWrapper(object):
 		def _extract_values(method):
 			d = dict()
 			for x in self.query.values:
-				if x[0].name == 'Id':
+				if x[0].get_internal_type() == 'AutoField':
 					continue
 				[arg] = process_json_args([x[[2,1][method=='insert']]])
 				d[x[0].db_column or x[0].name] = arg

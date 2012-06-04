@@ -14,7 +14,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
 from django.utils.encoding import smart_unicode
 
-class SalesforceIdField(fields.Field):
+class SalesforceAutoField(fields.Field):
 	"""
 	An AutoField that works with Salesforce primary keys.
 	"""
@@ -46,7 +46,7 @@ class SalesforceIdField(fields.Field):
 	
 	def contribute_to_class(self, cls, name):
 		assert not cls._meta.has_auto_field, "A model can't have more than one AutoField."
-		super(SalesforceIdField, self).contribute_to_class(cls, name)
+		super(SalesforceAutoField, self).contribute_to_class(cls, name)
 		cls._meta.has_auto_field = True
 		cls._meta.auto_field = self
 	
