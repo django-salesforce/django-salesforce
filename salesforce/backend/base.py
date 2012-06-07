@@ -60,6 +60,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		'endswith': 'LIKE BINARY %s',
 		'istartswith': 'LIKE %s',
 		'iendswith': 'LIKE %s',
+		'isnull': '!= %s',
 	}
 
 	def __init__(self, settings_dict, alias='default'):

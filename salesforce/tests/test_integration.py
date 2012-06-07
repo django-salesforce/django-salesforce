@@ -42,6 +42,13 @@ class BasicSOQLTest(TestCase):
 		accounts = Account.objects.all()[0:5]
 		self.assertEqual(len(accounts), 5)
 	
+	def test_select_all(self):
+		"""
+		Get the first five account records.
+		"""
+		accounts = Account.objects.all()[0:5]
+		self.assertEqual(len(accounts), 5)
+	
 	def test_foreign_key(self):
 		account = Account.objects.all()[0]
 		user = account.Owner
@@ -86,6 +93,14 @@ class BasicSOQLTest(TestCase):
 		Get the test lead record.
 		"""
 		lead = Lead.objects.get(Email=test_email)
+		self.assertEqual(lead.FirstName, 'User')
+		self.assertEqual(lead.LastName, 'Unittest General')
+	
+	def test_not_null(self):
+		"""
+		Get the test lead record.
+		"""
+		lead = Lead.objects.get(Email__isnull=False)
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
 	

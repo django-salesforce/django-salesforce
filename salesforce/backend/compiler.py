@@ -119,12 +119,37 @@ class SQLCompiler(compiler.SQLCompiler):
 
 
 class SalesforceWhereNode(where.WhereNode):
+	overridden_types = ['isnull']
+	
 	def sql_for_columns(self, data, qn, connection):
 		"""
 		Don't attempt to quote column names.
 		"""
 		table_alias, name, db_type = data
 		return connection.ops.field_cast_sql(db_type) % name
+	
+	def make_atom(self, child, qn, connection):
+		lvalue, lookup_type, value_annot, params_or_value = child
+		result = super(SalesforceWhereNode, self).make_atom(child, qn, connection)
+		
+		if(lookup_type in self.overridden_types):
+			if hasattr(lvalue, 'process'):
+				try:
+					lvalue, params = lvalue.process(lookup_type, params_or_value, connection)
+				except where.EmptyShortCircuit:
+					raise EmptyResultSet
+			if isinstance(lvalue, tuple):
+				# A direct database column lookup.
+				field_sql = self.sql_for_columns(lvalue, qn, connection)
+			else:
+				# A smart object with an as_sql() method.
+				field_sql = lvalue.as_sql(qn, connection)
+		
+			if lookup_type == 'isnull':
+				return ('%s %snull' % (field_sql,
+					(not value_annot and '!= ' or '= ')), ())
+		else:
+			return result
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
 	pass
