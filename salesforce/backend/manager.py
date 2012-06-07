@@ -16,6 +16,8 @@ from django.db.models import manager
 from salesforce.backend import compiler
 
 class SalesforceManager(manager.Manager):
+	use_for_related_fields = True
+	
 	def get_query_set(self):
 		"""
 		Returns a QuerySet which access remote SF objects.

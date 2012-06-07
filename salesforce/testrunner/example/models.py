@@ -22,6 +22,13 @@ INDUSTRIES = [
 	'Other', 'Recreation', 'Retail', 'Shipping', 'Technology', 'Telecommunications',
 	'Transportation', 'Utilities'
 ]
+
+class User(SalesforceModel):
+	Email = models.CharField(max_length=100)
+	LastName = models.CharField(max_length=80)
+	FirstName = models.CharField(max_length=40)
+	IsActive = models.BooleanField()
+
 class Account(SalesforceModel):
 	"""
 	Default Salesforce Account model.
@@ -32,6 +39,7 @@ class Account(SalesforceModel):
 	]
 	
 	#Name = models.CharField(max_length=255)
+	Owner = models.ForeignKey(User, db_column='OwnerId')
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
 	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])

@@ -42,6 +42,11 @@ class BasicSOQLTest(TestCase):
 		accounts = Account.objects.all()[0:5]
 		self.assertEqual(len(accounts), 5)
 	
+	def test_foreign_key(self):
+		account = Account.objects.all()[0]
+		user = account.Owner
+		self.assertEqual(user.Email, 'admins@freelancersunion.org.prod001')
+	
 	def test_update_date(self):
 		"""
 		Test updating a date.
