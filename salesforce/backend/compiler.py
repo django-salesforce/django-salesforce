@@ -94,8 +94,10 @@ class SQLCompiler(compiler.SQLCompiler):
 				return
 
 		cursor = self.connection.cursor(self.query)
-		cursor.execute(sql, params)
-
+		try:
+			cursor.execute(sql, params)
+		except:
+			import pdb; pdb.set_trace()
 		if not result_type:
 			return cursor
 		if result_type == constants.SINGLE:
@@ -152,7 +154,18 @@ class SalesforceWhereNode(where.WhereNode):
 			return result
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
-	pass
+	def execute_sql(self, return_id=False):
+		assert not (return_id and len(self.query.objs) != 1)
+		self.return_id = return_id
+		cursor = self.connection.cursor(query=self.query)
+		for sql, params in self.as_sql():
+			cursor.execute(sql, params)
+		if not (return_id and cursor):
+			return
+		if self.connection.features.can_return_id_from_insert:
+			return self.connection.ops.fetch_returned_insert_id(cursor)
+		return self.connection.ops.last_insert_id(cursor,
+				self.query.model._meta.db_table, self.query.model._meta.pk.column)
 
 class SQLDeleteCompiler(compiler.SQLDeleteCompiler, SQLCompiler):
 	pass

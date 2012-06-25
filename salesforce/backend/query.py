@@ -61,7 +61,7 @@ def process_json_args(args):
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, json_conversions) for x in args])
 
-def handle_api_exceptions(f, *args, **kwargs):
+def handle_api_exceptions(url, f, *args, **kwargs):
 	from salesforce.backend import base
 	try:
 		return f(*args, **kwargs)
@@ -80,7 +80,7 @@ def handle_api_exceptions(f, *args, **kwargs):
 		elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
 			raise base.SalesforceError(data['message'])
 		elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
-			raise base.SalesforceError("[%s] %s" % (url, data['message']))
+			raise base.SalesforceError('%s: %s' % (url, data['message']))
 		else:
 			raise base.SalesforceError(str(data))
 
@@ -173,11 +173,13 @@ class CursorWrapper(object):
 		
 		def _extract_values(method):
 			d = dict()
-			for x in self.query.values:
-				if x[0].get_internal_type() == 'AutoField':
+			fields = self.query.model._meta.fields
+			for index in range(len(fields)):
+				field = fields[index]
+				if field.get_internal_type() == 'AutoField':
 					continue
-				[arg] = process_json_args([x[[2,1][method=='insert']]])
-				d[x[0].db_column or x[0].name] = arg
+				[arg] = process_json_args([getattr(self.query.objs[0], field.name)])
+				d[field.db_column or field.name] = arg
 			return d
 		
 		processed_sql = q % process_args(args)
@@ -213,15 +215,15 @@ class CursorWrapper(object):
 		
 		resource = restkit.Resource(url)
 		log.debug('Request API URL: %s' % url)
-		
+		import pdb; pdb.set_trace()
 		if(method == 'query'):
-			response = handle_api_exceptions(resource.get, headers=headers)
+			response = handle_api_exceptions(url, resource.get, headers=headers)
 		elif(method == 'insert'):
-			response = handle_api_exceptions(resource.post, headers=headers, payload=json.dumps(post_data))
+			response = handle_api_exceptions(url, resource.post, headers=headers, payload=json.dumps(post_data))
 		elif(method == 'delete'):
-			response = handle_api_exceptions(resource.delete, headers=headers)
+			response = handle_api_exceptions(url, resource.delete, headers=headers)
 		else:#(method == 'update')
-			response = handle_api_exceptions(resource.request, method='patch', headers=headers, payload=json.dumps(post_data))
+			response = handle_api_exceptions(url, resource.request, method='patch', headers=headers, payload=json.dumps(post_data))
 		
 		body = response.body_string()
 		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
