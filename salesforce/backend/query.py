@@ -211,7 +211,8 @@ class CursorWrapper(object):
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % debug_sql)
 		
-		resource = restkit.Resource(url)
+		salesforce_timeout = getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)
+		resource = restkit.Resource(url, timeout=salesforce_timeout)
 		log.debug('Request API URL: %s' % url)
 		
 		if(method == 'query'):

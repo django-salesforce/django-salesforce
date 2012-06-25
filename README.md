@@ -22,18 +22,19 @@ Quick Start
     }
 ```
 
-4. **(optional)** If you want to use another name for your Salesforce DB connection, define `SALESFORCE_DB_ALIAS` in your settings file.
+4. **(optional)** To override the default REST timeout of 3 seconds, define `SALESFORCE_QUERY_TIMEOUT` in your settings file.
+5. **(optional)** If you want to use another name for your Salesforce DB connection, define `SALESFORCE_DB_ALIAS` in your settings file.
 
-5. Add `salesforce.router.ModelRouter` to your `DATABASE_ROUTERS` setting
+6. Add `salesforce.router.ModelRouter` to your `DATABASE_ROUTERS` setting
 ```yaml
     DATABASE_ROUTERS = [
         "salesforce.router.ModelRouter"
     ]
 ```
 
-6. Define a model that extends `salesforce.models.SalesforceModel`
-7. If you want to use the model in the Django admin interface, use a ModelAdmin that extends `salesforce.admin.RoutedModelAdmin`
-8. You're all done! Just use your model like a normal Django model.
+7. Define a model that extends `salesforce.models.SalesforceModel`
+8. If you want to use the model in the Django admin interface, use a ModelAdmin that extends `salesforce.admin.RoutedModelAdmin`
+9. You're all done! Just use your model like a normal Django model.
 
 Caveats
 -------

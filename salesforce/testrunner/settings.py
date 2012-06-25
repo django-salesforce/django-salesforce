@@ -126,6 +126,7 @@ INSTALLED_APPS = (
 )
 
 SALESFORCE_DB_ALIAS = 'salesforce'
+SALESFORCE_QUERY_TIMEOUT = 3
 DATABASE_ROUTERS = [
 	"salesforce.router.ModelRouter"
 ]
