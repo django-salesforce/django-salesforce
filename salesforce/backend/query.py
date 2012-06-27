@@ -195,10 +195,6 @@ class CursorWrapper(object):
 		"""
 		from salesforce.backend import base
 		
-		url = None
-		post_data = dict()
-		table = self.query.model._meta.db_table
-		
 		if(isinstance(self.query, SalesforceQuery)):
 			response = self.execute_select(q, args)
 		elif(isinstance(self.query, subqueries.InsertQuery)):
