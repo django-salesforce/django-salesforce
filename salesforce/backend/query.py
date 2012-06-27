@@ -11,14 +11,15 @@ Salesforce object query customizations.
 
 import copy, urllib, logging, types, datetime, decimal
 
-from django.core import serializers, exceptions
 from django.conf import settings
-from django.db.models import query
-from django.db.models.sql import Query, constants
-from django.utils.encoding import force_unicode
-from django.db.backends.signals import connection_created
+from django.core import serializers, exceptions
 from django.core.serializers import python, json as django_json
 from django.core.exceptions import ImproperlyConfigured
+from django.db import connections
+from django.db.models import query
+from django.db.models.sql import Query, constants, subqueries
+from django.db.backends.signals import connection_created
+from django.utils.encoding import force_unicode
 
 import restkit
 import pytz
@@ -84,6 +85,56 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		else:
 			raise base.SalesforceError(str(data))
 
+def prep_for_deserialize(model, record, using):
+	attribs = record.pop('attributes')
+	
+	mod = model.__module__.split('.')
+	if(mod[-1] == 'models'):
+		app_name = mod[-2]
+	elif(hasattr(model._meta, 'app_name')):
+		app_name = getattr(model._meta, 'app_name')
+	else:
+		raise ImproperlyConfigured("Can't discover the app_name for %s, you must specify it via model meta options.")
+	
+	fields = dict()
+	for x in model._meta.fields:
+		if not x.primary_key:
+			field_val = record[x.column]
+			db_type = x.db_type(connection=connections[using])
+			if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
+				d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
+				fields[x.name] = d.strftime('%Y-%m-%d %H:%M:%S')
+			else:
+				fields[x.name] = field_val
+	
+	return dict(
+		model	= '.'.join([app_name, model.__name__]),
+		pk		= record.pop('Id'),
+		fields	= fields,
+	)
+
+def extract_values(query):
+	d = dict()
+	fields = query.model._meta.fields
+	for index in range(len(fields)):
+		field = fields[index]
+		if field.get_internal_type() == 'AutoField':
+			continue
+		if(isinstance(query, subqueries.UpdateQuery)):
+			[bound_field] = [x for x in query.values if x[0].name == field.name]
+			[arg] = process_json_args([bound_field[2]])
+			d[bound_field[0].db_column or bound_field[0].name] = arg
+		else:
+			[arg] = process_json_args([getattr(query.objs[0], field.name)])
+			d[field.db_column or field.name] = arg
+	return d
+
+def get_resource(url):
+	salesforce_timeout = getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)
+	resource = restkit.Resource(url, timeout=salesforce_timeout)
+	log.debug('Request API URL: %s' % url)
+	return resource
+
 class SalesforceQuerySet(query.QuerySet):
 	"""
 	Use a custom SQL compiler to generate SOQL-compliant queries.
@@ -93,44 +144,20 @@ class SalesforceQuerySet(query.QuerySet):
 		An iterator over the results from applying this QuerySet to the
 		remote web service.
 		"""
-		from django.db import connections
 		sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
 		cursor = CursorWrapper(connections[self.db], self.query)
 		cursor.execute(sql, params)
 		
-		def _mkmodels(data):
+		def _prepare(data):
 			for record in data:
-				attribs = record.pop('attributes')
-				
-				mod = self.model.__module__.split('.')
-				if(mod[-1] == 'models'):
-					app_name = mod[-2]
-				elif(hasattr(self.model._meta, 'app_name')):
-					app_name = getattr(self.model._meta, 'app_name')
-				else:
-					raise ImproperlyConfigured("Can't discover the app_name for %s, you must specify it via model meta options.")
-				
-				fields = dict()
-				for x in self.model._meta.fields:
-					if not x.primary_key:
-						field_val = record[x.column]
-						db_type = x.db_type(connection=connections[self.db])
-						if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
-							d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
-							fields[x.name] = d.strftime('%Y-%m-%d %H:%M:%S')
-						else:
-							fields[x.name] = field_val
-				
-				yield dict(
-					model	= '.'.join([app_name, self.model.__name__]),
-					pk		= record.pop('Id'),
-					fields	= fields,
-				)
+				struct = prep_for_deserialize(self.model, record, self.db)
+				yield struct
 		
 		response = cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)
 		if response is None:
 			raise StopIteration
-		for res in python.Deserializer(_mkmodels(response)):
+		
+		for res in python.Deserializer(_prepare(response)):
 			yield res.object
 
 class SalesforceQuery(Query):
@@ -168,101 +195,94 @@ class CursorWrapper(object):
 		"""
 		from salesforce.backend import base
 		
-		headers = dict()
-		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-		
-		def _extract_values(method):
-			d = dict()
-			fields = self.query.model._meta.fields
-			for index in range(len(fields)):
-				field = fields[index]
-				if field.get_internal_type() == 'AutoField':
-					continue
-				if(method == 'update'):
-					[bound_field] = [x for x in self.query.values if x[0].name == field.name]
-					[arg] = process_json_args([bound_field[2]])
-					d[bound_field[0].db_column or bound_field[0].name] = arg
-				else:
-					[arg] = process_json_args([getattr(self.query.objs[0], field.name)])
-					d[field.db_column or field.name] = arg
-			return d
-		
-		processed_sql = q % process_args(args)
-		log.debug(processed_sql)
 		url = None
 		post_data = dict()
 		table = self.query.model._meta.db_table
 		
-		if(q.upper().startswith('SELECT')):
-			method = 'query'
-			url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urllib.urlencode(dict(
-				q	= processed_sql,
-			)))
-		elif(q.upper().startswith('INSERT')):
-			method = 'insert'
-			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
-			post_data = _extract_values(method)
-			headers['Content-Type'] = 'application/json'
-		elif(q.upper().startswith('UPDATE')):
-			method = 'update'
-			# this will break in multi-row updates
-			pk = self.query.where.children[0].children[0][-1]
-			assert pk
-			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
-			post_data = _extract_values(method)
-			headers['Content-Type'] = 'application/json'
-		elif(q.upper().startswith('DELETE')):
-			method = 'delete'
-			# this will break in multi-row updates
-			pk = self.query.where.children[0][-1][0]
-			assert pk
-			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+		if(isinstance(self.query, SalesforceQuery)):
+			response = self.execute_select(q, args)
+		elif(isinstance(self.query, subqueries.InsertQuery)):
+			response = self.execute_insert(self.query)
+		elif(isinstance(self.query, subqueries.UpdateQuery)):
+			response = self.execute_update(self.query)
+		elif(isinstance(self.query, subqueries.DeleteQuery)):
+			response = self.execute_delete(self.query)
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % debug_sql)
-		
-		salesforce_timeout = getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)
-		resource = restkit.Resource(url, timeout=salesforce_timeout)
-		log.debug('Request API URL: %s' % url)
-		
-		if(method == 'query'):
-			response = handle_api_exceptions(url, resource.get, headers=headers)
-		elif(method == 'insert'):
-			response = handle_api_exceptions(url, resource.post, headers=headers, payload=json.dumps(post_data))
-		elif(method == 'delete'):
-			response = handle_api_exceptions(url, resource.delete, headers=headers)
-		else:#(method == 'update')
-			response = handle_api_exceptions(url, resource.request, method='patch', headers=headers, payload=json.dumps(post_data))
 		
 		body = response.body_string()
 		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
 		
-		try:
+		if(jsrc):
 			data = json.loads(jsrc)
-		except Exception, e:
-			if(method not in ('delete', 'update')):
-				raise e
-			else:
-				data = []
-		
-		if('totalSize' in data):
-			self.rowcount = data['totalSize']
-		elif('errorCode' in data):
-			raise base.DatabaseError(data['message'])
-		elif(method == 'insert'):
-			if(data['success']):
+			if('totalSize' in data):
+				self.rowcount = data['totalSize']
+			elif('success' in data and 'id' in data):
 				self.lastrowid = data['id']
+				return
+			elif('errorCode' in data):
+				raise base.DatabaseError(data['message'])
 			else:
-				raise base.DatabaseError(data['errors'])
+				raise base.DatabaseError(data)
+			
+			if('count()' in q.lower()):
+				# COUNT() queries in SOQL are a special case, as they don't actually return rows
+				data['records'] = [{self.rowcount:'COUNT'}]
+			
+			self.results = (x for x in data['records'])
+		else:
+			self.results = []
+	
+	def execute_select(self, q, args):
+		processed_sql = q % process_args(args)
+		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urllib.urlencode(dict(
+			q	= processed_sql,
+		)))
+		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
+		resource = get_resource(url)
 		
-		if('count()' in q.lower()):
-			# COUNT() queries in SOQL are a special case, as they don't actually return rows
-			data['records'] = [{self.rowcount:'COUNT'}]
+		log.debug(processed_sql)
+		return handle_api_exceptions(url, resource.get, headers=headers)
+	
+	def execute_insert(self, query):
+		table = query.model._meta.db_table
+		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
+		headers = dict()
+		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
+		headers['Content-Type'] = 'application/json'
+		post_data = extract_values(query)
+		resource = get_resource(url)
 		
-		def _iterate(d):
-			for record in d['records']:
-				yield record
+		log.debug('INSERT %s%s' % (table, post_data))
+		return handle_api_exceptions(url, resource.post, headers=headers, payload=json.dumps(post_data))
+	
+	def execute_update(self, query):
+		table = query.model._meta.db_table
+		# this will break in multi-row updates
+		pk = query.where.children[0].children[0][-1]
+		assert pk
+		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+		headers = dict()
+		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
+		headers['Content-Type'] = 'application/json'
+		post_data = extract_values(query)
+		resource = get_resource(url)
 		
-		self.results = _iterate(data)
+		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
+		return handle_api_exceptions(url, resource.request, method='patch', headers=headers, payload=json.dumps(post_data))
+	
+	def execute_delete(self, query):
+		table = query.model._meta.db_table
+		# this will break in multi-row updates
+		pk = self.query.where.children[0][-1][0]
+		assert pk
+		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+		headers = dict()
+		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
+		resource = get_resource(url)
+		
+		log.debug('DELETE %s(%s)' % (table, pk))
+		return handle_api_exceptions(url, resource.delete, headers=headers)
 	
 	def fetchone(self):
 		"""
