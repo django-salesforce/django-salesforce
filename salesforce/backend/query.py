@@ -21,6 +21,10 @@ from django.db.models.sql import Query, constants, subqueries
 from django.db.backends.signals import connection_created
 from django.utils.encoding import force_unicode
 
+import django
+from pkg_resources import parse_version
+DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
+
 import restkit
 import pytz
 
@@ -124,8 +128,11 @@ def extract_values(query):
 			[bound_field] = [x for x in query.values if x[0].name == field.name]
 			[arg] = process_json_args([bound_field[2]])
 			d[bound_field[0].db_column or bound_field[0].name] = arg
-		else:
+		elif(DJANGO_14):
 			[arg] = process_json_args([getattr(query.objs[0], field.name)])
+			d[field.db_column or field.name] = arg
+		else:
+			[arg] = process_json_args([query.values[index][1]])
 			d[field.db_column or field.name] = arg
 	return d
 
@@ -211,13 +218,17 @@ class CursorWrapper(object):
 		
 		if(jsrc):
 			data = json.loads(jsrc)
+			# a SELECT query
 			if('totalSize' in data):
 				self.rowcount = data['totalSize']
+			# a successful INSERT query, return after getting PK
 			elif('success' in data and 'id' in data):
 				self.lastrowid = data['id']
 				return
+			# some kind of failed query
 			elif('errorCode' in data):
 				raise base.DatabaseError(data['message'])
+			# something we don't recognize
 			else:
 				raise base.DatabaseError(data)
 			
