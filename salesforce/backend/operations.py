@@ -16,10 +16,6 @@ Default database operations, with unquoted names.
 class DatabaseOperations(BaseDatabaseOperations):
 	compiler_module = "salesforce.backend.compiler"
 	
-	def __init__(self, connection):
-		super(DatabaseOperations, self).__init__()
-		self.connection = connection
-	
 	def quote_name(self, name):
 		return name
 	
@@ -28,4 +24,6 @@ class DatabaseOperations(BaseDatabaseOperations):
 		We let the JSON serializer handle dates for us.
 		"""
 		return value
-
+	
+	def last_insert_id(self, cursor, db_table, db_column):
+		return cursor.lastrowid
