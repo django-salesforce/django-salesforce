@@ -37,6 +37,8 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	"""
 	allows_group_by_pk = True
 	supports_unspecified_pk = False
+	can_return_id_from_insert = False
+	supports_select_related = False
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	"""

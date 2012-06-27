@@ -28,6 +28,7 @@ class SalesforceAutoField(fields.Field):
 		assert kwargs.get('primary_key', False) is True, "%ss must have primary_key=True." % self.__class__.__name__
 		kwargs['blank'] = False
 		kwargs['null'] = False
+		kwargs['default'] = None
 		fields.Field.__init__(self, *args, **kwargs)
 	
 	def get_internal_type(self):

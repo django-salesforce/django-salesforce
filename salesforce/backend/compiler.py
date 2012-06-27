@@ -94,12 +94,11 @@ class SQLCompiler(compiler.SQLCompiler):
 				return
 
 		cursor = self.connection.cursor(self.query)
-		try:
-			cursor.execute(sql, params)
-		except:
-			import pdb; pdb.set_trace()
+		cursor.execute(sql, params)
+		
 		if not result_type:
 			return cursor
+		
 		if result_type == constants.SINGLE:
 			if self.query.ordering_aliases:
 				return cursor.fetchone()[:-len(self.query.ordering_aliases)]
@@ -160,10 +159,8 @@ class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
 		cursor = self.connection.cursor(query=self.query)
 		for sql, params in self.as_sql():
 			cursor.execute(sql, params)
-		if not (return_id and cursor):
+		if not return_id:
 			return
-		if self.connection.features.can_return_id_from_insert:
-			return self.connection.ops.fetch_returned_insert_id(cursor)
 		return self.connection.ops.last_insert_id(cursor,
 				self.query.model._meta.db_table, self.query.model._meta.pk.column)
 

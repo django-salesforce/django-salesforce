@@ -178,8 +178,13 @@ class CursorWrapper(object):
 				field = fields[index]
 				if field.get_internal_type() == 'AutoField':
 					continue
-				[arg] = process_json_args([getattr(self.query.objs[0], field.name)])
-				d[field.db_column or field.name] = arg
+				if(method == 'update'):
+					[bound_field] = [x for x in self.query.values if x[0].name == field.name]
+					[arg] = process_json_args([bound_field[2]])
+					d[bound_field[0].db_column or bound_field[0].name] = arg
+				else:
+					[arg] = process_json_args([getattr(self.query.objs[0], field.name)])
+					d[field.db_column or field.name] = arg
 			return d
 		
 		processed_sql = q % process_args(args)
@@ -202,6 +207,7 @@ class CursorWrapper(object):
 			method = 'update'
 			# this will break in multi-row updates
 			pk = self.query.where.children[0].children[0][-1]
+			assert pk
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 			post_data = _extract_values(method)
 			headers['Content-Type'] = 'application/json'
@@ -209,13 +215,14 @@ class CursorWrapper(object):
 			method = 'delete'
 			# this will break in multi-row updates
 			pk = self.query.where.children[0][-1][0]
+			assert pk
 			url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % debug_sql)
 		
 		resource = restkit.Resource(url)
 		log.debug('Request API URL: %s' % url)
-		import pdb; pdb.set_trace()
+		
 		if(method == 'query'):
 			response = handle_api_exceptions(url, resource.get, headers=headers)
 		elif(method == 'insert'):
