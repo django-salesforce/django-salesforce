@@ -74,7 +74,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			
 			resource = restkit.Resource(url)
 			log.debug('Request API URL: %s' % url)
-			response = query.handle_api_exceptions(resource.get, headers=headers)
+			response = query.handle_api_exceptions(url, resource.get, headers=headers)
 			body = response.body_string()
 			jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
 			self._table_list_cache = json.loads(jsrc)
@@ -90,7 +90,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		
 			resource = restkit.Resource(url)
 			log.debug('Request API URL: %s' % url)
-			response = query.handle_api_exceptions(resource.get, headers=headers)
+			response = query.handle_api_exceptions(url, resource.get, headers=headers)
 			body = response.body_string()
 			jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
 			self._table_description_cache[table] = json.loads(jsrc)
