@@ -28,7 +28,7 @@ DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
 import restkit
 import pytz
 
-from salesforce import auth
+from salesforce import auth, models
 from salesforce.backend import compiler
 
 try:
@@ -55,6 +55,10 @@ def process_args(args):
 	Perform necessary quoting on the arg list.
 	"""
 	def _escape(item, conv):
+		if(isinstance(item, models.SalesforceModel)):
+			return conv.get(models.SalesforceModel, conv[str])(item, conv)
+		if(isinstance(item, decimal.Decimal)):
+			return conv.get(decimal.Decimal, conv[str])(item, conv)
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, sql_conversions) for x in args])
 
@@ -63,6 +67,10 @@ def process_json_args(args):
 	Perform necessary JSON quoting on the arg list.
 	"""
 	def _escape(item, conv):
+		if(isinstance(item, models.SalesforceModel)):
+			return conv.get(models.SalesforceModel, conv[str])(item, conv)
+		if(isinstance(item, decimal.Decimal)):
+			return conv.get(decimal.Decimal, conv[str])(item, conv)
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, json_conversions) for x in args])
 
@@ -259,7 +267,6 @@ class CursorWrapper(object):
 		headers['Content-Type'] = 'application/json'
 		post_data = extract_values(query)
 		resource = get_resource(url)
-		
 		log.debug('INSERT %s%s' % (table, post_data))
 		return handle_api_exceptions(url, resource.post, headers=headers, payload=json.dumps(post_data))
 	
@@ -345,6 +352,9 @@ def date_literal(d, c):
 	tzname = datetime.datetime.strftime(nd, "%z").replace(':', '')
 	return datetime.datetime.strftime(nd, "%Y-%m-%dT%H:%M:%S.000") + tzname
 
+def sobj_id(obj, conv):
+	return obj.pk
+
 # supported types
 sql_conversions = {
 	int: lambda s,d: str(s),
@@ -357,7 +367,8 @@ sql_conversions = {
 	datetime.date: lambda d,c: string_literal(datetime.date.strftime(d, "%Y-%m-%d"), c),
 	datetime.datetime: lambda d,c: string_literal(date_literal(d, c), c),
 	datetime.timedelta: lambda v,c: string_literal('%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60)),
-	decimal.Decimal: lambda s,d: str(s),
+	decimal.Decimal: lambda s,d: float(s),
+	models.SalesforceModel: sobj_id,
 }
 
 # supported types
@@ -372,5 +383,6 @@ json_conversions = {
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: date_literal,
 	datetime.timedelta: lambda v,c: '%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60),
-	decimal.Decimal: lambda s,d: str(s),
+	decimal.Decimal: lambda s,d: float(s),
+	models.SalesforceModel: sobj_id,
 }
