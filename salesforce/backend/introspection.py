@@ -51,7 +51,6 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		'phone'                         : 'CharField',
 		'picklist'                      : 'CharField',
 		'reference'                     : 'CharField',
-		'combobox'                      : 'CharField',
 		'textarea'                      : 'TextField',
 		'url'                           : 'CharField',
 	}

@@ -21,6 +21,9 @@ class DatabaseOperations(BaseDatabaseOperations):
 		self.connection = connection
 		self._cache = None
 	
+	def connection_init(self):
+		pass
+	
 	def quote_name(self, name):
 		return name
 	
