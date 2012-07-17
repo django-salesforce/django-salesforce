@@ -92,7 +92,7 @@ class SQLCompiler(compiler.SQLCompiler):
 				raise EmptyResultSet
 		except EmptyResultSet:
 			if result_type == constants.MULTI:
-				return empty_iter()
+				return iter([])
 			else:
 				return
 

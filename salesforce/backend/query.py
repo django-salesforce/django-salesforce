@@ -219,7 +219,7 @@ class CursorWrapper(object):
 		elif(isinstance(self.query, subqueries.DeleteQuery)):
 			response = self.execute_delete(self.query)
 		else:
-			raise base.DatabaseError("Unsupported query: %s" % debug_sql)
+			raise base.DatabaseError("Unsupported query: %s" % self.query)
 		
 		body = response.body_string()
 		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
@@ -334,11 +334,11 @@ class CursorWrapper(object):
 		Fetch all results from a previously executed query.
 		"""
 		result = []
-		for index in range(size):
+		for index in range(constants.GET_ITERATOR_CHUNK_SIZE):
 			try:
 				row = self.fetchone()
 				if(row is None):
-					return None
+					return result
 				result.append(row)
 			except StopIteration:
 				pass
