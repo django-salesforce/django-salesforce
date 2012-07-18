@@ -362,7 +362,7 @@ sql_conversions = {
 	float: lambda o,d: '%.15g' % o,
 	types.NoneType: lambda s,d: 'NULL',
 	str: lambda o,d: string_literal(o, d), # default
-	unicode: lambda s,d: string_literal(s.encode(), d),
+	unicode: lambda s,d: string_literal(s.encode('utf8'), d),
 	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: string_literal(datetime.date.strftime(d, "%Y-%m-%d"), c),
 	datetime.datetime: lambda d,c: string_literal(date_literal(d, c), c),
@@ -378,7 +378,7 @@ json_conversions = {
 	float: lambda o,d: '%.15g' % o,
 	types.NoneType: lambda s,d: None,
 	str: lambda o,d: o, # default
-	unicode: lambda s,d: s.encode(),
+	unicode: lambda s,d: s.encode('utf8'),
 	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: date_literal,

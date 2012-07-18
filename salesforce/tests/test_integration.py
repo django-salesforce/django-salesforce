@@ -104,6 +104,15 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
 	
+	def test_unicode(self):
+		"""
+		Make sure weird unicode breaks properly.
+		"""
+		test_lead = Lead(FirstName=u'\u2603', LastName="Unittest Unicode", Email='test-djsf-unicode-email@example.com')
+		test_lead.save()
+		self.assertEqual(test_lead.FirstName, u'\u2603')
+		test_lead.delete()
+	
 	def test_insert(self):
 		"""
 		Create a lead record, and make sure it ends up with a valid Salesforce ID.
