@@ -65,7 +65,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	def oauth(self):
 		if(self._oauth is None):
 			from salesforce import auth
-			self._oauth = auth.authenticate(conn.settings_dict)
+			self._oauth = auth.authenticate(self.connection.settings_dict)
 		else:
 			return self._oauth
 	
