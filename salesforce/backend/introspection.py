@@ -57,10 +57,17 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	
 	def __init__(self, conn):
 		BaseDatabaseIntrospection.__init__(self, conn)
-		from salesforce import auth
-		self.oauth = auth.authenticate(conn.settings_dict)
 		self._table_list_cache = None
 		self._table_description_cache = {}
+		self._oauth = None
+	
+	@property
+	def oauth(self):
+		if(self._oauth is None):
+			from salesforce import auth
+			self._oauth = auth.authenticate(conn.settings_dict)
+		else:
+			return self._oauth
 	
 	@property
 	def table_list_cache(self):
