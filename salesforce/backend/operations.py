@@ -24,6 +24,9 @@ class DatabaseOperations(BaseDatabaseOperations):
 	def connection_init(self):
 		pass
 	
+	def sql_flush(self, style, tables, sequences):
+		return []
+	
 	def quote_name(self, name):
 		return name
 	
