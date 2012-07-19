@@ -61,7 +61,7 @@ class Account(SalesforceModel):
 	Description = models.TextField()
 	IsPersonAccount = models.BooleanField()
 	PersonEmail = models.CharField(max_length=100)
-	# LastLogin = models.DateTimeField(db_column='Last_Login__c')
+	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate')
 	
 	def __unicode__(self):
 		return self.FirstName + ' ' + self.LastName

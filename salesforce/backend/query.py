@@ -364,9 +364,8 @@ sql_conversions = {
 	str: lambda o,d: string_literal(o, d), # default
 	unicode: lambda s,d: string_literal(s.encode('utf8'), d),
 	bool: lambda s,d: str(s).lower(),
-	datetime.date: lambda d,c: string_literal(datetime.date.strftime(d, "%Y-%m-%d"), c),
-	datetime.datetime: lambda d,c: string_literal(date_literal(d, c), c),
-	datetime.timedelta: lambda v,c: string_literal('%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60)),
+	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
+	datetime.datetime: lambda d,c: date_literal(d, c),
 	decimal.Decimal: lambda s,d: float(s),
 	models.SalesforceModel: sobj_id,
 }
@@ -382,7 +381,6 @@ json_conversions = {
 	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: date_literal,
-	datetime.timedelta: lambda v,c: '%d %d:%d:%d' % (v.days, int(v.seconds / 3600) % 24, int(v.seconds / 60) % 60, int(v.seconds) % 60),
 	decimal.Decimal: lambda s,d: float(s),
 	models.SalesforceModel: sobj_id,
 }

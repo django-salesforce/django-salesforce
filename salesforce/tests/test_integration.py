@@ -113,6 +113,14 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(test_lead.FirstName, u'\u2603')
 		test_lead.delete()
 	
+	def test_date_comparison(self):
+		"""
+		Test that date comparisons work properly.
+		"""
+		yesterday = datetime.datetime(2011,06,26)
+		accounts = Account.objects.filter(LastModifiedDate__gt=yesterday)
+		self.assertEqual(bool(accounts.count()), True)
+	
 	def test_insert(self):
 		"""
 		Create a lead record, and make sure it ends up with a valid Salesforce ID.
