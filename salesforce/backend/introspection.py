@@ -66,8 +66,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		if(self._oauth is None):
 			from salesforce import auth
 			self._oauth = auth.authenticate(self.connection.settings_dict)
-		else:
-			return self._oauth
+		return self._oauth
 	
 	@property
 	def table_list_cache(self):
