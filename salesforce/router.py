@@ -43,3 +43,5 @@ class ModelRouter(object):
 		"""
 		if(db == self.sf_alias):
 			return False
+		if(hasattr(model, '_salesforce_object')):
+			return False
