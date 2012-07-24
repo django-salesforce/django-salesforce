@@ -41,10 +41,22 @@ class ModelRouter(object):
 		"""
 		Salesforce doesn't support relations in the traditional sense.
 		"""
-		return None
+		from salesforce import models
+		if isinstance(obj1, models.SalesforceModel):
+			return False
+		if issubclass(obj1, models.SalesforceModel):
+			return False
+		if isinstance(obj2, models.SalesforceModel):
+			return False
+		if issubclass(obj2, models.SalesforceModel):
+			return False
 
 	def allow_syncdb(self, db, model):
 		"""
-		Don't attempt to sync the salesforce database connection.
+		Don't attempt to sync salesforce models.
 		"""
-		return db != self.sf_alias
+		from salesforce import models
+		if isinstance(model, models.SalesforceModel):
+			return False
+		if issubclass(model, models.SalesforceModel):
+			return False
