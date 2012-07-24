@@ -9,6 +9,8 @@
 Database router for SalesforceModel objects.
 """
 
+import inspect
+
 from django.conf import settings
 
 class ModelRouter(object):
@@ -24,7 +26,7 @@ class ModelRouter(object):
 		from salesforce import models
 		if isinstance(model, models.SalesforceModel):
 			return self.sf_alias
-		if issubclass(model, models.SalesforceModel):
+		if inspect.isclass(model) and issubclass(model, models.SalesforceModel):
 			return self.sf_alias
 
 	def db_for_write(self, model, **hints):
@@ -34,7 +36,7 @@ class ModelRouter(object):
 		from salesforce import models
 		if isinstance(model, models.SalesforceModel):
 			return self.sf_alias
-		if issubclass(model, models.SalesforceModel):
+		if inspect.isclass(model) and issubclass(model, models.SalesforceModel):
 			return self.sf_alias
 
 	def allow_relation(self, obj1, obj2, **hints):
@@ -44,11 +46,11 @@ class ModelRouter(object):
 		from salesforce import models
 		if isinstance(obj1, models.SalesforceModel):
 			return False
-		if issubclass(obj1, models.SalesforceModel):
+		if inspect.isclass(obj1) and issubclass(obj1, models.SalesforceModel):
 			return False
 		if isinstance(obj2, models.SalesforceModel):
 			return False
-		if issubclass(obj2, models.SalesforceModel):
+		if inspect.isclass(obj2) and issubclass(obj2, models.SalesforceModel):
 			return False
 
 	def allow_syncdb(self, db, model):
@@ -58,5 +60,5 @@ class ModelRouter(object):
 		from salesforce import models
 		if isinstance(model, models.SalesforceModel):
 			return False
-		if issubclass(model, models.SalesforceModel):
+		if inspect.isclass(model) and issubclass(model, models.SalesforceModel):
 			return False
