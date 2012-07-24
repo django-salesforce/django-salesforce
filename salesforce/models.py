@@ -45,6 +45,7 @@ class SalesforceModel(models.Model):
 	"""
 	__metaclass__ = SalesforceModelBase
 	_base_manager = objects = manager.SalesforceManager()
+	_salesforce_object = True
 	
 	class Meta:
 		abstract = True

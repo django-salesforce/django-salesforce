@@ -9,9 +9,11 @@
 Database router for SalesforceModel objects.
 """
 
-import inspect
+import logging
 
 from django.conf import settings
+
+log = logging.getLogger(__name__)
 
 class ModelRouter(object):
 	"""
@@ -24,9 +26,7 @@ class ModelRouter(object):
 		If passed a class or instance, return the salesforce alias if it's a subclass of SalesforceModel.
 		"""
 		from salesforce import models
-		if isinstance(model, models.SalesforceModel):
-			return self.sf_alias
-		if inspect.isclass(model) and issubclass(model, models.SalesforceModel):
+		if getattr(model, '_salesforce_object', False):
 			return self.sf_alias
 
 	def db_for_write(self, model, **hints):
@@ -34,31 +34,12 @@ class ModelRouter(object):
 		If passed a class or instance, return the salesforce alias if it's a subclass of SalesforceModel.
 		"""
 		from salesforce import models
-		if isinstance(model, models.SalesforceModel):
+		if getattr(model, '_salesforce_object', False):
 			return self.sf_alias
-		if inspect.isclass(model) and issubclass(model, models.SalesforceModel):
-			return self.sf_alias
-
-	def allow_relation(self, obj1, obj2, **hints):
-		"""
-		Salesforce doesn't support relations in the traditional sense.
-		"""
-		from salesforce import models
-		if isinstance(obj1, models.SalesforceModel):
-			return False
-		if inspect.isclass(obj1) and issubclass(obj1, models.SalesforceModel):
-			return False
-		if isinstance(obj2, models.SalesforceModel):
-			return False
-		if inspect.isclass(obj2) and issubclass(obj2, models.SalesforceModel):
-			return False
 
 	def allow_syncdb(self, db, model):
 		"""
 		Don't attempt to sync salesforce models.
 		"""
-		from salesforce import models
-		if isinstance(model, models.SalesforceModel):
-			return False
-		if inspect.isclass(model) and issubclass(model, models.SalesforceModel):
+		if(db == self.sf_alias):
 			return False
