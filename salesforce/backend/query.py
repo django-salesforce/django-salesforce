@@ -83,7 +83,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	except restkit.ResourceGone, e:
 		raise base.SalesforceError("Couldn't connect to API (410): %s" % e)
 	except restkit.Unauthorized, e:
-		raise exceptions.PermissionDenied(str(e))
+		raise base.SalesforceError(str(e))
 	except restkit.RequestFailed, e:
 		data = json.loads(str(e))[0]
 		if(data['errorCode'] == 'INVALID_FIELD'):
@@ -235,6 +235,11 @@ class CursorWrapper(object):
 				return
 			# some kind of failed query
 			elif('errorCode' in data):
+				if(data['errorCode'] == 'INVALID_SESSION_ID'):
+					auth.expire_token()
+					self.execute(q, args)
+					return
+				log.error(data['message'])
 				raise base.DatabaseError(data['message'])
 			# something we don't recognize
 			else:

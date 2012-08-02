@@ -23,6 +23,14 @@ log = logging.getLogger(__name__)
 oauth_lock = threading.Lock()
 oauth_data = None
 
+def expire_token():
+	oauth_lock.acquire()
+	try:
+		global oauth_data
+		oauth_data = None
+	finally:
+		oauth_lock.release()
+
 def authenticate(settings_dict=dict()):
 	"""
 	Authenticate to the Salesforce API with the provided credentials.
