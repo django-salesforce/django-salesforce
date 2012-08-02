@@ -77,7 +77,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 			headers['Content-Type'] = 'application/json'
 			
-			resource = restkit.Resource(url)
+			salesforce_timeout = getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)
+			resource = restkit.Resource(url, timeout=salesforce_timeout)
 			log.debug('Request API URL: %s' % url)
 			response = query.handle_api_exceptions(url, resource.get, headers=headers)
 			body = response.body_string()
@@ -93,7 +94,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 			headers['Content-Type'] = 'application/json'
 		
-			resource = restkit.Resource(url)
+			salesforce_timeout = getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)
+			resource = restkit.Resource(url, timeout=salesforce_timeout)
 			log.debug('Request API URL: %s' % url)
 			response = query.handle_api_exceptions(url, resource.get, headers=headers)
 			body = response.body_string()
