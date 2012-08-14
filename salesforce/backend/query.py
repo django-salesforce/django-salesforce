@@ -86,6 +86,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		data = json.loads(str(e))[0]
 		if(data['errorCode'] == 'INVALID_SESSION_ID'):
 			auth.expire_token()
+			auth.authenticate(settings.DATABASES[settings.SALESFORCE_DB_ALIAS])
 			return f(*args, **kwargs)
 		raise base.SalesforceError(str(e))
 	except restkit.RequestFailed, e:
