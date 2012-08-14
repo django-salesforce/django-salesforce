@@ -94,6 +94,10 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 			raise base.SalesforceError(data['message'])
 		elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
 			raise base.SalesforceError('%s: %s' % (url, data['message']))
+		# some kind of failed query
+		elif(data['errorCode'] == 'INVALID_SESSION_ID'):
+			auth.expire_token()
+			return f(*args, **kwargs)
 		else:
 			raise base.SalesforceError(str(data))
 
@@ -233,14 +237,6 @@ class CursorWrapper(object):
 			elif('success' in data and 'id' in data):
 				self.lastrowid = data['id']
 				return
-			# some kind of failed query
-			elif('errorCode' in data):
-				if(data['errorCode'] == 'INVALID_SESSION_ID'):
-					auth.expire_token()
-					self.execute(q, args)
-					return
-				log.error(data['message'])
-				raise base.DatabaseError(data['message'])
 			# something we don't recognize
 			else:
 				raise base.DatabaseError(data)
