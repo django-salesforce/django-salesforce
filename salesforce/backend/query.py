@@ -83,6 +83,10 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	except restkit.ResourceGone, e:
 		raise base.SalesforceError("Couldn't connect to API (410): %s" % e)
 	except restkit.Unauthorized, e:
+		data = json.loads(str(e))[0]
+		if(data['errorCode'] == 'INVALID_SESSION_ID'):
+			auth.expire_token()
+			return f(*args, **kwargs)
 		raise base.SalesforceError(str(e))
 	except restkit.RequestFailed, e:
 		data = json.loads(str(e))[0]
@@ -95,9 +99,6 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
 			raise base.SalesforceError('%s: %s' % (url, data['message']))
 		# some kind of failed query
-		elif(data['errorCode'] == 'INVALID_SESSION_ID'):
-			auth.expire_token()
-			return f(*args, **kwargs)
 		else:
 			raise base.SalesforceError(str(data))
 
