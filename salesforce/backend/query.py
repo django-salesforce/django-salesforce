@@ -205,10 +205,14 @@ class CursorWrapper(object):
 		Connect to the Salesforce API.
 		"""
 		connection_created.send(sender=self.__class__, connection=self)
-		self.oauth = auth.authenticate(conn.settings_dict)
+		self.settings_dict = conn.settings_dict
 		self.query = query
 		self.results = iter([])
 		self.rowcount = None
+	
+	@property
+	def oauth(self):
+		return auth.authenticate(self.settings_dict)
 	
 	def execute(self, q, args=None):
 		"""
