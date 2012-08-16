@@ -63,6 +63,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	
 	@property
 	def oauth(self):
+		from salesforce import auth
 		return auth.authenticate(self.connection.settings_dict)
 	
 	@property

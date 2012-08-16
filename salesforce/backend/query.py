@@ -121,6 +121,8 @@ def prep_for_deserialize(model, record, using):
 			db_type = x.db_type(connection=connections[using])
 			if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
 				d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
+				import pytz
+				d = d.replace(tzinfo=pytz.utc)
 				fields[x.name] = d.strftime('%Y-%m-%d %H:%M:%S')
 			else:
 				fields[x.name] = field_val
