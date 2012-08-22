@@ -74,6 +74,11 @@ def process_json_args(args):
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, json_conversions) for x in args])
 
+def reauthenticate():
+	auth.expire_token()
+	oauth = auth.authenticate(settings.DATABASES[settings.SALESFORCE_DB_ALIAS])
+	return oauth['access_token']
+
 def handle_api_exceptions(url, f, *args, **kwargs):
 	from salesforce.backend import base
 	try:
@@ -85,8 +90,9 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	except restkit.Unauthorized, e:
 		data = json.loads(str(e))[0]
 		if(data['errorCode'] == 'INVALID_SESSION_ID'):
-			auth.expire_token()
-			auth.authenticate(settings.DATABASES[settings.SALESFORCE_DB_ALIAS])
+			token = reauthenticate()
+			if('headers' in kwargs):
+				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
 			return f(*args, **kwargs)
 		raise base.SalesforceError(str(e))
 	except restkit.RequestFailed, e:
