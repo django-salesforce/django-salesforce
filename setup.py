@@ -24,7 +24,7 @@ def autosetup():
 	from setuptools import setup, find_packages
 	return setup(
 		name			= "django-salesforce",
-		version			= "0.1.2",
+		version			= "0.1.3",
 		
 		include_package_data = True,
 		zip_safe		= False,
