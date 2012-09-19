@@ -49,9 +49,6 @@ def autosetup():
 		include_package_data = True,
 		zip_safe		= False,
 		packages		= find_packages(),
-		package_data	= {
-			'': ['VERSION']
-		}
 		
 		entry_points	= {
 			'setuptools.file_finders'	: [
