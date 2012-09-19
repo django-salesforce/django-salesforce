@@ -32,7 +32,7 @@ def get_tagged_version():
 		(stdoutdata, stderrdata) = proc.communicate()
 		if(proc.returncode):
 			raise RuntimeError(stderrdata)
-		version = stdoutdata.lstrip('v')
+		version = stdoutdata.strip().lstrip('v')
 		
 		print "writing version file..."
 		with open(relative_path('VERSION'), 'w') as f:
