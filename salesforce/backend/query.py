@@ -114,11 +114,11 @@ def prep_for_deserialize(model, record, using):
 	
 	mod = model.__module__.split('.')
 	if(mod[-1] == 'models'):
-		app_name = mod[-2]
-	elif(hasattr(model._meta, 'app_name')):
-		app_name = getattr(model._meta, 'app_name')
+		app_label = mod[-2]
+	elif(hasattr(model._meta, 'app_label')):
+		app_label = getattr(model._meta, 'app_label')
 	else:
-		raise ImproperlyConfigured("Can't discover the app_name for %s, you must specify it via model meta options.")
+		raise ImproperlyConfigured("Can't discover the app_label for %s, you must specify it via model meta options.")
 	
 	fields = dict()
 	for x in model._meta.fields:
@@ -134,7 +134,7 @@ def prep_for_deserialize(model, record, using):
 				fields[x.name] = field_val
 	
 	return dict(
-		model	= '.'.join([app_name, model.__name__]),
+		model	= '.'.join([app_label, model.__name__]),
 		pk		= record.pop('Id'),
 		fields	= fields,
 	)
