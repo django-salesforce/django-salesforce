@@ -49,7 +49,6 @@ class SalesforceModel(models.Model):
 	
 	class Meta:
 		abstract = True
-		managed = False
 	
 	Id = fields.SalesforceAutoField(primary_key=True)
 

@@ -15,6 +15,11 @@ from django.conf import settings
 
 log = logging.getLogger(__name__)
 
+def is_testing(db):
+	from django.db import connections
+	from salesforce.backend.base import DatabaseWrapper 
+	return not isinstance(connections[db], DatabaseWrapper)
+
 class ModelRouter(object):
 	"""
 	Database router for Salesforce models.
@@ -41,6 +46,8 @@ class ModelRouter(object):
 		"""
 		Don't attempt to sync salesforce models.
 		"""
+		if(is_testing(db)):
+			return True
 		if(db == self.sf_alias):
 			return False
 		if(hasattr(model, '_salesforce_object')):

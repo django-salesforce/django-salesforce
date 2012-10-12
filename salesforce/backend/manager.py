@@ -11,7 +11,10 @@ Salesforce object manager.
 Use a custom QuerySet to generate SOQL queries and results.
 """
 
+from django.db import connections
 from django.db.models import manager
+
+from salesforce import router
 
 class SalesforceManager(manager.Manager):
 	use_for_related_fields = True
@@ -20,7 +23,10 @@ class SalesforceManager(manager.Manager):
 		"""
 		Returns a QuerySet which access remote SF objects.
 		"""
-		from salesforce.backend import query, compiler
-		q = query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
-		return query.SalesforceQuerySet(self.model, query=q, using=self.db)
+		if router.is_testing(self.db):
+			return super(SalesforceManager, self).get_query_set()
+		else:
+			from salesforce.backend import query, compiler
+			q = query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
+			return query.SalesforceQuerySet(self.model, query=q, using=self.db)
 
