@@ -298,7 +298,7 @@ class CursorWrapper(object):
 		resource = get_resource(url)
 		
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-		return handle_api_exceptions(url, resource.request, method='patch', headers=headers, payload=json.dumps(post_data))
+		return handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
 	
 	def execute_delete(self, query):
 		table = query.model._meta.db_table
