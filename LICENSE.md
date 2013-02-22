@@ -1,4 +1,4 @@
-Copyright (c) 2012 Working Today
+Copyright (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
