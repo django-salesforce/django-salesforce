@@ -64,7 +64,7 @@ def autosetup():
 		description		= "a Salesforce backend for Django's ORM",
 		license			= "MIT",
 		keywords		= "django salesforce orm backend",
-		url				= "https://github.com/philchristensen/django-salesforce",
+		url				= "https://github.com/freelancersunion/django-salesforce",
 	)
 
 if(__name__ == '__main__'):
