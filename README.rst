@@ -63,6 +63,5 @@ here are the potential pitfalls and unimplemented operations:
    implemented.
 -  **Multiple Deletes** — Multiple delete support is not yet
    implemented.
--  **Foreign Keys** — Foreign key support is not yet implemented.
 -  **Database Sync** — There is no plan to support DB creation for the
    forseeable future.
