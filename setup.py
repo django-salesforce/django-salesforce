@@ -59,12 +59,14 @@ def autosetup():
 		install_requires = open(relative_path('requirements.txt'), 'rU'),
 		
 		# metadata for upload to PyPI
-		author			= "Phil Christensen",
-		author_email	= "phil@bubblehouse.org",
-		description		= "a Salesforce backend for Django's ORM",
-		license			= "MIT",
-		keywords		= "django salesforce orm backend",
-		url				= "https://github.com/freelancersunion/django-salesforce",
+		author			 = "Freelancers Union",
+		author_email	 = "devs@freelancersunion.org",
+		maintainer		 = "Phil Christensen",
+		maintainer_email = "phil@bubblehouse.org",
+		description		 = "a Salesforce backend for Django's ORM",
+		license			 = "MIT",
+		keywords		 = "django salesforce orm backend",
+		url				 = "https://github.com/freelancersunion/django-salesforce",
 	)
 
 if(__name__ == '__main__'):
