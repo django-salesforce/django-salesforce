@@ -63,8 +63,6 @@ def autosetup():
 		# metadata for upload to PyPI
 		author			 = "Freelancers Union",
 		author_email	 = "devs@freelancersunion.org",
-		#maintainer		 = "Phil Christensen",
-		#maintainer_email = "phil@bubblehouse.org",
 		description		 = "a Salesforce backend for Django's ORM",
 		license			 = "MIT",
 		keywords		 = "django salesforce orm backend",
