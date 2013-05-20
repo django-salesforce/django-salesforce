@@ -9,11 +9,10 @@
 Salesforce object query customizations.
 """
 
-import copy, urllib, logging, types, datetime, decimal
+import urllib, logging, types, datetime, decimal
 
 from django.conf import settings
-from django.core import serializers, exceptions
-from django.core.serializers import python, json as django_json
+from django.core.serializers import python
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.models import query
@@ -22,6 +21,7 @@ from django.db.backends.signals import connection_created
 from django.utils.encoding import force_unicode
 
 import django
+from itertools import islice
 from pkg_resources import parse_version
 DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
 
@@ -177,16 +177,8 @@ class SalesforceQuerySet(query.QuerySet):
 		cursor = CursorWrapper(connections[self.db], self.query)
 		cursor.execute(sql, params)
 		
-		def _prepare(data):
-			for record in data:
-				struct = prep_for_deserialize(self.model, record, self.db)
-				yield struct
-		
-		response = cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)
-		if response is None:
-			raise StopIteration
-		
-		for res in python.Deserializer(_prepare(response)):
+		pfd = prep_for_deserialize
+		for res in python.Deserializer(pfd(self.model, r, self.db) for r in cursor.results):
 			yield res.object
 
 class SalesforceQuery(Query):
@@ -259,9 +251,15 @@ class CursorWrapper(object):
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
 				data['records'] = [{self.rowcount:'COUNT'}]
 			
-			self.results = (x for x in data['records'])
+			self.results = self.query_results(data)
 		else:
-			self.results = []
+			self.results = iter([])
+	
+	def queryMore(self, nextRecordsUrl):
+		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
+		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
+		resource = get_resource(url)
+		return handle_api_exceptions(url, resource.get, headers=headers)
 	
 	def execute_select(self, q, args):
 		processed_sql = q % process_args(args)
@@ -313,51 +311,42 @@ class CursorWrapper(object):
 		log.debug('DELETE %s(%s)' % (table, pk))
 		return handle_api_exceptions(url, resource.delete, headers=headers)
 	
+	def query_results(self, results):
+		while True:
+			for rec in results['records']:
+				yield rec
+
+			if results['done']:
+				break
+
+			response = self.queryMore(results['nextRecordsUrl'])
+			jsrc = force_unicode(response.body_string()).encode(settings.DEFAULT_CHARSET)
+		
+			if(jsrc):
+				results = json.loads(jsrc)
+			else:
+				break
+
 	def fetchone(self):
 		"""
 		Fetch a single result from a previously executed query.
 		"""
 		try:
-			res = self.results.next()
-			return res
+			return next(self.results)
 		except StopIteration:
 			return None
-	
+
 	def fetchmany(self, size=0):
 		"""
 		Fetch multiple results from a previously executed query.
 		"""
-		result = None
-		counter = 0
-		while(True):
-			try:
-				if(counter == size-1):
-					return result
-				if(size != 0):
-					counter += 1
-				row = self.fetchone()
-				if not(row):
-					return result
-				result = [] if result is None else result
-				result.append(row)
-			except StopIteration:
-				pass
-		return result
+		return list(islice(self.results, size))
 
 	def fetchall(self):
 		"""
 		Fetch all results from a previously executed query.
 		"""
-		result = []
-		for index in range(constants.GET_ITERATOR_CHUNK_SIZE):
-			try:
-				row = self.fetchone()
-				if(row is None):
-					return result
-				result.append(row)
-			except StopIteration:
-				pass
-		return result
+		return list(self.results)
 
 string_literal = quoted_string_literal
 def date_literal(d, c):
