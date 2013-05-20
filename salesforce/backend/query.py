@@ -255,12 +255,6 @@ class CursorWrapper(object):
 		else:
 			self.results = iter([])
 	
-	def queryMore(self, nextRecordsUrl):
-		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
-		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
-		resource = get_resource(url)
-		return handle_api_exceptions(url, resource.get, headers=headers)
-	
 	def execute_select(self, q, args):
 		processed_sql = q % process_args(args)
 		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urllib.urlencode(dict(
@@ -270,6 +264,12 @@ class CursorWrapper(object):
 		resource = get_resource(url)
 		
 		log.debug(processed_sql)
+		return handle_api_exceptions(url, resource.get, headers=headers)
+	
+	def query_more(self, nextRecordsUrl):
+		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
+		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
+		resource = get_resource(url)
 		return handle_api_exceptions(url, resource.get, headers=headers)
 	
 	def execute_insert(self, query):
@@ -318,8 +318,9 @@ class CursorWrapper(object):
 
 			if results['done']:
 				break
-
-			response = self.queryMore(results['nextRecordsUrl'])
+			
+			# http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#heading_2_1
+			response = self.query_more(results['nextRecordsUrl'])
 			jsrc = force_unicode(response.body_string()).encode(settings.DEFAULT_CHARSET)
 		
 			if(jsrc):
