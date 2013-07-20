@@ -16,7 +16,7 @@ from django.core.serializers import python
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.models import query
-from django.db.models.sql import Query, constants, subqueries
+from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.backends.signals import connection_created
 from django.utils.encoding import force_unicode
 
@@ -181,12 +181,28 @@ class SalesforceQuerySet(query.QuerySet):
 		for res in python.Deserializer(pfd(self.model, r, self.db) for r in cursor.results):
 			yield res.object
 
+class SalesforceRawQuery(RawQuery):
+	def clone(self, using):
+		return SalesforceRawQuery(self.sql, using, params=self.params)
+
+	def get_columns(self):
+		if self.cursor is None:
+			self.cursor = CursorWrapper(connections[self.using], self)
+			self.cursor.execute(self.sql, self.params)
+		return super(self, SalesforceRawQuery).get_columns()
+	
+	def __repr__(self):
+		return "<SalesforceRawQuery: %r>" % (self.sql % tuple(self.params))
+
 class SalesforceQuery(Query):
 	"""
 	Override aggregates.
 	"""
 	from salesforce.backend import aggregates
 	aggregates_module = aggregates
+	
+	def clone(self, klass=None, memo=None, **kwargs):
+		super(self, SalesforceQuery).clone(SalesforceQuery, memo, **kwargs)
 	
 	def has_results(self, using):
 		q = self.clone()
