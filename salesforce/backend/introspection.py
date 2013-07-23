@@ -38,21 +38,21 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		'string'                        : 'CharField',
 		'time'                          : 'TimeField',
 		'anyType'                       : 'CharField',
-		'calculated'                    : 'CharField',
+                'calculated'                    : ('CharField', {'editable': False}),
 		'combobox'                      : 'CharField',
 		'currency'                      : 'CharField',
 		'datacategorygroupreference'    : 'CharField',
-		'email'                         : 'CharField',
+		'email'                         : 'EmailField',
 		'encryptedstring'               : 'CharField',
-		'id'                            : 'CharField',
+                'id'                            : ('CharField', {'editable': False}), # ForeignKey or # TODO but RecordType is editable with a choices list
 		'masterrecord'                  : 'CharField',
-		'multipicklist'                 : 'CharField',
+		'multipicklist'                 : 'CharField',   # TODO a descendant with a special validator + widget
 		'percent'                       : 'DecimalField',
 		'phone'                         : 'CharField',
-		'picklist'                      : 'CharField',
+                'picklist'                      : ('CharField', {}),  # TODO {'choices': (...)}
 		'reference'                     : 'CharField',
 		'textarea'                      : 'TextField',
-		'url'                           : 'CharField',
+		'url'                           : 'UrlField',
 	}
 	
 	def __init__(self, conn):

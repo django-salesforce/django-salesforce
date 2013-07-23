@@ -7,9 +7,10 @@
 
 import datetime
 
+from django.conf import settings
 from django.test import TestCase
 
-from salesforce.testrunner.example.models import Account, Lead, ChargentOrder
+from salesforce.testrunner.example.models import Account, Lead, ChargentOrder, TimbaSurveysQuestion, Email
 
 import logging
 log = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class BasicSOQLTest(TestCase):
 			LastName	= "Unittest General",
 			Email		= test_email,
 			Status		= 'Open',
+			Company = "Some company, Ltd.",
 		)
 		self.test_lead.save()
 	
@@ -52,7 +54,20 @@ class BasicSOQLTest(TestCase):
 	def test_foreign_key(self):
 		account = Account.objects.all()[0]
 		user = account.Owner
-		self.assertEqual(user.Email, 'admins@freelancersunion.org.prod001')
+		self.assertEqual(user.Email, settings.DATABASES['salesforce']['USER'].rsplit('.', 1)[0])  # 'admins@freelancersunion.org.prod001'
+	
+	def test_update_date_custom(self):
+		"""
+		Test updating a date in custom field.
+		"""
+		#self.skipTest("Need to find a suitable *standard* model field to test datetime updates.")
+		
+		email = Email.objects.get(name='20130720-14580')
+		email.LastUsedDate = now = datetime.datetime.now()
+		email.save()
+		
+		saved = Email.objects.get(pk=email.pk)
+		self.assertEqual(account.LastUsedDate, now)
 	
 	def test_update_date(self):
 		"""
@@ -75,10 +90,10 @@ class BasicSOQLTest(TestCase):
 		
 		now = datetime.datetime.now()
 		account = Account(
-			FirstName = 'Joe',
-			LastName = 'Freelancer',
+			#FirstName = 'Joe',
+			#LastName = 'Freelancer',
 			LastLogin = now,
-			IsPersonAccount = False,
+			#IsPersonAccount = False,
 		)
 		account.save()
 		
@@ -108,7 +123,7 @@ class BasicSOQLTest(TestCase):
 		"""
 		Make sure weird unicode breaks properly.
 		"""
-		test_lead = Lead(FirstName=u'\u2603', LastName="Unittest Unicode", Email='test-djsf-unicode-email@example.com')
+		test_lead = Lead(FirstName=u'\u2603', LastName="Unittest Unicode", Email='test-djsf-unicode-email@example.com', Company="Some company")
 		test_lead.save()
 		self.assertEqual(test_lead.FirstName, u'\u2603')
 		test_lead.delete()
@@ -125,7 +140,7 @@ class BasicSOQLTest(TestCase):
 		"""
 		Create a lead record, and make sure it ends up with a valid Salesforce ID.
 		"""
-		test_lead = Lead(FirstName="User", LastName="Unittest Inserts", Email='test-djsf-inserts-email@example.com')
+		test_lead = Lead(FirstName="User", LastName="Unittest Inserts", Email='test-djsf-inserts-email@example.com', Company="Some company")
 		test_lead.save()
 		self.assertEqual(len(test_lead.pk), 18)
 		test_lead.delete()
@@ -134,7 +149,7 @@ class BasicSOQLTest(TestCase):
 		"""
 		Create a lead record, then delete it, and make sure it's gone.
 		"""
-		test_lead = Lead(FirstName="User", LastName="Unittest Deletes", Email='test-djsf-delete-email@example.com')
+		test_lead = Lead(FirstName="User", LastName="Unittest Deletes", Email='test-djsf-delete-email@example.com', Company="Some company")
 		test_lead.save()
 		test_lead.delete()
 		
@@ -157,6 +172,6 @@ class BasicSOQLTest(TestCase):
 		"""
 		Make sure custom objects work.
 		"""
-		orders = ChargentOrder.objects.all()[0:5]
+		orders = TimbaSurveysQuestion.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
 

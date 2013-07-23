@@ -38,11 +38,11 @@ class Account(SalesforceModel):
 		'Partner', 'Press', 'Prospect', 'Reseller', 'Other'
 	]
 	
-	#Name = models.CharField(max_length=255)
+	Name = models.CharField(max_length=255)
 	Owner = models.ForeignKey(User, db_column='OwnerId')
-	LastName = models.CharField(max_length=80)
-	FirstName = models.CharField(max_length=40)
-	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
+	#LastName = models.CharField(max_length=80)
+	#FirstName = models.CharField(max_length=40)
+	#Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
 	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES])
 	BillingStreet = models.CharField(max_length=255)
 	BillingCity = models.CharField(max_length=40)
@@ -59,8 +59,8 @@ class Account(SalesforceModel):
 	Website = models.CharField(max_length=255)
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Description = models.TextField()
-	IsPersonAccount = models.BooleanField()
-	PersonEmail = models.CharField(max_length=100)
+	#IsPersonAccount = models.BooleanField()
+	#PersonEmail = models.CharField(max_length=100)
 	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate')
 	
 	def __unicode__(self):
@@ -106,6 +106,24 @@ class Lead(SalesforceModel):
 	def __unicode__(self):
 		return self.FirstName + ' ' + self.LastName
 
+class TimbaSurveysQuestion(SalesforceModel):
+        class Meta:
+                db_table = 'TIMBASURVEYS__SurveyQuestion__c'
+
+        Question = models.CharField(max_length=255, db_column='TIMBASURVEYS__Question__c')
+        # ...
+
+
+class Email(SalesforceModel):
+        class Meta:
+                db_table = 'Email__c'
+
+        name = models.CharField(max_length=240, db_column=u'Name', editable=False)
+        Account = models.ForeignKey(Account, db_column='Account__c')
+        Email = models.CharField(max_length=255, db_column='Email__c')
+        LastUsedDate = models.DateTimeField(null=True, db_column='Last_Used_Date__c', blank=True)
+
+import pdb; pdb.set_trace()
 class ChargentOrder(SalesforceModel):
 	class Meta:
 		db_table = 'ChargentOrders__ChargentOrder__c'

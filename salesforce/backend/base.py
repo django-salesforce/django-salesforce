@@ -37,8 +37,20 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	"""
 	allows_group_by_pk = True
 	supports_unspecified_pk = False
-	can_return_id_from_insert = False
-	supports_select_related = False
+	#can_return_id_from_insert = True
+	supports_select_related = True
+
+	interprets_empty_strings_as_nulls = True
+	#can_use_chunked_reads = 
+	test_db_allows_multiple_connections = False
+
+        def _supports_transactions(self):
+            return False
+
+        def _supports_stddev(self):
+            return False
+
+
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	"""
