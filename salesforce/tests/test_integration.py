@@ -60,14 +60,15 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test updating a date in custom field.
 		"""
-		#self.skipTest("Need to find a suitable *standard* model field to test datetime updates.")
+		# TODO Read-only fields like automatically updated DateCreated, DateModified
+		# can not be used in models, otherwise nothing in that model can be saved
 		
-		email = Email.objects.get(name='20130720-14580')
+		email = Email.objects.get(Contact='003c000000Lja0J')
 		email.LastUsedDate = now = datetime.datetime.now()
 		email.save()
 		
 		saved = Email.objects.get(pk=email.pk)
-		self.assertEqual(account.LastUsedDate, now)
+		self.assertEqual(email.LastUsedDate, now)
 	
 	def test_update_date(self):
 		"""

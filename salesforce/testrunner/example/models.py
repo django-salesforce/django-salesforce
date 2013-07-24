@@ -114,12 +114,18 @@ class TimbaSurveysQuestion(SalesforceModel):
         # ...
 
 
+class Contact(SalesforceModel):
+        class Meta:
+                db_table = 'Contact'
+        LastName = models.CharField(max_length=255, db_column='LastName')
+
 class Email(SalesforceModel):
         class Meta:
                 db_table = 'Email__c'
 
-        name = models.CharField(max_length=240, db_column=u'Name', editable=False)
+        #name = models.CharField(max_length=240, db_column=u'Name', editable=False)
         Account = models.ForeignKey(Account, db_column='Account__c')
+        Contact = models.ForeignKey(Contact, db_column='Contact__c')
         Email = models.CharField(max_length=255, db_column='Email__c')
         LastUsedDate = models.DateTimeField(null=True, db_column='Last_Used_Date__c', blank=True)
 
