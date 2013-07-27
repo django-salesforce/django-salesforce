@@ -8,6 +8,7 @@
 from django.db import models
 
 from salesforce.models import SalesforceModel
+from salesforce import models as sf_models
 
 SALUTATIONS = [
 	'Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Prof.'
@@ -107,29 +108,30 @@ class Lead(SalesforceModel):
 		return self.FirstName + ' ' + self.LastName
 
 class TimbaSurveysQuestion(SalesforceModel):
-        class Meta:
-                db_table = 'TIMBASURVEYS__SurveyQuestion__c'
+	class Meta:
+		db_table = 'TIMBASURVEYS__SurveyQuestion__c'
 
-        Question = models.CharField(max_length=255, db_column='TIMBASURVEYS__Question__c')
-        # ...
+	Question = models.CharField(max_length=255, db_column='TIMBASURVEYS__Question__c')
+	# ...
 
 
 class Contact(SalesforceModel):
-        class Meta:
-                db_table = 'Contact'
-        LastName = models.CharField(max_length=255, db_column='LastName')
+	class Meta:
+		db_table = 'Contact'
+	LastName = models.CharField(max_length=255, db_column='LastName')
 
 class Email(SalesforceModel):
-        class Meta:
-                db_table = 'Email__c'
+	class Meta:
+		db_table = 'Email__c'
 
-        #name = models.CharField(max_length=240, db_column=u'Name', editable=False)
-        Account = models.ForeignKey(Account, db_column='Account__c')
-        Contact = models.ForeignKey(Contact, db_column='Contact__c')
-        Email = models.CharField(max_length=255, db_column='Email__c')
-        LastUsedDate = models.DateTimeField(null=True, db_column='Last_Used_Date__c', blank=True)
+	#name = models.CharField(max_length=240, db_column=u'Name', editable=False)
+	name = sf_models.SfCharField(max_length=240, db_column=u'Name', sf_read_only=True)
+	created_by = sf_models.SfCharField(max_length=240, db_column=u'CreatedById', sf_read_only=True)
+	Account = models.ForeignKey(Account, db_column='Account__c', null=True)
+	Contact = models.ForeignKey(Contact, db_column='Contact__c')
+	Email = models.CharField(max_length=255, db_column='Email__c')
+	LastUsedDate = models.DateTimeField(null=True, db_column='Last_Used_Date__c', blank=True)
 
-import pdb; pdb.set_trace()
 class ChargentOrder(SalesforceModel):
 	class Meta:
 		db_table = 'ChargentOrders__ChargentOrder__c'

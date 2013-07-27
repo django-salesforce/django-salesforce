@@ -1,8 +1,8 @@
 # Django settings for testrunner project.
 try:
-    import settings_secret
+	import settings_secret
 except ImportError:
-    pass
+	pass
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG

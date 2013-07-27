@@ -24,6 +24,7 @@ import django
 from itertools import islice
 from pkg_resources import parse_version
 DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
+DJANGO_16 = (parse_version(django.get_version()) >= parse_version('1.5.99'))
 
 import restkit
 import pytz
@@ -40,6 +41,10 @@ log = logging.getLogger(__name__)
 
 API_STUB = '/services/data/v24.0'
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.000+0000'
+if DJANGO_14:
+	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S-00:00'
+else:
+	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 def quoted_string_literal(s, d):
 	"""
@@ -129,7 +134,7 @@ def prep_for_deserialize(model, record, using):
 				d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
-				fields[x.name] = d.strftime('%Y-%m-%d %H:%M:%S-00:00')
+				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
 			else:
 				fields[x.name] = field_val
 	
@@ -144,7 +149,7 @@ def extract_values(query):
 	fields = query.model._meta.fields
 	for index in range(len(fields)):
 		field = fields[index]
-		if field.get_internal_type() == 'AutoField':
+		if field.get_internal_type() == 'AutoField' or getattr(field, 'sf_read_only', False):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
 			[bound_field] = [x for x in query.values if x[0].name == field.name]
@@ -220,6 +225,7 @@ class CursorWrapper(object):
 		"""
 		from salesforce.backend import base
 		
+		self.rowcount = None
 		if(isinstance(self.query, SalesforceQuery)):
 			response = self.execute_select(q, args)
 		elif(isinstance(self.query, subqueries.InsertQuery)):
@@ -286,7 +292,10 @@ class CursorWrapper(object):
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
-		pk = query.where.children[0].children[0][-1]
+		if DJANGO_16:
+			pk = query.where.children[0][3]
+		else:
+			pk = query.where.children[0].children[0][-1]
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = dict()
@@ -296,7 +305,9 @@ class CursorWrapper(object):
 		resource = get_resource(url)
 		
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-		return handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
+		ret = handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
+		self.rowcount = 1
+		return ret
 	
 	def execute_delete(self, query):
 		table = query.model._meta.db_table

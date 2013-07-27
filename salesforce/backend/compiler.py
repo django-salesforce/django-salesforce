@@ -14,6 +14,7 @@ from django.db.models.sql.datastructures import EmptyResultSet
 import django
 from pkg_resources import parse_version
 DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
+DJANGO_16 = (parse_version(django.get_version()) >= parse_version('1.5.99'))
 
 def process_name(name):
 	"""
@@ -34,7 +35,8 @@ class SQLCompiler(compiler.SQLCompiler):
 		"""
 		Remove table names and strip quotes from column names.
 		"""
-		cols = compiler.SQLCompiler.get_columns(self, with_aliases)
+		cols_ = compiler.SQLCompiler.get_columns(self, with_aliases)
+		cols = cols_[0] if DJANGO_16 else cols_
 		result = []
 		for col in cols:
 			if('.' in col):
@@ -42,7 +44,7 @@ class SQLCompiler(compiler.SQLCompiler):
 			else:
 				name = col
 			result.append(name.strip('"'))
-		return result
+		return (result, cols_[1]) if DJANGO_16 else result
 	
 	def get_from_clause(self):
 		"""
@@ -102,14 +104,15 @@ class SQLCompiler(compiler.SQLCompiler):
 		if not result_type:
 			return cursor
 		
+		ordering_aliases = self.ordering_aliases if DJANGO_16 else self.query.ordering_aliases
 		if result_type == constants.SINGLE:
-			if self.query.ordering_aliases:
-				return cursor.fetchone()[:-len(self.query.ordering_aliases)]
+			if ordering_aliases:
+				return cursor.fetchone()[:-len(ordering_aliases)]
 			return cursor.fetchone()
 
 		# The MULTI case.
-		if self.query.ordering_aliases:
-			result = compiler.order_modified_iter(cursor, len(self.query.ordering_aliases),
+		if ordering_aliases:
+			result = compiler.order_modified_iter(cursor, len(ordering_aliases),
 					self.connection.features.empty_fetchmany_value)
 		else:
 			result = iter((lambda: cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)),
@@ -125,12 +128,15 @@ class SQLCompiler(compiler.SQLCompiler):
 class SalesforceWhereNode(where.WhereNode):
 	overridden_types = ['isnull']
 	
-	def sql_for_columns(self, data, qn, connection):
+	def sql_for_columns(self, data, qn, connection, internal_type=None):  # Fixed for Django 1.6
 		"""
 		Don't attempt to quote column names.
 		"""
 		table_alias, name, db_type = data
-		return connection.ops.field_cast_sql(db_type) % name
+		if DJANGO_16:
+			return connection.ops.field_cast_sql(db_type, internal_type) % name
+		else:
+		   	return connection.ops.field_cast_sql(db_type) % name
 	
 	def make_atom(self, child, qn, connection):
 		lvalue, lookup_type, value_annot, params_or_value = child

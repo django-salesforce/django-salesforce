@@ -56,20 +56,6 @@ class BasicSOQLTest(TestCase):
 		user = account.Owner
 		self.assertEqual(user.Email, settings.DATABASES['salesforce']['USER'].rsplit('.', 1)[0])  # 'admins@freelancersunion.org.prod001'
 	
-	def test_update_date_custom(self):
-		"""
-		Test updating a date in custom field.
-		"""
-		# TODO Read-only fields like automatically updated DateCreated, DateModified
-		# can not be used in models, otherwise nothing in that model can be saved
-		
-		email = Email.objects.get(Contact='003c000000Lja0J')
-		email.LastUsedDate = now = datetime.datetime.now()
-		email.save()
-		
-		saved = Email.objects.get(pk=email.pk)
-		self.assertEqual(email.LastUsedDate, now)
-	
 	def test_update_date(self):
 		"""
 		Test updating a date.
@@ -103,6 +89,20 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(saved.IsPersonAccount, False)
 		
 		saved.delete()
+	
+	def test_update_date_custom(self):
+		"""
+		Test updating a date in custom field.
+		"""
+		# TODO Read-only fields like automatically updated DateCreated, DateModified
+		# can not be used in models, otherwise nothing in that model can be saved
+		
+		email = Email.objects.get(Contact='003c000000Lja0J')
+		email.LastUsedDate = now = datetime.datetime.now()
+		email.save()
+		
+		saved = Email.objects.get(pk=email.pk)
+		self.assertEqual(email.LastUsedDate, now)
 	
 	def test_get(self):
 		"""

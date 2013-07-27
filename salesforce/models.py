@@ -22,6 +22,7 @@ from django.db.models.sql import compiler
 
 from salesforce.backend import manager
 from salesforce import fields
+from salesforce.fields import SfCharField
 
 log = logging.getLogger(__name__)
 

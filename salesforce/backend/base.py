@@ -43,12 +43,13 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	interprets_empty_strings_as_nulls = True
 	#can_use_chunked_reads = 
 	test_db_allows_multiple_connections = False
+	supports_transactions = False
 
-        def _supports_transactions(self):
-            return False
+	def _supports_transactions(self):
+		return False
 
-        def _supports_stddev(self):
-            return False
+	def _supports_stddev(self):
+		return False
 
 
 

@@ -62,3 +62,14 @@ class SalesforceAutoField(fields.Field):
 	
 	def formfield(self, **kwargs):
 		return None
+
+class SfCharField(fields.CharField):
+	"""Support of read only attribute fro Salesforce."""
+	def __init__(self, *args, **kwargs):
+		sf_read_only = kwargs.pop('sf_read_only', False)
+		if sf_read_only:
+			kwargs['editable'] = False
+		super(SfCharField, self).__init__(*args, **kwargs)
+		self.sf_read_only = sf_read_only
+
+
