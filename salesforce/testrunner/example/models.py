@@ -25,6 +25,14 @@ INDUSTRIES = [
 ]
 
 class User(SalesforceModel):
+	class Meta:
+		# Every SalesforceModel should use Meta class with db_table name, if some
+		# foreign keys are used, even if the table name is without double underscores.
+		# Otherwise the command `syncdb --database=default` would create broken
+		# references in the default database. (Some tables are created with Meta name,
+		# while other tables are ignored or created with `example_...` name. This
+		# causes runtime errors in inspectdb etc.
+		db_table = 'User'
 	Email = models.CharField(max_length=100)
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
@@ -34,6 +42,8 @@ class Account(SalesforceModel):
 	"""
 	Default Salesforce Account model.
 	"""
+	class Meta:
+		db_table = 'Account'
 	TYPES = [
 		'Analyst', 'Competitor', 'Customer', 'Integrator', 'Investor',
 		'Partner', 'Press', 'Prospect', 'Reseller', 'Other'
@@ -72,6 +82,8 @@ class Lead(SalesforceModel):
 	"""
 	Default Salesforce Lead model.
 	"""
+	class Meta:
+		db_table = 'Lead'
 	SOURCES = [
 		'Advertisement', 'Employee Referral', 'External Referral', 'Partner', 'Public Relations',
 		'Seminar - Internal', 'Seminar - Partner', 'Trade Show', 'Web', 'Word of mouth', 'Other',
