@@ -4,6 +4,7 @@
 local_settings.py
 build
 *.egg-info
+.*.swp
 salesforce_testrunner_db
 .tox
 VERSION

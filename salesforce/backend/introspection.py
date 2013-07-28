@@ -28,31 +28,31 @@ log = logging.getLogger(__name__)
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
 	data_types_reverse = {
-		'base64'                        : 'TextField',
-		'boolean'                       : 'BooleanField',
-		'byte'                          : 'SmallIntegerField',
-		'date'                          : 'DateField',
-		'datetime'                      : 'DateTimeField',
-		'double'                        : 'DecimalField',
-		'int'                           : 'IntegerField',
-		'string'                        : 'CharField',
-		'time'                          : 'TimeField',
-		'anyType'                       : 'CharField',
-		'calculated'                    : ('CharField', {'editable': False}),
-		'combobox'                      : 'CharField',
-		'currency'                      : 'CharField',
-		'datacategorygroupreference'    : 'CharField',
-		'email'                         : 'EmailField',
-		'encryptedstring'               : 'CharField',
-		'id'                            : ('CharField', {'editable': False}), # ForeignKey or # TODO but RecordType is editable with a choices list
-		'masterrecord'                  : 'CharField',
-		'multipicklist'                 : 'CharField',   # TODO a descendant with a special validator + widget
-		'percent'                       : 'DecimalField',
-		'phone'                         : 'CharField',
-		'picklist'                      : ('CharField', {}),  # TODO {'choices': (...)}
-		'reference'                     : 'CharField',
-		'textarea'                      : 'TextField',
-		'url'                           : 'UrlField',
+		'base64'                        : 'SfTextField',
+		'boolean'                       : 'SfBooleanField',
+		'byte'                          : 'SfSmallIntegerField',
+		'date'                          : 'SfDateField',
+		'datetime'                      : 'SfDateTimeField',
+		'double'                        : 'SfDecimalField',
+		'int'                           : 'SfIntegerField',
+		'string'                        : 'SfCharField',
+		'time'                          : 'SfTimeField',
+		'anyType'                       : 'SfCharField',
+		'calculated'                    : 'SfCharField',
+		'combobox'                      : 'SfCharField',
+		'currency'                      : 'SfCharField',
+		'datacategorygroupreference'    : 'SfCharField',
+		'email'                         : 'SfEmailField',
+		'encryptedstring'               : 'SfCharField',
+		'id'                            : ('SfCharField', {'editable': False}), # ForeignKey or # TODO but RecordType is editable with a choices list
+		'masterrecord'                  : 'SfCharField',
+		'multipicklist'                 : 'SfCharField',  # TODO a descendant with a special validator + widget
+		'percent'                       : 'SfDecimalField',
+		'phone'                         : 'SfCharField',
+		'picklist'                      : 'SfCharField',  # TODO {'choices': (...)}
+		'reference'                     : 'SfCharField',  # TODO ForeignKey
+		'textarea'                      : 'SfTextField',
+		'url'                           : 'SfUrlField',
 	}
 	
 	def __init__(self, conn):
@@ -110,6 +110,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		"Returns a description of the table, with the DB-API cursor.description interface."
 		result = []
 		for field in self.table_description_cache(table_name)['fields']:
+			params = {}
+			if not field['updateable']:
+				params['sf_read_only'] = True
 			result.append((
 				field['name'], # name,
 				field['type'], # type_code,
@@ -118,6 +121,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 				field['precision'], # precision,
 				field['scale'], # scale,
 				field['nillable'], # null_ok,
+				params,
 			))
 		return result
 	

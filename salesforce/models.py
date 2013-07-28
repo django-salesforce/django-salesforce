@@ -22,7 +22,7 @@ from django.db.models.sql import compiler
 
 from salesforce.backend import manager
 from salesforce import fields
-from salesforce.fields import SfCharField
+from salesforce.fields import *  # modified django.db.models.CharField etc.
 
 log = logging.getLogger(__name__)
 
@@ -54,3 +54,4 @@ class SalesforceModel(models.Model):
 	
 	Id = fields.SalesforceAutoField(primary_key=True)
 
+Model = SalesforceModel

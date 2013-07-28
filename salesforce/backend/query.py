@@ -220,6 +220,7 @@ class CursorWrapper(object):
 		return auth.authenticate(self.settings_dict)
 	
 	def execute(self, q, args=None):
+		global sf_last_timestamp 
 		"""
 		Send a query to the Salesforce API.
 		"""
@@ -239,6 +240,10 @@ class CursorWrapper(object):
 		
 		body = response.body_string()
 		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
+		# save the remote timestamp
+		str_timestamp = [v for k, v in response.headerslist if k == 'Date'][0]
+		sf_last_timestamp = datetime.datetime.strptime(str_timestamp,
+			'%a, %d %b %Y %H:%M:%S GMT').replace(tzinfo=pytz.utc)
 		
 		if(jsrc):
 			data = json.loads(jsrc)

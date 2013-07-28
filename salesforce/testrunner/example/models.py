@@ -62,7 +62,8 @@ class Account(SalesforceModel):
 	Description = models.TextField()
 	#IsPersonAccount = models.BooleanField()
 	#PersonEmail = models.CharField(max_length=100)
-	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate')
+	LastModifiedDate = sf_models.SfDateTimeField(db_column='LastModifiedDate', sf_read_only=True)
+	CreatedDate = sf_models.SfDateTimeField(db_column='CreatedDate', sf_read_only=True)
 	
 	def __unicode__(self):
 		return self.FirstName + ' ' + self.LastName
@@ -119,6 +120,7 @@ class Contact(SalesforceModel):
 	class Meta:
 		db_table = 'Contact'
 	LastName = models.CharField(max_length=255, db_column='LastName')
+	LastModifiedDate = sf_models.SfDateTimeField(db_column='LastModifiedDate', sf_read_only=True)
 
 class Email(SalesforceModel):
 	class Meta:

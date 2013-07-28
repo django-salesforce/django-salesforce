@@ -6,11 +6,13 @@
 #
 
 import datetime
+import pytz
 
 from django.conf import settings
 from django.test import TestCase
 
 from salesforce.testrunner.example.models import Account, Lead, ChargentOrder, TimbaSurveysQuestion, Email
+import salesforce
 
 import logging
 log = logging.getLogger(__name__)
@@ -60,20 +62,22 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test updating a date.
 		"""
-		self.skipTest("Need to find a suitable *standard* model field to test datetime updates.")
 		
 		account = Account.objects.all()[0]
-		account.LastLogin = now = datetime.datetime.now()
 		account.save()
+		now = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
+		last_timestamp = salesforce.backend.query.sf_last_timestamp
 		
 		saved = Account.objects.get(pk=account.pk)
-		self.assertEqual(account.LastLogin, now)
+		self.assertGreaterEqual(saved.LastModifiedDate, now)
+		self.assertLess(saved.LastModifiedDate, now + datetime.timedelta(seconds=2))
+		self.assertEqual(saved.LastModifiedDate, last_timestamp)
 	
 	def test_insert_date(self):
 		"""
 		Test inserting a date.
 		"""
-		self.skipTest("Need to find a suitable *standard* model field to test datetime inserts.")
+		self.skipTest("TODO write some test with sf_models.DateTimeField that is not read_only.")
 		
 		now = datetime.datetime.now()
 		account = Account(
