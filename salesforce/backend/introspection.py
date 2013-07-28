@@ -109,6 +109,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	def get_table_description(self, cursor, table_name):
 		"Returns a description of the table, with the DB-API cursor.description interface."
 		result = []
+		import pdb; pdb.set_trace()
 		for field in self.table_description_cache(table_name)['fields']:
 			params = {}
 			if not field['updateable']:
