@@ -14,6 +14,7 @@ import logging
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseIntrospection
+from django.utils.datastructures import SortedDict
 from django.utils.encoding import force_unicode
 
 from salesforce.backend import compiler, query
@@ -28,31 +29,31 @@ log = logging.getLogger(__name__)
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
 	data_types_reverse = {
-		'base64'                        : 'SfTextField',
-		'boolean'                       : 'SfBooleanField',
-		'byte'                          : 'SfSmallIntegerField',
-		'date'                          : 'SfDateField',
-		'datetime'                      : 'SfDateTimeField',
-		'double'                        : 'SfDecimalField',
-		'int'                           : 'SfIntegerField',
-		'string'                        : 'SfCharField',
-		'time'                          : 'SfTimeField',
-		'anyType'                       : 'SfCharField',
-		'calculated'                    : 'SfCharField',
-		'combobox'                      : 'SfCharField',
-		'currency'                      : 'SfCharField',
-		'datacategorygroupreference'    : 'SfCharField',
-		'email'                         : 'SfEmailField',
-		'encryptedstring'               : 'SfCharField',
-		'id'                            : ('SfCharField', {'editable': False}), # ForeignKey or # TODO but RecordType is editable with a choices list
-		'masterrecord'                  : 'SfCharField',
-		'multipicklist'                 : 'SfCharField',  # TODO a descendant with a special validator + widget
-		'percent'                       : 'SfDecimalField',
-		'phone'                         : 'SfCharField',
-		'picklist'                      : 'SfCharField',  # TODO {'choices': (...)}
-		'reference'                     : 'SfCharField',  # TODO ForeignKey
-		'textarea'                      : 'SfTextField',
-		'url'                           : 'SfUrlField',
+		'base64'                        : 'TextField',
+		'boolean'                       : 'BooleanField',
+		'byte'                          : 'SmallIntegerField',
+		'date'                          : 'DateField',
+		'datetime'                      : 'DateTimeField',
+		'double'                        : 'DecimalField',
+		'int'                           : 'IntegerField',
+		'string'                        : 'CharField',
+		'time'                          : 'TimeField',
+		'anyType'                       : 'CharField',
+		'calculated'                    : 'CharField',
+		'combobox'                      : 'CharField',
+		'currency'                      : 'DecimalField',
+		'datacategorygroupreference'    : 'CharField',
+		'email'                         : 'EmailField',
+		'encryptedstring'               : 'CharField',
+		'id'                            : ('CharField', {'editable': False}), # ForeignKey or # TODO but RecordType is editable with a choices list
+		'masterrecord'                  : 'CharField',
+		'multipicklist'                 : 'CharField',  # TODO a descendant with a special validator + widget
+		'percent'                       : 'DecimalField',
+		'phone'                         : 'CharField',
+		'picklist'                      : 'CharField',  # TODO {'choices': (...)}
+		'reference'                     : 'ForeignKey',
+		'textarea'                      : 'TextField',
+		'url'                           : 'URLField',
 	}
 	
 	def __init__(self, conn):
@@ -109,11 +110,29 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	def get_table_description(self, cursor, table_name):
 		"Returns a description of the table, with the DB-API cursor.description interface."
 		result = []
-		import pdb; pdb.set_trace()
 		for field in self.table_description_cache(table_name)['fields']:
-			params = {}
+			params = SortedDict()
+			if field['label']:
+				params['verbose_name'] = field['label']
 			if not field['updateable']:
 				params['sf_read_only'] = True
+			if field['defaultValue'] is not None:
+				params['default'] = field['defaultValue']
+			if field['inlineHelpText']:
+				params['help_text'] = field['inlineHelpText']
+			if field['picklistValues']:
+				params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
+			if field['referenceTo']:
+				# e.g. the name 'Account' instead of 'AccountId'
+				#if not field['name'] or not field['relationshipName']:
+				if field['relationshipName'] and field['name'].lower() == field['relationshipName'].lower() + 'id':
+					# change '*id' to '*_id' 
+					field['name'] = field['name'][:-2] + '_' + field['name'][-2:]
+				if 'requires_related_name' in field:
+					import pdb; pdb.set_trace()
+					params['related_name'] = ('%s_%s_set' % (table_name.replace('_', ''), field['name'].replace('_', ''))).lower()
+			if '*2013' in field['name']:
+			    import pdb; pdb.set_trace()
 			result.append((
 				field['name'], # name,
 				field['type'], # type_code,
@@ -131,7 +150,19 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		Returns a dictionary of {field_index: (field_index_other_table, other_table)}
 		representing all relationships to the given table. Indexes are 0-based.
 		"""
-		return dict()
+		table2model = lambda table_name: table_name.title().replace('_', '').replace(' ', '').replace('-', '')
+		result = {}
+		reverse = {}
+		INDEX_OF_PRIMARY_KEY = 0
+		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
+			if field['type'] == 'reference':
+				result[i] = (INDEX_OF_PRIMARY_KEY, field['referenceTo'][0])
+				reverse.setdefault(field['referenceTo'][0], []).append(i)
+		for ref, ilist in reverse.items():
+		    if len(ilist) >1:
+			for i in ilist:
+			    self.table_description_cache(table_name)['fields'][i]['requires_related_name'] = True
+		return result
 	
 	def get_indexes(self, cursor, table_name):
 		"""

@@ -13,6 +13,7 @@ from django.core import exceptions
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
 from django.db import models
+from django.db.models import ForeignKey
 from django.utils.encoding import smart_unicode
 try:
 	## in south >= 0.6, we have to explicitly tell south about this
@@ -74,41 +75,41 @@ class SfField(models.Field):
 		self.sf_read_only = sf_read_only
 
 
-class SfCharField(SfField, models.CharField):
-	"""CharField with read_only attribute for Salesforce."""
+class CharField(SfField, models.CharField):
+	"""CharField with sf_read_only attribute for Salesforce."""
 	pass
-class SfEmailField(SfField, models.EmailField):
-	"""EmailField with read_only attribute for Salesforce."""
+class EmailField(SfField, models.EmailField):
+	"""EmailField with sf_read_only attribute for Salesforce."""
 	pass
-class SfURLField(SfField, models.URLField):
-	"""URLField with read_only attribute for Salesforce."""
+class URLField(SfField, models.URLField):
+	"""URLField with sf_read_only attribute for Salesforce."""
 	pass
-class SfTextField(SfField, models.TextField):
-	"""TextField with read_only attribute for Salesforce."""
-	pass
-
-
-class SfIntegerField(SfField, models.IntegerField):
-	"""IntegerField with read_only attribute for Salesforce."""
-	pass
-class SfSmallIntegerField(SfField, models.SmallIntegerField):
-	"""SmallIntegerField with read_only attribute for Salesforce."""
-	pass
-class SfBooleanField(SfField, models.BooleanField):
-	"""BooleanField with read_only attribute for Salesforce."""
-	pass
-class SfDecimalField(SfField, models.DecimalField):
-	"""DecimalField with read_only attribute for Salesforce."""
+class TextField(SfField, models.TextField):
+	"""TextField with sf_read_only attribute for Salesforce."""
 	pass
 
 
-class SfDateTimeField(SfField, models.DateTimeField):
-	"""DateTimeField with read_only attribute for Salesforce."""
+class IntegerField(SfField, models.IntegerField):
+	"""IntegerField with sf_read_only attribute for Salesforce."""
 	pass
-class SfDateField(SfField, models.DateField):
-	"""DateField with read_only attribute for Salesforce."""
+class SmallIntegerField(SfField, models.SmallIntegerField):
+	"""SmallIntegerField with sf_read_only attribute for Salesforce."""
 	pass
-class SfTimeField(SfField, models.TimeField):
-	"""TimeField with read_only attribute for Salesforce."""
+class BooleanField(SfField, models.BooleanField):
+	"""BooleanField with sf_read_only attribute for Salesforce."""
+	pass
+class DecimalField(SfField, models.DecimalField):
+	"""DecimalField with sf_read_only attribute for Salesforce."""
+	pass
+
+
+class DateTimeField(SfField, models.DateTimeField):
+	"""DateTimeField with sf_read_only attribute for Salesforce."""
+	pass
+class DateField(SfField, models.DateField):
+	"""DateField with sf_read_only attribute for Salesforce."""
+	pass
+class TimeField(SfField, models.TimeField):
+	"""TimeField with sf_read_only attribute for Salesforce."""
 	pass
 
