@@ -39,6 +39,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	supports_unspecified_pk = False
 	can_return_id_from_insert = False
 	supports_select_related = False
+	supports_transactions = False
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	"""

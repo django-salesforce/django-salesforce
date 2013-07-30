@@ -187,9 +187,18 @@ class SalesforceRawQuery(RawQuery):
 
 	def get_columns(self):
 		if self.cursor is None:
-			self.cursor = CursorWrapper(connections[self.using], self)
-			self.cursor.execute(self.sql, self.params)
-		return super(self, SalesforceRawQuery).get_columns()
+			self._execute_query()
+		converter = connections[self.using].introspection.table_name_converter
+		import pdb; pdb.set_trace()
+		sample_res = list(self.cursor.results)
+		self.cursor.results = iter(sample_res)
+		if(len(sample_res) > 0):
+			sample_rec = sample_res[0]
+			return [converter(col) for col in sample_rec.keys() if col != 'attributes']
+
+	def _execute_query(self):
+		self.cursor = CursorWrapper(connections[self.using], self)
+		self.cursor.execute(self.sql, self.params)
 	
 	def __repr__(self):
 		return "<SalesforceRawQuery: %r>" % (self.sql % tuple(self.params))
@@ -202,7 +211,7 @@ class SalesforceQuery(Query):
 	aggregates_module = aggregates
 	
 	def clone(self, klass=None, memo=None, **kwargs):
-		super(self, SalesforceQuery).clone(SalesforceQuery, memo, **kwargs)
+		return Query.clone(self, SalesforceQuery, memo, **kwargs)
 	
 	def has_results(self, using):
 		q = self.clone()
@@ -237,6 +246,8 @@ class CursorWrapper(object):
 		from salesforce.backend import base
 		
 		if(isinstance(self.query, SalesforceQuery)):
+			response = self.execute_select(q, args)
+		elif(isinstance(self.query, SalesforceRawQuery)):
 			response = self.execute_select(q, args)
 		elif(isinstance(self.query, subqueries.InsertQuery)):
 			response = self.execute_insert(self.query)
@@ -343,6 +354,9 @@ class CursorWrapper(object):
 				results = json.loads(jsrc)
 			else:
 				break
+	
+	def __iter__(self):
+		return iter(self.results)
 
 	def fetchone(self):
 		"""

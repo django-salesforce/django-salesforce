@@ -13,7 +13,7 @@ Use a custom QuerySet to generate SOQL queries and results.
 
 from django.db import connections
 from django.db.models import manager
-from django.db.models.query import RawQuery
+from django.db.models.query import RawQuerySet
 
 from salesforce import router
 
@@ -31,7 +31,7 @@ class SalesforceManager(manager.Manager):
 			q = query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
 			return query.SalesforceQuerySet(self.model, query=q, using=self.db)
 
-    def raw(self, raw_query, params=None, *args, **kwargs):
+	def raw(self, raw_query, params=None, *args, **kwargs):
 		from salesforce.backend import query
-		q = query.SalesforceRawQuery(raw_query, self._db, params)
-		return RawQuerySet(raw_query=raw_query, query=q, model=self.model, params=params, using=self._db, *args, **kwargs)
+		q = query.SalesforceRawQuery(raw_query, self.db, params)
+		return RawQuerySet(raw_query=raw_query, model=self.model, query=q, params=params, using=self.db)

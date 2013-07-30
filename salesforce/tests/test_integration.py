@@ -35,6 +35,15 @@ class BasicSOQLTest(TestCase):
 		"""
 		self.test_lead.delete()
 	
+	def test_raw(self):
+		"""
+		Get the first five account records.
+		"""
+		for account in Account.objects.raw("SELECT Id, LastName, FirstName FROM Account"):
+			pass
+		else:
+			self.fail("Didn't load any accounts via raw SOQL")
+	
 	def test_select_all(self):
 		"""
 		Get the first five account records.
