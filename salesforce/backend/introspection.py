@@ -27,6 +27,7 @@ except ImportError, e:
 
 log = logging.getLogger(__name__)
 
+
 class DatabaseIntrospection(BaseDatabaseIntrospection):
 	data_types_reverse = {
 		'base64'                        : 'TextField',
@@ -45,12 +46,12 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		'datacategorygroupreference'    : 'CharField',
 		'email'                         : 'EmailField',
 		'encryptedstring'               : 'CharField',
-		'id'                            : ('CharField', {'editable': False}), # ForeignKey or # TODO but RecordType is editable with a choices list
+		'id'                            : 'AutoField',
 		'masterrecord'                  : 'CharField',
 		'multipicklist'                 : 'CharField',  # TODO a descendant with a special validator + widget
 		'percent'                       : 'DecimalField',
 		'phone'                         : 'CharField',
-		'picklist'                      : 'CharField',  # TODO {'choices': (...)}
+		'picklist'                      : 'CharField',  # TODO ('CharField', {'choices': (...)})
 		'reference'                     : 'ForeignKey',
 		'textarea'                      : 'TextField',
 		'url'                           : 'URLField',
@@ -100,6 +101,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			body = response.body_string()
 			jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
 			self._table_description_cache[table] = json.loads(jsrc)
+			assert self._table_description_cache[table]['fields'][0]['type'] == 'id'
+			assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
+			del self._table_description_cache[table]['fields'][0]
 		return self._table_description_cache[table]
 	
 	def get_table_list(self, cursor):
@@ -123,16 +127,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			if field['picklistValues']:
 				params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
 			if field['referenceTo']:
-				# e.g. the name 'Account' instead of 'AccountId'
-				#if not field['name'] or not field['relationshipName']:
 				if field['relationshipName'] and field['name'].lower() == field['relationshipName'].lower() + 'id':
-					# change '*id' to '*_id' 
+					# change '*id' to '*_id', e.g. the name 'Account' instead of 'AccountId' 
 					field['name'] = field['name'][:-2] + '_' + field['name'][-2:]
-				if 'requires_related_name' in field:
-					import pdb; pdb.set_trace()
-					params['related_name'] = ('%s_%s_set' % (table_name.replace('_', ''), field['name'].replace('_', ''))).lower()
-			if '*2013' in field['name']:
-			    import pdb; pdb.set_trace()
 			result.append((
 				field['name'], # name,
 				field['type'], # type_code,
@@ -150,6 +147,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		Returns a dictionary of {field_index: (field_index_other_table, other_table)}
 		representing all relationships to the given table. Indexes are 0-based.
 		"""
+		global last_introspected_model 
 		table2model = lambda table_name: table_name.title().replace('_', '').replace(' ', '').replace('-', '')
 		result = {}
 		reverse = {}
@@ -159,9 +157,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 				result[i] = (INDEX_OF_PRIMARY_KEY, field['referenceTo'][0])
 				reverse.setdefault(field['referenceTo'][0], []).append(i)
 		for ref, ilist in reverse.items():
-		    if len(ilist) >1:
-			for i in ilist:
-			    self.table_description_cache(table_name)['fields'][i]['requires_related_name'] = True
+			if len(ilist) >1:
+				for i in ilist:
+					self.table_description_cache(table_name)['fields'][i]['requires_related_name'] = True
+		last_introspected_model = table2model(table_name)
 		return result
 	
 	def get_indexes(self, cursor, table_name):

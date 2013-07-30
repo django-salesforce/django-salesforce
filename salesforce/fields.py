@@ -40,6 +40,7 @@ class SalesforceAutoField(fields.Field):
 		kwargs['blank'] = False
 		kwargs['null'] = False
 		kwargs['default'] = None
+		#kwargs.pop('sf_read_only', None)  # TODO currently unused
 		fields.Field.__init__(self, *args, **kwargs)
 	
 	def get_internal_type(self):
@@ -113,3 +114,4 @@ class TimeField(SfField, models.TimeField):
 	"""TimeField with sf_read_only attribute for Salesforce."""
 	pass
 
+AutoField = SalesforceAutoField

@@ -1,4 +1,6 @@
 from django.core.management.commands.inspectdb import Command as InspectDBCommand
+import re
+import salesforce
 
 class Command(InspectDBCommand):
 
@@ -25,7 +27,12 @@ class Command(InspectDBCommand):
 	def normalize_col_name(self, col_name, used_column_names, is_relation):
 		new_name, field_params, field_notes = super(Command, self).normalize_col_name(col_name, used_column_names, is_relation)
 		if self.db_module == 'salesforce':
-			if is_relation and col_name.lower().endswith('_id'):
-				field_params['db_column'] = col_name[:-3] + col_name[-2:]
+			if is_relation:
+				if col_name.lower().endswith('_id'):
+					field_params['db_column'] = col_name[:-3] + col_name[-2:]
+				field_params['related_name'] = ('%s_%s_set' % (
+					salesforce.backend.introspection.last_introspected_model,
+					re.sub('_Id$', '', new_name).replace('_', '')
+					)).lower()
 			field_notes = [x for x in field_notes if x != 'Field name made lowercase.']
 		return new_name, field_params, field_notes
