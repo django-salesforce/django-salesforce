@@ -10,6 +10,7 @@ Salesforce introspection code.
 """
 
 import logging
+import re
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -147,19 +148,21 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		Returns a dictionary of {field_index: (field_index_other_table, other_table)}
 		representing all relationships to the given table. Indexes are 0-based.
 		"""
-		global last_introspected_model 
+		global last_introspected_model, last_with_important_related_name
 		table2model = lambda table_name: table_name.title().replace('_', '').replace(' ', '').replace('-', '')
 		result = {}
 		reverse = {}
+		last_with_important_related_name = []
 		INDEX_OF_PRIMARY_KEY = 0
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
 			if field['type'] == 'reference':
 				result[i] = (INDEX_OF_PRIMARY_KEY, field['referenceTo'][0])
-				reverse.setdefault(field['referenceTo'][0], []).append(i)
+				reverse.setdefault(field['referenceTo'][0], []).append(field['name'])
 		for ref, ilist in reverse.items():
-			if len(ilist) >1:
-				for i in ilist:
-					self.table_description_cache(table_name)['fields'][i]['requires_related_name'] = True
+			similar_back_references = [x['name'] for x in self.table_description_cache(ref)['fields']
+				if re.sub('Id$', '', x['name']).lower() == table2model(table_name).lower()]
+			if len(ilist) >1 or similar_back_references:  # add `related_name` only if necessary
+				last_with_important_related_name.extend(ilist)
 		last_introspected_model = table2model(table_name)
 		return result
 	

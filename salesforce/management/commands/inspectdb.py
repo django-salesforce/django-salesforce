@@ -8,6 +8,8 @@ class Command(InspectDBCommand):
 		self._database = options.get('database', 'default')
 		try:
 			for line in self.handle_inspection(options):
+				line = line.replace(" Field renamed because it contained more than one '_' in a row.", "")
+				line = re.sub(' #$', '', line)
 				self.stdout.write("%s\n" % line)
 		except NotImplementedError:
 			raise CommandError("Database inspection isn't supported for the currently selected database backend.")
@@ -30,9 +32,10 @@ class Command(InspectDBCommand):
 			if is_relation:
 				if col_name.lower().endswith('_id'):
 					field_params['db_column'] = col_name[:-3] + col_name[-2:]
-				field_params['related_name'] = ('%s_%s_set' % (
-					salesforce.backend.introspection.last_introspected_model,
-					re.sub('_Id$', '', new_name).replace('_', '')
-					)).lower()
+				if field_params['db_column'] in salesforce.backend.introspection.last_with_important_related_name:
+					field_params['related_name'] = ('%s_%s_set' % (
+						salesforce.backend.introspection.last_introspected_model,
+						re.sub('_Id$', '', new_name).replace('_', '')
+						)).lower()
 			field_notes = [x for x in field_notes if x != 'Field name made lowercase.']
 		return new_name, field_params, field_notes
