@@ -47,19 +47,19 @@ class BasicSOQLTest(TestCase):
 		Get the first five account records.
 		"""
 		accounts = Account.objects.all()[0:5]
-		self.assertEqual(len(accounts), 5)
+		self.assertEqual(len(accounts), 2)
 	
 	def test_select_all(self):
 		"""
 		Get the first five account records.
 		"""
 		accounts = Account.objects.all()[0:5]
-		self.assertEqual(len(accounts), 5)
+		self.assertEqual(len(accounts), 2)
 	
 	def test_foreign_key(self):
 		account = Account.objects.all()[0]
 		user = account.Owner
-		self.assertEqual(user.Email, 'admins@freelancersunion.org.prod001')
+		self.assertEqual(user.Email, 'pchristensen@freelancersunion.org')
 	
 	def test_update_date(self):
 		"""
