@@ -34,4 +34,4 @@ class SalesforceManager(manager.Manager):
 	def raw(self, raw_query, params=None, *args, **kwargs):
 		from salesforce.backend import query
 		q = query.SalesforceRawQuery(raw_query, self.db, params)
-		return RawQuerySet(raw_query=raw_query, model=self.model, query=q, params=params, using=self.db)
+		return query.SalesforceRawQuerySet(raw_query=raw_query, model=self.model, query=q, params=params, using=self.db)

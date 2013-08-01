@@ -39,10 +39,8 @@ class BasicSOQLTest(TestCase):
 		"""
 		Get the first five account records.
 		"""
-		for account in Account.objects.raw("SELECT Id, LastName, FirstName FROM Account"):
-			pass
-		else:
-			self.fail("Didn't load any accounts via raw SOQL")
+		accounts = Account.objects.raw("SELECT Id, LastName, FirstName FROM Account")
+		self.assertEqual(len(accounts), 2)
 	
 	def test_select_all(self):
 		"""

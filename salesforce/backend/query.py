@@ -164,6 +164,15 @@ def get_resource(url):
 	log.debug('Request API URL: %s' % url)
 	return resource
 
+class SalesforceRawQuerySet(query.RawQuerySet):
+	def __len__(self):
+		if(self.query.cursor is None):
+			# force the query
+			self.query.get_columns()
+			return len(self.query.cursor.results)
+		else:
+			return 0;
+
 class SalesforceQuerySet(query.QuerySet):
 	"""
 	Use a custom SQL compiler to generate SOQL-compliant queries.
@@ -189,12 +198,9 @@ class SalesforceRawQuery(RawQuery):
 		if self.cursor is None:
 			self._execute_query()
 		converter = connections[self.using].introspection.table_name_converter
-		import pdb; pdb.set_trace()
-		sample_res = list(self.cursor.results)
-		self.cursor.results = iter(sample_res)
-		if(len(sample_res) > 0):
-			sample_rec = sample_res[0]
-			return [converter(col) for col in sample_rec.keys() if col != 'attributes']
+		if(len(self.cursor.results) > 0):
+			return [converter(col) for col in self.cursor.results[0].keys() if col != 'attributes']
+		return []
 
 	def _execute_query(self):
 		self.cursor = CursorWrapper(connections[self.using], self)
@@ -232,7 +238,7 @@ class CursorWrapper(object):
 		connection_created.send(sender=self.__class__, connection=self)
 		self.settings_dict = conn.settings_dict
 		self.query = query
-		self.results = iter([])
+		self.results = []
 		self.rowcount = None
 	
 	@property
@@ -280,7 +286,7 @@ class CursorWrapper(object):
 			
 			self.results = self.query_results(data)
 		else:
-			self.results = iter([])
+			self.results = []
 	
 	def execute_select(self, q, args):
 		processed_sql = q % process_args(args)
@@ -339,9 +345,10 @@ class CursorWrapper(object):
 		return handle_api_exceptions(url, resource.delete, headers=headers)
 	
 	def query_results(self, results):
+		output = []
 		while True:
 			for rec in results['records']:
-				yield rec
+				output.append(rec)
 
 			if results['done']:
 				break
@@ -354,6 +361,7 @@ class CursorWrapper(object):
 				results = json.loads(jsrc)
 			else:
 				break
+		return output
 	
 	def __iter__(self):
 		return iter(self.results)
@@ -363,7 +371,7 @@ class CursorWrapper(object):
 		Fetch a single result from a previously executed query.
 		"""
 		try:
-			return next(self.results)
+			return self.results.pop(0)
 		except StopIteration:
 			return None
 
