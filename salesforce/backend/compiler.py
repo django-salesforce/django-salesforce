@@ -30,6 +30,12 @@ class SQLCompiler(compiler.SQLCompiler):
 	"""
 	A subclass of the default SQL compiler for the SOQL dialect.
 	"""
+	def resolve_columns(self, row, fields):
+		result = []
+		for field in fields:
+			result.append(row[field.name])
+		return result
+
 	def get_columns(self, with_aliases=False):
 		"""
 		Remove table names and strip quotes from column names.
