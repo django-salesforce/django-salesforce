@@ -217,7 +217,7 @@ class SalesforceQuery(Query):
 	aggregates_module = aggregates
 	
 	def clone(self, klass=None, memo=None, **kwargs):
-		return Query.clone(self, SalesforceQuery, memo, **kwargs)
+		return Query.clone(self, klass, memo, **kwargs)
 	
 	def has_results(self, using):
 		q = self.clone()
