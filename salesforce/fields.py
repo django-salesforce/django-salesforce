@@ -13,7 +13,6 @@ from django.core import exceptions
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
 from django.db import models
-from django.db.models import ForeignKey
 from django.utils.encoding import smart_unicode
 try:
 	## in south >= 0.6, we have to explicitly tell south about this
@@ -24,6 +23,12 @@ try:
 	add_introspection_rules([], ["^salesforce\.fields\.SalesforceAutoField"])
 except ImportError:
 	pass
+
+FULL_WRITABLE  = 0
+NOT_UPDATEABLE = 1
+NOT_CREATEABLE = 2
+READ_ONLY   = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
+
 
 class SalesforceAutoField(fields.Field):
 	"""
@@ -67,9 +72,19 @@ class SalesforceAutoField(fields.Field):
 		return None
 
 class SfField(models.Field):
-	"""Add support of sf_read_only attribute for Salesforce fields."""
+	"""
+	Add support of sf_read_only attribute for Salesforce fields.
+
+		sf_read_only=3 (READ_ONLY):  The field can not be specified neither on insert or update.
+			e.g. LastModifiedDate (the most frequent type of read only)
+		sf_read_only=1 (NOT_UPDATEABLE):  The field can be specified on insert but can not be later never modified.
+			e.g. ContactId in User object (relative frequent)
+		sf_read_only=2 (NOT_CREATEABLE):  The field can not be specified on insert but can be later modified.
+			e.g. RecordType.IsActive or Lead.EmailBouncedReason
+		sf_read_only=0:  normal writable (default)
+	"""
 	def __init__(self, *args, **kwargs):
-		sf_read_only = kwargs.pop('sf_read_only', False)
+		sf_read_only = kwargs.pop('sf_read_only', 0)
 		if sf_read_only:
 			kwargs['editable'] = False
 		super(SfField, self).__init__(*args, **kwargs)
@@ -112,6 +127,10 @@ class DateField(SfField, models.DateField):
 	pass
 class TimeField(SfField, models.TimeField):
 	"""TimeField with sf_read_only attribute for Salesforce."""
+	pass
+
+class ForeignKey(SfField, models.ForeignKey):
+	"""ForeignKey with sf_read_only attribute for Salesforce."""
 	pass
 
 AutoField = SalesforceAutoField

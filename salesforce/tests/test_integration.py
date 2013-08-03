@@ -11,7 +11,7 @@ import pytz
 from django.conf import settings
 from django.test import TestCase
 
-from salesforce.testrunner.example.models import Account, Lead, ChargentOrder, TimbaSurveysQuestion, Email
+from salesforce.testrunner.example.models import Account, Lead, ChargentOrder
 import salesforce
 
 import logging
@@ -65,7 +65,9 @@ class BasicSOQLTest(TestCase):
 		
 		account = Account.objects.all()[0]
 		account.save()
-		now = datetime.datetime.utcnow().replace(tzinfo=pytz.utc)
+		now = datetime.datetime.utcnow()
+		if hasattr(settings, 'USE_TZ'):  # if Django 1.4+
+			now = now.replace(tzinfo=pytz.utc)
 		last_timestamp = salesforce.backend.query.sf_last_timestamp
 		
 		saved = Account.objects.get(pk=account.pk)
@@ -93,20 +95,6 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(saved.IsPersonAccount, False)
 		
 		saved.delete()
-	
-	def test_update_date_custom(self):
-		"""
-		Test updating a date in custom field.
-		"""
-		# TODO Read-only fields like automatically updated DateCreated, DateModified
-		# can not be used in models, otherwise nothing in that model can be saved
-		
-		email = Email.objects.get(Contact='003c000000Lja0J')
-		email.LastUsedDate = now = datetime.datetime.now()
-		email.save()
-		
-		saved = Email.objects.get(pk=email.pk)
-		self.assertEqual(email.LastUsedDate, now)
 	
 	def test_get(self):
 		"""
@@ -177,6 +165,21 @@ class BasicSOQLTest(TestCase):
 		"""
 		Make sure custom objects work.
 		"""
+		from salesforce.testrunner.example.models import TimbaSurveysQuestion
 		orders = TimbaSurveysQuestion.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
 
+	def test_update_date_custom(self):
+		"""
+		Test updating a date in custom field.
+		"""
+		# TODO Read-only fields like automatically updated DateCreated, DateModified
+		# can not be used in models, otherwise nothing in that model can be saved
+		
+		email = Email.objects.get(Contact='003c000000Lja0J')
+		email.LastUsedDate = now = datetime.datetime.now()
+		email.save()
+		
+		saved = Email.objects.get(pk=email.pk)
+		self.assertEqual(email.LastUsedDate, now)
+	

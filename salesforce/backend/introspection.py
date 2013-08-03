@@ -119,8 +119,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			params = SortedDict()
 			if field['label']:
 				params['verbose_name'] = field['label']
-			if not field['updateable']:
-				params['sf_read_only'] = True
+			if not field['updateable'] or not field['createable']:
+				# Fields that are result of a formula or system fields modified by triggers or by other apex code
+				params['sf_read_only'] = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
 			if field['defaultValue'] is not None:
 				params['default'] = field['defaultValue']
 			if field['inlineHelpText']:
@@ -148,16 +149,19 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		Returns a dictionary of {field_index: (field_index_other_table, other_table)}
 		representing all relationships to the given table. Indexes are 0-based.
 		"""
-		global last_introspected_model, last_with_important_related_name
+		global last_introspected_model, last_with_important_related_name, last_read_only
 		table2model = lambda table_name: table_name.title().replace('_', '').replace(' ', '').replace('-', '')
 		result = {}
 		reverse = {}
 		last_with_important_related_name = []
+		last_read_only = {}
 		INDEX_OF_PRIMARY_KEY = 0
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
 			if field['type'] == 'reference':
 				result[i] = (INDEX_OF_PRIMARY_KEY, field['referenceTo'][0])
 				reverse.setdefault(field['referenceTo'][0], []).append(field['name'])
+				if not field['updateable'] or not field['createable']:
+					last_read_only[field['name']] = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
 		for ref, ilist in reverse.items():
 			similar_back_references = [x['name'] for x in self.table_description_cache(ref)['fields']
 				if re.sub('Id$', '', x['name']).lower() == table2model(table_name).lower()]
@@ -177,3 +181,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		for field in self.table_description_cache(table_name)['fields']:
 			result[field['name']] = dict(primary_key=(field['type'] == 'id'), unique=field['unique'])
 		return result
+
+	def get_additional_meta(self, table_name):
+		item = [x for x in self.table_list_cache['sobjects'] if x['name'] == table_name][0]
+		return ["verbose_name = '%s'" % item['labelPlural'],
+			"verbose_name_plural = '%s'" % item['labelPlural'],
+			"# keyPrefix = '%s'" % item['keyPrefix'], 
+
+		   ]

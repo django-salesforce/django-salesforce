@@ -31,6 +31,7 @@ import pytz
 
 from salesforce import auth, models
 from salesforce.backend import compiler
+from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 try:
 	import json
@@ -39,8 +40,8 @@ except ImportError, e:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v24.0'
-SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.000+0000'
+API_STUB = '/services/data/v28.0'
+SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'  # used with 3 decimal places, mostly rounded to seconds
 if DJANGO_14:
 	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S-00:00'
 else:
@@ -135,6 +136,9 @@ def prep_for_deserialize(model, record, using):
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
 				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+			elif (x.__class__.__name__ == 'TimeField' and field_val is not None and django.VERSION[:2] <= (1, 3) and
+					field_val.endswith('Z')):
+				fields[x.name] = field_val[:-1]  # Fix time e.g. "23:59:59.000Z"
 			else:
 				fields[x.name] = field_val
 	
@@ -149,16 +153,18 @@ def extract_values(query):
 	fields = query.model._meta.fields
 	for index in range(len(fields)):
 		field = fields[index]
-		if field.get_internal_type() == 'AutoField' or getattr(field, 'sf_read_only', False):
+		if (field.get_internal_type() == 'AutoField' or
+				isinstance(query, subqueries.UpdateQuery) and (getattr(field, 'sf_read_only', 0) & NOT_UPDATEABLE) != 0 or
+				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
 			[bound_field] = [x for x in query.values if x[0].name == field.name]
 			[arg] = process_json_args([bound_field[2]])
 			d[bound_field[0].db_column or bound_field[0].name] = arg
-		elif(DJANGO_14):
+		elif(DJANGO_14):  # Django >= 1.4
 			[arg] = process_json_args([getattr(query.objs[0], field.name)])
 			d[field.db_column or field.name] = arg
-		else:
+		else:   # Django == 1.3
 			[arg] = process_json_args([query.values[index][1]])
 			d[field.db_column or field.name] = arg
 	return d
@@ -235,6 +241,9 @@ class CursorWrapper(object):
 			response = self.execute_update(self.query)
 		elif(isinstance(self.query, subqueries.DeleteQuery)):
 			response = self.execute_delete(self.query)
+		elif (self.query is None and hasattr(q, 'lower') and q.lower().startswith('select')):
+			# Executing custom SOQL directy by cursor
+			response = self.execute_select(q, args or {})
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % self.query)
 		
@@ -272,6 +281,8 @@ class CursorWrapper(object):
 			q	= processed_sql,
 		)))
 		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
+		# Compression works currently only for short data, approximately for one packet
+		#headers['Accept-Encoding'] = 'gzip'
 		resource = get_resource(url)
 		
 		log.debug(processed_sql)
@@ -290,6 +301,12 @@ class CursorWrapper(object):
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		headers['Content-Type'] = 'application/json'
 		post_data = extract_values(query)
+		# TODO fix defaultedOnCreate with not nillable
+		# Salesforce can assign a default value for fields with property `defaultedOnCreate=True`,
+		# e.g. it automatically assigns the logged user to `OwnerId` if the field is not specified
+		# but the insert fails if the field is None
+		#post_data = dict((k, v) for k, v in post_data.items() if v is not None or
+		#	[f.null for f in query.model._meta.fields if f.db_column == k][0])
 		resource = get_resource(url)
 		log.debug('INSERT %s%s' % (table, post_data))
 		return handle_api_exceptions(url, resource.post, headers=headers, payload=json.dumps(post_data))
@@ -406,6 +423,7 @@ json_conversions = {
 	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: date_literal,
+	datetime.time: lambda d,c: datetime.time.strftime(d, "%H:%M:%S.%f"),
 	decimal.Decimal: lambda s,d: float(s),
 	models.SalesforceModel: sobj_id,
 }
