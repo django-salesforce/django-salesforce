@@ -16,10 +16,10 @@ class Command(InspectDBCommand):
 			for line in self.handle_inspection(options):
 				line = line.replace(" Field renamed because it contained more than one '_' in a row.", "")
 				line = re.sub(' #$', '', line)
-				if django.VERSION[:2] < (1, 5):
+				if django.VERSION[:2] < (1,5):
 					# prevent problems with mutual dependencies etc.
 					line = re.sub(r'(?<=models.ForeignKey\()(\w+)',  r"'\1'", line)
-				if django.VERSION[:2] == (1, 5):
+				elif django.VERSION[:2] == (1,5):
 					# fix bug in Django 1.5
 					line = line.replace("''self''", "'self'")
 				self.stdout.write("%s\n" % line)

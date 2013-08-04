@@ -19,6 +19,7 @@ from django.utils.datastructures import SortedDict
 from django.utils.encoding import force_unicode
 
 from salesforce.backend import compiler, query
+from salesforce import models
 
 import restkit
 try:
@@ -49,10 +50,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		'encryptedstring'               : 'CharField',
 		'id'                            : 'AutoField',
 		'masterrecord'                  : 'CharField',
-		'multipicklist'                 : 'CharField',  # TODO a descendant with a special validator + widget
+		'multipicklist'                 : 'CharField',  # can be implemented by a descendant with a special validator + widget
 		'percent'                       : 'DecimalField',
 		'phone'                         : 'CharField',
-		'picklist'                      : 'CharField',  # TODO ('CharField', {'choices': (...)})
+		'picklist'                      : 'CharField',  # ('CharField', {'choices': (...)})
 		'reference'                     : 'ForeignKey',
 		'textarea'                      : 'TextField',
 		'url'                           : 'URLField',
@@ -121,7 +122,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 				params['verbose_name'] = field['label']
 			if not field['updateable'] or not field['createable']:
 				# Fields that are result of a formula or system fields modified by triggers or by other apex code
-				params['sf_read_only'] = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
+				sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
+				# use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
+				params['sf_read_only'] = reverse_models_names[sf_read_only]
 			if field['defaultValue'] is not None:
 				params['default'] = field['defaultValue']
 			if field['inlineHelpText']:
@@ -161,7 +164,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 				result[i] = (INDEX_OF_PRIMARY_KEY, field['referenceTo'][0])
 				reverse.setdefault(field['referenceTo'][0], []).append(field['name'])
 				if not field['updateable'] or not field['createable']:
-					last_read_only[field['name']] = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
+					sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
+					# use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
+					last_read_only[field['name']] = reverse_models_names[sf_read_only]
 		for ref, ilist in reverse.items():
 			similar_back_references = [x['name'] for x in self.table_description_cache(ref)['fields']
 				if re.sub('Id$', '', x['name']).lower() == table2model(table_name).lower()]
@@ -188,4 +193,26 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			"verbose_name_plural = '%s'" % item['labelPlural'],
 			"# keyPrefix = '%s'" % item['keyPrefix'], 
 
-		   ]
+		]
+
+
+class SymbolicModelsName(object):
+	"""A symbolic name from the `models` module.
+	>>> assert models.READ_ONLY == 3
+	>>> SymbolicName('READ_ONLY').value
+	3
+	>>> [SymbolicName('READ_ONLY')]
+	[models.READ_ONLY]
+	"""
+	def __init__(self, name):
+		self.name = 'models.%s' % name
+		self.value = int(getattr(models, name))
+	def __repr__(self):
+		return self.name
+	def __int__(self):
+	    	return self.value
+
+
+reverse_models_names = dict((obj.value, obj) for obj in
+	[SymbolicModelsName(name) for name in ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')]
+)

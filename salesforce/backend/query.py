@@ -136,7 +136,7 @@ def prep_for_deserialize(model, record, using):
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
 				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
-			elif (x.__class__.__name__ == 'TimeField' and field_val is not None and django.VERSION[:2] <= (1, 3) and
+			elif (x.__class__.__name__ == 'TimeField' and field_val is not None and django.VERSION[:2] <= (1,3) and
 					field_val.endswith('Z')):
 				fields[x.name] = field_val[:-1]  # Fix time e.g. "23:59:59.000Z"
 			else:
@@ -301,12 +301,6 @@ class CursorWrapper(object):
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		headers['Content-Type'] = 'application/json'
 		post_data = extract_values(query)
-		# TODO fix defaultedOnCreate with not nillable
-		# Salesforce can assign a default value for fields with property `defaultedOnCreate=True`,
-		# e.g. it automatically assigns the logged user to `OwnerId` if the field is not specified
-		# but the insert fails if the field is None
-		#post_data = dict((k, v) for k, v in post_data.items() if v is not None or
-		#	[f.null for f in query.model._meta.fields if f.db_column == k][0])
 		resource = get_resource(url)
 		log.debug('INSERT %s%s' % (table, post_data))
 		return handle_api_exceptions(url, resource.post, headers=headers, payload=json.dumps(post_data))

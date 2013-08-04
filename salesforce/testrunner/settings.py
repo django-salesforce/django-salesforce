@@ -1,5 +1,6 @@
 # Django settings for testrunner project.
 try:
+        # there is only separated DATABASES = {'salesforce': { ...many secret values...}}
 	import settings_secret
 except ImportError:
 	pass

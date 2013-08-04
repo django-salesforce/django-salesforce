@@ -11,7 +11,8 @@ import pytz
 from django.conf import settings
 from django.test import TestCase
 
-from salesforce.testrunner.example.models import Account, Lead, ChargentOrder
+from salesforce.testrunner.example.models import Account, Contact, Lead, ChargentOrder
+import django
 import salesforce
 
 import logging
@@ -58,7 +59,7 @@ class BasicSOQLTest(TestCase):
 		user = account.Owner
 		self.assertEqual(user.Email, settings.DATABASES['salesforce']['USER'].rsplit('.', 1)[0])  # 'admins@freelancersunion.org.prod001'
 	
-	def test_update_date(self):
+	def test_update_date_auto(self):
 		"""
 		Test updating a date.
 		"""
@@ -66,27 +67,28 @@ class BasicSOQLTest(TestCase):
 		account = Account.objects.all()[0]
 		account.save()
 		now = datetime.datetime.utcnow()
-		if hasattr(settings, 'USE_TZ'):  # if Django 1.4+
-			now = now.replace(tzinfo=pytz.utc)
 		last_timestamp = salesforce.backend.query.sf_last_timestamp
-		
+		if django.VERSION[:2] >= (1,4):
+			now = now.replace(tzinfo=pytz.utc)
+		else:
+			last_timestamp = last_timestamp.replace(tzinfo=None)
 		saved = Account.objects.get(pk=account.pk)
 		self.assertGreaterEqual(saved.LastModifiedDate, now)
-		self.assertLess(saved.LastModifiedDate, now + datetime.timedelta(seconds=2))
+		self.assertLess(saved.LastModifiedDate, now + datetime.timedelta(seconds=5))
 		self.assertEqual(saved.LastModifiedDate, last_timestamp)
 	
 	def test_insert_date(self):
 		"""
 		Test inserting a date.
 		"""
-		self.skipTest("TODO write some test with sf_models.DateTimeField that is not read_only.")
+		self.skipTest("TODO Fix this test for yourself please if you have such customize Account.")
 		
 		now = datetime.datetime.now()
 		account = Account(
-			#FirstName = 'Joe',
-			#LastName = 'Freelancer',
+			FirstName = 'Joe',
+			LastName = 'Freelancer',
+			IsPersonAccount = False,
 			LastLogin = now,
-			#IsPersonAccount = False,
 		)
 		account.save()
 		
@@ -108,7 +110,7 @@ class BasicSOQLTest(TestCase):
 		"""
 		Get the test lead record.
 		"""
-		lead = Lead.objects.get(Email__isnull=False)
+		lead = Lead.objects.get(Email__isnull=False, FirstName='User')
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
 	
@@ -171,15 +173,18 @@ class BasicSOQLTest(TestCase):
 
 	def test_update_date_custom(self):
 		"""
-		Test updating a date in custom field.
+		Test updating a timestamp in a normal field.
 		"""
-		# TODO Read-only fields like automatically updated DateCreated, DateModified
-		# can not be used in models, otherwise nothing in that model can be saved
-		
-		email = Email.objects.get(Contact='003c000000Lja0J')
-		email.LastUsedDate = now = datetime.datetime.now()
-		email.save()
-		
-		saved = Email.objects.get(pk=email.pk)
-		self.assertEqual(email.LastUsedDate, now)
-	
+		# create
+		contact = Contact(LastName='test_sf')
+		contact.save()
+		contact = Contact.objects.filter(Name='test_sf')[0]
+		# update
+		contact.EmailBouncedDate = now = datetime.datetime.now().replace(tzinfo=pytz.utc)
+		contact.save()
+		contact = Contact.objects.get(Id=contact.Id)
+		# test
+		self.assertEqual(contact.EmailBouncedDate.utctimetuple(), now.utctimetuple())
+		# delete, including the old failed similar
+		for x in Contact.objects.filter(Name='test_sf'):
+			x.delete()

@@ -5,10 +5,8 @@
 # See LICENSE.md for details
 #
 
-from django.db import models
-
+from salesforce import models as models
 from salesforce.models import SalesforceModel
-from salesforce import models as sf_models
 
 SALUTATIONS = [
 	'Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Prof.'
@@ -25,14 +23,6 @@ INDUSTRIES = [
 ]
 
 class User(SalesforceModel):
-	class Meta:
-		# Every SalesforceModel should use Meta class with db_table name, if some
-		# foreign keys are used, even if the table name is without double underscores.
-		# Otherwise the command `syncdb --database=default` would create broken
-		# references in the default database. (Some tables are created with Meta name,
-		# while other tables are ignored or created with `example_...` name. This
-		# causes runtime errors in inspectdb etc.
-		db_table = 'User'
 	Email = models.CharField(max_length=100)
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
@@ -42,8 +32,6 @@ class Account(SalesforceModel):
 	"""
 	Default Salesforce Account model.
 	"""
-	class Meta:
-		db_table = 'Account'
 	TYPES = [
 		'Analyst', 'Competitor', 'Customer', 'Integrator', 'Investor',
 		'Partner', 'Press', 'Prospect', 'Reseller', 'Other'
@@ -51,6 +39,8 @@ class Account(SalesforceModel):
 	
 	Name = models.CharField(max_length=255)
 	Owner = models.ForeignKey(User, db_column='OwnerId')
+	# Non standard fields that require activating "Person Account" (irreversible changes in Salesforce) 
+	# should not be in Basic SOQL tests
 	#LastName = models.CharField(max_length=80)
 	#FirstName = models.CharField(max_length=40)
 	#Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
@@ -72,18 +62,26 @@ class Account(SalesforceModel):
 	Description = models.TextField()
 	#IsPersonAccount = models.BooleanField()
 	#PersonEmail = models.CharField(max_length=100)
-	LastModifiedDate = sf_models.SfDateTimeField(db_column='LastModifiedDate', sf_read_only=True)
-	CreatedDate = sf_models.SfDateTimeField(db_column='CreatedDate', sf_read_only=True)
+	# Added read only option, otherwise the object can not be never saved
+	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate', sf_read_only=models.READ_ONLY)
 	
 	def __unicode__(self):
-		return self.FirstName + ' ' + self.LastName
+		#return self.FirstName + ' ' + self.LastName
+		return self.Name
+
+class Contact(models.Model):
+	Account = models.ForeignKey(Account, db_column='AccountId', blank=True, null=True)
+	LastName = models.CharField(max_length=240, verbose_name='Last Name')
+	FirstName = models.CharField(max_length=120, verbose_name='First Name', blank=True)
+	Name = models.CharField(max_length=363, verbose_name='Full Name', sf_read_only=models.READ_ONLY)
+	Email = models.EmailField(blank=True, null=True)
+	EmailBouncedDate = models.DateTimeField(verbose_name='Email Bounced Date', blank=True, null=True)
+
 
 class Lead(SalesforceModel):
 	"""
 	Default Salesforce Lead model.
 	"""
-	class Meta:
-		db_table = 'Lead'
 	SOURCES = [
 		'Advertisement', 'Employee Referral', 'External Referral', 'Partner', 'Public Relations',
 		'Seminar - Internal', 'Seminar - Partner', 'Trade Show', 'Web', 'Word of mouth', 'Other',
@@ -116,35 +114,22 @@ class Lead(SalesforceModel):
 	Status = models.CharField(max_length=100, choices=[(x, x) for x in STATUSES])
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Rating = models.CharField(max_length=100, choices=[(x, x) for x in RATINGS])
+	# Added an example of special DateTime field in Salesforce that can not be inserted, but can be updated
+	# TODO write test for it
+	EmailBouncedDate = models.DateTimeField(blank=True, null=True, sf_read_only=models.NOT_CREATEABLE)
 	
 	def __unicode__(self):
 		return self.FirstName + ' ' + self.LastName
 
+# Added a free package for tests (except the paid package ChargentOrders)
+# to verify names with double underscores
 class TimbaSurveysQuestion(SalesforceModel):
 	class Meta:
 		db_table = 'TIMBASURVEYS__SurveyQuestion__c'
 
 	Question = models.CharField(max_length=255, db_column='TIMBASURVEYS__Question__c')
+	Owner = models.ForeignKey(User, db_column='OwnerId')
 	# ...
-
-
-class Contact(SalesforceModel):
-	class Meta:
-		db_table = 'Contact'
-	LastName = models.CharField(max_length=255, db_column='LastName')
-	LastModifiedDate = sf_models.SfDateTimeField(db_column='LastModifiedDate', sf_read_only=True)
-
-class Email(SalesforceModel):
-	class Meta:
-		db_table = 'Email__c'
-
-	#name = models.CharField(max_length=240, db_column=u'Name', editable=False)
-	name = sf_models.SfCharField(max_length=240, db_column=u'Name', sf_read_only=True)
-	created_by = sf_models.SfCharField(max_length=240, db_column=u'CreatedById', sf_read_only=True)
-	Account = models.ForeignKey(Account, db_column='Account__c', null=True)
-	Contact = models.ForeignKey(Contact, db_column='Contact__c')
-	Email = models.CharField(max_length=255, db_column='Email__c')
-	LastUsedDate = models.DateTimeField(null=True, db_column='Last_Used_Date__c', blank=True)
 
 class ChargentOrder(SalesforceModel):
 	class Meta:
