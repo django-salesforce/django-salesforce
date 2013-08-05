@@ -3,7 +3,7 @@
 $ python manage.py inspectdb --database=salesforce >salesforce/testrunner/example/models.py
 $ python manage.py validate
 $ python manage.py shell
->>>  execfile('script.py')
+>>>  execfile('slow_test.py')
   (that tries to read ane record from all retrieveable tables, except 4 with extraordinal filter conditions
    and tries to write this record back if the table is updateable, except 11 tables.)
 

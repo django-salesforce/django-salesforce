@@ -84,8 +84,6 @@ class SfField(models.Field):
 	"""
 	def __init__(self, *args, **kwargs):
 		sf_read_only = kwargs.pop('sf_read_only', 0)
-		if sf_read_only:
-			kwargs['editable'] = False
 		super(SfField, self).__init__(*args, **kwargs)
 		self.sf_read_only = sf_read_only
 

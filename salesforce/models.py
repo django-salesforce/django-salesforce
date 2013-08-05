@@ -54,4 +54,10 @@ class SalesforceModel(models.Model):
 	
 	Id = fields.SalesforceAutoField(primary_key=True)
 
+	def __unicode__(self):
+		# If the object has a name, use it like it is usual in Salesforce
+		if hasattr(self, 'name'):
+			return self.name
+		return '%s object' % self.__class__.__name__
+
 Model = SalesforceModel
