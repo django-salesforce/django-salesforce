@@ -60,7 +60,6 @@ def authenticate(settings_dict=dict()):
 			username		= settings_dict['USER'],
 			password		= settings_dict['PASSWORD'],
 		)), headers={'Content-Type': 'application/x-www-form-urlencoded'})
-		
 		if(response['status'] == '200'):
 			log.info("successfully authenticated %s" % settings_dict['USER'])
 			oauth_data = json.loads(content)
