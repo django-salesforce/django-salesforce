@@ -5,8 +5,7 @@
 # See LICENSE.md for details
 #
 
-from django.db import models
-
+from salesforce import models as models
 from salesforce.models import SalesforceModel
 
 SALUTATIONS = [
@@ -38,11 +37,13 @@ class Account(SalesforceModel):
 		'Partner', 'Press', 'Prospect', 'Reseller', 'Other'
 	]
 	
-	#Name = models.CharField(max_length=255)
+	Name = models.CharField(max_length=255)
 	Owner = models.ForeignKey(User, db_column='OwnerId')
-	LastName = models.CharField(max_length=80)
-	FirstName = models.CharField(max_length=40)
-	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
+	# Non standard fields that require activating "Person Account" (irreversible changes in Salesforce) 
+	# should not be in Basic SOQL tests
+	#LastName = models.CharField(max_length=80)
+	#FirstName = models.CharField(max_length=40)
+	#Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
 	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES])
 	BillingStreet = models.CharField(max_length=255)
 	BillingCity = models.CharField(max_length=40)
@@ -59,12 +60,23 @@ class Account(SalesforceModel):
 	Website = models.CharField(max_length=255)
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Description = models.TextField()
-	IsPersonAccount = models.BooleanField()
-	PersonEmail = models.CharField(max_length=100)
-	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate')
+	#IsPersonAccount = models.BooleanField()
+	#PersonEmail = models.CharField(max_length=100)
+	# Added read only option, otherwise the object can not be never saved
+	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate', sf_read_only=models.READ_ONLY)
 	
 	def __unicode__(self):
-		return self.FirstName + ' ' + self.LastName
+		#return self.FirstName + ' ' + self.LastName
+		return self.Name
+
+class Contact(models.Model):
+	Account = models.ForeignKey(Account, db_column='AccountId', blank=True, null=True)
+	LastName = models.CharField(max_length=240, verbose_name='Last Name')
+	FirstName = models.CharField(max_length=120, verbose_name='First Name', blank=True)
+	Name = models.CharField(max_length=363, verbose_name='Full Name', sf_read_only=models.READ_ONLY)
+	Email = models.EmailField(blank=True, null=True)
+	EmailBouncedDate = models.DateTimeField(verbose_name='Email Bounced Date', blank=True, null=True)
+
 
 class Lead(SalesforceModel):
 	"""
@@ -102,9 +114,22 @@ class Lead(SalesforceModel):
 	Status = models.CharField(max_length=100, choices=[(x, x) for x in STATUSES])
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Rating = models.CharField(max_length=100, choices=[(x, x) for x in RATINGS])
+	# Added an example of special DateTime field in Salesforce that can not be inserted, but can be updated
+	# TODO write test for it
+	EmailBouncedDate = models.DateTimeField(blank=True, null=True, sf_read_only=models.NOT_CREATEABLE)
 	
 	def __unicode__(self):
 		return self.FirstName + ' ' + self.LastName
+
+# Added a free package for tests (except the paid package ChargentOrders)
+# to verify names with double underscores
+class TimbaSurveysQuestion(SalesforceModel):
+	class Meta:
+		db_table = 'TIMBASURVEYS__SurveyQuestion__c'
+
+	Question = models.CharField(max_length=255, db_column='TIMBASURVEYS__Question__c')
+	Owner = models.ForeignKey(User, db_column='OwnerId')
+	# ...
 
 class ChargentOrder(SalesforceModel):
 	class Meta:

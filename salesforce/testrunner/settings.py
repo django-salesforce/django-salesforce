@@ -1,4 +1,9 @@
 # Django settings for testrunner project.
+try:
+        # there is only separated DATABASES = {'salesforce': { ...many secret values...}}
+	import settings_secret
+except ImportError:
+	pass
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -23,6 +28,7 @@ DATABASES = {
 		'HOST': 'https://test.salesforce.com',
 	}
 }
+DATABASES.update(settings_secret.DATABASES)
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -126,7 +132,7 @@ INSTALLED_APPS = (
 )
 
 SALESFORCE_DB_ALIAS = 'salesforce'
-SALESFORCE_QUERY_TIMEOUT = 3
+SALESFORCE_QUERY_TIMEOUT = 15
 DATABASE_ROUTERS = [
 	"salesforce.router.ModelRouter"
 ]

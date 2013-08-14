@@ -21,6 +21,7 @@ from django.db.models.base import ModelBase
 from django.db.models.sql import compiler
 
 from salesforce.backend import manager
+from salesforce.fields import *  # modified django.db.models.CharField etc.
 from salesforce import fields
 
 log = logging.getLogger(__name__)
@@ -53,3 +54,10 @@ class SalesforceModel(models.Model):
 	
 	Id = fields.SalesforceAutoField(primary_key=True)
 
+	def __unicode__(self):
+		# If the object has a name, use it like it is usual in Salesforce
+		if hasattr(self, 'name'):
+			return self.name
+		return '%s object' % self.__class__.__name__
+
+Model = SalesforceModel
