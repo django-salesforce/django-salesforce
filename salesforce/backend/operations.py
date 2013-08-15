@@ -8,6 +8,10 @@
 import re
 
 from django.db.backends import BaseDatabaseOperations
+try:
+	from django.utils import timezone
+except ImportError:
+	timezone = None  # Django 1.3
 
 """
 Default database operations, with unquoted names.

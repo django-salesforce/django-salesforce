@@ -4,4 +4,12 @@
 local_settings.py
 build
 *.egg-info
+.*.swp
 salesforce_testrunner_db
+.tox
+VERSION
+setuptools_git-*.egg
+distribute-0.*.egg
+distribute-0.*.tar.gz
+distribute_setup.py
+settings_secret.py

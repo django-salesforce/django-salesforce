@@ -6,13 +6,27 @@
 #
 
 from django.contrib import admin
-from django.db import models
+#from django.db import models   # This name is overwritten by example.models below
 from django.forms import widgets
 from django.http import HttpResponse
 
 from salesforce.testrunner.example import models
 from salesforce.admin import RoutedModelAdmin
+import salesforce
 
-class AccountAdmin(RoutedModelAdmin):
-	list_display = ('Salutation', 'FirstName', 'LastName', 'PersonEmail')
-admin.site.register(models.Account, AccountAdmin)
+# This example is commented out in order to demonstrate capabilities of all models
+#class AccountAdmin(RoutedModelAdmin):
+#	#list_display = ('Salutation', 'FirstName', 'LastName', 'PersonEmail')
+#	list_display = ('name', 'phone')
+#        pass
+#admin.site.register(models.Account, AccountAdmin)
+
+# Simple dynamic registration of all other models, with respect to read only fields.
+# Can be improoved for fields that are only not creatable but are updateable or viceversa.
+for mdl in [x for x in models.__dict__.values() if hasattr(x, '_meta') and hasattr(x._meta, 'db_table')]:
+    try:
+        #import pdb; pdb.set_trace()
+        admin.site.register(mdl, type(type(mdl).__name__ + 'Admin', (RoutedModelAdmin,), {
+            'readonly_fields': [x.name for x in mdl._meta.fields if getattr(x, 'sf_read_only', 0)]}))
+    except admin.sites.AlreadyRegistered:
+        pass
