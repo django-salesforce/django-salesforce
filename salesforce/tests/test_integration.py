@@ -11,7 +11,8 @@ import pytz
 from django.conf import settings
 from django.test import TestCase
 
-from salesforce.testrunner.example.models import Account, Contact, Lead, ChargentOrder
+from salesforce.testrunner.example.models import (Account, Contact, Lead,
+												  ChargentOrder, User)
 import django
 import salesforce
 
@@ -33,38 +34,42 @@ class BasicSOQLTest(TestCase):
 			Company = "Some company, Ltd.",
 		)
 		self.test_lead.save()
+
+		self.test_username = settings.DATABASES['salesforce']['USER']
+		self.test_account, _ = Account.objects.get_or_create(
+			FirstName = 'IntegrationTest',
+			LastName = 'Account',
+			Owner = User.objects.get(Username=self.test_username)
+		)
+		self.test_account.save()
 	
 	def tearDown(self):
 		"""
 		Clean up our test lead record.
 		"""
 		self.test_lead.delete()
+		## i do believe that the SOQL API disallows
+		## deletion of Accounts, or at least for my user
+		## therefore, we have to leave a dirty account..
+		#self.test_account.delete()
 	
 	def test_raw(self):
 		"""
 		Get the first five account records.
 		"""
-		accounts = Account.objects.raw("SELECT Id, LastName, FirstName FROM Account")
-		self.assertEqual(len(accounts), 2)
+		accounts = Account.objects.raw("SELECT Id, LastName, FirstName FROM Account LIMIT 5")
+		self.assertEqual(len(accounts), 5)
 	
 	def test_select_all(self):
 		"""
 		Get the first five account records.
 		"""
 		accounts = Account.objects.all()[0:5]
-		self.assertEqual(len(accounts), 2)
-	
-	def test_select_all(self):
-		"""
-		Get the first five account records.
-		"""
-		accounts = Account.objects.all()[0:5]
-		self.assertEqual(len(accounts), 2)
+		self.assertEqual(len(accounts), 5)
 	
 	def test_foreign_key(self):
-		account = Account.objects.all()[0]
-		user = account.Owner
-		self.assertEqual(user.Email, settings.DATABASES['salesforce']['USER'].rsplit('.', 1)[0])  # 'admins@freelancersunion.org.prod001'
+		user = self.test_account.Owner
+		self.assertEqual(user.Username, self.test_username)
 	
 	def test_update_date_auto(self):
 		"""
@@ -73,7 +78,9 @@ class BasicSOQLTest(TestCase):
 		
 		account = Account.objects.all()[0]
 		account.save()
-		now = datetime.datetime.utcnow()
+		## sfdates are UTC to seconds precision but use a fixed-offset
+		## of +0000 (as opposed to a named tz)
+		now = datetime.datetime.utcnow().replace(microsecond=0)
 		last_timestamp = salesforce.backend.query.sf_last_timestamp
 		if django.VERSION[:2] >= (1,4):
 			now = now.replace(tzinfo=pytz.utc)
@@ -170,7 +177,10 @@ class BasicSOQLTest(TestCase):
 		fetched_lead = Lead.objects.get(Email=test_email)
 		self.assertEqual(fetched_lead.FirstName, 'Tested')
 
+	
 	def test_custom_objects(self):
+		if not settings.TIMBA_INSTALLED:
+			self.skipTest("TODO Depends on the existance of a particular custom Object")
 		"""
 		Make sure custom objects work.
 		"""

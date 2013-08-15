@@ -8,6 +8,8 @@
 from salesforce import models as models
 from salesforce.models import SalesforceModel
 
+from django.conf import settings
+
 SALUTATIONS = [
 	'Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Prof.'
 ]
@@ -18,17 +20,20 @@ INDUSTRIES = [
 	'Electronics', 'Energy', 'Engineering', 'Entertainment', 'Environmental',
 	'Finance', 'Food & Beverage', 'Government', 'Healthcare', 'Hospitality',
 	'Insurance', 'Machinery', 'Manufacturing', 'Media', 'Not For Profit',
-	'Other', 'Recreation', 'Retail', 'Shipping', 'Technology', 'Telecommunications',
-	'Transportation', 'Utilities'
+	'Other', 'Recreation', 'Retail', 'Shipping', 'Technology',
+	'Telecommunications', 'Transportation', 'Utilities'
 ]
 
+
 class User(SalesforceModel):
+	Username = models.CharField(max_length=100)
 	Email = models.CharField(max_length=100)
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
 	IsActive = models.BooleanField()
 
-class Account(SalesforceModel):
+
+class AbstractAccount(SalesforceModel):
 	"""
 	Default Salesforce Account model.
 	"""
@@ -36,15 +41,11 @@ class Account(SalesforceModel):
 		'Analyst', 'Competitor', 'Customer', 'Integrator', 'Investor',
 		'Partner', 'Press', 'Prospect', 'Reseller', 'Other'
 	]
-	
-	Name = models.CharField(max_length=255)
+
+	Name = models.CharField(max_length=255, sf_read_only=models.READ_ONLY)
 	Owner = models.ForeignKey(User, db_column='OwnerId')
-	# Non standard fields that require activating "Person Account" (irreversible changes in Salesforce) 
-	# should not be in Basic SOQL tests
-	#LastName = models.CharField(max_length=80)
-	#FirstName = models.CharField(max_length=40)
-	#Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
-	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES])
+	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
+							null=True)
 	BillingStreet = models.CharField(max_length=255)
 	BillingCity = models.CharField(max_length=40)
 	BillingState = models.CharField(max_length=20)
@@ -58,24 +59,58 @@ class Account(SalesforceModel):
 	Phone = models.CharField(max_length=255)
 	Fax = models.CharField(max_length=255)
 	Website = models.CharField(max_length=255)
-	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
+	Industry = models.CharField(max_length=100,
+								choices=[(x, x) for x in INDUSTRIES])
 	Description = models.TextField()
-	#IsPersonAccount = models.BooleanField()
-	#PersonEmail = models.CharField(max_length=100)
 	# Added read only option, otherwise the object can not be never saved
-	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate', sf_read_only=models.READ_ONLY)
-	
+	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate',
+											sf_read_only=models.READ_ONLY)
+
+	class Meta(SalesforceModel.Meta):
+		abstract = True
+
 	def __unicode__(self):
-		#return self.FirstName + ' ' + self.LastName
 		return self.Name
 
+
+class CoreAccount(AbstractAccount):
+	class Meta(AbstractAccount.Meta):
+		abstract = True
+
+
+class PersonAccount(AbstractAccount):
+	# Non standard fields that require activating "Person Account"
+	# (irreversible changes in Salesforce)
+	LastName = models.CharField(max_length=80)
+	FirstName = models.CharField(max_length=40)
+	Salutation = models.CharField(max_length=100,
+								  choices=[(x, x) for x in SALUTATIONS])
+	IsPersonAccount = models.BooleanField(sf_read_only=models.READ_ONLY)
+	PersonEmail = models.CharField(max_length=100)
+
+	class Meta(AbstractAccount.Meta):
+		abstract = True
+
+
+if settings.PERSON_ACCOUNT_ACTIVATED:
+	class Account(PersonAccount):
+		pass
+else:
+	class Account(CoreAccount):
+		pass
+
+
 class Contact(models.Model):
-	Account = models.ForeignKey(Account, db_column='AccountId', blank=True, null=True)
+	Account = models.ForeignKey(Account, db_column='AccountId',
+								blank=True, null=True)
 	LastName = models.CharField(max_length=240, verbose_name='Last Name')
-	FirstName = models.CharField(max_length=120, verbose_name='First Name', blank=True)
-	Name = models.CharField(max_length=363, verbose_name='Full Name', sf_read_only=models.READ_ONLY)
+	FirstName = models.CharField(max_length=120, verbose_name='First Name',
+								 blank=True)
+	Name = models.CharField(max_length=363, verbose_name='Full Name',
+							sf_read_only=models.READ_ONLY)
 	Email = models.EmailField(blank=True, null=True)
-	EmailBouncedDate = models.DateTimeField(verbose_name='Email Bounced Date', blank=True, null=True)
+	EmailBouncedDate = models.DateTimeField(verbose_name='Email Bounced Date',
+											blank=True, null=True)
 
 
 class Lead(SalesforceModel):
@@ -83,21 +118,24 @@ class Lead(SalesforceModel):
 	Default Salesforce Lead model.
 	"""
 	SOURCES = [
-		'Advertisement', 'Employee Referral', 'External Referral', 'Partner', 'Public Relations',
-		'Seminar - Internal', 'Seminar - Partner', 'Trade Show', 'Web', 'Word of mouth', 'Other',
+		'Advertisement', 'Employee Referral', 'External Referral',
+		'Partner', 'Public Relations',
+		'Seminar - Internal', 'Seminar - Partner', 'Trade Show', 'Web',
+		'Word of mouth', 'Other',
 	]
-	
+
 	STATUSES = [
 		'Contacted', 'Open', 'Qualified', 'Unqualified',
 	]
-	
+
 	RATINGS = [
 		'Hot', 'Warm', 'Cold',
 	]
-	
+
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
-	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
+	Salutation = models.CharField(max_length=100,
+								  choices=[(x, x) for x in SALUTATIONS])
 	#Name = models.CharField(max_length=121)
 	Title = models.CharField(max_length=128)
 	Company = models.CharField(max_length=255)
@@ -110,16 +148,21 @@ class Lead(SalesforceModel):
 	Email = models.CharField(max_length=100)
 	Website = models.CharField(max_length=100)
 	Description = models.TextField()
-	LeadSource = models.CharField(max_length=100, choices=[(x, x) for x in SOURCES])
+	LeadSource = models.CharField(max_length=100,
+								  choices=[(x, x) for x in SOURCES])
 	Status = models.CharField(max_length=100, choices=[(x, x) for x in STATUSES])
-	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
+	Industry = models.CharField(max_length=100,
+								  choices=[(x, x) for x in INDUSTRIES])
 	Rating = models.CharField(max_length=100, choices=[(x, x) for x in RATINGS])
-	# Added an example of special DateTime field in Salesforce that can not be inserted, but can be updated
+	# Added an example of special DateTime field in Salesforce that can
+	# not be inserted, but can be updated
 	# TODO write test for it
-	EmailBouncedDate = models.DateTimeField(blank=True, null=True, sf_read_only=models.NOT_CREATEABLE)
-	
+	EmailBouncedDate = models.DateTimeField(blank=True, null=True,
+											sf_read_only=models.NOT_CREATEABLE)
+
 	def __unicode__(self):
 		return self.FirstName + ' ' + self.LastName
+
 
 # Added a free package for tests (except the paid package ChargentOrders)
 # to verify names with double underscores
@@ -127,24 +170,30 @@ class TimbaSurveysQuestion(SalesforceModel):
 	class Meta:
 		db_table = 'TIMBASURVEYS__SurveyQuestion__c'
 
-	Question = models.CharField(max_length=255, db_column='TIMBASURVEYS__Question__c')
+	Question = models.CharField(max_length=255,
+								db_column='TIMBASURVEYS__Question__c')
 	Owner = models.ForeignKey(User, db_column='OwnerId')
 	# ...
+
 
 class ChargentOrder(SalesforceModel):
 	class Meta:
 		db_table = 'ChargentOrders__ChargentOrder__c'
-	
+
 	OwnerId = models.CharField(max_length=255, db_column='OwnerId')
 	IsDeleted = models.CharField(max_length=255, db_column='IsDeleted')
 	Name = models.CharField(max_length=255, db_column='Name')
 	CreatedDate = models.CharField(max_length=255, db_column='CreatedDate')
 	CreatedById = models.CharField(max_length=255, db_column='CreatedById')
-	LastModifiedDate = models.CharField(max_length=255, db_column='LastModifiedDate')
-	LastModifiedById = models.CharField(max_length=255, db_column='LastModifiedById')
+	LastModifiedDate = models.CharField(max_length=255,
+									    db_column='LastModifiedDate')
+	LastModifiedById = models.CharField(max_length=255,
+										db_column='LastModifiedById')
 	SystemModstamp = models.CharField(max_length=255, db_column='SystemModstamp')
-	LastActivityDate = models.CharField(max_length=255, db_column='LastActivityDate')
-	Balance_Due = models.CharField(max_length=255, db_column='ChargentOrders__Balance_Due__c')
+	LastActivityDate = models.CharField(max_length=255,
+										db_column='LastActivityDate')
+	Balance_Due = models.CharField(max_length=255,
+									db_column='ChargentOrders__Balance_Due__c')
 	Bank_Account_Name = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Name__c')
 	Bank_Account_Number = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Number__c')
 	Bank_Account_Type = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Type__c')
