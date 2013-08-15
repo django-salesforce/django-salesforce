@@ -13,7 +13,7 @@ from django.db import connections
 from django.test import TestCase
 import django
 
-from salesforce.testrunner.example.models import (Contact, Lead, User,
+from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger)
 
 import logging
@@ -27,7 +27,9 @@ sf_tables = [x['name'] for x in
 
 def round_datetime_utc(timestamp):
 	"""Round to seconds and set zone to UTC."""
-	timestamp -= datetime.timedelta(microseconds=timestamp.microsecond)
+	## sfdates are UTC to seconds precision but use a fixed-offset
+	## of +0000 (as opposed to a named tz)
+	timestamp = timestamp.replace(microsecond=0)
 	if django.VERSION[:2] >= (1,4):
 		timestamp= timestamp.replace(tzinfo=pytz.utc)
 	return timestamp

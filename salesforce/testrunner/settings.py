@@ -7,6 +7,8 @@ ADMINS = (
 	# ('Your Name', 'your_email@example.com'),
 )
 
+PERSON_ACCOUNT_ACTIVATED = False
+
 MANAGERS = ADMINS
 
 DATABASES = {
