@@ -1,9 +1,4 @@
 # Django settings for testrunner project.
-try:
-        # there is only separated DATABASES = {'salesforce': { ...many secret values...}}
-	import settings_secret
-except ImportError:
-	pass
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -11,6 +6,9 @@ TEMPLATE_DEBUG = DEBUG
 ADMINS = (
 	# ('Your Name', 'your_email@example.com'),
 )
+
+PERSON_ACCOUNT_ACTIVATED = False
+TIMBA_INSTALLED = False
 
 MANAGERS = ADMINS
 
@@ -28,7 +26,14 @@ DATABASES = {
 		'HOST': 'https://test.salesforce.com',
 	}
 }
-DATABASES.update(settings_secret.DATABASES)
+
+try:
+        # there is only separated DATABASES = {'salesforce': { ...many secret values...}}
+	import settings_secret
+except ImportError:
+	pass
+else:
+	DATABASES.update(settings_secret.DATABASES)
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
