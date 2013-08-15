@@ -352,8 +352,15 @@ class CursorWrapper(object):
 	
 	def execute_delete(self, query):
 		table = query.model._meta.db_table
-		# this will break in multi-row updates
-		pk = self.query.where.children[0][-1][0]
+		## the root where node's children may itself have children..
+		def recurse_for_pk(children):
+			for node in children:
+				try:
+					pk = node[-1][0]
+				except TypeError:
+					pk = recurse_for_pk(node.children)
+				return pk
+		pk = recurse_for_pk(self.query.where.children)
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = dict()
