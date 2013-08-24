@@ -31,9 +31,13 @@ class SQLCompiler(compiler.SQLCompiler):
 	A subclass of the default SQL compiler for the SOQL dialect.
 	"""
 	def resolve_columns(self, row, fields):
+		# TODO @hynekcer: Create class salesforce.fields.ForeignKey with customized
+		#      get_attname method where "_id" is replaced by "Id".
+		#      Then no db_column='....Id" in models will be necessary and
+		#      this method can be also removed
 		result = []
 		for field in fields:
-			result.append(row[field.name])
+			result.append(row[field.column])
 		return result
 
 	def get_columns(self, with_aliases=False):

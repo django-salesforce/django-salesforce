@@ -41,13 +41,16 @@ class BasicSOQLTest(TestCase):
 		"""
 		accounts = Account.objects.raw("SELECT Id, LastName, FirstName FROM Account")
 		self.assertEqual(len(accounts), 2)
+		'%s' % accounts[0].__dict__  # Check that all fields are accessible
 	
-	def test_select_all(self):
+	def test_raw_foreignkey_id(self):
 		"""
-		Get the first five account records.
+		Get the first account records by raw with a ForeignKey id field.
 		"""
-		accounts = Account.objects.all()[0:5]
+		accounts = Account.objects.raw("SELECT Id, LastName, FirstName, OwnerId FROM Account")
 		self.assertEqual(len(accounts), 2)
+		'%s' % accounts[0].__dict__  # Check that all fields are accessible
+		self.assertContains(accounts[0].Owner.Email, '@')
 	
 	def test_select_all(self):
 		"""
