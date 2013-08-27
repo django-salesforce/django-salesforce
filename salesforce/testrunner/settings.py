@@ -14,6 +14,8 @@ DATABASES = {
 		'ENGINE': 'django.db.backends.sqlite3',
 		'NAME': 'salesforce_testrunner_db',
 	},
+	# The variable DATABASES should be redefined in local_settings with details
+	# in order to protect private secret values from unintentional committing.
 	'salesforce': {
 		'ENGINE': 'salesforce.backend',
 		"CONSUMER_KEY" : '',

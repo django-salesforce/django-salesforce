@@ -194,7 +194,7 @@ class BasicSOQLTest(TestCase):
 	
 	def test_update(self):
 		"""
-		Update the test lead record, then delete it.
+		Update the test lead record.
 		"""
 		test_lead = Lead.objects.get(Email=test_email)
 		self.assertEquals(test_lead.FirstName, 'User')
