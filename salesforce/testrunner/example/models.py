@@ -24,6 +24,7 @@ INDUSTRIES = [
 ]
 
 class User(SalesforceModel):
+	Username = models.CharField(max_length=80)
 	Email = models.CharField(max_length=100)
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
@@ -66,6 +67,26 @@ class Account(SalesforceModel):
 	def __unicode__(self):
 		return self.FirstName + ' ' + self.LastName
 
+class Contact(SalesforceModel):
+	Account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
+			db_column='AccountId', blank=True, null=True)
+	LastName = models.CharField(max_length=80)
+	FirstName = models.CharField(max_length=40, blank=True)
+	Email = models.EmailField(blank=True, null=True)
+	EmailBouncedDate = models.DateTimeField(blank=True, null=True)
+	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			db_column='OwnerId', related_name='contact_owner_set')
+
+	# First we fix tests without implementing SF read only fields.
+	#Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY)
+	@property
+	def Name(self):
+		return self.FirstName + ' ' + self.LastName
+
+	def __unicode__(self):
+		return self.Name
+
+
 class Lead(SalesforceModel):
 	"""
 	Default Salesforce Lead model.
@@ -103,8 +124,12 @@ class Lead(SalesforceModel):
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Rating = models.CharField(max_length=100, choices=[(x, x) for x in RATINGS])
 	
-	def __unicode__(self):
+	@property
+	def Name(self):
 		return self.FirstName + ' ' + self.LastName
+
+	def __unicode__(self):
+		return self.Name
 
 class ChargentOrder(SalesforceModel):
 	class Meta:
