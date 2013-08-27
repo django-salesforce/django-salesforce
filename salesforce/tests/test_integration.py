@@ -9,7 +9,7 @@ import datetime
 
 from django.test import TestCase
 
-from salesforce.testrunner.example.models import Account, Lead, ChargentOrder
+from salesforce.testrunner.example.models import Contact, Lead, ChargentOrder
 
 import logging
 log = logging.getLogger(__name__)
@@ -37,31 +37,31 @@ class BasicSOQLTest(TestCase):
 	
 	def test_raw(self):
 		"""
-		Get the first five account records.
+		Get the first five contact records.
 		"""
-		accounts = Account.objects.raw("SELECT Id, LastName, FirstName FROM Account")
-		self.assertEqual(len(accounts), 2)
-		'%s' % accounts[0].__dict__  # Check that all fields are accessible
+		contacts = Contact.objects.raw("SELECT Id, LastName, FirstName FROM Contact")
+		self.assertEqual(len(contacts), 2)
+		'%s' % contacts[0].__dict__  # Check that all fields are accessible
 	
 	def test_raw_foreignkey_id(self):
 		"""
-		Get the first account records by raw with a ForeignKey id field.
+		Get the first contact records by raw with a ForeignKey id field.
 		"""
-		accounts = Account.objects.raw("SELECT Id, LastName, FirstName, OwnerId FROM Account")
-		self.assertEqual(len(accounts), 2)
-		'%s' % accounts[0].__dict__  # Check that all fields are accessible
-		self.assertContains(accounts[0].Owner.Email, '@')
+		contacts = Contact.objects.raw("SELECT Id, LastName, FirstName, OwnerId FROM Contact")
+		self.assertEqual(len(contacts), 2)
+		'%s' % contacts[0].__dict__  # Check that all fields are accessible
+		self.assertContains(contacts[0].Owner.Email, '@')
 	
 	def test_select_all(self):
 		"""
-		Get the first five account records.
+		Get the first five contact records.
 		"""
-		accounts = Account.objects.all()[0:5]
-		self.assertEqual(len(accounts), 2)
+		contacts = Contact.objects.all()[0:5]
+		self.assertEqual(len(contacts), 2)
 	
 	def test_foreign_key(self):
-		account = Account.objects.all()[0]
-		user = account.Owner
+		contact = Contact.objects.all()[0]
+		user = contact.Owner
 		self.assertEqual(user.Email, 'pchristensen@freelancersunion.org')
 	
 	def test_update_date(self):
@@ -70,12 +70,12 @@ class BasicSOQLTest(TestCase):
 		"""
 		self.skipTest("Need to find a suitable *standard* model field to test datetime updates.")
 		
-		account = Account.objects.all()[0]
-		account.LastLogin = now = datetime.datetime.now()
-		account.save()
+		contact = Contact.objects.all()[0]
+		contact.LastLogin = now = datetime.datetime.now()
+		contact.save()
 		
-		saved = Account.objects.get(pk=account.pk)
-		self.assertEqual(account.LastLogin, now)
+		saved = Contact.objects.get(pk=contact.pk)
+		self.assertEqual(contact.LastLogin, now)
 	
 	def test_insert_date(self):
 		"""
@@ -84,17 +84,17 @@ class BasicSOQLTest(TestCase):
 		self.skipTest("Need to find a suitable *standard* model field to test datetime inserts.")
 		
 		now = datetime.datetime.now()
-		account = Account(
+		contact = Contact(
 			FirstName = 'Joe',
 			LastName = 'Freelancer',
 			LastLogin = now,
-			IsPersonAccount = False,
+			IsPersonContact = False,
 		)
-		account.save()
+		contact.save()
 		
-		saved = Account.objects.get(pk=account.pk)
+		saved = Contact.objects.get(pk=contact.pk)
 		self.assertEqual(saved.LastLogin, now)
-		self.assertEqual(saved.IsPersonAccount, False)
+		self.assertEqual(saved.IsPersonContact, False)
 		
 		saved.delete()
 	
@@ -128,8 +128,8 @@ class BasicSOQLTest(TestCase):
 		Test that date comparisons work properly.
 		"""
 		yesterday = datetime.datetime(2011,06,26)
-		accounts = Account.objects.filter(LastModifiedDate__gt=yesterday)
-		self.assertEqual(bool(accounts.count()), True)
+		contacts = Contact.objects.filter(LastModifiedDate__gt=yesterday)
+		self.assertEqual(bool(contacts.count()), True)
 	
 	def test_insert(self):
 		"""
