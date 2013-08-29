@@ -40,6 +40,10 @@ log = logging.getLogger(__name__)
 
 API_STUB = '/services/data/v24.0'
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.000+0000'
+if DJANGO_14:
+	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S-00:00'
+else:
+	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 def quoted_string_literal(s, d):
 	"""
@@ -129,7 +133,7 @@ def prep_for_deserialize(model, record, using):
 				d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
-				fields[x.name] = d.strftime('%Y-%m-%d %H:%M:%S-00:00')
+				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
 			else:
 				fields[x.name] = field_val
 	

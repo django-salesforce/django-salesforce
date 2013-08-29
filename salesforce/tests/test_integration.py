@@ -94,10 +94,10 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test updating a date.
 		"""
-		now = round_datetime_utc(datetime.datetime.now())
+		now = round_datetime_utc(datetime.datetime.utcnow())
 		contact = Contact.objects.all()[0]
 		old_date = contact.EmailBouncedDate
-		contact.EmailBouncedDate = now
+		contact.EmailBouncedDate = now.replace(tzinfo=pytz.utc)
 		contact.save()
 		# test
 		saved = Contact.objects.get(pk=contact.pk)
@@ -110,17 +110,17 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test inserting a date.
 		"""
-		now = round_datetime_utc(datetime.datetime.now())
+		now = round_datetime_utc(datetime.datetime.utcnow())
 		contact = Contact(
 			FirstName = 'Joe',
 			LastName = 'Freelancer',
 			Owner=User.objects.get(Username=current_user),
-			EmailBouncedDate=now,
+			EmailBouncedDate=now.replace(tzinfo=pytz.utc),
 		)
 		contact.save()
 		# test
 		saved = Contact.objects.get(pk=contact.pk)
-		self.assertEqual(saved.EmailBouncedDate, (now))
+		self.assertEqual(saved.EmailBouncedDate, now)
 		# restore
 		saved.delete()
 	
