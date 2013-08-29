@@ -221,3 +221,9 @@ class ChargentOrder(SalesforceModel):
 	Order_Name = models.CharField(max_length=255, db_column='Order_Name__c')
 	PAC_Fund = models.CharField(max_length=255, db_column='PAC_Fund__c')
 	Event_Flag = models.CharField(max_length=255, db_column='Event_Flag__c')
+
+
+class CronTrigger(SalesforceModel):
+	# Very special DateTime field with milisecond resolution (read only)
+	PreviousFireTime = models.DateTimeField(verbose_name='Previous Run Time', blank=True, null=True)
+	# ...

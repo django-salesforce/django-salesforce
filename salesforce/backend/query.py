@@ -39,11 +39,13 @@ except ImportError, e:
 log = logging.getLogger(__name__)
 
 API_STUB = '/services/data/v24.0'
-SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.000+0000'
+# Values of seconds are with 3 decimal places in SF, but they are rounded to
+# whole seconds for the most of fields.
+SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 if DJANGO_14:
-	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S-00:00'
+	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 else:
-	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 def quoted_string_literal(s, d):
 	"""

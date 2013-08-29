@@ -14,7 +14,7 @@ from django.test import TestCase
 import django
 
 from salesforce.testrunner.example.models import (Contact, Lead, User,
-		ChargentOrder)
+		ChargentOrder, CronTrigger)
 
 import logging
 log = logging.getLogger(__name__)
@@ -214,3 +214,11 @@ class BasicSOQLTest(TestCase):
 		orders = ChargentOrder.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
 
+	def test_datetime_miliseconds(self):
+		"""
+		Verify that it accepts a field with milisecond resolution.
+		"""
+		trigger = CronTrigger.objects.all()[0]
+		self.assertTrue(isinstance(trigger.PreviousFireTime, datetime.datetime))
+		# The reliability of this is only 99.9%, therefore it is commented out.
+		#self.assertNotEqual(trigger.PreviousFireTime.microsecond, 0)
