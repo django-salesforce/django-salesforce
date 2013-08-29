@@ -227,3 +227,10 @@ class CronTrigger(SalesforceModel):
 	# Very special DateTime field with milisecond resolution (read only)
 	PreviousFireTime = models.DateTimeField(verbose_name='Previous Run Time', blank=True, null=True)
 	# ...
+
+
+class BusinessHours(SalesforceModel):
+	# The default record is automatically created by Salesforce.
+	IsDefault = models.BooleanField(verbose_name='Default Business Hours')
+	# ... much more fields, but we use only this one TimeFiled for test
+	MondayStartTime = models.TimeField()

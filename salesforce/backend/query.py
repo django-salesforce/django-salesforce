@@ -137,6 +137,9 @@ def prep_for_deserialize(model, record, using):
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
 				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+			elif (x.__class__.__name__ == 'TimeField' and field_val is not None
+					and not DJANGO_14 and field_val.endswith('Z')):
+				fields[x.name] = field_val[:-1]  # Fix time e.g. "23:59:59.000Z"
 			else:
 				fields[x.name] = field_val
 	
@@ -441,6 +444,7 @@ json_conversions = {
 	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: date_literal,
+	datetime.time: lambda d,c: datetime.time.strftime(d, "%H:%M:%S.%f"),
 	decimal.Decimal: lambda s,d: float(s),
 	models.SalesforceModel: sobj_id,
 }

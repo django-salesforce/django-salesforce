@@ -14,7 +14,7 @@ from django.test import TestCase
 import django
 
 from salesforce.testrunner.example.models import (Contact, Lead, User,
-		ChargentOrder, CronTrigger)
+		BusinessHours, ChargentOrder, CronTrigger)
 
 import logging
 log = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ class BasicSOQLTest(TestCase):
 		contact.save()
 		# get, restore, test
 		saved = Contact.objects.get(pk=contact.pk)
-		contact.EmailBouncedDate = old_date 
+		contact.EmailBouncedDate = old_date
 		contact.save()
 		self.assertEqual(saved.EmailBouncedDate, now)
 	
@@ -221,3 +221,15 @@ class BasicSOQLTest(TestCase):
 		self.assertTrue(isinstance(trigger.PreviousFireTime, datetime.datetime))
 		# The reliability of this is only 99.9%, therefore it is commented out.
 		#self.assertNotEqual(trigger.PreviousFireTime.microsecond, 0)
+
+	def test_time_field(self):
+		"""
+		Test a TimeField (read, modify, verify, restore the original).
+		"""
+		obj_orig = BusinessHours.objects.all()[0]
+		self.assertTrue(isinstance(obj_orig.MondayStartTime, datetime.time))
+		obj = BusinessHours.objects.get(pk=obj_orig.pk)
+		obj.MondayStartTime = datetime.time(23, 59)
+		obj.save()
+		self.assertEqual(obj.MondayStartTime, datetime.time(23, 59))
+		obj_orig.save()
