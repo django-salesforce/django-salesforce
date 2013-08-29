@@ -19,16 +19,12 @@ from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
+from salesforce.backend.driver import IntegrityError, DatabaseError
+from salesforce.backend import driver as Database
 
 log = logging.getLogger(__name__)
 
-class DatabaseError(Exception):
-	pass
-
 class SalesforceError(DatabaseError):
-	pass
-
-class IntegrityError(DatabaseError):
 	pass
 
 class DatabaseFeatures(BaseDatabaseFeatures):
@@ -64,6 +60,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		'isnull': '!= %s',
 	}
 
+	Database = Database
+
 	def __init__(self, settings_dict, alias='default'):
 		super(DatabaseWrapper, self).__init__(settings_dict, alias)
 		
@@ -76,6 +74,24 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
 	
+	def get_connection_params(self):
+		settings_dict = self.settings_dict
+		params = settings_dict.copy()
+		params.update(settings_dict['OPTIONS'])
+		return params
+
+	def get_new_connection(self, conn_params):
+		# only simulated a connection interface without connecting really
+		return Database.connect(**conn_params)
+
+	def init_connection_state(self):
+		pass  # nothing to init
+
+	def _set_autocommit(self, autocommit):
+		# SF REST API uses autocommit, but until rollback it is not a
+		# serious problem to ignore autocommit off
+		pass
+
 	def validate_settings(self, d):
 		for k in ('ENGINE', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD', 'HOST'):
 			if(k not in d):
