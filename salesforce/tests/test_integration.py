@@ -99,12 +99,11 @@ class BasicSOQLTest(TestCase):
 		old_date = contact.EmailBouncedDate
 		contact.EmailBouncedDate = now.replace(tzinfo=pytz.utc)
 		contact.save()
-		# test
+		# get, restore, test
 		saved = Contact.objects.get(pk=contact.pk)
+		contact.EmailBouncedDate = old_date 
+		contact.save()
 		self.assertEqual(saved.EmailBouncedDate, now)
-		# restore
-		saved.EmailBouncedDate = old_date 
-		saved.save()
 	
 	def test_insert_date(self):
 		"""
@@ -118,11 +117,10 @@ class BasicSOQLTest(TestCase):
 			EmailBouncedDate=now.replace(tzinfo=pytz.utc),
 		)
 		contact.save()
-		# test
+		# get, restore, test
 		saved = Contact.objects.get(pk=contact.pk)
-		self.assertEqual(saved.EmailBouncedDate, now)
-		# restore
 		saved.delete()
+		self.assertEqual(saved.EmailBouncedDate, (now))
 	
 	def test_get(self):
 		"""
@@ -148,8 +146,8 @@ class BasicSOQLTest(TestCase):
 				Email='test-djsf-unicode-email@example.com',
 				Company="Some company")
 		test_lead.save()
-		self.assertEqual(test_lead.FirstName, u'\u2603')
 		test_lead.delete()
+		self.assertEqual(test_lead.FirstName, u'\u2603')
 	
 	def test_date_comparison(self):
 		"""
@@ -163,11 +161,11 @@ class BasicSOQLTest(TestCase):
 				EmailBouncedDate=today)
 		contact.save()
 		contact = Contact.objects.get(pk=contact.pk)
-		contacts = Contact.objects.filter(EmailBouncedDate__gt=yesterday)
-		self.assertEqual(contacts.count(), 1)
-		contacts = Contact.objects.filter(EmailBouncedDate__gt=tomorrow)
-		self.assertEqual(contacts.count(), 0)
+		contacts1 = list(Contact.objects.filter(EmailBouncedDate__gt=yesterday))
+		contacts2 = list(Contact.objects.filter(EmailBouncedDate__gt=tomorrow))
 		contact.delete()
+		self.assertEqual(len(contacts1), 1)
+		self.assertEqual(len(contacts2), 0)
 	
 	def test_insert(self):
 		"""
@@ -177,8 +175,9 @@ class BasicSOQLTest(TestCase):
 				Email='test-djsf-inserts-email@example.com',
 				Company="Some company")
 		test_lead.save()
-		self.assertEqual(len(test_lead.pk), 18)
+		pk = test_lead.pk
 		test_lead.delete()
+		self.assertEqual(len(pk), 18)
 	
 	def test_delete(self):
 		"""
