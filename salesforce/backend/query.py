@@ -24,6 +24,7 @@ import django
 from itertools import islice
 from pkg_resources import parse_version
 DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
+DJANGO_16 = django.VERSION[:2] >= (1,6)
 
 import restkit
 import pytz
@@ -257,6 +258,7 @@ class CursorWrapper(object):
 		"""
 		from salesforce.backend import base
 		
+		self.rowcount = None
 		if(isinstance(self.query, SalesforceQuery)):
 			response = self.execute_select(q, args)
 		elif(isinstance(self.query, SalesforceRawQuery)):
@@ -325,7 +327,10 @@ class CursorWrapper(object):
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
-		pk = query.where.children[0].children[0][-1]
+		if DJANGO_16:
+			pk = query.where.children[0][3]
+		else:
+			pk = query.where.children[0].children[0][-1]
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = dict()
@@ -335,7 +340,9 @@ class CursorWrapper(object):
 		resource = get_resource(url)
 		
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-		return handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
+		ret = handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
+		self.rowcount = 1
+		return ret
 	
 	def execute_delete(self, query):
 		table = query.model._meta.db_table
