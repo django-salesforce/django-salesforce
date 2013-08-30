@@ -31,6 +31,7 @@ import pytz
 
 from salesforce import auth, models
 from salesforce.backend import compiler
+from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 try:
 	import json
@@ -154,7 +155,9 @@ def extract_values(query):
 	fields = query.model._meta.fields
 	for index in range(len(fields)):
 		field = fields[index]
-		if field.get_internal_type() == 'AutoField':
+		if (field.get_internal_type() == 'AutoField' or
+				isinstance(query, subqueries.UpdateQuery) and (getattr(field, 'sf_read_only', 0) & NOT_UPDATEABLE) != 0 or
+				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
 			[bound_field] = [x for x in query.values if x[0].name == field.name]
