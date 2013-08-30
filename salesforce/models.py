@@ -55,3 +55,4 @@ class SalesforceModel(models.Model):
 	
 	Id = fields.SalesforceAutoField(primary_key=True)
 
+Model = SalesforceModel
