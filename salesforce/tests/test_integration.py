@@ -129,6 +129,7 @@ class BasicSOQLTest(TestCase):
 		lead = Lead.objects.get(Email=test_email)
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
+		self.assertEqual(lead.Name, 'User Unittest General')
 	
 	def test_not_null(self):
 		"""

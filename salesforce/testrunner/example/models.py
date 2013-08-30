@@ -5,8 +5,7 @@
 # See LICENSE.md for details
 #
 
-from django.db import models
-
+from salesforce import models
 from salesforce.models import SalesforceModel
 
 SALUTATIONS = [
@@ -62,7 +61,8 @@ class Account(SalesforceModel):
 	Description = models.TextField()
 	IsPersonAccount = models.BooleanField()
 	PersonEmail = models.CharField(max_length=100)
-	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate')
+	# Added read only option, otherwise the object can not be never saved
+	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate', sf_read_only=models.READ_ONLY)
 	
 	def __unicode__(self):
 		return self.FirstName + ' ' + self.LastName
@@ -77,11 +77,8 @@ class Contact(SalesforceModel):
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
 			db_column='OwnerId', related_name='contact_owner_set')
 
-	# First we fix tests without implementing SF read only fields.
-	#Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY)
-	@property
-	def Name(self):
-		return self.FirstName + ' ' + self.LastName
+	Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
+			verbose_name='Full Name')
 
 	def __unicode__(self):
 		return self.Name
@@ -107,7 +104,7 @@ class Lead(SalesforceModel):
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
 	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
-	#Name = models.CharField(max_length=121)
+	Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY)
 	Title = models.CharField(max_length=128)
 	Company = models.CharField(max_length=255)
 	Street = models.CharField(max_length=255)
@@ -123,11 +120,10 @@ class Lead(SalesforceModel):
 	Status = models.CharField(max_length=100, choices=[(x, x) for x in STATUSES])
 	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
 	Rating = models.CharField(max_length=100, choices=[(x, x) for x in RATINGS])
+	# Added an example of special DateTime field in Salesforce that can not be inserted, but can be updated
+	# TODO write test for it
+	EmailBouncedDate = models.DateTimeField(blank=True, null=True, sf_read_only=models.NOT_CREATEABLE)
 	
-	@property
-	def Name(self):
-		return self.FirstName + ' ' + self.LastName
-
 	def __unicode__(self):
 		return self.Name
 
@@ -224,12 +220,13 @@ class ChargentOrder(SalesforceModel):
 
 
 class CronTrigger(SalesforceModel):
-	# Very special DateTime field with milisecond resolution (read only)
+	# A special DateTime field with milisecond resolution (read only)
 	PreviousFireTime = models.DateTimeField(verbose_name='Previous Run Time', blank=True, null=True)
 	# ...
 
 
 class BusinessHours(SalesforceModel):
+	Name = models.CharField(db_column='Name', max_length=80)
 	# The default record is automatically created by Salesforce.
 	IsDefault = models.BooleanField(verbose_name='Default Business Hours')
 	# ... much more fields, but we use only this one TimeFiled for test

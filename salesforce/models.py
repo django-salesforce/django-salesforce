@@ -19,6 +19,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models.base import ModelBase
 from django.db.models.sql import compiler
+from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
 
 from salesforce.backend import manager
 from salesforce.fields import *  # modified django.db.models.CharField etc.
