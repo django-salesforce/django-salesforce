@@ -14,7 +14,8 @@ from django.test import TestCase
 import django
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
-		BusinessHours, ChargentOrder, CronTrigger)
+		BusinessHours, ChargentOrder, CronTrigger,
+		GeneralCustomModel, test_custom_db_table, test_custom_db_column)
 
 import logging
 log = logging.getLogger(__name__)
@@ -226,6 +227,25 @@ class BasicSOQLTest(TestCase):
 			self.skipTest('Not found custom tables ChargentOrders__*')
 		orders = ChargentOrder.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
+
+	def test_custom_object_general(self):
+		"""
+		Create, read and delete any general custom object.
+		Object name and field name are user configurable by TEST_CUSTOM_FIELD.
+		"""
+		table_list_cache = connections['salesforce'].introspection.table_list_cache
+		table_names = [x['name'] for x in table_list_cache['sobjects']]
+		if not test_custom_db_table in sf_tables:
+			self.skipTest("Not found the expected custom object '%s'" %
+					test_custom_db_table)
+		obj = GeneralCustomModel(GeneralCustomField='sf_test')
+		obj.save()
+		try:
+			results = GeneralCustomModel.objects.all()[0:1]
+			self.assertEqual(len(results), 1)
+			self.assertEqual(results[0].GeneralCustomField, 'sf_test')
+		finally:
+			obj.delete()
 
 	def test_datetime_miliseconds(self):
 		"""
