@@ -252,3 +252,17 @@ class BasicSOQLTest(TestCase):
 		account_list = list(Account.objects.filter(Name='IntegrationTest Account'))
 		test_account.delete()
 		self.assertEqual(len(account_list), 1)
+
+	def test_select_like_operators(self):
+		"""
+		Test operators that use LIKE 'something%' and similar.
+		"""
+		User.objects.get(Username__exact=current_user)
+		User.objects.get(Username__iexact=current_user.upper())
+		User.objects.get(Username__contains=current_user[1:-1])
+		User.objects.get(Username__icontains=current_user[1:-1].upper())
+		User.objects.get(Username__startswith=current_user[:-1])
+		User.objects.get(Username__istartswith=current_user[:-1].upper())
+		User.objects.get(Username__endswith=current_user[1:])
+		User.objects.get(Username__iendswith=current_user[1:].upper())
+		# NOT TESTED regex, iregex because they are not supported

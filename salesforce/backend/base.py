@@ -42,22 +42,25 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 	Core class that provides all DB support.
 	"""
 	vendor = 'salesforce'
+	# Operators [contains, startswithm, endswith] are incorrectly
+	# case insensitive like sqlite3.
 	operators = {
 		'exact': '= %s',
 		'iexact': 'LIKE %s',
-		'contains': 'LIKE BINARY %s',
+		'contains': 'LIKE %s',
 		'icontains': 'LIKE %s',
-		'regex': 'REGEXP BINARY %s',
-		'iregex': 'REGEXP %s',
+		#'regex': 'REGEXP %s',  # unsupported
+		#'iregex': 'REGEXP %s',
 		'gt': '> %s',
 		'gte': '>= %s',
 		'lt': '< %s',
 		'lte': '<= %s',
-		'startswith': 'LIKE BINARY %s',
-		'endswith': 'LIKE BINARY %s',
+		'startswith': 'LIKE %s',
+		'endswith': 'LIKE %s',
 		'istartswith': 'LIKE %s',
 		'iendswith': 'LIKE %s',
-		'isnull': '!= %s',
+		# TODO remove 'isnull' because it's incorrect and unused
+		#'isnull': '!= %s',
 	}
 
 	Database = Database
