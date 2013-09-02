@@ -9,6 +9,7 @@
 Adds support for Salesforce primary keys.
 """
 
+import warnings
 from django.core import exceptions
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
@@ -128,6 +129,19 @@ class TimeField(SfField, models.TimeField):
 
 class ForeignKey(SfField, models.ForeignKey):
 	"""ForeignKey with sf_read_only attribute for Salesforce."""
-	pass
+	def __init__(self, *args, **kwargs):
+		on_delete = kwargs.get('on_delete', models.CASCADE).__name__
+		related_object = args[0]
+		if not on_delete in ('PROTECT', 'DO_NOTHING'):
+			# The option CASCADE (currently fails) would be unsafe after a fix
+			# of on_delete because Cascade delete is not usually enabled in SF
+			# for safety reasons for most fields objects, namely for Owner,
+			# CreatedBy etc. Some related objects are deleted automatically
+			# by SF even with DO_NOTHING in Django, e.g. for
+			# Campaign/CampaignMember
+			warnings.warn("Only foreign keys with on_delete = PROTECT or "
+					"DO_NOTHING are currently supported, not %s related to %s"
+					% (on_delete, related_object))
+		super(ForeignKey, self).__init__(*args, **kwargs)
 
 AutoField = SalesforceAutoField
