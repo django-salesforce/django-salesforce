@@ -25,6 +25,12 @@ sf_tables = [x['name'] for x in
 		connections['salesforce'].introspection.table_list_cache['sobjects']
 		]
 
+def refresh(obj):
+	"""
+	Get the same object refreshed from db.
+	"""
+	return obj.__class__.objects.get(pk=obj.pk)
+	
 def round_datetime_utc(timestamp):
 	"""Round to seconds and set zone to UTC."""
 	## sfdates are UTC to seconds precision but use a fixed-offset
@@ -54,7 +60,8 @@ class BasicSOQLTest(TestCase):
 		Clean up our test lead record.
 		"""
 		self.test_lead.delete()
-	
+
+
 	def test_raw(self):
 		"""
 		Get the first two contact records.
@@ -101,11 +108,12 @@ class BasicSOQLTest(TestCase):
 		old_date = contact.EmailBouncedDate
 		contact.EmailBouncedDate = now.replace(tzinfo=pytz.utc)
 		contact.save()
-		# get, restore, test
-		saved = Contact.objects.get(pk=contact.pk)
-		contact.EmailBouncedDate = old_date
-		contact.save()
-		self.assertEqual(saved.EmailBouncedDate, now)
+		try:
+			self.assertEqual(refresh(contact).EmailBouncedDate, now)
+		finally:
+			contact.EmailBouncedDate = old_date
+			contact.save()
+		self.assertEqual(refresh(contact).EmailBouncedDate, old_date)
 	
 	def test_insert_date(self):
 		"""
@@ -113,16 +121,15 @@ class BasicSOQLTest(TestCase):
 		"""
 		now = round_datetime_utc(datetime.datetime.utcnow())
 		contact = Contact(
-			FirstName = 'Joe',
-			LastName = 'Freelancer',
-			Owner=User.objects.get(Username=current_user),
-			EmailBouncedDate=now.replace(tzinfo=pytz.utc),
-		)
+				FirstName = 'Joe',
+				LastName = 'Freelancer',
+				Owner=User.objects.get(Username=current_user),
+				EmailBouncedDate=now.replace(tzinfo=pytz.utc))
 		contact.save()
-		# get, restore, test
-		saved = Contact.objects.get(pk=contact.pk)
-		saved.delete()
-		self.assertEqual(saved.EmailBouncedDate, (now))
+		try:
+			self.assertEqual(refresh(contact).EmailBouncedDate, now)
+		finally:
+			contact.delete()
 	
 	def test_get(self):
 		"""
@@ -131,12 +138,15 @@ class BasicSOQLTest(TestCase):
 		lead = Lead.objects.get(Email=test_email)
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
+		# test a read only field (formula of full name)
 		self.assertEqual(lead.Name, 'User Unittest General')
 	
 	def test_not_null(self):
 		"""
-		Get the test lead record.
+		Get the test lead record by isnull condition.
 		"""
+		# TODO similar failed: Contact.objects.filter(Account__isnull=True)
+		#              passed: Contact.objects.filter(Account=None)
 		lead = Lead.objects.get(Email__isnull=False, FirstName='User')
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
@@ -149,8 +159,10 @@ class BasicSOQLTest(TestCase):
 				Email='test-djsf-unicode-email@example.com',
 				Company="Some company")
 		test_lead.save()
-		test_lead.delete()
-		self.assertEqual(test_lead.FirstName, u'\u2603')
+		try:
+			self.assertEqual(refresh(test_lead).FirstName, u'\u2603')
+		finally:
+			test_lead.delete()
 	
 	def test_date_comparison(self):
 		"""
@@ -163,12 +175,13 @@ class BasicSOQLTest(TestCase):
 				Owner=User.objects.get(Username=current_user),
 				EmailBouncedDate=today)
 		contact.save()
-		contact = Contact.objects.get(pk=contact.pk)
-		contacts1 = list(Contact.objects.filter(EmailBouncedDate__gt=yesterday))
-		contacts2 = list(Contact.objects.filter(EmailBouncedDate__gt=tomorrow))
-		contact.delete()
-		self.assertEqual(len(contacts1), 1)
-		self.assertEqual(len(contacts2), 0)
+		try:
+			contacts1 = Contact.objects.filter(EmailBouncedDate__gt=yesterday)
+			self.assertEqual(len(contacts1), 1)
+			contacts2 = Contact.objects.filter(EmailBouncedDate__gt=tomorrow)
+			self.assertEqual(len(contacts2), 0)
+		finally:
+			contact.delete()
 	
 	def test_insert(self):
 		"""
@@ -178,9 +191,10 @@ class BasicSOQLTest(TestCase):
 				Email='test-djsf-inserts-email@example.com',
 				Company="Some company")
 		test_lead.save()
-		pk = test_lead.pk
-		test_lead.delete()
-		self.assertEqual(len(pk), 18)
+		try:
+			self.assertEqual(len(test_lead.pk), 18)
+		finally:
+			test_lead.delete()
 	
 	def test_delete(self):
 		"""
@@ -200,12 +214,9 @@ class BasicSOQLTest(TestCase):
 		"""
 		test_lead = Lead.objects.get(Email=test_email)
 		self.assertEquals(test_lead.FirstName, 'User')
-		
 		test_lead.FirstName = 'Tested'
 		test_lead.save()
-		
-		fetched_lead = Lead.objects.get(Email=test_email)
-		self.assertEqual(fetched_lead.FirstName, 'Tested')
+		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
 
 	def test_custom_objects(self):
 		"""
@@ -218,7 +229,7 @@ class BasicSOQLTest(TestCase):
 
 	def test_datetime_miliseconds(self):
 		"""
-		Verify that it accepts a field with milisecond resolution.
+		Verify that a field with milisecond resolution is readable.
 		"""
 		trigger = CronTrigger.objects.all()[0]
 		self.assertTrue(isinstance(trigger.PreviousFireTime, datetime.datetime))
@@ -227,15 +238,18 @@ class BasicSOQLTest(TestCase):
 
 	def test_time_field(self):
 		"""
-		Test a TimeField (read, modify, verify, restore the original).
+		Test a TimeField (read, modify, verify).
 		"""
 		obj_orig = BusinessHours.objects.all()[0]
-		self.assertTrue(isinstance(obj_orig.MondayStartTime, datetime.time))
-		obj = BusinessHours.objects.get(pk=obj_orig.pk)
+		obj = refresh(obj_orig)
+		self.assertTrue(isinstance(obj.MondayStartTime, datetime.time))
 		obj.MondayStartTime = datetime.time(23, 59)
 		obj.save()
-		self.assertEqual(obj.MondayStartTime, datetime.time(23, 59))
-		obj_orig.save()
+		obj = refresh(obj)
+		try:
+			self.assertEqual(obj.MondayStartTime, datetime.time(23, 59))
+		finally:
+			obj_orig.save()
 
 	def test_account_insert_delete(self):
 		"""
@@ -249,13 +263,15 @@ class BasicSOQLTest(TestCase):
 			test_account = Account(Name='IntegrationTest Account',
 					Owner=User.objects.get(Username=current_user))
 		test_account.save()
-		account_list = list(Account.objects.filter(Name='IntegrationTest Account'))
-		test_account.delete()
-		self.assertEqual(len(account_list), 1)
+		try:
+			accounts = Account.objects.filter(Name='IntegrationTest Account')
+			self.assertEqual(len(accounts), 1)
+		finally:
+			test_account.delete()
 
-	def test_select_like_operators(self):
+	def test_similarity_filter_operators(self):
 		"""
-		Test operators that use LIKE 'something%' and similar.
+		Test filter operators that use LIKE 'something%' and similar.
 		"""
 		User.objects.get(Username__exact=current_user)
 		User.objects.get(Username__iexact=current_user.upper())
@@ -265,4 +281,4 @@ class BasicSOQLTest(TestCase):
 		User.objects.get(Username__istartswith=current_user[:-1].upper())
 		User.objects.get(Username__endswith=current_user[1:])
 		User.objects.get(Username__iendswith=current_user[1:].upper())
-		# NOT TESTED regex, iregex because they are not supported
+		# Operators regex and iregex not tested because they are not supported.
