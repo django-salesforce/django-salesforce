@@ -236,3 +236,19 @@ class BasicSOQLTest(TestCase):
 		obj.save()
 		self.assertEqual(obj.MondayStartTime, datetime.time(23, 59))
 		obj_orig.save()
+
+	def test_account_insert_delete(self):
+		"""
+		Test insert and delete an account (normal or personal SF config)
+		"""
+		if settings.PERSON_ACCOUNT_ACTIVATED:
+			test_account = Account(FirstName='IntegrationTest',
+					LastName='Account',
+					Owner=User.objects.get(Username=current_user))
+		else:
+			test_account = Account(Name='IntegrationTest Account',
+					Owner=User.objects.get(Username=current_user))
+		test_account.save()
+		account_list = list(Account.objects.filter(Name='IntegrationTest Account'))
+		test_account.delete()
+		self.assertEqual(len(account_list), 1)

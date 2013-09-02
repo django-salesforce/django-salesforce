@@ -42,8 +42,8 @@ class AbstractAccount(SalesforceModel):
 		'Partner', 'Press', 'Prospect', 'Reseller', 'Other'
 	]
 
-	Name = models.CharField(max_length=255, sf_read_only=models.READ_ONLY)
-	Owner = models.ForeignKey(User, db_column='OwnerId')
+	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			db_column='OwnerId')
 	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
 							null=True)
 	BillingStreet = models.CharField(max_length=255)
@@ -74,6 +74,7 @@ class AbstractAccount(SalesforceModel):
 
 
 class CoreAccount(AbstractAccount):
+	Name = models.CharField(max_length=255)
 	class Meta(AbstractAccount.Meta):
 		abstract = True
 
@@ -83,6 +84,7 @@ class PersonAccount(AbstractAccount):
 	# (irreversible changes in Salesforce)
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
+	Name = models.CharField(max_length=255, sf_read_only=models.READ_ONLY)
 	Salutation = models.CharField(max_length=100,
 								  choices=[(x, x) for x in SALUTATIONS])
 	IsPersonAccount = models.BooleanField(sf_read_only=models.READ_ONLY)
@@ -170,7 +172,7 @@ class Lead(SalesforceModel):
 
 
 class ChargentOrder(SalesforceModel):
-	class Meta:
+	class Meta(SalesforceModel.Meta):
 		db_table = 'ChargentOrders__ChargentOrder__c'
 
 	OwnerId = models.CharField(max_length=255, db_column='OwnerId')
