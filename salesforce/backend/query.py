@@ -166,6 +166,7 @@ def extract_values(query):
 			[value] = [value for qfield, model, value in query.values if qfield.name == field.name]
 		else:  # insert
 			if(DJANGO_14):  # Django >= 1.4
+				assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
 				value = getattr(query.objs[0], field.attname)
 			else:   # Django == 1.3
 				value = query.values[index][1]
