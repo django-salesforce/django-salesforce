@@ -124,11 +124,35 @@ class BasicSOQLTest(TestCase):
 		contact = Contact(
 				FirstName = 'Joe',
 				LastName = 'Freelancer',
-				Owner=User.objects.get(Username=current_user),
 				EmailBouncedDate=now.replace(tzinfo=pytz.utc))
 		contact.save()
 		try:
 			self.assertEqual(refresh(contact).EmailBouncedDate, now)
+		finally:
+			contact.delete()
+
+	def test_default_specified_by_sf(self):
+		"""
+		Verify that an object with a field with default value specified by some
+		Salesforce code can be inserted. (The default is used only for a field
+		unspecified in SF REST API, but not for None or any similar value.
+		It was a pain for some unimportant foreign keys that don't accept null.
+		"""
+		# Verify a smart default is used.
+		contact = Contact(FirstName = 'sf_test', LastName='my')
+		contact.save()
+		try:
+			self.assertEqual(refresh(contact).Owner.Username, current_user)
+		finally:
+			contact.delete()
+		# Verify that an explicit value is possible for this field.
+		other_user_obj = User.objects.exclude(Username=current_user)[0]
+		contact = Contact(FirstName = 'sf_test', LastName='your',
+				Owner=other_user_obj)
+		contact.save()
+		try:
+			self.assertEqual(
+					refresh(contact).Owner.Username, other_user_obj.Username)
 		finally:
 			contact.delete()
 	
@@ -173,7 +197,6 @@ class BasicSOQLTest(TestCase):
 		yesterday = today - datetime.timedelta(days=1)
 		tomorrow = today + datetime.timedelta(days=1)
 		contact = Contact(FirstName='sf_test', LastName='date',
-				Owner=User.objects.get(Username=current_user),
 				EmailBouncedDate=today)
 		contact.save()
 		try:
@@ -277,11 +300,9 @@ class BasicSOQLTest(TestCase):
 		"""
 		if settings.PERSON_ACCOUNT_ACTIVATED:
 			test_account = Account(FirstName='IntegrationTest',
-					LastName='Account',
-					Owner=User.objects.get(Username=current_user))
+					LastName='Account')
 		else:
-			test_account = Account(Name='IntegrationTest Account',
-					Owner=User.objects.get(Username=current_user))
+			test_account = Account(Name='IntegrationTest Account')
 		test_account.save()
 		try:
 			accounts = Account.objects.filter(Name='IntegrationTest Account')

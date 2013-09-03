@@ -43,6 +43,7 @@ class AbstractAccount(SalesforceModel):
 	]
 
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=lambda:User(Id='DEFAULT'),
 			db_column='OwnerId')
 	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
 							null=True)
@@ -112,6 +113,7 @@ class Contact(SalesforceModel):
 	Email = models.EmailField(blank=True, null=True)
 	EmailBouncedDate = models.DateTimeField(blank=True, null=True)
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=lambda:User(Id='DEFAULT'),
 			db_column='OwnerId', related_name='contact_owner_set')
 
 

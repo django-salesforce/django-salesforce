@@ -169,6 +169,8 @@ def extract_values(query):
 				value = getattr(query.objs[0], field.attname)
 			else:   # Django == 1.3
 				value = query.values[index][1]
+			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
+				continue
 		[arg] = process_json_args([value])
 		d[field.db_column or field.name] = arg
 	return d
