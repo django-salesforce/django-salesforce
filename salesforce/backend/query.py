@@ -151,6 +151,9 @@ def prep_for_deserialize(model, record, using):
 	)
 
 def extract_values(query):
+	"""
+	Extract values from insert or update query.
+	"""
 	d = dict()
 	fields = query.model._meta.fields
 	for index in range(len(fields)):
@@ -160,15 +163,14 @@ def extract_values(query):
 				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
-			[bound_field] = [x for x in query.values if x[0].name == field.name]
-			[arg] = process_json_args([bound_field[2]])
-			d[bound_field[0].db_column or bound_field[0].name] = arg
-		elif(DJANGO_14):
-			[arg] = process_json_args([getattr(query.objs[0], field.name)])
-			d[field.db_column or field.name] = arg
-		else:
-			[arg] = process_json_args([query.values[index][1]])
-			d[field.db_column or field.name] = arg
+			[value] = [value for qfield, model, value in query.values if qfield.name == field.name]
+		else:  # insert
+			if(DJANGO_14):  # Django >= 1.4
+				value = getattr(query.objs[0], field.attname)
+			else:   # Django == 1.3
+				value = query.values[index][1]
+		[arg] = process_json_args([value])
+		d[field.db_column or field.name] = arg
 	return d
 
 def get_resource(url):
