@@ -92,7 +92,8 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	try:
 		return f(*args, **kwargs)
 	except restkit.ResourceNotFound, e:
-		raise base.SalesforceError("Couldn't connect to API (404): %s" % e)
+		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
+				% (e, url))
 	except restkit.ResourceGone, e:
 		raise base.SalesforceError("Couldn't connect to API (410): %s" % e)
 	except restkit.Unauthorized, e:
