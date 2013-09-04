@@ -40,7 +40,8 @@ except ImportError, e:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v24.0'
+API_STUB = '/services/data/v28.0'
+
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'

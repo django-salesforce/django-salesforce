@@ -8,3 +8,4 @@ salesforce_testrunner_db
 .*.swp
 .tox
 VERSION
+setuptools_git-*.egg
