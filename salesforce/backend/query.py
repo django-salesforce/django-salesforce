@@ -24,12 +24,14 @@ import django
 from itertools import islice
 from pkg_resources import parse_version
 DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
+DJANGO_16 = django.VERSION[:2] >= (1,6)
 
 import restkit
 import pytz
 
 from salesforce import auth, models
 from salesforce.backend import compiler
+from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 try:
 	import json
@@ -38,8 +40,15 @@ except ImportError, e:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v24.0'
-SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.000+0000'
+API_STUB = '/services/data/v28.0'
+
+# Values of seconds are with 3 decimal places in SF, but they are rounded to
+# whole seconds for the most of fields.
+SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
+if DJANGO_14:
+	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
+else:
+	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 def quoted_string_literal(s, d):
 	"""
@@ -84,7 +93,8 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	try:
 		return f(*args, **kwargs)
 	except restkit.ResourceNotFound, e:
-		raise base.SalesforceError("Couldn't connect to API (404): %s" % e)
+		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
+				% (e, url))
 	except restkit.ResourceGone, e:
 		raise base.SalesforceError("Couldn't connect to API (410): %s" % e)
 	except restkit.Unauthorized, e:
@@ -129,7 +139,10 @@ def prep_for_deserialize(model, record, using):
 				d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
-				fields[x.name] = d.strftime('%Y-%m-%d %H:%M:%S-00:00')
+				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+			elif (x.__class__.__name__ == 'TimeField' and field_val is not None
+					and not DJANGO_14 and field_val.endswith('Z')):
+				fields[x.name] = field_val[:-1]  # Fix time e.g. "23:59:59.000Z"
 			else:
 				fields[x.name] = field_val
 	
@@ -140,22 +153,29 @@ def prep_for_deserialize(model, record, using):
 	)
 
 def extract_values(query):
+	"""
+	Extract values from insert or update query.
+	"""
 	d = dict()
 	fields = query.model._meta.fields
 	for index in range(len(fields)):
 		field = fields[index]
-		if field.get_internal_type() == 'AutoField':
+		if (field.get_internal_type() == 'AutoField' or
+				isinstance(query, subqueries.UpdateQuery) and (getattr(field, 'sf_read_only', 0) & NOT_UPDATEABLE) != 0 or
+				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
-			[bound_field] = [x for x in query.values if x[0].name == field.name]
-			[arg] = process_json_args([bound_field[2]])
-			d[bound_field[0].db_column or bound_field[0].name] = arg
-		elif(DJANGO_14):
-			[arg] = process_json_args([getattr(query.objs[0], field.name)])
-			d[field.db_column or field.name] = arg
-		else:
-			[arg] = process_json_args([query.values[index][1]])
-			d[field.db_column or field.name] = arg
+			[value] = [value for qfield, model, value in query.values if qfield.name == field.name]
+		else:  # insert
+			if(DJANGO_14):  # Django >= 1.4
+				assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
+				value = getattr(query.objs[0], field.attname)
+			else:   # Django == 1.3
+				value = query.values[index][1]
+			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
+				continue
+		[arg] = process_json_args([value])
+		d[field.db_column or field.name] = arg
 	return d
 
 def get_resource(url):
@@ -251,6 +271,7 @@ class CursorWrapper(object):
 		"""
 		from salesforce.backend import base
 		
+		self.rowcount = None
 		if(isinstance(self.query, SalesforceQuery)):
 			response = self.execute_select(q, args)
 		elif(isinstance(self.query, SalesforceRawQuery)):
@@ -319,7 +340,10 @@ class CursorWrapper(object):
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
-		pk = query.where.children[0].children[0][-1]
+		if DJANGO_16:
+			pk = query.where.children[0][3]
+		else:
+			pk = query.where.children[0].children[0][-1]
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = dict()
@@ -329,12 +353,21 @@ class CursorWrapper(object):
 		resource = get_resource(url)
 		
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-		return handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
+		ret = handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
+		self.rowcount = 1
+		return ret
 	
 	def execute_delete(self, query):
 		table = query.model._meta.db_table
-		# this will break in multi-row updates
-		pk = self.query.where.children[0][-1][0]
+		## the root where node's children may itself have children..
+		def recurse_for_pk(children):
+			for node in children:
+				try:
+					pk = node[-1][0]
+				except TypeError:
+					pk = recurse_for_pk(node.children)
+				return pk
+		pk = recurse_for_pk(self.query.where.children)
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = dict()
@@ -428,6 +461,7 @@ json_conversions = {
 	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: date_literal,
+	datetime.time: lambda d,c: datetime.time.strftime(d, "%H:%M:%S.%f"),
 	decimal.Decimal: lambda s,d: float(s),
 	models.SalesforceModel: sobj_id,
 }

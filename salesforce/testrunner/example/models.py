@@ -5,9 +5,10 @@
 # See LICENSE.md for details
 #
 
-from django.db import models
-
+from salesforce import models
 from salesforce.models import SalesforceModel
+
+from django.conf import settings
 
 SALUTATIONS = [
 	'Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Prof.'
@@ -19,17 +20,20 @@ INDUSTRIES = [
 	'Electronics', 'Energy', 'Engineering', 'Entertainment', 'Environmental',
 	'Finance', 'Food & Beverage', 'Government', 'Healthcare', 'Hospitality',
 	'Insurance', 'Machinery', 'Manufacturing', 'Media', 'Not For Profit',
-	'Other', 'Recreation', 'Retail', 'Shipping', 'Technology', 'Telecommunications',
-	'Transportation', 'Utilities'
+	'Other', 'Recreation', 'Retail', 'Shipping', 'Technology',
+	'Telecommunications', 'Transportation', 'Utilities'
 ]
 
+
 class User(SalesforceModel):
+	Username = models.CharField(max_length=80)
 	Email = models.CharField(max_length=100)
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
 	IsActive = models.BooleanField()
 
-class Account(SalesforceModel):
+
+class AbstractAccount(SalesforceModel):
 	"""
 	Default Salesforce Account model.
 	"""
@@ -37,13 +41,12 @@ class Account(SalesforceModel):
 		'Analyst', 'Competitor', 'Customer', 'Integrator', 'Investor',
 		'Partner', 'Press', 'Prospect', 'Reseller', 'Other'
 	]
-	
-	#Name = models.CharField(max_length=255)
-	Owner = models.ForeignKey(User, db_column='OwnerId')
-	LastName = models.CharField(max_length=80)
-	FirstName = models.CharField(max_length=40)
-	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
-	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES])
+
+	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=lambda:User(Id='DEFAULT'),
+			db_column='OwnerId')
+	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
+							null=True)
 	BillingStreet = models.CharField(max_length=255)
 	BillingCity = models.CharField(max_length=40)
 	BillingState = models.CharField(max_length=20)
@@ -57,36 +60,92 @@ class Account(SalesforceModel):
 	Phone = models.CharField(max_length=255)
 	Fax = models.CharField(max_length=255)
 	Website = models.CharField(max_length=255)
-	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
+	Industry = models.CharField(max_length=100,
+								choices=[(x, x) for x in INDUSTRIES])
 	Description = models.TextField()
-	IsPersonAccount = models.BooleanField()
-	PersonEmail = models.CharField(max_length=100)
-	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate')
-	
+	# Added read only option, otherwise the object can not be never saved
+	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate',
+											sf_read_only=models.READ_ONLY)
+
+	class Meta(SalesforceModel.Meta):
+		abstract = True
+
 	def __unicode__(self):
-		return self.FirstName + ' ' + self.LastName
+		return self.Name
+
+
+class CoreAccount(AbstractAccount):
+	Name = models.CharField(max_length=255)
+	class Meta(AbstractAccount.Meta):
+		abstract = True
+
+
+class PersonAccount(AbstractAccount):
+	# Non standard fields that require activating "Person Account"
+	# (irreversible changes in Salesforce)
+	LastName = models.CharField(max_length=80)
+	FirstName = models.CharField(max_length=40)
+	Name = models.CharField(max_length=255, sf_read_only=models.READ_ONLY)
+	Salutation = models.CharField(max_length=100,
+								  choices=[(x, x) for x in SALUTATIONS])
+	IsPersonAccount = models.BooleanField(sf_read_only=models.READ_ONLY)
+	PersonEmail = models.CharField(max_length=100)
+
+	class Meta(AbstractAccount.Meta):
+		abstract = True
+
+
+if settings.PERSON_ACCOUNT_ACTIVATED:
+	class Account(PersonAccount):
+		pass
+else:
+	class Account(CoreAccount):
+		pass
+
+
+class Contact(SalesforceModel):
+	Account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
+			db_column='AccountId', blank=True, null=True)
+	LastName = models.CharField(max_length=80)
+	FirstName = models.CharField(max_length=40, blank=True)
+	Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
+			verbose_name='Full Name')
+	Email = models.EmailField(blank=True, null=True)
+	EmailBouncedDate = models.DateTimeField(blank=True, null=True)
+	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=lambda:User(Id='DEFAULT'),
+			db_column='OwnerId', related_name='contact_owner_set')
+
+
+	def __unicode__(self):
+		return self.Name
+
 
 class Lead(SalesforceModel):
 	"""
 	Default Salesforce Lead model.
 	"""
 	SOURCES = [
-		'Advertisement', 'Employee Referral', 'External Referral', 'Partner', 'Public Relations',
-		'Seminar - Internal', 'Seminar - Partner', 'Trade Show', 'Web', 'Word of mouth', 'Other',
+		'Advertisement', 'Employee Referral', 'External Referral',
+		'Partner', 'Public Relations',
+		'Seminar - Internal', 'Seminar - Partner', 'Trade Show', 'Web',
+		'Word of mouth', 'Other',
 	]
-	
+
 	STATUSES = [
 		'Contacted', 'Open', 'Qualified', 'Unqualified',
 	]
-	
+
 	RATINGS = [
 		'Hot', 'Warm', 'Cold',
 	]
-	
+
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
 	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
-	#Name = models.CharField(max_length=121)
+	Salutation = models.CharField(max_length=100,
+								  choices=[(x, x) for x in SALUTATIONS])
+	Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY)
 	Title = models.CharField(max_length=128)
 	Company = models.CharField(max_length=255)
 	Street = models.CharField(max_length=255)
@@ -98,28 +157,40 @@ class Lead(SalesforceModel):
 	Email = models.CharField(max_length=100)
 	Website = models.CharField(max_length=100)
 	Description = models.TextField()
-	LeadSource = models.CharField(max_length=100, choices=[(x, x) for x in SOURCES])
+	LeadSource = models.CharField(max_length=100,
+								  choices=[(x, x) for x in SOURCES])
 	Status = models.CharField(max_length=100, choices=[(x, x) for x in STATUSES])
-	Industry = models.CharField(max_length=100, choices=[(x, x) for x in INDUSTRIES])
+	Industry = models.CharField(max_length=100,
+								  choices=[(x, x) for x in INDUSTRIES])
 	Rating = models.CharField(max_length=100, choices=[(x, x) for x in RATINGS])
-	
+	# Added an example of special DateTime field in Salesforce that can
+	# not be inserted, but can be updated
+	# TODO write test for it
+	EmailBouncedDate = models.DateTimeField(blank=True, null=True,
+											sf_read_only=models.NOT_CREATEABLE)
+
 	def __unicode__(self):
-		return self.FirstName + ' ' + self.LastName
+		return self.Name
+
 
 class ChargentOrder(SalesforceModel):
-	class Meta:
+	class Meta(SalesforceModel.Meta):
 		db_table = 'ChargentOrders__ChargentOrder__c'
-	
+
 	OwnerId = models.CharField(max_length=255, db_column='OwnerId')
 	IsDeleted = models.CharField(max_length=255, db_column='IsDeleted')
 	Name = models.CharField(max_length=255, db_column='Name')
 	CreatedDate = models.CharField(max_length=255, db_column='CreatedDate')
 	CreatedById = models.CharField(max_length=255, db_column='CreatedById')
-	LastModifiedDate = models.CharField(max_length=255, db_column='LastModifiedDate')
-	LastModifiedById = models.CharField(max_length=255, db_column='LastModifiedById')
+	LastModifiedDate = models.CharField(max_length=255,
+									    db_column='LastModifiedDate')
+	LastModifiedById = models.CharField(max_length=255,
+										db_column='LastModifiedById')
 	SystemModstamp = models.CharField(max_length=255, db_column='SystemModstamp')
-	LastActivityDate = models.CharField(max_length=255, db_column='LastActivityDate')
-	Balance_Due = models.CharField(max_length=255, db_column='ChargentOrders__Balance_Due__c')
+	LastActivityDate = models.CharField(max_length=255,
+										db_column='LastActivityDate')
+	Balance_Due = models.CharField(max_length=255,
+									db_column='ChargentOrders__Balance_Due__c')
 	Bank_Account_Name = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Name__c')
 	Bank_Account_Number = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Number__c')
 	Bank_Account_Type = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Type__c')
@@ -196,3 +267,38 @@ class ChargentOrder(SalesforceModel):
 	Order_Name = models.CharField(max_length=255, db_column='Order_Name__c')
 	PAC_Fund = models.CharField(max_length=255, db_column='PAC_Fund__c')
 	Event_Flag = models.CharField(max_length=255, db_column='Event_Flag__c')
+
+
+class CronTrigger(SalesforceModel):
+	# A special DateTime field with milisecond resolution (read only)
+	PreviousFireTime = models.DateTimeField(verbose_name='Previous Run Time', blank=True, null=True)
+	# ...
+
+
+class BusinessHours(SalesforceModel):
+	Name = models.CharField(db_column='Name', max_length=80)
+	# The default record is automatically created by Salesforce.
+	IsDefault = models.BooleanField(verbose_name='Default Business Hours')
+	# ... much more fields, but we use only this one TimeFiled for test
+	MondayStartTime = models.TimeField()
+
+
+test_custom_db_table, test_custom_db_column = getattr(settings,
+ 		'TEST_CUSTOM_FIELD', 'ChargentOrders__ChargentOrder__c.Name').split('.')
+
+
+class GeneralCustomModel(SalesforceModel):
+ 	"""
+ 	This model is used for tests on a field of type CharField on a custom model
+ 	specified in local_settings.py:
+ 	Example:
+ 		TEST_CUSTOM_FIELD = 'TIMBASURVEYS__SurveyQuestion__c.TIMBASURVEYS__Question__c'
+ 	Other fields shouldn't be required for saving that object.
+ 	"""
+	# The line "managed = False" or Meta inherited from SalesforceMoled.Meta
+	# is especially important if the model shares a table with other model.
+ 	class Meta:
+ 		db_table = test_custom_db_table
+ 		managed = False
+
+ 	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)

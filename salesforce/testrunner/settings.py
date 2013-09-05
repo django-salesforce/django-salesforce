@@ -7,6 +7,8 @@ ADMINS = (
 	# ('Your Name', 'your_email@example.com'),
 )
 
+PERSON_ACCOUNT_ACTIVATED = False
+
 MANAGERS = ADMINS
 
 DATABASES = {
@@ -14,6 +16,8 @@ DATABASES = {
 		'ENGINE': 'django.db.backends.sqlite3',
 		'NAME': 'salesforce_testrunner_db',
 	},
+	# The variable DATABASES should be redefined in local_settings with details
+	# in order to protect private secret values from unintentional committing.
 	'salesforce': {
 		'ENGINE': 'salesforce.backend',
 		"CONSUMER_KEY" : '',
@@ -65,11 +69,6 @@ STATIC_ROOT = ''
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
 STATIC_URL = '/static/'
-
-# URL prefix for admin static files -- CSS, JavaScript and images.
-# Make sure to use a trailing slash.
-# Examples: "http://foo.com/static/admin/", "/static/admin/".
-ADMIN_MEDIA_PREFIX = '/static/admin/'
 
 # Additional locations of static files
 STATICFILES_DIRS = (
