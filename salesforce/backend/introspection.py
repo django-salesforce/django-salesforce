@@ -19,7 +19,7 @@ from django.utils.datastructures import SortedDict
 from django.utils.encoding import force_text
 
 from salesforce.backend import compiler, query
-from salesforce import models
+from salesforce import models, DJANGO_15_PLUS
 
 try:
 	import json
@@ -96,7 +96,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	
 	def get_table_list(self, cursor):
 		"Returns a list of table names in the current database."
-		result = [x['name'] for x in self.table_list_cache['sobjects']]
+		result = [SfProtectName(x['name'])
+				for x in self.table_list_cache['sobjects']]
 		return result
 	
 	def get_table_description(self, cursor, table_name):
@@ -141,7 +142,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		representing all relationships to the given table. Indexes are 0-based.
 		"""
 		global last_introspected_model, last_with_important_related_name, last_read_only
-		table2model = lambda table_name: table_name.title().replace('_', '').replace(' ', '').replace('-', '')
+		table2model = lambda table_name: SfProtectName(table_name).title().replace('_', '').replace(' ', '').replace('-', '')
 		result = {}
 		reverse = {}
 		last_with_important_related_name = []
@@ -149,8 +150,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		INDEX_OF_PRIMARY_KEY = 0
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
 			if field['type'] == 'reference':
-				result[i] = (INDEX_OF_PRIMARY_KEY, field['referenceTo'][0])
-				reverse.setdefault(field['referenceTo'][0], []).append(field['name'])
+				reference_to_name = SfProtectName(field['referenceTo'][0])
+				result[i] = (INDEX_OF_PRIMARY_KEY, reference_to_name)
+				reverse.setdefault(reference_to_name, []).append(field['name'])
 				if not field['updateable'] or not field['createable']:
 					sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
 					# use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
@@ -198,6 +200,26 @@ class SymbolicModelsName(object):
 	def __repr__(self):
 		return self.name
 
+class SfProtectName(str):
+	"""
+	Protect CamelCase class names and improve NOT_camelCase names by injecting
+	a milder method ".title()" on the table name string into Django method
+	inspectdb.
+	>>> SfProtectName('AccountContactRole').title()
+	'AccountContactRole'
+	>>> SfProtectName('some_STRANGE2TableName__c').title()
+	'SomeStrange2TableName'
+	>>> assert SfProtectName('an_ODD2TableName__c') == 'an_ODD2TableName__c'
+	"""
+	# This better preserves the names. It is exact for all SF builtin tables,
+	# though not perfect for names with more consecutive upper case characters,
+	# e.g 'MyURLTable__c' -> 'MyUrltable' is still better than 'MyurltableC'.
+	def title(self):
+		if not DJANGO_15_PLUS:
+			# the old behavior with old Django
+			return super(SfProtectName, self).title()
+		name = re.sub(r'__c$', '', self)   # fixed custom name
+		return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
 
 reverse_models_names = dict((obj.value, obj) for obj in
 	[SymbolicModelsName(name) for name in (
