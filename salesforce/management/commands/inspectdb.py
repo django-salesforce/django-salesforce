@@ -3,7 +3,7 @@ import warnings
 from optparse import make_option
 from django.core.management.commands.inspectdb import Command as InspectDBCommand
 from django.db import connections, DEFAULT_DB_ALIAS
-from salesforce.backend.introspection import SymbolicModelsName
+from salesforce.backend import introspection as sf_introspection
 import django
 import salesforce
 
@@ -50,14 +50,14 @@ class Command(InspectDBCommand):
 			if is_relation:
 				if col_name.lower().endswith('_id'):
 					field_params['db_column'] = col_name[:-3] + col_name[-2:]
-				if field_params['db_column'] in salesforce.backend.introspection.last_with_important_related_name:
+				if field_params['db_column'] in sf_introspection.last_with_important_related_name:
 					field_params['related_name'] = ('%s_%s_set' % (
-						salesforce.backend.introspection.last_introspected_model,
+						sf_introspection.last_introspected_model,
 						re.sub('_Id$', '', new_name).replace('_', '')
 						)).lower()
-				if field_params['db_column'] in  salesforce.backend.introspection.last_read_only:
-					field_params['sf_read_only'] = salesforce.backend.introspection.last_read_only[field_params['db_column']]
-				field_params['on_delete'] = SymbolicModelsName('DO_NOTHING')
+				if field_params['db_column'] in  sf_introspection.last_read_only:
+					field_params['sf_read_only'] = sf_introspection.last_read_only[field_params['db_column']]
+				field_params['on_delete'] = sf_introspection.SymbolicModelsName('DO_NOTHING')
 			field_notes = [x for x in field_notes if x != 'Field name made lowercase.']
 		return new_name, field_params, field_notes
 
