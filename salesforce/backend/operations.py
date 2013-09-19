@@ -35,6 +35,12 @@ class DatabaseOperations(BaseDatabaseOperations):
 		We let the JSON serializer handle dates for us.
 		"""
 		return value
+
+	def value_to_db_date(self, value):
+		"""
+		We let the JSON serializer handle dates for us.
+		"""
+		return value
 	
 	def last_insert_id(self, cursor, db_table, db_column):
 		return cursor.lastrowid
