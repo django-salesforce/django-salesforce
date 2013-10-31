@@ -68,5 +68,5 @@ class Command(InspectDBCommand):
 
 
 if django.VERSION[:2] < (1,5):
-	warnins.warn("Django >= 1.5 is required to generate a valid model. "
+	warnings.warn("Django >= 1.5 is required to generate a valid model. "
 			"Manual editing is necessary for older Django.")
