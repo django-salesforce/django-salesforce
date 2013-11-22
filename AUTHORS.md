@@ -7,3 +7,5 @@ django-salesforce contributors
 * Reggie Dugard <https://github.com/reggied>
 * Hynek Cernoch <https://github.com/hynekcer>
 * Bryan Alsdorf <https://github.com/balsdorf>
+* Joshua Barone <https://github.com/jbarone>
+* Benjamin Wohlwend <https://github.com/piquadrat>
