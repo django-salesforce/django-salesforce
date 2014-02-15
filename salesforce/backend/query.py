@@ -42,6 +42,8 @@ log = logging.getLogger(__name__)
 
 API_STUB = '/services/data/v28.0'
 
+sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
+
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
@@ -85,7 +87,7 @@ def process_json_args(args):
 
 def reauthenticate():
 	auth.expire_token()
-	oauth = auth.authenticate(settings.DATABASES[settings.SALESFORCE_DB_ALIAS])
+	oauth = auth.authenticate(settings.DATABASES[sf_alias])
 	return oauth['access_token']
 
 def handle_api_exceptions(url, f, *args, **kwargs):
