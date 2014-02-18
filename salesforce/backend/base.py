@@ -13,6 +13,7 @@ import logging, urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
+from django.db.backends.signals import connection_created
 
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
@@ -21,6 +22,7 @@ from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
+from salesforce import DJANGO_14, DJANGO_16
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		'iexact': 'LIKE %s',
 		'contains': 'LIKE %s',
 		'icontains': 'LIKE %s',
-		#'regex': 'REGEXP %s',  # unsupported
+		#'regex': 'REGEXP %s',	# unsupported
 		#'iregex': 'REGEXP %s',
 		'gt': '> %s',
 		'gte': '>= %s',
@@ -67,16 +69,16 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
 	def __init__(self, settings_dict, alias='default'):
 		super(DatabaseWrapper, self).__init__(settings_dict, alias)
-		
+
 		self.validate_settings(settings_dict)
-		
+
 		self.features = DatabaseFeatures(self)
 		self.ops = DatabaseOperations(self)
 		self.client = DatabaseClient(self)
 		self.creation = DatabaseCreation(self)
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
-	
+
 	def get_connection_params(self):
 		settings_dict = self.settings_dict
 		params = settings_dict.copy()
@@ -101,20 +103,24 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 				raise ImproperlyConfigured("Required '%s' key missing from '%s' database settings." % (k, self.alias))
 			elif not(d[k]):
 				raise ImproperlyConfigured("'%s' key is the empty string in '%s' database settings." % (k, self.alias))
-		
+
 		try:
 			urlparse.urlparse(d['HOST'])
 		except Exception, e:
 			raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" % (self.alias, e))
-	
+
 	def cursor(self, query=None):
 		"""
 		Return a fake cursor for accessing the Salesforce API with SOQL.
 		"""
 		from salesforce.backend.query import CursorWrapper
 		cursor = CursorWrapper(self, query)
+		# prior to 1.6 you were expected to send this signal
+		# just after the cursor was constructed
+		if not DJANGO_16:
+			connection_created.send(self.__class__, connection=self)
 		return cursor
-	
+
 	def quote_name(self, name):
 		"""
 		Do not quote column and table names in the SOQL dialect.

@@ -9,3 +9,4 @@ salesforce_testrunner_db
 .tox
 VERSION
 setuptools_git-*.egg
+.ropeproject/

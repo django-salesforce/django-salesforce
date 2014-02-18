@@ -17,19 +17,14 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.models import query
 from django.db.models.sql import Query, RawQuery, constants, subqueries
-from django.db.backends.signals import connection_created
 from django.utils.encoding import force_unicode
 
-import django
 from itertools import islice
-from pkg_resources import parse_version
-DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
-DJANGO_16 = django.VERSION[:2] >= (1,6)
 
 import restkit
 import pytz
 
-from salesforce import auth, models
+from salesforce import auth, models, DJANGO_14, DJANGO_16
 from salesforce.backend import compiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
@@ -123,7 +118,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 
 def prep_for_deserialize(model, record, using):
 	attribs = record.pop('attributes')
-	
+
 	mod = model.__module__.split('.')
 	if(mod[-1] == 'models'):
 		app_label = mod[-2]
@@ -131,7 +126,7 @@ def prep_for_deserialize(model, record, using):
 		app_label = getattr(model._meta, 'app_label')
 	else:
 		raise ImproperlyConfigured("Can't discover the app_label for %s, you must specify it via model meta options.")
-	
+
 	fields = dict()
 	for x in model._meta.fields:
 		if not x.primary_key:
@@ -147,7 +142,7 @@ def prep_for_deserialize(model, record, using):
 				fields[x.name] = field_val[:-1]  # Fix time e.g. "23:59:59.000Z"
 			else:
 				fields[x.name] = field_val
-	
+
 	return dict(
 		model	= '.'.join([app_label, model.__name__]),
 		pk		= record.pop('Id'),
@@ -207,7 +202,7 @@ class SalesforceQuerySet(query.QuerySet):
 		sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
 		cursor = CursorWrapper(connections[self.db], self.query)
 		cursor.execute(sql, params)
-		
+
 		pfd = prep_for_deserialize
 		for res in python.Deserializer(pfd(self.model, r, self.db) for r in cursor.results):
 			yield res.object
@@ -227,7 +222,7 @@ class SalesforceRawQuery(RawQuery):
 	def _execute_query(self):
 		self.cursor = CursorWrapper(connections[self.using], self)
 		self.cursor.execute(self.sql, self.params)
-	
+
 	def __repr__(self):
 		return "<SalesforceRawQuery: %r>" % (self.sql % tuple(self.params))
 
@@ -237,10 +232,10 @@ class SalesforceQuery(Query):
 	"""
 	from salesforce.backend import aggregates
 	aggregates_module = aggregates
-	
+
 	def clone(self, klass=None, memo=None, **kwargs):
 		return Query.clone(self, klass, memo, **kwargs)
-	
+
 	def has_results(self, using):
 		q = self.clone()
 		compiler = q.get_compiler(using=using)
@@ -249,7 +244,7 @@ class SalesforceQuery(Query):
 class CursorWrapper(object):
 	"""
 	A wrapper that emulates the behavior of a database cursor.
-	
+
 	This is the class that is actually responsible for making connections
 	to the SF REST API
 	"""
@@ -257,22 +252,21 @@ class CursorWrapper(object):
 		"""
 		Connect to the Salesforce API.
 		"""
-		connection_created.send(sender=self.__class__, connection=self)
 		self.settings_dict = conn.settings_dict
 		self.query = query
 		self.results = []
 		self.rowcount = None
-	
+
 	@property
 	def oauth(self):
 		return auth.authenticate(self.settings_dict)
-	
+
 	def execute(self, q, args=None):
 		"""
 		Send a query to the Salesforce API.
 		"""
 		from salesforce.backend import base
-		
+
 		self.rowcount = None
 		if(isinstance(self.query, SalesforceQuery)):
 			response = self.execute_select(q, args)
@@ -286,10 +280,10 @@ class CursorWrapper(object):
 			response = self.execute_delete(self.query)
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % self.query)
-		
+
 		body = response.body_string()
 		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
-		
+
 		if(jsrc):
 			data = json.loads(jsrc)
 			# a SELECT query
@@ -302,15 +296,15 @@ class CursorWrapper(object):
 			# something we don't recognize
 			else:
 				raise base.DatabaseError(data)
-			
+
 			if('count()' in q.lower()):
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
 				data['records'] = [{self.rowcount:'COUNT'}]
-			
+
 			self.results = self.query_results(data)
 		else:
 			self.results = []
-	
+
 	def execute_select(self, q, args):
 		processed_sql = q % process_args(args)
 		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urllib.urlencode(dict(
@@ -318,16 +312,16 @@ class CursorWrapper(object):
 		)))
 		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
 		resource = get_resource(url)
-		
+
 		log.debug(processed_sql)
 		return handle_api_exceptions(url, resource.get, headers=headers)
-	
+
 	def query_more(self, nextRecordsUrl):
 		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
 		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
 		resource = get_resource(url)
 		return handle_api_exceptions(url, resource.get, headers=headers)
-	
+
 	def execute_insert(self, query):
 		table = query.model._meta.db_table
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
@@ -338,7 +332,7 @@ class CursorWrapper(object):
 		resource = get_resource(url)
 		log.debug('INSERT %s%s' % (table, post_data))
 		return handle_api_exceptions(url, resource.post, headers=headers, payload=json.dumps(post_data))
-	
+
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
@@ -353,12 +347,12 @@ class CursorWrapper(object):
 		headers['Content-Type'] = 'application/json'
 		post_data = extract_values(query)
 		resource = get_resource(url)
-		
+
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
 		ret = handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
 		self.rowcount = 1
 		return ret
-	
+
 	def execute_delete(self, query):
 		table = query.model._meta.db_table
 		## the root where node's children may itself have children..
@@ -375,10 +369,10 @@ class CursorWrapper(object):
 		headers = dict()
 		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 		resource = get_resource(url)
-		
+
 		log.debug('DELETE %s(%s)' % (table, pk))
 		return handle_api_exceptions(url, resource.delete, headers=headers)
-	
+
 	def query_results(self, results):
 		output = []
 		while True:
@@ -387,17 +381,17 @@ class CursorWrapper(object):
 
 			if results['done']:
 				break
-			
+
 			# http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#heading_2_1
 			response = self.query_more(results['nextRecordsUrl'])
 			jsrc = force_unicode(response.body_string()).encode(settings.DEFAULT_CHARSET)
-		
+
 			if(jsrc):
 				results = json.loads(jsrc)
 			else:
 				break
 		return output
-	
+
 	def __iter__(self):
 		return iter(self.results)
 

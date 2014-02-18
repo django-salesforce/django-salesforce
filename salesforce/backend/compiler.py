@@ -11,15 +11,12 @@ Generate queries using the SOQL dialect.
 from django.db.models.sql import compiler, query, where, constants
 from django.db.models.sql.datastructures import EmptyResultSet
 
-import django
-from pkg_resources import parse_version
-DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
-DJANGO_16 = django.VERSION[:2] >= (1,6)
+from salesforce import DJANGO_14, DJANGO_16
 
 def process_name(name):
 	"""
 	Convert a Djangofied column name into a Salesforce-compliant column name.
-	
+
 	TODO: this is sketchy
 	"""
 	if(name.startswith('example_')):
@@ -57,7 +54,7 @@ class SQLCompiler(compiler.SQLCompiler):
 				name = col
 			result.append(name.strip('"'))
 		return (result, col_params) if DJANGO_16 else result
-	
+
 	def get_from_clause(self):
 		"""
 		Return the FROM clause, converted the SOQL dialect.
@@ -77,7 +74,7 @@ class SQLCompiler(compiler.SQLCompiler):
 			result.append('%s%s' % (connector, name))
 			first = False
 		return result, []
-	
+
 	def quote_name_unless_alias(self, name):
 		"""
 		A wrapper around connection.ops.quote_name that doesn't quote aliases
@@ -86,7 +83,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		r = self.connection.ops.quote_name(name)
 		self.quote_cache[name] = r
 		return r
-	
+
 	def execute_sql(self, result_type=constants.MULTI):
 		"""
 		Run the query against the database and returns the result(s). The
@@ -112,10 +109,10 @@ class SQLCompiler(compiler.SQLCompiler):
 
 		cursor = self.connection.cursor(self.query)
 		cursor.execute(sql, params)
-		
+
 		if not result_type:
 			return cursor
-		
+
 		ordering_aliases = self.ordering_aliases if DJANGO_16 else self.query.ordering_aliases
 		if result_type == constants.SINGLE:
 			if ordering_aliases:
@@ -139,7 +136,7 @@ class SQLCompiler(compiler.SQLCompiler):
 
 class SalesforceWhereNode(where.WhereNode):
 	overridden_types = ['isnull']
-	
+
 	def sql_for_columns(self, data, qn, connection, internal_type=None):  # Fixed for Django 1.6
 		"""
 		Don't attempt to quote column names.
@@ -153,7 +150,7 @@ class SalesforceWhereNode(where.WhereNode):
 	def make_atom(self, child, qn, connection):
 		lvalue, lookup_type, value_annot, params_or_value = child
 		result = super(SalesforceWhereNode, self).make_atom(child, qn, connection)
-		
+
 		if(lookup_type in self.overridden_types):
 			if hasattr(lvalue, 'process'):
 				try:
@@ -166,7 +163,7 @@ class SalesforceWhereNode(where.WhereNode):
 			else:
 				# A smart object with an as_sql() method.
 				field_sql = lvalue.as_sql(qn, connection)
-		
+
 			if lookup_type == 'isnull':
 				return ('%s %snull' % (field_sql,
 					(not value_annot and '!= ' or '= ')), ())
