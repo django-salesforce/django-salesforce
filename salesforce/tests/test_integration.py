@@ -92,7 +92,15 @@ class BasicSOQLTest(TestCase):
 		"""
 		contacts = Contact.objects.all()[0:2]
 		self.assertEqual(len(contacts), 2)
-	
+
+	def test_exclude_query_construction(self):
+		"""
+		Test that excludde query construction returns valid SOQL
+		"""
+		contacts = Contact.objects.filter(FirstName__isnull=False).exclude(Email="steve@apple.com", LastName="Wozniak").exclude(LastName="smith")
+		number_of_contacts = contacts.count()
+		self.assertIsInstance(number_of_contacts, int)
+
 	def test_foreign_key(self):
 		"""
 		Verify that the owner of an Contact is the currently logged admin.
