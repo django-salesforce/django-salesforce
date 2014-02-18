@@ -1,0 +1,13 @@
+; This file is for unifying the coding style for different editors and IDEs.
+; More information at http://EditorConfig.org
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = false
+
+[*.py]
+indent_style = tab
+indent_size = 4
+

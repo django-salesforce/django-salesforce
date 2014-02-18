@@ -50,7 +50,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		'iexact': 'LIKE %s',
 		'contains': 'LIKE %s',
 		'icontains': 'LIKE %s',
-		#'regex': 'REGEXP %s',  # unsupported
+		#'regex': 'REGEXP %s',	# unsupported
 		#'iregex': 'REGEXP %s',
 		'gt': '> %s',
 		'gte': '>= %s',
@@ -114,8 +114,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		"""
 		from salesforce.backend.query import CursorWrapper
 		cursor = CursorWrapper(self, query)
-        if not DJANGO_16:
-            connection_create.send(self.__class__, connection=self)
+		if not DJANGO_16:
+			connection_create.send(self.__class__, connection=self)
 		return cursor
 
 	def quote_name(self, name):
