@@ -95,7 +95,7 @@ class BasicSOQLTest(TestCase):
 
 	def test_exclude_query_construction(self):
 		"""
-		Test that excludde query construction returns valid SOQL
+		Test that exclude query construction returns valid SOQL.
 		"""
 		contacts = Contact.objects.filter(FirstName__isnull=False).exclude(Email="steve@apple.com", LastName="Wozniak").exclude(LastName="smith")
 		number_of_contacts = contacts.count()
