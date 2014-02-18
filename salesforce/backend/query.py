@@ -19,16 +19,12 @@ from django.db.models import query
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.utils.encoding import force_unicode
 
-import django
 from itertools import islice
-from pkg_resources import parse_version
-DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
-DJANGO_16 = django.VERSION[:2] >= (1,6)
 
 import restkit
 import pytz
 
-from salesforce import auth, models
+from salesforce import auth, models, DJANGO_14, DJANGO_16
 from salesforce.backend import compiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
