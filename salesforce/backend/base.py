@@ -114,8 +114,10 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		"""
 		from salesforce.backend.query import CursorWrapper
 		cursor = CursorWrapper(self, query)
+		# prior to 1.6 you were expected to send this signal
+		# just after the cursor was constructed
 		if not DJANGO_16:
-			connection_create.send(self.__class__, connection=self)
+			connection_created.send(self.__class__, connection=self)
 		return cursor
 
 	def quote_name(self, name):
