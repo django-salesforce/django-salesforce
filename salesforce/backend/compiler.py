@@ -173,6 +173,66 @@ class SalesforceWhereNode(where.WhereNode):
 		else:
 			return result
 
+	if(DJANGO_14):
+		def as_sql(self, qn, connection):
+			"""
+			Returns the SQL version of the where clause and the value to be
+			substituted in. Returns None, None if this node is empty.
+
+			If 'node' is provided, that is the root of the SQL generation
+			(generally not needed except by the internal implementation for
+			recursion).
+			"""
+			if not self.children:
+				return None, []
+			result = []
+			result_params = []
+			empty = True
+			for child in self.children:
+				try:
+					if hasattr(child, 'as_sql'):
+						sql, params = child.as_sql(qn=qn, connection=connection)
+					else:
+						# A leaf node in the tree.
+						sql, params = self.make_atom(child, qn, connection)
+
+				except EmptyResultSet:
+					if self.connector == AND and not self.negated:
+						# We can bail out early in this particular case (only).
+						raise
+					elif self.negated:
+						empty = False
+					continue
+				except FullResultSet:
+					if self.connector == OR:
+						if self.negated:
+							empty = True
+							break
+						# We match everything. No need for any constraints.
+						return '', []
+					if self.negated:
+						empty = True
+					continue
+
+				empty = False
+				if sql:
+					result.append(sql)
+					result_params.extend(params)
+			if empty:
+				raise EmptyResultSet
+
+			conn = ' %s ' % self.connector
+			sql_string = conn.join(result)
+			if sql_string:
+				if self.negated:
+					# SOQL requires us to wrap each fragment
+					negated_strings = ["(NOT(%s))" % fragment for fragment in result]
+					sql_string = conn.join(negated_strings)
+					# sql_string = 'NOT (%s)' % sql_string
+				elif len(self.children) != 1:
+					sql_string = '(%s)' % sql_string
+			return sql_string, result_params
+
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
 	if(DJANGO_14):
 		def execute_sql(self, return_id=False):
