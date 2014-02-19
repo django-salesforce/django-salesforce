@@ -9,3 +9,4 @@ django-salesforce contributors
 * Bryan Alsdorf <https://github.com/balsdorf>
 * Joshua Barone <https://github.com/jbarone>
 * Benjamin Wohlwend <https://github.com/piquadrat>
+* Jacob Wegner <https://github.com/jacobwegner>
