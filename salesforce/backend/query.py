@@ -291,7 +291,11 @@ class CursorWrapper(object):
 		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
 		
 		if(jsrc):
-			data = json.loads(jsrc)
+			# parse_float set to decimal.Decimal to avoid precision errors when
+			# converting from the json number to a float to a Decimal object
+			# on a model's DecimalField...converts from json number directly
+			# a Decimal object
+			data = json.loads(jsrc, parse_float=decimal.Decimal)
 			# a SELECT query
 			if('totalSize' in data):
 				self.rowcount = data['totalSize']
