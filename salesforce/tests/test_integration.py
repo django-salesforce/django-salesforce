@@ -285,8 +285,10 @@ class BasicSOQLTest(TestCase):
 		"""
 		Verify that a field with milisecond resolution is readable.
 		"""
-		account = Account.objects.all()[0]
-		self.assertTrue(isinstance(account.LastModifiedDate, datetime.datetime))
+		triggers = CronTrigger.objects.all()
+		if not triggers:
+			self.skipTest("No object with milisecond resolution found.")
+		self.assertTrue(isinstance(triggers[0].PreviousFireTime, datetime.datetime))
 		# The reliability of this is only 99.9%, therefore it is commented out.
 		#self.assertNotEqual(trigger.PreviousFireTime.microsecond, 0)
 
