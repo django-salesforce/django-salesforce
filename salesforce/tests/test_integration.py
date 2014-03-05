@@ -355,3 +355,19 @@ class BasicSOQLTest(TestCase):
 			self.assertTrue(Account.objects.filter(Name=account_name).exists())
 		finally:
 			account.delete()
+
+	def test_escape_single_quote_in_raw_query(self):
+		"""
+		Test that manual escaping within a raw query is not double escaped.
+		"""
+		account_name = '''Dr. Evil's Giant "Laser", LLC'''
+		account = Account(Name=account_name)
+		account.save()
+
+		manually_escaped = '''Dr. Evil\\'s Giant "Laser", LLC'''
+		try:
+			retrieved_account = Account.objects.raw(
+				"SELECT Id, Name FROM Account WHERE Name = '{}'".format(manually_escaped))[0]
+			self.assertEqual(account_name, retrieved_account.Name)
+		finally:
+			account.delete()
