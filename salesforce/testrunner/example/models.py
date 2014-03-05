@@ -173,6 +173,42 @@ class Lead(SalesforceModel):
 		return self.Name
 
 
+class Product(SalesforceModel):
+	Name = models.CharField(max_length=255, db_column='Name')
+
+	class Meta(SalesforceModel.Meta):
+		db_table = 'Product2'
+
+	def __unicode__(self):
+		return self.Name
+
+
+class Pricebook(SalesforceModel):
+	Name = models.CharField(max_length=255, db_column='Name')
+
+	class Meta(SalesforceModel.Meta):
+		db_table = 'Pricebook2'
+
+	def __unicode__(self):
+		return self.Name
+
+
+class PricebookEntry(SalesforceModel):
+	Name = models.CharField(max_length=255, db_column='Name', sf_read_only=models.READ_ONLY)
+	Pricebook2Id = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING,
+			db_column='Pricebook2Id')
+	Product2Id = models.ForeignKey('Product', on_delete=models.DO_NOTHING,
+			db_column='Product2Id')
+	UseStandardPrice = models.BooleanField(db_column='UseStandardPrice')
+	UnitPrice = models.DecimalField(decimal_places=2, max_digits=18, db_column='UnitPrice')
+
+	class Meta(SalesforceModel.Meta):
+		db_table = 'PricebookEntry'
+
+	def __unicode__(self):
+		return self.Name
+
+
 class ChargentOrder(SalesforceModel):
 	class Meta(SalesforceModel.Meta):
 		db_table = 'ChargentOrders__ChargentOrder__c'
