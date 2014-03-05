@@ -105,7 +105,8 @@ class BasicSOQLTest(TestCase):
 		"""
 		Verify that the owner of an Contact is the currently logged admin.
 		"""
-		contact = Contact.objects.all()[0]
+		current_sf_user = User.objects.get(Username=current_user)
+		contact = Contact.objects.filter(Owner=current_sf_user)[0]
 		user = contact.Owner
 		# This user can be e.g. 'admins@freelancersunion.org.prod001'.
 		self.assertEqual(user.Username, current_user)
