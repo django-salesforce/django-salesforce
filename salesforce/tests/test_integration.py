@@ -342,3 +342,32 @@ class BasicSOQLTest(TestCase):
 			self.skipTest('Django 1.3 has no bulk operations.')
 		objects = [Contact(LastName='sf_test a'), Contact(LastName='sf_test b')]
 		self.assertRaises(AssertionError, Contact.objects.bulk_create, objects)
+
+	def test_escape_single_quote(self):
+		"""
+		Test that single quotes in strings used in filtering a QuerySet
+		are escaped properly.
+		"""
+		account_name = '''Dr. Evil's Giant "Laser", LLC'''
+		account = Account(Name=account_name)
+		account.save()
+		try:
+			self.assertTrue(Account.objects.filter(Name=account_name).exists())
+		finally:
+			account.delete()
+
+	def test_escape_single_quote_in_raw_query(self):
+		"""
+		Test that manual escaping within a raw query is not double escaped.
+		"""
+		account_name = '''Dr. Evil's Giant "Laser", LLC'''
+		account = Account(Name=account_name)
+		account.save()
+
+		manually_escaped = '''Dr. Evil\\'s Giant "Laser", LLC'''
+		try:
+			retrieved_account = Account.objects.raw(
+				"SELECT Id, Name FROM Account WHERE Name = '{}'".format(manually_escaped))[0]
+			self.assertEqual(account_name, retrieved_account.Name)
+		finally:
+			account.delete()
