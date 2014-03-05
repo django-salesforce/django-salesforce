@@ -6,6 +6,7 @@
 #
 
 import datetime
+import decimal
 import pytz
 
 from django.conf import settings
@@ -15,6 +16,7 @@ import django
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
+		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, test_custom_db_table, test_custom_db_column)
 
 import logging
@@ -251,6 +253,27 @@ class BasicSOQLTest(TestCase):
 		test_lead.FirstName = 'Tested'
 		test_lead.save()
 		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
+
+	def test_decimal_precision(self):
+		"""
+		Ensure that the precision on a DecimalField of a record saved to
+		or retrieved from SalesForce is equal.
+		"""
+		product = Product(Name="Test Product")
+		product.save()
+
+		# The price for a product must be set in the standard price book.
+		# http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_objects_pricebookentry.htm
+		pricebook = Pricebook.objects.get(Name="Standard Price Book")
+		saved_pricebook_entry = PricebookEntry(Product2Id=product, Pricebook2Id=pricebook, UnitPrice=decimal.Decimal('1234.56'), UseStandardPrice=False)
+		saved_pricebook_entry.save()
+		retrieved_pricebook_entry = PricebookEntry.objects.get(pk=saved_pricebook_entry.pk)
+
+		try:
+			self.assertEqual(saved_pricebook_entry.UnitPrice, retrieved_pricebook_entry.UnitPrice)
+		finally:
+			retrieved_pricebook_entry.delete()
+			product.delete()
 
 	def test_custom_objects(self):
 		"""
