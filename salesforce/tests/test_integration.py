@@ -257,7 +257,7 @@ class BasicSOQLTest(TestCase):
 		# The price for a product must be set in the standard price book.
 		# http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_objects_pricebookentry.htm
 		pricebook = Pricebook.objects.get(Name="Standard Price Book")
-		saved_pricebook_entry = PricebookEntry(Product2Id=product, Pricebook2Id=pricebook, UnitPrice=decimal.Decimal('1234.56'))
+		saved_pricebook_entry = PricebookEntry(Product2Id=product, Pricebook2Id=pricebook, UnitPrice=decimal.Decimal('1234.56'), UseStandardPrice=False)
 		saved_pricebook_entry.save()
 		retrieved_pricebook_entry = PricebookEntry.objects.get(pk=saved_pricebook_entry.pk)
 
