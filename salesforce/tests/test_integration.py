@@ -342,3 +342,16 @@ class BasicSOQLTest(TestCase):
 			self.skipTest('Django 1.3 has no bulk operations.')
 		objects = [Contact(LastName='sf_test a'), Contact(LastName='sf_test b')]
 		self.assertRaises(AssertionError, Contact.objects.bulk_create, objects)
+
+	def test_escape_single_quote(self):
+		"""
+		Test that single quotes in strings used in filtering a QuerySet
+		are escaped properly.
+		"""
+		account_name = '''Dr. Evil's Giant "Laser", LLC'''
+		account = Account(Name=account_name)
+		account.save()
+		try:
+			self.assertTrue(Account.objects.filter(Name=account_name).exists())
+		finally:
+			account.delete()
