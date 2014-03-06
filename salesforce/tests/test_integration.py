@@ -393,7 +393,7 @@ class BasicSOQLTest(TestCase):
 		manually_escaped = '''Dr. Evil\\'s Giant "Laser", LLC'''
 		try:
 			retrieved_account = Account.objects.raw(
-				"SELECT Id, Name FROM Account WHERE Name = '{}'".format(manually_escaped))[0]
+				"SELECT Id, Name FROM Account WHERE Name = '%s'" % manually_escaped)[0]
 			self.assertEqual(account_name, retrieved_account.Name)
 		finally:
 			account.delete()
