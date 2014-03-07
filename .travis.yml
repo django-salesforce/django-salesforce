@@ -4,6 +4,8 @@ python:
   - "2.7"
   - "3.3"
 # command to install dependencies
+before_install:
+ - "pip install setuptools_git"
 install:
   - "pip install ."
   - "pip install -r requirements.txt"
