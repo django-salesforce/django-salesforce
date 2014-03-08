@@ -24,7 +24,7 @@ from salesforce import models
 import restkit
 try:
 	import json
-except ImportError, e:
+except ImportError:
 	import simplejson as json
 
 log = logging.getLogger(__name__)

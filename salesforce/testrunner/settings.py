@@ -169,5 +169,5 @@ LOGGING = {
 
 try:
 	from salesforce.testrunner.local_settings import *
-except ImportError, exp:
+except ImportError:
 	pass

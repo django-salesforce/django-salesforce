@@ -30,7 +30,7 @@ from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 try:
 	import json
-except ImportError, e:
+except ImportError:
 	import simplejson as json
 
 log = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def quoted_string_literal(s, d):
 	"""
 	try:
 		return "'%s'" % (s.replace("'", "\\'"),)
-	except TypeError, e:
+	except TypeError as e:
 		raise NotImplementedError("Cannot quote %r objects: %r" % (type(s), s))
 
 def process_args(args):
@@ -90,12 +90,12 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	from salesforce.backend import base
 	try:
 		return f(*args, **kwargs)
-	except restkit.ResourceNotFound, e:
+	except restkit.ResourceNotFound as e:
 		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
 				% (e, url))
-	except restkit.ResourceGone, e:
+	except restkit.ResourceGone as e:
 		raise base.SalesforceError("Couldn't connect to API (410): %s" % e)
-	except restkit.Unauthorized, e:
+	except restkit.Unauthorized as e:
 		data = json.loads(str(e))[0]
 		if(data['errorCode'] == 'INVALID_SESSION_ID'):
 			token = reauthenticate()
@@ -103,7 +103,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
 			return f(*args, **kwargs)
 		raise base.SalesforceError(str(e))
-	except restkit.RequestFailed, e:
+	except restkit.RequestFailed as e:
 		data = json.loads(str(e))[0]
 		if(data['errorCode'] == 'INVALID_FIELD'):
 			raise base.SalesforceError(data['message'])

@@ -106,7 +106,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
 		try:
 			urlparse.urlparse(d['HOST'])
-		except Exception, e:
+		except Exception as e:
 			raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" % (self.alias, e))
 
 	def cursor(self, query=None):
