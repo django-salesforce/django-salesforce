@@ -57,7 +57,7 @@ class Connection(object):
 		pass
 
 	def rollback(self):
-		print "Rollback is not implemented."
+		print("Rollback is not implemented.")
 
 
 def connect(**params):

@@ -53,10 +53,10 @@ def get_tagged_version():
 			raise RuntimeError(stderrdata)
 		version = stdoutdata.strip().lstrip('v')
 		
-		print "writing version file..."
+		print("writing version file...")
 		with open(relative_path('VERSION'), 'w') as f:
 			f.write(version)
-	print 'package version: %s' % version
+	print('package version: %s' % version)
 	return version
 
 def autosetup():
