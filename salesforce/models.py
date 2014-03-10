@@ -13,7 +13,7 @@ column names are all in CamelCase. No attempt is made to work around this
 issue, but normal use of `db_column` and `db_table` parameters should work.
 """
 
-import logging, urllib
+import logging
 
 from django.conf import settings
 from django.db import models

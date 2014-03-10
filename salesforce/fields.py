@@ -14,7 +14,7 @@ from django.core import exceptions
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
 from django.db import models
-from django.utils.encoding import smart_unicode
+from django.utils.encoding import smart_text
 try:
 	## in south >= 0.6, we have to explicitly tell south about this
 	## custom field.  Even though it will be on an unmanaged model, 
@@ -39,7 +39,7 @@ class SalesforceAutoField(fields.Field):
 	
 	empty_strings_allowed = True
 	default_error_messages = {
-		'invalid': _(u'This value must be a valid Salesforce ID.'),
+		'invalid': _('This value must be a valid Salesforce ID.'),
 	}
 	def __init__(self, *args, **kwargs):
 		assert kwargs.get('primary_key', False) is True, "%ss must have primary_key=True." % self.__class__.__name__
@@ -54,7 +54,7 @@ class SalesforceAutoField(fields.Field):
 	def to_python(self, value):
 		if isinstance(value, basestring) or value is None:
 			return value
-		return smart_unicode(value)
+		return smart_text(value)
 	
 	def validate(self, value, model_instance):
 		pass

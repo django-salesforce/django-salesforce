@@ -29,7 +29,7 @@ def ssl_wrap_socket(sock, key_file, cert_file, disable_validation, ca_certs):
 	try:
 		sock = ssl.wrap_socket(sock, keyfile=key_file, certfile=cert_file,
                                cert_reqs=cert_reqs, ca_certs=ca_certs, ssl_version=ssl.PROTOCOL_SSLv3)
-	except ssl.SSLError, e:
+	except ssl.SSLError:
 		log.warning("SSL doesn't support PROTOCOL_SSLv3, trying PROTOCOL_SSLv23")
 		sock = ssl.wrap_socket(sock, keyfile=key_file, certfile=cert_file,
                                cert_reqs=cert_reqs, ca_certs=ca_certs, ssl_version=ssl.PROTOCOL_SSLv23)

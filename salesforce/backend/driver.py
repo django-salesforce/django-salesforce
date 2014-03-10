@@ -3,14 +3,15 @@ Dummy Salesforce driver that simulates some parts of DB API 2
 
 used by the new Django >= 1.6b2
 """
+import sys
 
 # All error types described in DB API 2 are implemented the same way as in
 # Django 1.6, otherwise some exceptions are not correctly reported in it.
 
-SIX_PY3 = False  # Python 2 only
+PY3 = sys.version_info[0] == 3
 
 
-class Error(Exception if SIX_PY3 else StandardError):
+class Error(Exception if PY3 else StandardError):
 	pass
 
 

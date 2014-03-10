@@ -9,7 +9,7 @@
 Salesforce database backend for Django.
 """
 
-import logging, urlparse
+import logging
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
@@ -23,6 +23,10 @@ from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
 from salesforce import DJANGO_14, DJANGO_16
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 log = logging.getLogger(__name__)
 
@@ -105,7 +109,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 				raise ImproperlyConfigured("'%s' key is the empty string in '%s' database settings." % (k, self.alias))
 
 		try:
-			urlparse.urlparse(d['HOST'])
+			urlparse(d['HOST'])
 		except Exception as e:
 			raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" % (self.alias, e))
 
