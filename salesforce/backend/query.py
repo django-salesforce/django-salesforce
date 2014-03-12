@@ -25,7 +25,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_14, DJANGO_16
+from salesforce import auth, models, DJANGO_14, DJANGO_16, sf_alias
 from salesforce.backend import compiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
@@ -43,8 +43,6 @@ log = logging.getLogger(__name__)
 PY3 = sys.version_info[0] == 3
 
 API_STUB = '/services/data/v28.0'
-
-sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
@@ -108,14 +106,13 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	except requests.exceptions.Timeout:
 		raise base.SalesforceError("Timeout, URL=%s" % url)
 	else:
-		# TODO remove this print after messages tuning
+		# TODO Remove this print after tuning of specific messages. Currently is
+		#      better more than less
 		print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
 		if response.status_code >= 400:
 			if response.status_code == 404:  # ResourceNotFound
 				raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
 						% (response.text, url))
-			if response.status_code == 410:  # ResourceGone
-				raise base.SalesforceError("Couldn't connect to API (410): %s" % response.text)
 			if response.status_code in (401, 403):  # Unauthorized
 				data = response.json()[0]
 				if(data['errorCode'] == 'INVALID_SESSION_ID'):
@@ -124,6 +121,9 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 						kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
 					return f(url, *args, **kwargs)
 				raise base.SalesforceError(response.text)
+			# TODO remove: According to SF docs: The status code 410 is unused by SF.
+			if response.status_code == 410:  # ResourceGone
+				raise base.SalesforceError("Couldn't connect to API (410): %s" % response.text)
 			else:   # RequestFailed
 				data = response.json()[0]
 				if(data['errorCode'] == 'INVALID_FIELD'):
@@ -264,11 +264,13 @@ class CursorWrapper(object):
 	This is the class that is actually responsible for making connections
 	to the SF REST API
 	"""
-	def __init__(self, conn, query=None):
+	def __init__(self, connection, query=None):
 		"""
 		Connect to the Salesforce API.
 		"""
-		self.settings_dict = conn.settings_dict
+		self.settings_dict = connection.settings_dict
+		self.connection = connection
+		self.session = connection.sf_session
 		self.query = query
 		self.results = []
 		self.rowcount = None
@@ -328,25 +330,21 @@ class CursorWrapper(object):
 		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urlencode(dict(
 			q	= processed_sql,
 		)))
-		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
 		log.debug(processed_sql)
-		return handle_api_exceptions(url, requests.get, headers=headers)
+		return handle_api_exceptions(url, self.session.get)
 
 	def query_more(self, nextRecordsUrl):
 		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
-		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
-		return handle_api_exceptions(url, requests.get, headers=headers)
+		return handle_api_exceptions(url, self.session.get)
 
 	def execute_insert(self, query):
 		table = query.model._meta.db_table
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
-		headers = dict()
-		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-		headers['Content-Type'] = 'application/json'
+		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
 
 		log.debug('INSERT %s%s' % (table, post_data))
-		return handle_api_exceptions(url, requests.post, headers=headers, data=json.dumps(post_data))
+		return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data))
 
 	def execute_update(self, query):
 		table = query.model._meta.db_table
@@ -357,12 +355,10 @@ class CursorWrapper(object):
 			pk = query.where.children[0].children[0][-1]
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
-		headers = dict()
-		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-		headers['Content-Type'] = 'application/json'
+		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-		ret = handle_api_exceptions(url, requests.patch, headers=headers, data=json.dumps(post_data))
+		ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data))
 		self.rowcount = 1
 		return ret
 
@@ -379,11 +375,9 @@ class CursorWrapper(object):
 		pk = recurse_for_pk(self.query.where.children)
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
-		headers = dict()
-		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
 
 		log.debug('DELETE %s(%s)' % (table, pk))
-		return handle_api_exceptions(url, requests.delete, headers=headers)
+		return handle_api_exceptions(url, self.session.delete)
 
 	def query_results(self, results):
 		output = []

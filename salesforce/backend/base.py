@@ -10,11 +10,13 @@ Salesforce database backend for Django.
 """
 
 import logging
+import requests
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
 from django.db.backends.signals import connection_created
 
+from salesforce.auth import SalesforceAuth
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
@@ -22,7 +24,7 @@ from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
-from salesforce import DJANGO_14, DJANGO_16
+from salesforce import DJANGO_14, DJANGO_16, sf_alias
 try:
 	from urllib.parse import urlparse
 except ImportError:
@@ -71,7 +73,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
 	Database = Database
 
-	def __init__(self, settings_dict, alias='default'):
+	def __init__(self, settings_dict, alias=None):
+		alias = alias or sf_alias
 		super(DatabaseWrapper, self).__init__(settings_dict, alias)
 
 		self.validate_settings(settings_dict)
@@ -82,6 +85,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.creation = DatabaseCreation(self)
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
+		self.sf_session = requests.Session()
+		self.sf_session.auth = SalesforceAuth(db_alias=alias)
+		# Additional header works, but the improvement unmeasurable for me.
+		# (less than SF speed fluctuation)
+		#self.sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
 
 	def get_connection_params(self):
 		settings_dict = self.settings_dict

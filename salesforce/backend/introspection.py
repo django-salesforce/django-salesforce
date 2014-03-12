@@ -21,7 +21,6 @@ from django.utils.encoding import force_text
 from salesforce.backend import compiler, query
 from salesforce import models
 
-import requests
 try:
 	import json
 except ImportError:
@@ -77,12 +76,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		if(self._table_list_cache is None):
 			url = self.oauth['instance_url'] + query.API_STUB + '/sobjects/'
 			
-			headers = dict()
-			headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-			headers['Content-Type'] = 'application/json'
-			
 			log.debug('Request API URL: %s' % url)
-			response = query.handle_api_exceptions(url, requests.get, headers=headers)
+			response = query.handle_api_exceptions(url, self.connection.sf_session.get)
 			# charset is detected from headers by requests package
 			self._table_list_cache = response.json()
 		return self._table_list_cache
@@ -91,12 +86,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		if(table not in self._table_description_cache):
 			url = self.oauth['instance_url'] + query.API_STUB + ('/sobjects/%s/describe/' % table)
 		
-			headers = dict()
-			headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-			headers['Content-Type'] = 'application/json'
-		
 			log.debug('Request API URL: %s' % url)
-			response = query.handle_api_exceptions(url, resource.get, headers=headers)
+			response = query.handle_api_exceptions(url, self.connection.sf_session.get)
 			self._table_description_cache[table] = response.json()
 			assert self._table_description_cache[table]['fields'][0]['type'] == 'id'
 			assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
