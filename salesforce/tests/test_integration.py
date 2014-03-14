@@ -70,6 +70,7 @@ class BasicSOQLTest(TestCase):
 	def test_raw(self):
 		"""
 		Get the first two contact records.
+		(At least 3 manually created Contacts must exist before these read-only tests.)
 		"""
 		contacts = Contact.objects.raw(
 				"SELECT Id, LastName, FirstName FROM Contact "
@@ -108,11 +109,16 @@ class BasicSOQLTest(TestCase):
 		Verify that the owner of an Contact is the currently logged admin.
 		"""
 		current_sf_user = User.objects.get(Username=current_user)
-		contact = Contact.objects.filter(Owner=current_sf_user)[0]
-		user = contact.Owner
-		# This user can be e.g. 'admins@freelancersunion.org.prod001'.
-		self.assertEqual(user.Username, current_user)
-	
+		test_contact = Contact(FirstName = 'sf_test', LastName='my')
+		test_contact.save()
+		try:
+			contact = Contact.objects.filter(Owner=current_sf_user)[0]
+			user = contact.Owner
+			# This user can be e.g. 'admins@freelancersunion.org.prod001'.
+			self.assertEqual(user.Username, current_user)
+		finally:
+			test_contact.delete()
+
 	def test_update_date(self):
 		"""
 		Test updating a date.
@@ -250,7 +256,7 @@ class BasicSOQLTest(TestCase):
 		Update the test lead record.
 		"""
 		test_lead = Lead.objects.get(Email=test_email)
-		self.assertEquals(test_lead.FirstName, 'User')
+		self.assertEqual(test_lead.FirstName, 'User')
 		test_lead.FirstName = 'Tested'
 		test_lead.save()
 		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
