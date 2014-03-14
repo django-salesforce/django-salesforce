@@ -22,10 +22,11 @@ from django.db.models.sql import compiler
 # Only these two `on_delete` options are currently supported
 from django.db.models import PROTECT, DO_NOTHING
 #from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
+from django.utils.six import with_metaclass
 
 from salesforce.backend import manager
 from salesforce.fields import *  # modified django.db.models.CharField etc.
-from salesforce import fields
+from salesforce import fields, DJANGO_15
 
 log = logging.getLogger(__name__)
 
@@ -43,18 +44,36 @@ class SalesforceModelBase(ModelBase):
 			result._meta.db_table = name
 		return result
 
-class SalesforceModel(models.Model):
-	"""
-	Abstract model class for Salesforce objects.
-	"""
-	__metaclass__ = SalesforceModelBase
-	_base_manager = objects = manager.SalesforceManager()
-	_salesforce_object = True
-	
-	class Meta:
-		managed = False
-		abstract = True
-	
-	Id = fields.SalesforceAutoField(primary_key=True)
+
+if DJANGO_15:
+
+	class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
+		"""
+		Abstract model class for Salesforce objects.
+		"""
+		_base_manager = objects = manager.SalesforceManager()
+		_salesforce_object = True
+		
+		class Meta:
+			managed = False
+			abstract = True
+		
+		Id = fields.SalesforceAutoField(primary_key=True)
+
+else:  # old Django 1.4 uncompatible with Python 3
+
+	class SalesforceModel(models.Model):
+		"""
+		Abstract model class for Salesforce objects.
+		"""
+		__metaclass__ = SalesforceModelBase
+		_base_manager = objects = manager.SalesforceManager()
+		_salesforce_object = True
+		
+		class Meta:
+			managed = False
+			abstract = True
+		
+		Id = fields.SalesforceAutoField(primary_key=True)
 
 Model = SalesforceModel

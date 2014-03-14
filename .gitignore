@@ -3,6 +3,7 @@
 *.pyc
 local_settings.py
 build
+dist
 *.egg-info
 salesforce_testrunner_db
 .*.swp
@@ -10,3 +11,4 @@ salesforce_testrunner_db
 VERSION
 setuptools_git-*.egg
 .ropeproject/
+.coverage

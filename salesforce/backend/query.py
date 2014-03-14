@@ -10,7 +10,6 @@ Salesforce object query customizations.
 """
 
 import logging, types, datetime, decimal
-import sys
 
 from django.conf import settings
 from django.core.serializers import python
@@ -19,6 +18,7 @@ from django.db import connections
 from django.db.models import query
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.utils.encoding import force_text
+from django.utils.six import PY3
 
 from itertools import islice
 
@@ -39,8 +39,6 @@ except ImportError:
 	import simplejson as json
 
 log = logging.getLogger(__name__)
-
-PY3 = sys.version_info[0] == 3
 
 API_STUB = '/services/data/v28.0'
 

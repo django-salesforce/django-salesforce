@@ -5,11 +5,6 @@
 # See LICENSE.md for details
 #
 
-from __future__ import with_statement
-
-import distribute_setup
-distribute_setup.use_setuptools()
-
 import os, os.path, subprocess
 
 # disables creation of .DS_Store files inside tarballs on Mac OS X

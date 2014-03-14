@@ -15,6 +15,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
 from django.db import models
 from django.utils.encoding import smart_text
+from django.utils.six import string_types
 try:
 	## in south >= 0.6, we have to explicitly tell south about this
 	## custom field.  Even though it will be on an unmanaged model, 
@@ -52,7 +53,7 @@ class SalesforceAutoField(fields.Field):
 		return "AutoField"
 	
 	def to_python(self, value):
-		if isinstance(value, basestring) or value is None:
+		if isinstance(value, string_types) or value is None:
 			return value
 		return smart_text(value)
 	
