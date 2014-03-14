@@ -24,7 +24,7 @@ DATABASES = {
 		"CONSUMER_SECRET" : '228684408521557504',
 		'USER': 'djangosalesforce@gmail.com',
 		'PASSWORD': 'Cb6>pd8d-A',
-		'HOST': 'https://test.salesforce.com',
+		'HOST': 'https://login.salesforce.com',
 	}
 }
 
