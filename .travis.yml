@@ -8,7 +8,7 @@ env:
     # philchristensen/salesforce/SF_USER
     - secure: "ivtuPI0Q23lHnto30VW3QRGN8HTajDoSE5fhMtMi1yLR3NQ5QpTENBZQ8KzidPJuIfLuJf/AnY+xSDdsKOEOvXXp6Gz8gUFPmfvUJ3+ch3LvixDD7UImWIU3VGi3tiWTuPdw4Frb/18uKASiv6PE7mVS2Q0xRKVkHeLC1tloKoo="
     # philchristensen/salesforce/SF_PASSWORD
-    - secure: "khIPcuTZWDZhuDQZVL1/UOqvRvJnTDMHUF6geIC8JEW9uXiKlMhVNwbwg0d2nCvg1DE38z5f+Ljz/wc48niehXex6QMb91R3wo3rFQGOxSKL9rBeG9cYn921EaAsyrFxdR2ILl3XQCUo0AiZueOZyOBql6imGW9Xtb46wI4Zzug="
+    - secure: "CP0nKxo9q/d329wWJETaPCnB5XwFgZ4T/lH0AIzT1nf/m9KDTDKMpt2Cu/CUzwfvUqi/2CBXB3jJLa7hy+Zq+jAmC2JNDs6O8PmwIwe+zgyDddJEQpW/17L2mbdeFbtLhrv+NSRvRSzIC2T7KEXELq26+r42Y5H+tV5GrlHROWI="
     # # freelancersunion/salesforce/SF_CONSUMER_KEY
     # - secure: "HBwhGwcz9FxrM8jWp9CoT+iinDPj9FdbHvO/bgDQ8kmpOsXoL8kgpV9GQA3m4Fxkrhrki/H82aYUBePCGhap0yzhtGaVrrjwH/YRxM3Wehk3HDloYQ5uhL81L8mztEkFvFGFLleqnUi/At1DQebpvXCI+p2euyaLaaPlEz8LFA0="
     # # freelancersunion/salesforce/SF_CONSUMER_SECRET
@@ -16,7 +16,7 @@ env:
     # # freelancersunion/salesforce/SF_USER
     # - secure: "MCNLcUvBmgmMVP2IahrkTa42qyWIjViFaE+bZ2TxWX42DIhU6WxSkXq1hQcAVI/u9EHkfuqfcw6WUsOAzrpz0HCATkFLY+Q3IFt3eS9oZxB+VHlLxnEIY5ISPO9x7Fqq/2Gq+U6xhKYpm+/7nig9JO3yrHq5U81F2fWTy97Mg2o="
     # # freelancersunion/salesforce/SF_PASSWORD
-    # - secure: "Wy7zTfi6me9U72UoVoeXUCTeF5ju0gw+cOBXp+wYRtcya+DX/tTSnSsbwRCAmUqqAppTUfgpNQtQYPmWDH60fEvpY5NNB+wHk54bSBQbR2L76MZacJ1hJXT4kQHhDkaurkybsD6ow4xSnJTQyYEVPHLsbu1yVaX/3N0HRZYWpKQ="
+    # - secure: "I/W3KDMFnst69+4OMGN4VAGdXDyFUslUZ7b+ZGigTj8VIaQP2NJTta0HfYx+sGLwHiTg7PWOtn4dyXtiFnA9lhBdKR9kb470BYpIqk97DMsLKUdr0+wpL6N6s2dcP0kWWPLKiaV9jn+BkG7UZNrStwYuuQ+kjm9INjiBMT8h6Pk="
 python:
   - "2.6"
   - "2.7"
