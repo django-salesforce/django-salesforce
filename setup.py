@@ -5,11 +5,6 @@
 # See LICENSE.md for details
 #
 
-from __future__ import with_statement
-
-import distribute_setup
-distribute_setup.use_setuptools()
-
 import os, os.path, subprocess
 
 # disables creation of .DS_Store files inside tarballs on Mac OS X
@@ -92,6 +87,10 @@ def autosetup():
 		license			 = "MIT",
 		keywords		 = "django salesforce orm backend",
 		url				 = "https://github.com/freelancersunion/django-salesforce",
+		use_2to3 = True,
+		#use_2to3_exclude_fixers = ['lib2to3.fixes.fix_%s' % name
+		#	for name in 'dict imports print'.split()],
+		test_suite = 'runtests', 
 	)
 
 if(__name__ == '__main__'):

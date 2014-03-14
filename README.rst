@@ -86,6 +86,14 @@ here are the potential pitfalls and unimplemented operations:
 -  **Database Sync** — There is no plan to support DB creation for the
    forseeable future.
 
+Installation for Python 3
+-------------------------
+Setuptools support automatic code conversion for Python by ``2to3``, if the
+tests passed, however they must run with your Salesforce account (usually
+a sandbox account) and you should copy the file
+`` salesforce/testrunner/local_settings.py.sample`` to ``local_settings.py``
+and edit it. Than yu can run ``python3 setup.py install``.
+
 Troubleshooting
 ---------------
 -  **Slow Unit Tests** - Running tests which use the Django TestCase class can run significantly slower when
