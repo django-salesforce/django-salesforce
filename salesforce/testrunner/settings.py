@@ -20,10 +20,10 @@ DATABASES = {
 	# in order to protect private secret values from unintentional committing.
 	'salesforce': {
 		'ENGINE': 'salesforce.backend',
-		"CONSUMER_KEY" : '3MVG9JZ_r.QzrS7icihiIU063YpiIRjEFszVnMCZZmLC5KORG6fhJIxw5ahqgV3lDDCrV..PyA8Jr5JT4JzQk',
-		"CONSUMER_SECRET" : '228684408521557504',
-		'USER': 'djangosalesforce@gmail.com',
-		'PASSWORD': 'Cb6>pd8d-A',
+		"CONSUMER_KEY" : os.environ['SF_CONSUMER_KEY'],
+		"CONSUMER_SECRET" : os.environ['SF_CONSUMER_SECRET'],
+		'USER': os.environ['SF_USER'],
+		'PASSWORD': os.environ['SF_PASSWORD'],
 		'HOST': 'https://login.salesforce.com',
 	}
 }
