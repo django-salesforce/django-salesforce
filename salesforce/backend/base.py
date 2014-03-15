@@ -25,7 +25,7 @@ from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
 from salesforce.backend import sf_alias
-from salesforce import DJANGO_14, DJANGO_16
+from salesforce import DJANGO_16
 try:
 	from urllib.parse import urlparse
 except ImportError:

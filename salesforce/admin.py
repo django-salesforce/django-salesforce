@@ -23,6 +23,7 @@ class RoutedModelAdmin(options.ModelAdmin):
 	Unfortunately, at least as far as Django 1.3, the admin doesn't normally make use
 	of the DATABASE_ROUTERS setting, so this custom ModelAdmin subclass makes up for it.
 	"""
+	# TODO This class can be simplified now, without Django 1.3
 	router = utils.ConnectionRouter(settings.DATABASE_ROUTERS)
 	
 	def save_model(self, request, obj, form, change):

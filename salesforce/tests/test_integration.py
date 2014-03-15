@@ -22,8 +22,6 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 import logging
 log = logging.getLogger(__name__)
 
-DJANGO_14 = django.VERSION[:2] >= (1,4)
-
 current_user = settings.DATABASES['salesforce']['USER']
 test_email = 'test-djsf-unittests-email@example.com'
 sf_tables = [x['name'] for x in
@@ -41,8 +39,7 @@ def round_datetime_utc(timestamp):
 	## sfdates are UTC to seconds precision but use a fixed-offset
 	## of +0000 (as opposed to a named tz)
 	timestamp = timestamp.replace(microsecond=0)
-	if DJANGO_14:
-		timestamp= timestamp.replace(tzinfo=pytz.utc)
+	timestamp = timestamp.replace(tzinfo=pytz.utc)
 	return timestamp
 
 
@@ -370,8 +367,6 @@ class BasicSOQLTest(TestCase):
 		"""
 		Unsupported bulk_create: "Errors should never pass silently."
 		"""
-		if not DJANGO_14:
-			self.skipTest('Django 1.3 has no bulk operations.')
 		objects = [Contact(LastName='sf_test a'), Contact(LastName='sf_test b')]
 		self.assertRaises(AssertionError, Contact.objects.bulk_create, objects)
 

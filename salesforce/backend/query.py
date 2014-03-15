@@ -25,7 +25,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_14, DJANGO_16
+from salesforce import auth, models, DJANGO_16
 from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
@@ -45,10 +45,7 @@ API_STUB = '/services/data/v28.0'
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
-if DJANGO_14:
-	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
-else:
-	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
+DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
 def quoted_string_literal(s, d):
 	"""
@@ -157,9 +154,6 @@ def prep_for_deserialize(model, record, using):
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
 				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
-			elif (x.__class__.__name__ == 'TimeField' and field_val is not None
-					and not DJANGO_14 and field_val.endswith('Z')):
-				fields[x.name] = field_val[:-1]  # Fix time e.g. "23:59:59.000Z"
 			else:
 				fields[x.name] = field_val
 
@@ -184,11 +178,8 @@ def extract_values(query):
 		if(isinstance(query, subqueries.UpdateQuery)):
 			[value] = [value for qfield, model, value in query.values if qfield.name == field.name]
 		else:  # insert
-			if(DJANGO_14):  # Django >= 1.4
-				assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
-				value = getattr(query.objs[0], field.attname)
-			else:   # Django == 1.3
-				value = query.values[index][1]
+			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
+			value = getattr(query.objs[0], field.attname)
 			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
 				continue
 		[arg] = process_json_args([value])
