@@ -8,3 +8,7 @@
 """
 Database backend for the Salesforce API.
 """
+
+from django.conf import settings
+
+sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')

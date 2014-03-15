@@ -13,7 +13,7 @@ import logging
 import requests
 import threading
 from django.db import connections
-from salesforce import sf_alias
+from salesforce.backend import sf_alias
 from requests.auth import AuthBase
 
 # TODO more advanced methods with ouathlib can be implemented, but the simple doesn't require a spec package

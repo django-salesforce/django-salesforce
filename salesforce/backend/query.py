@@ -25,8 +25,8 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_14, DJANGO_16, sf_alias
-from salesforce.backend import compiler
+from salesforce import auth, models, DJANGO_14, DJANGO_16
+from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 try:

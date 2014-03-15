@@ -13,14 +13,11 @@ Allows access to all Salesforce objects accessible via the SOQL API.
 import logging
 import ssl
 from pkg_resources import parse_version
-from django.conf import settings
 
 import django
 DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
 DJANGO_15 = django.VERSION[:2] >= (1, 5)
 DJANGO_16 = django.VERSION[:2] >= (1, 6)
-
-sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 
 log = logging.getLogger(__name__)
 
