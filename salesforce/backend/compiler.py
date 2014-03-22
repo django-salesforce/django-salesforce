@@ -8,7 +8,8 @@
 """
 Generate queries using the SOQL dialect.
 """
-from django.db.models.sql import compiler, query, where, constants
+from django.db import models
+from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 
 from salesforce import DJANGO_14, DJANGO_15, DJANGO_16
@@ -171,7 +172,8 @@ class SalesforceWhereNode(where.WhereNode):
 		else:
 			return result
 
-	if(DJANGO_14):
+	if(DJANGO_14 and not DJANGO_15):
+		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.4
 		def as_sql(self, qn, connection):
 			"""
 			Returns the SQL version of the where clause and the value to be
@@ -201,7 +203,7 @@ class SalesforceWhereNode(where.WhereNode):
 					elif self.negated:
 						empty = False
 					continue
-				except FullResultSet:
+				except models.sql.datastructures.FullResultSet:
 					if self.connector == OR:
 						if self.negated:
 							empty = True
@@ -223,14 +225,16 @@ class SalesforceWhereNode(where.WhereNode):
 			sql_string = conn.join(result)
 			if sql_string:
 				if self.negated:
-					# SOQL requires us to wrap each fragment
-					negated_strings = ["(NOT(%s))" % fragment for fragment in result]
-					sql_string = conn.join(negated_strings)
+					# patch begin
+					# SOQL requires parentheses around "NOT" if combined with AND/OR
 					# sql_string = 'NOT (%s)' % sql_string
+					sql_string = '(NOT (%s))' % sql_string
+					# patch end
 				elif len(self.children) != 1:
 					sql_string = '(%s)' % sql_string
 			return sql_string, result_params
-	elif(DJANGO_15 or DJANGO_16):
+	else:
+		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6.
 		def as_sql(self, qn, connection):
 			"""
 			Returns the SQL version of the where clause and the value to be
@@ -295,9 +299,11 @@ class SalesforceWhereNode(where.WhereNode):
 			sql_string = conn.join(result)
 			if sql_string:
 				if self.negated:
-					# SOQL requires us to wrap each fragment
-					negated_strings = ["(NOT(%s))" % fragment for fragment in result]
-					sql_string = conn.join(negated_strings)
+					# patch begin
+					# SOQL requires parentheses around "NOT" if combined with AND/OR
+					# sql_string = 'NOT (%s)' % sql_string
+					sql_string = '(NOT (%s))' % sql_string
+					# patch end
 				elif len(result) > 1:
 					sql_string = '(%s)' % sql_string
 			return sql_string, result_params
