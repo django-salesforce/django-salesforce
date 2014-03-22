@@ -173,6 +173,9 @@ LOGGING = {
 	}
 }
 
+IPV4_ONLY = True  # for networks with only IPv4 (default is currently IPv4
+# for compatibily with previous beviour and until IPv6 on SF become stable.)
+
 try:
 	from salesforce.testrunner.local_settings import *
 except ImportError:
