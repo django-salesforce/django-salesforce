@@ -13,7 +13,7 @@ from django.conf import settings
 from django.db import connections
 from django.db.models import Q
 from django.test import TestCase
-from django.utils.unittest import skip
+from django.utils.unittest import skip, skipUnless
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
@@ -285,25 +285,22 @@ class BasicSOQLTest(TestCase):
 			retrieved_pricebook_entry.delete()
 			product.delete()
 
+	@skipUnless('ChargentOrders__ChargentOrder__c' in sf_tables,
+			'Not found custom tables ChargentOrders__*')
 	def test_custom_objects(self):
 		"""
 		Make sure custom objects work.
 		"""
-		if not 'ChargentOrders__ChargentOrder__c' in sf_tables:
-			self.skipTest('Not found custom tables ChargentOrders__*')
 		orders = ChargentOrder.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
 
+	@skipUnless(test_custom_db_table in sf_tables,
+			"Not found the expected custom object '%s'" % test_custom_db_table)
 	def test_custom_object_general(self):
 		"""
 		Create, read and delete any general custom object.
 		Object name and field name are user configurable by TEST_CUSTOM_FIELD.
 		"""
-		table_list_cache = connections['salesforce'].introspection.table_list_cache
-		table_names = [x['name'] for x in table_list_cache['sobjects']]
-		if not test_custom_db_table in sf_tables:
-			self.skipTest("Not found the expected custom object '%s'" %
-					test_custom_db_table)
 		obj = GeneralCustomModel(GeneralCustomField='sf_test')
 		obj.save()
 		try:
