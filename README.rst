@@ -5,7 +5,7 @@ This library allows you to load and edit the objects in any Salesforce instance 
 is fairly complete, and generally seamless for most uses. It works by integrating with the Django ORM, allowing access
 to the objects in your SFDC instance as if they were "local" databases.
 
-Python 2.6, 2.7, 3.3, 3.4; Django 1.4 - 1.7 (Django 1.4 can be combined only with any Python 2.x)
+Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4 - 1.7 (but Django 1.4 can't be combined with Python 3)
 
 Quick Start
 -----------
@@ -53,6 +53,9 @@ Quick Start
 	]
 
 7. Define a model that extends ``salesforce.models.SalesforceModel``
+   or export the complete SF schema by
+   ``python manage.py inspectdb --database=salesforce`` and simplify it
+   to what you need.
 8. If you want to use the model in the Django admin interface, use a
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
 9. You're all done! Just use your model like a normal Django model.
