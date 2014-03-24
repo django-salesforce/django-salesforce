@@ -23,7 +23,7 @@ import salesforce
 
 # Simple dynamic registration of all other models, with respect to read only fields.
 # Can be improved for fields that are only not creatable but are updateable or viceversa.
-for mdl in [x for x in models.__dict__.values() if hasattr(x, '_meta') and hasattr(x._meta, 'db_table')]:
+for mdl in [x for x in models.__dict__.values() if hasattr(x, '_meta') and hasattr(x._meta, 'db_table') and not x._meta.abstract]:
 	try:
 		admin.site.register(mdl, type(type(mdl).__name__ + 'Admin', (RoutedModelAdmin,), {
 			'readonly_fields': [x.name for x in mdl._meta.fields if getattr(x, 'sf_read_only', 0)]}))

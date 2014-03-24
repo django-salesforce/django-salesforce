@@ -12,6 +12,7 @@ Multi-database support for the Django admin.
 from django.contrib.admin import options
 from django.conf import settings
 from django.db import utils
+from salesforce import DJANGO_17_PLUS
 
 class RoutedModelAdmin(options.ModelAdmin):
 	"""
@@ -42,6 +43,10 @@ class RoutedModelAdmin(options.ModelAdmin):
 		if ordering:
 			qs = qs.order_by(*ordering)
 		return qs
+
+	if DJANGO_17_PLUS:
+		get_queryset = queryset
+		del queryset
 
 	def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
 		# Tell Django to populate ForeignKey widgets using a query

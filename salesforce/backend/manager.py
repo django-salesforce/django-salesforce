@@ -15,7 +15,7 @@ from django.db import connections
 from django.db.models import manager
 from django.db.models.query import RawQuerySet
 
-from salesforce import router
+from salesforce import router, DJANGO_17_PLUS
 
 class SalesforceManager(manager.Manager):
 	use_for_related_fields = True
@@ -30,6 +30,11 @@ class SalesforceManager(manager.Manager):
 			from salesforce.backend import query, compiler
 			q = query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
 			return query.SalesforceQuerySet(self.model, query=q, using=self.db)
+
+	if DJANGO_17_PLUS:
+		get_queryset = get_query_set
+		del get_query_set
+
 
 	def raw(self, raw_query, params=None, *args, **kwargs):
 		from salesforce.backend import query

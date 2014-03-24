@@ -25,7 +25,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_16
+from salesforce import auth, models, DJANGO_16, DJANGO_17_PLUS
 from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
@@ -235,8 +235,10 @@ class SalesforceQuery(Query):
 	"""
 	Override aggregates.
 	"""
-	from salesforce.backend import aggregates
-	aggregates_module = aggregates
+	# Warn against name collision: The name 'aggregates' is the name of
+	# a new property introduced by Django 1.7 to the parent class
+	# 'django.db.models.sql.query.Query'.
+	from salesforce.backend import aggregates as aggregates_module
 
 	def clone(self, klass=None, memo=None, **kwargs):
 		return Query.clone(self, klass, memo, **kwargs)
@@ -338,7 +340,9 @@ class CursorWrapper(object):
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
-		if DJANGO_16:
+		if DJANGO_17_PLUS:
+			pk = query.where.children[0].rhs
+		elif DJANGO_16:
 			pk = query.where.children[0][3]
 		else:
 			pk = query.where.children[0].children[0][-1]
@@ -356,10 +360,13 @@ class CursorWrapper(object):
 		## the root where node's children may itself have children..
 		def recurse_for_pk(children):
 			for node in children:
-				try:
-					pk = node[-1][0]
-				except TypeError:
-					pk = recurse_for_pk(node.children)
+				if hasattr(node, 'rhs'):
+					pk = node.rhs[0]  # for Django 1.7+
+				else:
+					try:
+						pk = node[-1][0]
+					except TypeError:
+						pk = recurse_for_pk(node.children)
 				return pk
 		pk = recurse_for_pk(self.query.where.children)
 		assert pk
@@ -410,6 +417,9 @@ class CursorWrapper(object):
 		Fetch all results from a previously executed query.
 		"""
 		return list(self.results)
+
+	def close(self):  # for Django 1.7+
+		pass
 
 string_literal = quoted_string_literal
 def date_literal(d, c):

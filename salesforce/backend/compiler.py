@@ -112,7 +112,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		cursor = self.connection.cursor(self.query)
 		cursor.execute(sql, params)
 
-		if not result_type:
+		if not result_type or result_type == 'cursor':
 			return cursor
 
 		ordering_aliases = self.ordering_aliases if DJANGO_16 else self.query.ordering_aliases
@@ -150,6 +150,8 @@ class SalesforceWhereNode(where.WhereNode):
 			return connection.ops.field_cast_sql(db_type) % name
 
 	def make_atom(self, child, qn, connection):
+		# The make_atom() method is ignored in Django 1.7 unless explicitely required.
+		# Use Lookup class instead. The make_atom() method will be removed in Django 1.9.
 		lvalue, lookup_type, value_annot, params_or_value = child
 		result = super(SalesforceWhereNode, self).make_atom(child, qn, connection)
 
@@ -235,7 +237,7 @@ class SalesforceWhereNode(where.WhereNode):
 					sql_string = '(%s)' % sql_string
 			return sql_string, result_params
 	else:
-		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6.
+		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.74
 		def as_sql(self, qn, connection):
 			"""
 			Returns the SQL version of the where clause and the value to be
@@ -257,7 +259,12 @@ class SalesforceWhereNode(where.WhereNode):
 			for child in self.children:
 				try:
 					if hasattr(child, 'as_sql'):
-						sql, params = child.as_sql(qn=qn, connection=connection)
+						# patch begin (combined Django 1,5, 1.6, 1.7)
+						if DJANGO_17_PLUS:
+							sql, params = qn.compile(child)
+						else:
+							sql, params = child.as_sql(qn=qn, connection=connection)
+						# patch end
 					else:
 						# A leaf node in the tree.
 						sql, params = self.make_atom(child, qn, connection)
@@ -309,6 +316,11 @@ class SalesforceWhereNode(where.WhereNode):
 					sql_string = '(%s)' % sql_string
 			return sql_string, result_params
 
+	if DJANGO_17_PLUS:
+		as_salesforce = as_sql
+		del as_sql
+
+
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
 	def execute_sql(self, return_id=False):
 		assert not (return_id and len(self.query.objs) != 1)
@@ -333,3 +345,19 @@ class SQLAggregateCompiler(compiler.SQLAggregateCompiler, SQLCompiler):
 
 class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
 	pass
+
+
+# Lookups
+if DJANGO_17_PLUS:
+	class IsNull(models.Field.get_lookup(models.Field(), 'isnull')):
+		# The parent is usually `models.lookup.IsNull`.
+		lookup_name = 'isnull'
+
+		def as_sql(self, qn, connection):
+			if connection.vendor == 'salesforce':
+				sql, params = qn.compile(self.lhs)
+				return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
+			else:
+				return super(IsNull, self).as_sql(qn, connection)
+
+	models.Field.register_lookup(IsNull)
