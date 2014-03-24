@@ -12,12 +12,13 @@ Allows access to all Salesforce objects accessible via the SOQL API.
 """
 import logging
 import ssl
-from pkg_resources import parse_version
 
 import django
-DJANGO_14 = (parse_version(django.get_version()) >= parse_version('1.4'))
 DJANGO_15 = django.VERSION[:2] >= (1, 5)
 DJANGO_16 = django.VERSION[:2] >= (1, 6)
+DJANGO_17_PLUS = django.VERSION[:2] >= (1, 7)
+if not django.VERSION[:2] >= (1, 4):
+	raise ImportError("Django 1.4 or higher is required for django-salesforce.")
 
 log = logging.getLogger(__name__)
 
