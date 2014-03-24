@@ -16,7 +16,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
 from django.db.backends.signals import connection_created
 
-from salesforce.auth import SalesforceAuth
+from salesforce.auth import SalesforceAuth, authenticate
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
@@ -24,7 +24,7 @@ from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
-from salesforce.backend import sf_alias
+from salesforce.backend import sf_alias, MAX_RETRIES
 from salesforce import DJANGO_16
 try:
 	from urllib.parse import urlparse
@@ -88,6 +88,9 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.validation = DatabaseValidation(self)
 		self.sf_session = requests.Session()
 		self.sf_session.auth = SalesforceAuth(db_alias=alias)
+		sf_instance_url = authenticate(settings_dict=settings_dict)['instance_url']
+		sf_requests_adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
+		self.sf_session.mount(sf_instance_url, sf_requests_adapter)
 		# Additional header works, but the improvement unmeasurable for me.
 		# (less than SF speed fluctuation)
 		#self.sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
