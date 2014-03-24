@@ -11,13 +11,16 @@ import pytz
 
 from django.conf import settings
 from django.db import connections
+from django.db.models import Q
 from django.test import TestCase
-import django
+from django.utils.unittest import skip
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, test_custom_db_table, test_custom_db_column)
+from salesforce import router
+from salesforce.backend import sf_alias
 
 import logging
 log = logging.getLogger(__name__)
@@ -74,7 +77,7 @@ class BasicSOQLTest(TestCase):
 				"LIMIT 2")
 		self.assertEqual(len(contacts), 2)
 		'%s' % contacts[0].__dict__  # Check that all fields are accessible
-	
+
 	def test_raw_foreignkey_id(self):
 		"""
 		Get the first two contacts by raw query with a ForeignKey id field.
@@ -401,3 +404,19 @@ class BasicSOQLTest(TestCase):
 			self.assertEqual(account_name, retrieved_account.Name)
 		finally:
 			account.delete()
+
+	@skip("Waiting for bug fix")
+	def test_tailing_raw_empty(self):
+		# TODO Fix raw: This is failing with "InvalidQuery: Raw query must include the primary key"
+		len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
+
+	@skip("Waiting for bug fix")
+	def test_failing_international(self):
+		# This is OK
+		len(Contact.objects.filter(Q(FirstName=u'\xe1') & Q(LastName=u'\xe9')))
+		# TODO Fix bug
+		#    File "/home/hynek/wrk/django-salesforce/salesforce/backend/query.py", line 316, in execute_select
+		#      processed_sql = q % process_args(args)
+		#    UnicodeDecodeError: 'ascii' codec can't decode byte ..."
+		# This is because with operator "&" or in a simple case is the SQL converted to str not in unicode
+		len(Contact.objects.filter(Q(FirstName=u'\xe1') | Q(LastName=u'\xe9')))
