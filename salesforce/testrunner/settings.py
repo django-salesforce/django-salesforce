@@ -145,7 +145,8 @@ LOGGING = {
 		},
 		'mail_admins': {
 			'level': 'ERROR',
-			'class': 'django.utils.log.AdminEmailHandler'
+			'class': 'django.utils.log.AdminEmailHandler',
+			'filters': ['require_debug_false'],
 		}
 	},
 	'loggers': {
@@ -164,10 +165,15 @@ LOGGING = {
 			'level': 'INFO',
 			'propagate': True,
 		},
+	},
+	'filters': {
+		'require_debug_false': {
+			"()": "django.utils.log.RequireDebugFalse",
+		}
 	}
 }
 
 try:
 	from salesforce.testrunner.local_settings import *
-except ImportError, exp:
+except ImportError:
 	pass

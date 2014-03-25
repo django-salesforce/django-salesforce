@@ -9,32 +9,32 @@
 oauth login support for the Salesforce API
 """
 
-import copy, logging, threading, urllib
+import logging
+import requests
+import threading
+from django.db import connections
+from salesforce import sf_alias
+from requests.auth import AuthBase
 
-try:
-	import json
-except ImportError:
-	import simplejson as json
-
-import oauth2
+# TODO more advanced methods with ouathlib can be implemented, but the simple doesn't require a spec package
 
 log = logging.getLogger(__name__)
 
 oauth_lock = threading.Lock()
-oauth_data = None
+oauth_data = {}
 
-def expire_token():
-	oauth_lock.acquire()
-	try:
-		global oauth_data
-		oauth_data = None
-	finally:
-		oauth_lock.release()
+def expire_token(db_alias=None):
+	with oauth_lock:
+		del oauth_data[db_alias or sf_alias]
 
-def authenticate(settings_dict=dict()):
+def authenticate(settings_dict=None, db_alias=None):
 	"""
 	Authenticate to the Salesforce API with the provided credentials.
 	
+        Params:
+			settings_dict: Should be obtained from django.conf.DATABASES['salesforce'].
+			db_alias:  The database alias e.g. the default alias 'salesforce'.
+
 	This function can be called multiple times, but will only make
 	an external request once per the lifetime of the process. Subsequent
 	calls to authenticate() will return the original oauth response.
@@ -42,32 +42,39 @@ def authenticate(settings_dict=dict()):
 	This function is thread-safe.
 	"""
 	# if another thread is in this method, wait for it to finish.
-	oauth_lock.acquire()
-	try:
-		global oauth_data
-		if(oauth_data):
-			return oauth_data
+	# always release the lock no matter what happens in the block
+	db_alias = db_alias or sf_alias
+	with oauth_lock:
+		if db_alias in oauth_data:
+			return oauth_data[db_alias]
 		
-		consumer = oauth2.Consumer(key=settings_dict['CONSUMER_KEY'], secret=settings_dict['CONSUMER_SECRET'])
-		client = oauth2.Client(consumer)
+		settings_dict = settings_dict or connections[db_alias].settings_dict
 		url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
 		
 		log.info("attempting authentication to %s" % url)
-		response, content = client.request(url, 'POST', body=urllib.urlencode(dict(
+		response = requests.post(url, data=dict(
 			grant_type		= 'password',
 			client_id		= settings_dict['CONSUMER_KEY'],
 			client_secret	= settings_dict['CONSUMER_SECRET'],
 			username		= settings_dict['USER'],
 			password		= settings_dict['PASSWORD'],
-		)), headers={'Content-Type': 'application/x-www-form-urlencoded'})
-		if(response['status'] == '200'):
+		))
+		if response.status_code == 200:
 			log.info("successfully authenticated %s" % settings_dict['USER'])
-			oauth_data = json.loads(content)
+			oauth_data[db_alias] = response.json()
 		else:
-			raise LookupError("oauth failed: %s: %s" % (oauth_data, response.__dict__))
+			raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
 		
-		return oauth_data
-	finally:
-		# always release the lock no matter what happens in the previous block
-		oauth_lock.release()
+		return oauth_data[db_alias]
 
+class SalesforceAuth(AuthBase):
+	"""
+	Attaches OAuth 2 Salesforce authentication to the Session
+	or the given Request object.
+	"""
+	def __init__(self, db_alias):
+		self.db_alias = db_alias
+
+	def __call__(self, r):
+		r.headers['Authorization'] = 'OAuth %s' % authenticate(db_alias=self.db_alias)['access_token']
+		return r
