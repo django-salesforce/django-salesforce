@@ -102,6 +102,9 @@ class BasicSOQLTest(TestCase):
 		contacts = Contact.objects.filter(FirstName__isnull=False).exclude(Email="steve@apple.com", LastName="Wozniak").exclude(LastName="smith")
 		number_of_contacts = contacts.count()
 		self.assertIsInstance(number_of_contacts, int)
+		# the default self.test_lead shouldn't be excluded by only one nondition
+		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General").filter(FirstName="User", LastName="Unittest General")
+		self.assertEqual(leads.count(), 1)
 
 	def test_foreign_key(self):
 		"""
