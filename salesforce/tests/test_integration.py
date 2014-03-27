@@ -430,9 +430,10 @@ class BasicSOQLTest(TestCase):
 		finally:
 			account.delete()
 
-	@skip("Waiting for bug fix")
-	def test_tailing_raw_empty(self):
-		# TODO Fix raw: This is failing with "InvalidQuery: Raw query must include the primary key"
+	def test_raw_query_empty(self):
+		"""
+		Test that the raw query works even for queries with empty results.
+		"""
 		len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
 
 	@skip("Waiting for bug fix")
