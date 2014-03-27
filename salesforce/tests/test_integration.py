@@ -222,7 +222,6 @@ class BasicSOQLTest(TestCase):
 			contacts = Contact.objects.filter(Q(Account__isnull=True) |
 					Q(Account=None), Account=None, Account__isnull=True,
 					FirstName='sf_test')
-			print(contacts.query.get_compiler('salesforce').as_sql())
 			self.assertEqual(len(contacts), 1)
 		finally:
 			test_contact.delete()
