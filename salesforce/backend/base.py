@@ -44,7 +44,13 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	supports_unspecified_pk = False
 	can_return_id_from_insert = False
 	supports_select_related = False
-	supports_transactions = False
+	# Though Salesforce doesn't support transactions, the setting
+	# `supports_transactions` is used only for switching between rollback or
+	# cleaning the database in testrunner after every test and loading fixtures
+	# before it, however SF does not support any of these and all test data must
+	# be loaded and cleaned by the testcase code. From the viewpoint of SF it is
+	# irrelevant, but due to issue #28 it should be True.
+	supports_transactions = True
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	"""

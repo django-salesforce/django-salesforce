@@ -105,19 +105,3 @@ here are the potential pitfalls and unimplemented operations:
    implemented.
 -  **Database Sync** — There is no plan to support DB creation for the
    forseeable future.
-
-Troubleshooting
----------------
--  **Slow Unit Tests** - Running tests which use the Django TestCase class can run significantly slower when
-   a salesforce backend Database is configured in the DATABASES setting. This occurs
-   regardless of whether the salesforce DB router is configured.
-
-   https://github.com/freelancersunion/django-salesforce/issues/28
-   
-   One possible solution can be to remove the applications with salesforce models from
-   some tests or test cases by explicitely defining TransactionTestCase.available_apps.
-   Other solution can be to temporary remove salesforce database from DATABASES for some
-   tests or for complete testcases by override_settings.
-   
-   Both optimizations are possible only with knowledge of what will be tested, therefore
-   it can not be done by django-salesforce.
