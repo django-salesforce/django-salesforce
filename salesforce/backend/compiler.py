@@ -40,42 +40,42 @@ class SQLCompiler(compiler.SQLCompiler):
 			result.append(row[field.column])
 		return result
 
-	def get_columns(self, with_aliases=False):
-		"""
-		Remove table names and strip quotes from column names.
-		"""
-		if DJANGO_16:
-			cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
-		else:
-			cols = compiler.SQLCompiler.get_columns(self, with_aliases)
-		result = []
-		for col in cols:
-			if('.' in col):
-				name = col.split('.')[1]
-			else:
-				name = col
-			result.append(name.strip('"'))
-		return (result, col_params) if DJANGO_16 else result
+	# Simple related fields work only without this, but for more complicated
+	# cases this must be fixed and re-enabled.
+	#def get_columns(self, with_aliases=False):
+	#	"""
+	#	Remove table names and strip quotes from column names.
+	#	"""
+	#	if DJANGO_16:
+	#		cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
+	#	else:
+	#		cols = compiler.SQLCompiler.get_columns(self, with_aliases)
+	#	result = []
+	#	for col in cols:
+	#		if('.' in col):
+	#			name = col.split('.')[1]
+	#		else:
+	#			name = col
+	#		result.append(name.strip('"'))
+	#	return (result, col_params) if DJANGO_16 else result
 
 	def get_from_clause(self):
 		"""
 		Return the FROM clause, converted the SOQL dialect.
+
+		It should be only the name of base object, even in parent-to-child and
+		child-to-parent relationships queries.
 		"""
-		result = []
-		first = True
 		for alias in self.query.tables:
-			if not self.query.alias_refcount[alias]:
-				continue
-			try:
-				name, alias, join_type, lhs, lhs_col, col, nullable = self.query.alias_map[alias]
-			except KeyError:
-				# Extra tables can end up in self.tables, but not in the
-				# alias_map if they aren't in a join. That's OK. We skip them.
-				continue
-			connector = not first and ', ' or ''
-			result.append('%s%s' % (connector, name))
-			first = False
-		return result, []
+			if self.query.alias_refcount[alias]:
+				try:
+					name, alias, join_type, lhs, lhs_col, col, nullable = self.query.alias_map[alias]
+				except KeyError:
+					# Extra tables can end up in self.tables, but not in the
+					# alias_map if they aren't in a join. That's OK. We skip them.
+					continue
+				return [name], []
+		raise AssertionError("At least one table should be referenced in the query.")
 
 	def quote_name_unless_alias(self, name):
 		"""
@@ -139,15 +139,17 @@ class SQLCompiler(compiler.SQLCompiler):
 class SalesforceWhereNode(where.WhereNode):
 	overridden_types = ['isnull']
 
-	def sql_for_columns(self, data, qn, connection, internal_type=None):  # Fixed for Django 1.6
-		"""
-		Don't attempt to quote column names.
-		"""
-		table_alias, name, db_type = data
-		if DJANGO_16:
-			return connection.ops.field_cast_sql(db_type, internal_type) % name
-		else:
-			return connection.ops.field_cast_sql(db_type) % name
+	# Simple related fields work only without this, but for more complicated
+	# cases this must be fixed and re-enabled.
+	#def sql_for_columns(self, data, qn, connection, internal_type=None):  # Fixed for Django 1.6
+	#	"""
+	#	Don't attempt to quote column names.
+	#	"""
+	#	table_alias, name, db_type = data
+	#	if DJANGO_16:
+	#		return connection.ops.field_cast_sql(db_type, internal_type) % name
+	#	else:
+	#		return connection.ops.field_cast_sql(db_type) % name
 
 	def make_atom(self, child, qn, connection):
 		# The make_atom() method is ignored in Django 1.7 unless explicitely required.

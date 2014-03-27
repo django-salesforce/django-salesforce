@@ -122,6 +122,21 @@ class BasicSOQLTest(TestCase):
 		finally:
 			test_contact.delete()
 
+	def test_foreign_key_column(self):
+		"""
+		Verify filtering by a column of related parent object.
+		"""
+		test_account = Account(Name = 'sf_test account')
+		test_account.save()
+		test_contact = Contact(FirstName = 'sf_test', LastName='my', Account=test_account)
+		test_contact.save()
+		try:
+			contacts = Contact.objects.filter(Account__Name='sf_test account')
+			self.assertEqual(len(contacts), 1)
+		finally:
+			test_contact.delete()
+			test_account.delete()
+
 	def test_update_date(self):
 		"""
 		Test updating a date.

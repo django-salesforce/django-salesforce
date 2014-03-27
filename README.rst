@@ -60,6 +60,21 @@ Quick Start
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
 9. You're all done! Just use your model like a normal Django model.
 
+Supported features
+------------------
+
+Foreign key filters are currently possible only for the first level of
+relationship and only for fields whose name equals the name of object.
+Foreign keys of an object can be normally accessed by dot notation without any
+restriction
+Example:
+
+    contacts = Contact.objects.filter(Account__Name='FOO Company')
+	print(contacts[0].Account.Owner.LastName)
+
+But the relationship ``Owner__Name`` is not currently possible because the
+type of ``Owner`` is a different name (``User``).
+
 Caveats
 -------
 
