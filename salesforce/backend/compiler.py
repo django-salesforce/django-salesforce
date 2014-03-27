@@ -319,6 +319,13 @@ class SalesforceWhereNode(where.WhereNode):
 			return sql_string, result_params
 
 	if DJANGO_17_PLUS:
+		def add(self, data, conn_type, **kwargs):
+			cond = isinstance(data, models.lookups.IsNull) and not isinstance(data, IsNull)
+			if cond:
+				# "lhs" and "rhs" means Left and Right Hand Side of an condition
+				data = IsNull(data.lhs, data.rhs)
+			return super(SalesforceWhereNode, self).add(data, conn_type, **kwargs)
+
 		as_salesforce = as_sql
 		del as_sql
 
@@ -352,7 +359,7 @@ class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
 # Lookups
 if DJANGO_17_PLUS:
 	class IsNull(models.Field.get_lookup(models.Field(), 'isnull')):
-		# The parent is usually `models.lookup.IsNull`.
+		# The expected result base class above is `models.lookups.IsNull`.
 		lookup_name = 'isnull'
 
 		def as_sql(self, qn, connection):

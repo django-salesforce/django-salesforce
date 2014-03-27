@@ -207,11 +207,25 @@ class BasicSOQLTest(TestCase):
 		"""
 		Get the test lead record by isnull condition.
 		"""
-		# TODO similar failed: Contact.objects.filter(Account__isnull=True)
-		#              passed: Contact.objects.filter(Account=None)
 		lead = Lead.objects.get(Email__isnull=False, FirstName='User')
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
+	
+	def test_not_null_related(self):
+		"""
+		Verify conditions `isnull` for foreign keys: filter(Account=None)
+		filter(Account__isnull=True) and nested in Q(...) | Q(...).
+		"""
+		test_contact = Contact(FirstName='sf_test', LastName='my')
+		test_contact.save()
+		try:
+			contacts = Contact.objects.filter(Q(Account__isnull=True) |
+					Q(Account=None), Account=None, Account__isnull=True,
+					FirstName='sf_test')
+			print(contacts.query.get_compiler('salesforce').as_sql())
+			self.assertEqual(len(contacts), 1)
+		finally:
+			test_contact.delete()
 	
 	def test_unicode(self):
 		"""
