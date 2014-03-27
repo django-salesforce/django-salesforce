@@ -317,7 +317,7 @@ class CursorWrapper(object):
 			self.results = []
 
 	def execute_select(self, q, args):
-		processed_sql = q % process_args(args)
+		processed_sql = str(q) % process_args(args)
 		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urlencode(dict(
 			q	= processed_sql,
 		)))

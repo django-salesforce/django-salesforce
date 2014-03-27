@@ -436,13 +436,14 @@ class BasicSOQLTest(TestCase):
 		"""
 		len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
 
-	@skip("Waiting for bug fix")
-	def test_failing_international(self):
-		# This is OK
+	def test_combined_international(self):
+		"""
+		Test combined filters with international characters.
+		"""
+		# This is OK for long time
 		len(Contact.objects.filter(Q(FirstName=u'\xe1') & Q(LastName=u'\xe9')))
-		# TODO Fix bug
-		#    File "/home/hynek/wrk/django-salesforce/salesforce/backend/query.py", line 316, in execute_select
-		#      processed_sql = q % process_args(args)
-		#    UnicodeDecodeError: 'ascii' codec can't decode byte ..."
-		# This is because with operator "&" or in a simple case is the SQL converted to str not in unicode
+		# This was recently fixed
 		len(Contact.objects.filter(Q(FirstName=u'\xe1') | Q(LastName=u'\xe9')))
+		len(Contact.objects.filter(Q(FirstName='\xc3\xa1') | Q(LastName='\xc3\xa9')))
+
+	#@skip("Waiting for bug fix")
