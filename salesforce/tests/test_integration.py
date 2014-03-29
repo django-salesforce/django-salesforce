@@ -5,24 +5,25 @@
 # See LICENSE.md for details
 #
 
+from decimal import Decimal
 import datetime
-import decimal
 import pytz
 
 from django.conf import settings
 from django.db import connections
+from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
-import django
+from django.utils.unittest import skip, skipUnless
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, test_custom_db_table, test_custom_db_column)
+from salesforce import router, DJANGO_15
+from salesforce.backend import sf_alias
 
 import logging
 log = logging.getLogger(__name__)
-
-DJANGO_14 = django.VERSION[:2] >= (1,4)
 
 current_user = settings.DATABASES['salesforce']['USER']
 test_email = 'test-djsf-unittests-email@example.com'
@@ -41,8 +42,7 @@ def round_datetime_utc(timestamp):
 	## sfdates are UTC to seconds precision but use a fixed-offset
 	## of +0000 (as opposed to a named tz)
 	timestamp = timestamp.replace(microsecond=0)
-	if DJANGO_14:
-		timestamp= timestamp.replace(tzinfo=pytz.utc)
+	timestamp = timestamp.replace(tzinfo=pytz.utc)
 	return timestamp
 
 
@@ -70,13 +70,14 @@ class BasicSOQLTest(TestCase):
 	def test_raw(self):
 		"""
 		Get the first two contact records.
+		(At least 3 manually created Contacts must exist before these read-only tests.)
 		"""
 		contacts = Contact.objects.raw(
 				"SELECT Id, LastName, FirstName FROM Contact "
 				"LIMIT 2")
 		self.assertEqual(len(contacts), 2)
 		'%s' % contacts[0].__dict__  # Check that all fields are accessible
-	
+
 	def test_raw_foreignkey_id(self):
 		"""
 		Get the first two contacts by raw query with a ForeignKey id field.
@@ -102,17 +103,40 @@ class BasicSOQLTest(TestCase):
 		contacts = Contact.objects.filter(FirstName__isnull=False).exclude(Email="steve@apple.com", LastName="Wozniak").exclude(LastName="smith")
 		number_of_contacts = contacts.count()
 		self.assertIsInstance(number_of_contacts, int)
+		# the default self.test_lead shouldn't be excluded by only one nondition
+		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General").filter(FirstName="User", LastName="Unittest General")
+		self.assertEqual(leads.count(), 1)
 
 	def test_foreign_key(self):
 		"""
 		Verify that the owner of an Contact is the currently logged admin.
 		"""
 		current_sf_user = User.objects.get(Username=current_user)
-		contact = Contact.objects.filter(Owner=current_sf_user)[0]
-		user = contact.Owner
-		# This user can be e.g. 'admins@freelancersunion.org.prod001'.
-		self.assertEqual(user.Username, current_user)
-	
+		test_contact = Contact(FirstName = 'sf_test', LastName='my')
+		test_contact.save()
+		try:
+			contact = Contact.objects.filter(Owner=current_sf_user)[0]
+			user = contact.Owner
+			# This user can be e.g. 'admins@freelancersunion.org.prod001'.
+			self.assertEqual(user.Username, current_user)
+		finally:
+			test_contact.delete()
+
+	def test_foreign_key_column(self):
+		"""
+		Verify filtering by a column of related parent object.
+		"""
+		test_account = Account(Name = 'sf_test account')
+		test_account.save()
+		test_contact = Contact(FirstName = 'sf_test', LastName='my', Account=test_account)
+		test_contact.save()
+		try:
+			contacts = Contact.objects.filter(Account__Name='sf_test account')
+			self.assertEqual(len(contacts), 1)
+		finally:
+			test_contact.delete()
+			test_account.delete()
+
 	def test_update_date(self):
 		"""
 		Test updating a date.
@@ -183,11 +207,24 @@ class BasicSOQLTest(TestCase):
 		"""
 		Get the test lead record by isnull condition.
 		"""
-		# TODO similar failed: Contact.objects.filter(Account__isnull=True)
-		#              passed: Contact.objects.filter(Account=None)
 		lead = Lead.objects.get(Email__isnull=False, FirstName='User')
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
+	
+	def test_not_null_related(self):
+		"""
+		Verify conditions `isnull` for foreign keys: filter(Account=None)
+		filter(Account__isnull=True) and nested in Q(...) | Q(...).
+		"""
+		test_contact = Contact(FirstName='sf_test', LastName='my')
+		test_contact.save()
+		try:
+			contacts = Contact.objects.filter(Q(Account__isnull=True) |
+					Q(Account=None), Account=None, Account__isnull=True,
+					FirstName='sf_test')
+			self.assertEqual(len(contacts), 1)
+		finally:
+			test_contact.delete()
 	
 	def test_unicode(self):
 		"""
@@ -250,7 +287,7 @@ class BasicSOQLTest(TestCase):
 		Update the test lead record.
 		"""
 		test_lead = Lead.objects.get(Email=test_email)
-		self.assertEquals(test_lead.FirstName, 'User')
+		self.assertEqual(test_lead.FirstName, 'User')
 		test_lead.FirstName = 'Tested'
 		test_lead.save()
 		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
@@ -266,7 +303,7 @@ class BasicSOQLTest(TestCase):
 		# The price for a product must be set in the standard price book.
 		# http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_objects_pricebookentry.htm
 		pricebook = Pricebook.objects.get(Name="Standard Price Book")
-		saved_pricebook_entry = PricebookEntry(Product2Id=product, Pricebook2Id=pricebook, UnitPrice=decimal.Decimal('1234.56'), UseStandardPrice=False)
+		saved_pricebook_entry = PricebookEntry(Product2Id=product, Pricebook2Id=pricebook, UnitPrice=Decimal('1234.56'), UseStandardPrice=False)
 		saved_pricebook_entry.save()
 		retrieved_pricebook_entry = PricebookEntry.objects.get(pk=saved_pricebook_entry.pk)
 
@@ -276,25 +313,22 @@ class BasicSOQLTest(TestCase):
 			retrieved_pricebook_entry.delete()
 			product.delete()
 
+	@skipUnless('ChargentOrders__ChargentOrder__c' in sf_tables,
+			'Not found custom tables ChargentOrders__*')
 	def test_custom_objects(self):
 		"""
 		Make sure custom objects work.
 		"""
-		if not 'ChargentOrders__ChargentOrder__c' in sf_tables:
-			self.skipTest('Not found custom tables ChargentOrders__*')
 		orders = ChargentOrder.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
 
+	@skipUnless(test_custom_db_table in sf_tables,
+			"Not found the expected custom object '%s'" % test_custom_db_table)
 	def test_custom_object_general(self):
 		"""
 		Create, read and delete any general custom object.
 		Object name and field name are user configurable by TEST_CUSTOM_FIELD.
 		"""
-		table_list_cache = connections['salesforce'].introspection.table_list_cache
-		table_names = [x['name'] for x in table_list_cache['sobjects']]
-		if not test_custom_db_table in sf_tables:
-			self.skipTest("Not found the expected custom object '%s'" %
-					test_custom_db_table)
 		obj = GeneralCustomModel(GeneralCustomField='sf_test')
 		obj.save()
 		try:
@@ -364,8 +398,6 @@ class BasicSOQLTest(TestCase):
 		"""
 		Unsupported bulk_create: "Errors should never pass silently."
 		"""
-		if not DJANGO_14:
-			self.skipTest('Django 1.3 has no bulk operations.')
 		objects = [Contact(LastName='sf_test a'), Contact(LastName='sf_test b')]
 		self.assertRaises(AssertionError, Contact.objects.bulk_create, objects)
 
@@ -397,3 +429,57 @@ class BasicSOQLTest(TestCase):
 			self.assertEqual(account_name, retrieved_account.Name)
 		finally:
 			account.delete()
+
+	def test_raw_query_empty(self):
+		"""
+		Test that the raw query works even for queries with empty results.
+		"""
+		len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
+
+	def test_combined_international(self):
+		"""
+		Test combined filters with international characters.
+		"""
+		# This is OK for long time
+		len(Contact.objects.filter(Q(FirstName=u'\xe1') & Q(LastName=u'\xe9')))
+		# This was recently fixed
+		len(Contact.objects.filter(Q(FirstName=u'\xe1') | Q(LastName=u'\xe9')))
+		len(Contact.objects.filter(Q(FirstName='\xc3\xa1') | Q(LastName='\xc3\xa9')))
+
+	def test_aggregate_query(self):
+		"""
+		Test for different aggregate function.
+		"""
+		test_product = Product(Name='test soap')
+		test_product.save()
+		test_product2 = Product(Name='test brush')
+		test_product2.save()
+		pricebook = Pricebook.objects.get(Name="Standard Price Book")
+		PricebookEntry(Product2Id=test_product, Pricebook2Id=pricebook,
+				UseStandardPrice=False, UnitPrice=Decimal(100)).save()
+		PricebookEntry(Product2Id=test_product2, Pricebook2Id=pricebook,
+				UseStandardPrice=False, UnitPrice=Decimal(80)).save()
+		try:
+			x_products = PricebookEntry.objects.filter(Name__startswith='test ')
+			result = x_products.aggregate(Sum('UnitPrice'), Count('UnitPrice'), Avg('UnitPrice'), Min('UnitPrice'))
+			self.assertDictEqual(result, {'UnitPrice__sum': 180, 'UnitPrice__count': 2, 'UnitPrice__avg': 90.0, 'UnitPrice__min': 80})
+		finally:
+			# dependent PricebookEntries are just deleted automatically by SF
+			test_product.delete()
+			test_product2.delete()
+
+	@skipUnless(DJANGO_15, "the parameter 'update_fields' requires Django 1.5+")
+	def test_save_update_fields(self):
+		"""
+		Test the save method with parameter `update_fields`
+		that updates only required fields.
+		"""
+		company_orig = self.test_lead.Company
+		self.test_lead.Company = 'A'  # TODO None
+		self.test_lead.FirstName = 'John'
+		self.test_lead.save(update_fields=['FirstName'])
+		test_lead = refresh(self.test_lead)
+		self.assertEqual(test_lead.FirstName, 'John')
+		self.assertEqual(test_lead.Company, company_orig)
+
+	#@skip("Waiting for bug fix")

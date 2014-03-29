@@ -3,10 +3,15 @@
 *.pyc
 local_settings.py
 build
+dist
 *.egg-info
 salesforce_testrunner_db
 .*.swp
+.swp
 .tox
 VERSION
 setuptools_git-*.egg
 .ropeproject/
+.coverage
+htmlcov
+log

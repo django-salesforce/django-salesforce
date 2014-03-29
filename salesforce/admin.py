@@ -12,6 +12,7 @@ Multi-database support for the Django admin.
 from django.contrib.admin import options
 from django.conf import settings
 from django.db import utils
+from salesforce import DJANGO_17_PLUS
 
 class RoutedModelAdmin(options.ModelAdmin):
 	"""
@@ -23,6 +24,7 @@ class RoutedModelAdmin(options.ModelAdmin):
 	Unfortunately, at least as far as Django 1.3, the admin doesn't normally make use
 	of the DATABASE_ROUTERS setting, so this custom ModelAdmin subclass makes up for it.
 	"""
+	# TODO This class can be simplified now, without Django 1.3
 	router = utils.ConnectionRouter(settings.DATABASE_ROUTERS)
 	
 	def save_model(self, request, obj, form, change):
@@ -41,6 +43,10 @@ class RoutedModelAdmin(options.ModelAdmin):
 		if ordering:
 			qs = qs.order_by(*ordering)
 		return qs
+
+	if DJANGO_17_PLUS:
+		get_queryset = queryset
+		del queryset
 
 	def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
 		# Tell Django to populate ForeignKey widgets using a query

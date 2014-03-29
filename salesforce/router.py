@@ -16,6 +16,7 @@ from django.conf import settings
 log = logging.getLogger(__name__)
 
 def is_testing(db):
+	# The strange name "is_testing" means "this db alias doesn't belong to a SF database"
 	from django.db import connections
 	from salesforce.backend.base import DatabaseWrapper 
 	return not isinstance(connections[db], DatabaseWrapper)

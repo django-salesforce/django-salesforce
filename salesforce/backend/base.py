@@ -9,12 +9,14 @@
 Salesforce database backend for Django.
 """
 
-import logging, urlparse
+import logging
+import requests
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
 from django.db.backends.signals import connection_created
 
+from salesforce.auth import SalesforceAuth, authenticate
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
@@ -22,7 +24,12 @@ from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
-from salesforce import DJANGO_14, DJANGO_16
+from salesforce.backend import sf_alias, MAX_RETRIES
+from salesforce import DJANGO_16
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +44,13 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	supports_unspecified_pk = False
 	can_return_id_from_insert = False
 	supports_select_related = False
-	supports_transactions = False
+	# Though Salesforce doesn't support transactions, the setting
+	# `supports_transactions` is used only for switching between rollback or
+	# cleaning the database in testrunner after every test and loading fixtures
+	# before it, however SF does not support any of these and all test data must
+	# be loaded and cleaned by the testcase code. From the viewpoint of SF it is
+	# irrelevant, but due to issue #28 it should be True.
+	supports_transactions = True
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	"""
@@ -67,7 +80,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
 	Database = Database
 
-	def __init__(self, settings_dict, alias='default'):
+	def __init__(self, settings_dict, alias=None):
+		alias = alias or sf_alias
 		super(DatabaseWrapper, self).__init__(settings_dict, alias)
 
 		self.validate_settings(settings_dict)
@@ -78,6 +92,14 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.creation = DatabaseCreation(self)
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
+		self.sf_session = requests.Session()
+		self.sf_session.auth = SalesforceAuth(db_alias=alias)
+		sf_instance_url = authenticate(settings_dict=settings_dict)['instance_url']
+		sf_requests_adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
+		self.sf_session.mount(sf_instance_url, sf_requests_adapter)
+		# Additional header works, but the improvement unmeasurable for me.
+		# (less than SF speed fluctuation)
+		#self.sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
 
 	def get_connection_params(self):
 		settings_dict = self.settings_dict
@@ -105,8 +127,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 				raise ImproperlyConfigured("'%s' key is the empty string in '%s' database settings." % (k, self.alias))
 
 		try:
-			urlparse.urlparse(d['HOST'])
-		except Exception, e:
+			urlparse(d['HOST'])
+		except Exception as e:
 			raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" % (self.alias, e))
 
 	def cursor(self, query=None):

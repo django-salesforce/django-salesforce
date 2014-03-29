@@ -9,7 +9,7 @@
 Salesforce object query customizations.
 """
 
-import urllib, logging, types, datetime, decimal
+import logging, types, datetime, decimal
 
 from django.conf import settings
 from django.core.serializers import python
@@ -17,35 +17,35 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.models import query
 from django.db.models.sql import Query, RawQuery, constants, subqueries
-from django.utils.encoding import force_unicode
+from django.utils.encoding import force_text
+from django.utils.six import PY3
 
 from itertools import islice
 
-import restkit
+import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_14, DJANGO_16
-from salesforce.backend import compiler
+from salesforce import auth, models, DJANGO_16, DJANGO_17_PLUS
+from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 try:
+	from urllib.parse import urlencode
+except ImportError:
+	from urllib import urlencode
+try:
 	import json
-except ImportError, e:
+except ImportError:
 	import simplejson as json
 
 log = logging.getLogger(__name__)
 
 API_STUB = '/services/data/v28.0'
 
-sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
-
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
-if DJANGO_14:
-	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
-else:
-	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
+DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
 def quoted_string_literal(s, d):
 	"""
@@ -54,7 +54,7 @@ def quoted_string_literal(s, d):
 	"""
 	try:
 		return "'%s'" % (s.replace("'", "\\'"),)
-	except TypeError, e:
+	except TypeError as e:
 		raise NotImplementedError("Cannot quote %r objects: %r" % (type(s), s))
 
 def process_args(args):
@@ -87,35 +87,51 @@ def reauthenticate():
 	return oauth['access_token']
 
 def handle_api_exceptions(url, f, *args, **kwargs):
+	"""Call REST API and handle exceptions
+	Params:  f:  requests.get or requests.post...
+	"""
 	from salesforce.backend import base
+	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)}
+	kwargs_in.update(kwargs)
+	log.debug('Request API URL: %s' % url)
 	try:
-		return f(*args, **kwargs)
-	except restkit.ResourceNotFound, e:
-		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
-				% (e, url))
-	except restkit.ResourceGone, e:
-		raise base.SalesforceError("Couldn't connect to API (410): %s" % e)
-	except restkit.Unauthorized, e:
-		data = json.loads(str(e))[0]
-		if(data['errorCode'] == 'INVALID_SESSION_ID'):
-			token = reauthenticate()
-			if('headers' in kwargs):
-				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
-			return f(*args, **kwargs)
-		raise base.SalesforceError(str(e))
-	except restkit.RequestFailed, e:
-		data = json.loads(str(e))[0]
-		if(data['errorCode'] == 'INVALID_FIELD'):
-			raise base.SalesforceError(data['message'])
-		elif(data['errorCode'] == 'MALFORMED_QUERY'):
-			raise base.SalesforceError(data['message'])
-		elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
-			raise base.SalesforceError(data['message'])
-		elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
-			raise base.SalesforceError('%s: %s' % (url, data['message']))
-		# some kind of failed query
-		else:
-			raise base.SalesforceError(str(data))
+		response = f(url, *args, **kwargs_in)
+		if response.status_code in (200, 201, 204):
+			return response
+	except requests.exceptions.Timeout:
+		raise base.SalesforceError("Timeout, URL=%s" % url)
+	else:
+		# TODO Remove this print after tuning of specific messages. Currently is
+		#      better more than less
+		print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
+		if response.status_code >= 400:
+			if response.status_code == 404:  # ResourceNotFound
+				raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
+						% (response.text, url))
+			if response.status_code in (401, 403):  # Unauthorized
+				data = response.json()[0]
+				if(data['errorCode'] == 'INVALID_SESSION_ID'):
+					token = reauthenticate()
+					if('headers' in kwargs):
+						kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
+					return f(url, *args, **kwargs)
+				raise base.SalesforceError(response.text)
+			# TODO remove: According to SF docs: The status code 410 is unused by SF.
+			if response.status_code == 410:  # ResourceGone
+				raise base.SalesforceError("Couldn't connect to API (410): %s" % response.text)
+			else:   # RequestFailed
+				data = response.json()[0]
+				if(data['errorCode'] == 'INVALID_FIELD'):
+					raise base.SalesforceError(data['message'])
+				elif(data['errorCode'] == 'MALFORMED_QUERY'):
+					raise base.SalesforceError(data['message'])
+				elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
+					raise base.SalesforceError(data['message'])
+				elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
+					raise base.SalesforceError('%s: %s' % (url, data['message']))
+				# some kind of failed query
+				else:
+					raise base.SalesforceError('%s' % data)
 
 def prep_for_deserialize(model, record, using):
 	attribs = record.pop('attributes')
@@ -138,9 +154,6 @@ def prep_for_deserialize(model, record, using):
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
 				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
-			elif (x.__class__.__name__ == 'TimeField' and field_val is not None
-					and not DJANGO_14 and field_val.endswith('Z')):
-				fields[x.name] = field_val[:-1]  # Fix time e.g. "23:59:59.000Z"
 			else:
 				fields[x.name] = field_val
 
@@ -163,24 +176,21 @@ def extract_values(query):
 				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
-			[value] = [value for qfield, model, value in query.values if qfield.name == field.name]
+			value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
+			if value_or_empty:
+				[value] = value_or_empty
+			else:
+				assert len(query.values) < len(fields), \
+						"Match name can miss only with an 'update_fields' argument."
+				continue
 		else:  # insert
-			if(DJANGO_14):  # Django >= 1.4
-				assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
-				value = getattr(query.objs[0], field.attname)
-			else:   # Django == 1.3
-				value = query.values[index][1]
+			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
+			value = getattr(query.objs[0], field.attname)
 			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
 				continue
 		[arg] = process_json_args([value])
 		d[field.db_column or field.name] = arg
 	return d
-
-def get_resource(url):
-	salesforce_timeout = getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)
-	resource = restkit.Resource(url, timeout=salesforce_timeout)
-	log.debug('Request API URL: %s' % url)
-	return resource
 
 class SalesforceRawQuerySet(query.RawQuerySet):
 	def __len__(self):
@@ -218,7 +228,7 @@ class SalesforceRawQuery(RawQuery):
 		converter = connections[self.using].introspection.table_name_converter
 		if(len(self.cursor.results) > 0):
 			return [converter(col) for col in self.cursor.results[0].keys() if col != 'attributes']
-		return []
+		return ['Id']
 
 	def _execute_query(self):
 		self.cursor = CursorWrapper(connections[self.using], self)
@@ -231,8 +241,10 @@ class SalesforceQuery(Query):
 	"""
 	Override aggregates.
 	"""
-	from salesforce.backend import aggregates
-	aggregates_module = aggregates
+	# Warn against name collision: The name 'aggregates' is the name of
+	# a new property introduced by Django 1.7 to the parent class
+	# 'django.db.models.sql.query.Query'.
+	from salesforce.backend import aggregates as aggregates_module
 
 	def clone(self, klass=None, memo=None, **kwargs):
 		return Query.clone(self, klass, memo, **kwargs)
@@ -249,11 +261,13 @@ class CursorWrapper(object):
 	This is the class that is actually responsible for making connections
 	to the SF REST API
 	"""
-	def __init__(self, conn, query=None):
+	def __init__(self, connection, query=None):
 		"""
 		Connect to the Salesforce API.
 		"""
-		self.settings_dict = conn.settings_dict
+		self.settings_dict = connection.settings_dict
+		self.connection = connection
+		self.session = connection.sf_session
 		self.query = query
 		self.results = []
 		self.rowcount = None
@@ -282,15 +296,13 @@ class CursorWrapper(object):
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % self.query)
 
-		body = response.body_string()
-		jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
-
-		if(jsrc):
+		# the encoding is detected automatically, e.g. from headers
+		if(response and response.text):
 			# parse_float set to decimal.Decimal to avoid precision errors when
 			# converting from the json number to a float to a Decimal object
 			# on a model's DecimalField...converts from json number directly
 			# a Decimal object
-			data = json.loads(jsrc, parse_float=decimal.Decimal)
+			data = response.json(parse_float=decimal.Decimal)
 			# a SELECT query
 			if('totalSize' in data):
 				self.rowcount = data['totalSize']
@@ -302,59 +314,51 @@ class CursorWrapper(object):
 			else:
 				raise base.DatabaseError(data)
 
-			if('count()' in q.lower()):
+			if q.upper().startswith('SELECT COUNT() FROM'):
+				# TODO what about raw query COUNT()
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
-				data['records'] = [{self.rowcount:'COUNT'}]
-
-			self.results = self.query_results(data)
+				self.results = [[self.rowcount]]
+			else:
+				self.results = self.query_results(data)
 		else:
 			self.results = []
 
 	def execute_select(self, q, args):
-		processed_sql = q % process_args(args)
-		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urllib.urlencode(dict(
+		processed_sql = str(q) % process_args(args)
+		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urlencode(dict(
 			q	= processed_sql,
 		)))
-		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
-		resource = get_resource(url)
-
 		log.debug(processed_sql)
-		return handle_api_exceptions(url, resource.get, headers=headers)
+		return handle_api_exceptions(url, self.session.get)
 
 	def query_more(self, nextRecordsUrl):
 		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
-		headers = dict(Authorization='OAuth %s' % self.oauth['access_token'])
-		resource = get_resource(url)
-		return handle_api_exceptions(url, resource.get, headers=headers)
+		return handle_api_exceptions(url, self.session.get)
 
 	def execute_insert(self, query):
 		table = query.model._meta.db_table
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
-		headers = dict()
-		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-		headers['Content-Type'] = 'application/json'
+		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
-		resource = get_resource(url)
+
 		log.debug('INSERT %s%s' % (table, post_data))
-		return handle_api_exceptions(url, resource.post, headers=headers, payload=json.dumps(post_data))
+		return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data))
 
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
-		if DJANGO_16:
+		if DJANGO_17_PLUS:
+			pk = query.where.children[0].rhs
+		elif DJANGO_16:
 			pk = query.where.children[0][3]
 		else:
 			pk = query.where.children[0].children[0][-1]
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
-		headers = dict()
-		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-		headers['Content-Type'] = 'application/json'
+		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
-		resource = get_resource(url)
-
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-		ret = handle_api_exceptions(url, resource.request, method='PATCH', headers=headers, payload=json.dumps(post_data))
+		ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data))
 		self.rowcount = 1
 		return ret
 
@@ -363,25 +367,29 @@ class CursorWrapper(object):
 		## the root where node's children may itself have children..
 		def recurse_for_pk(children):
 			for node in children:
-				try:
-					pk = node[-1][0]
-				except TypeError:
-					pk = recurse_for_pk(node.children)
+				if hasattr(node, 'rhs'):
+					pk = node.rhs[0]  # for Django 1.7+
+				else:
+					try:
+						pk = node[-1][0]
+					except TypeError:
+						pk = recurse_for_pk(node.children)
 				return pk
 		pk = recurse_for_pk(self.query.where.children)
 		assert pk
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
-		headers = dict()
-		headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-		resource = get_resource(url)
 
 		log.debug('DELETE %s(%s)' % (table, pk))
-		return handle_api_exceptions(url, resource.delete, headers=headers)
+		return handle_api_exceptions(url, self.session.delete)
 
 	def query_results(self, results):
 		output = []
 		while True:
 			for rec in results['records']:
+				if rec['attributes']['type'] == 'AggregateResult':
+					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
+					# The 'attributes' info is unexpected for Django within fields.
+					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]
 				output.append(rec)
 
 			if results['done']:
@@ -389,7 +397,7 @@ class CursorWrapper(object):
 
 			# http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#heading_2_1
 			response = self.query_more(results['nextRecordsUrl'])
-			jsrc = force_unicode(response.body_string()).encode(settings.DEFAULT_CHARSET)
+			jsrc = force_text(response.body_string()).encode(settings.DEFAULT_CHARSET)
 
 			if(jsrc):
 				results = json.loads(jsrc)
@@ -421,6 +429,9 @@ class CursorWrapper(object):
 		"""
 		return list(self.results)
 
+	def close(self):  # for Django 1.7+
+		pass
+
 string_literal = quoted_string_literal
 def date_literal(d, c):
 	if(d.tzinfo):
@@ -439,26 +450,25 @@ def sobj_id(obj, conv):
 # supported types
 sql_conversions = {
 	int: lambda s,d: str(s),
-	long: lambda s,d: str(s),
 	float: lambda o,d: '%.15g' % o,
-	types.NoneType: lambda s,d: 'NULL',
+	type(None): lambda s,d: 'NULL',
 	str: lambda o,d: string_literal(o, d), # default
-	unicode: lambda s,d: string_literal(s.encode('utf8'), d),
 	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: lambda d,c: date_literal(d, c),
 	decimal.Decimal: lambda s,d: float(s),
 	models.SalesforceModel: sobj_id,
 }
+if not PY3:
+	sql_conversions[long] = lambda s,d: str(s)
+	sql_conversions[unicode] = lambda s,d: string_literal(s.encode('utf8'), d)
 
 # supported types
 json_conversions = {
 	int: lambda s,d: str(s),
-	long: lambda s,d: str(s),
 	float: lambda o,d: '%.15g' % o,
-	types.NoneType: lambda s,d: None,
+	type(None): lambda s,d: None,
 	str: lambda o,d: o, # default
-	unicode: lambda s,d: s.encode('utf8'),
 	bool: lambda s,d: str(s).lower(),
 	datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
 	datetime.datetime: date_literal,
@@ -466,3 +476,6 @@ json_conversions = {
 	decimal.Decimal: lambda s,d: float(s),
 	models.SalesforceModel: sobj_id,
 }
+if not PY3:
+	json_conversions[long] = lambda s,d: str(s)
+	json_conversions[unicode] = lambda s,d: s.encode('utf8')

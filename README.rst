@@ -5,6 +5,8 @@ This library allows you to load and edit the objects in any Salesforce instance 
 is fairly complete, and generally seamless for most uses. It works by integrating with the Django ORM, allowing access
 to the objects in your SFDC instance as if they were "local" databases.
 
+Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4 - 1.7 (but Django 1.4 can't be combined with Python 3)
+
 Quick Start
 -----------
 
@@ -51,9 +53,27 @@ Quick Start
 	]
 
 7. Define a model that extends ``salesforce.models.SalesforceModel``
+   or export the complete SF schema by
+   ``python manage.py inspectdb --database=salesforce`` and simplify it
+   to what you need.
 8. If you want to use the model in the Django admin interface, use a
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
 9. You're all done! Just use your model like a normal Django model.
+
+Supported features
+------------------
+
+Foreign key filters are currently possible only for the first level of
+relationship and only for fields whose name equals the name of object.
+Foreign keys of an object can be normally accessed by dot notation without any
+restriction
+Example:
+
+    contacts = Contact.objects.filter(Account__Name='FOO Company')
+	print(contacts[0].Account.Owner.LastName)
+
+But the relationship ``Owner__Name`` is not currently possible because the
+type of ``Owner`` is a different name (``User``).
 
 Caveats
 -------
