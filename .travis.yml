@@ -1,6 +1,9 @@
 language: python
 env:
-  global:
+  - DJANGO_VERSION=1.4.10
+  - DJANGO_VERSION=1.5.5
+  - DJANGO_VERSION=1.6.2
+  - global:
     - secure: "Z6wS6a/YcyT8w5l+2HfMItbn2mbv+f1W43WixoqB4QkgiocjBWvmAQD6PN1sEgWVmZlRvWCABK8FcGG+Y6RPFeNdCE0U1h9hEgOiAnhUpWWH/AhOYDZ0PnFwA3/iRrHS2VFPmhdkjw1BUEfqXaJfDYtlZLgpMMfRvEjIJ8Uqq6M="
     - secure: "JJGGbExBKyXkAltrc4rRLG56ks20/GfGcfugI9mqjeHgQ7IcDvhnouqAIjfbNlhgclyAkWHwJRs7taaM0T9a9AcEQujs2B0JJYOLQSBGnWJSCbsDspWAdlT92U+PzhnZrDm7apg1iBk/c8KtofBo6DqsTveBocFnYXTjeqbSVuY="
     - secure: "TrsYtntXQWgjrXPFaL3aUPoyPtR7pBVqsRx5dIj0yhrPuZR0L2bFi0MOA8cXflaYucx+xa+PEyrPO6FfLl+ri8I2WiXeDLbXlUC614UW6Od1kCklZ7/gk5wor7RwfEtIAtxh5erljUw2N2O9utkRFBDCuASRaQCqBzMItgcUOhA="
@@ -8,11 +11,11 @@ env:
 python:
   - "2.6"
   - "2.7"
-  - "3.2"
   - "3.3"
 before_install:
  - "pip install setuptools_git"
 install:
-  - "pip install ."
+  - "pip install Django==$DJANGO_VERSION"
   - "pip install -r requirements.txt"
+  - "pip install ."
 script: python manage.py test
