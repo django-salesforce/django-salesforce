@@ -87,6 +87,8 @@ STATICFILES_FINDERS = (
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = '6$y&o(28l)#o1_2rafojb_&zxi*jnivkv)ygj#!01kt0ypsxe$'
 
+SITE_ID = 1
+
 MIDDLEWARE_CLASSES = (
 	'django.middleware.common.CommonMiddleware',
 	'django.contrib.sessions.middleware.SessionMiddleware',
