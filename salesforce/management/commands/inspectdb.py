@@ -25,7 +25,7 @@ class Command(InspectDBCommand):
 					line = line.replace("''self''", "'self'")
 				self.stdout.write("%s\n" % line)
 		else:
-			super(Command, self).handle_noargs(self, **options)
+			super(Command, self).handle_noargs(**options)
 
 
 	def get_field_type(self, connection, table_name, row):

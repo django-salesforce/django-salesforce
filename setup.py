@@ -5,11 +5,6 @@
 # See LICENSE.md for details
 #
 
-from __future__ import with_statement
-
-import distribute_setup
-distribute_setup.use_setuptools()
-
 import os, os.path, subprocess
 
 # disables creation of .DS_Store files inside tarballs on Mac OS X
@@ -53,10 +48,10 @@ def get_tagged_version():
 			raise RuntimeError(stderrdata)
 		version = stdoutdata.strip().lstrip('v')
 		
-		print "writing version file..."
+		print("writing version file...")
 		with open(relative_path('VERSION'), 'w') as f:
 			f.write(version)
-	print 'package version: %s' % version
+	print('package version: %s' % version)
 	return version
 
 def autosetup():

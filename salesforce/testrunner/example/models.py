@@ -30,7 +30,7 @@ class User(SalesforceModel):
 	Email = models.CharField(max_length=100)
 	LastName = models.CharField(max_length=80)
 	FirstName = models.CharField(max_length=40)
-	IsActive = models.BooleanField()
+	IsActive = models.BooleanField(default=False)
 
 
 class AbstractAccount(SalesforceModel):
@@ -88,7 +88,7 @@ class PersonAccount(AbstractAccount):
 	Name = models.CharField(max_length=255, sf_read_only=models.READ_ONLY)
 	Salutation = models.CharField(max_length=100,
 								  choices=[(x, x) for x in SALUTATIONS])
-	IsPersonAccount = models.BooleanField(sf_read_only=models.READ_ONLY)
+	IsPersonAccount = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
 	PersonEmail = models.CharField(max_length=100)
 
 	class Meta(AbstractAccount.Meta):
@@ -199,7 +199,7 @@ class PricebookEntry(SalesforceModel):
 			db_column='Pricebook2Id')
 	Product2Id = models.ForeignKey('Product', on_delete=models.DO_NOTHING,
 			db_column='Product2Id')
-	UseStandardPrice = models.BooleanField(db_column='UseStandardPrice')
+	UseStandardPrice = models.BooleanField(default=False, db_column='UseStandardPrice')
 	UnitPrice = models.DecimalField(decimal_places=2, max_digits=18, db_column='UnitPrice')
 
 	class Meta(SalesforceModel.Meta):
@@ -314,7 +314,7 @@ class CronTrigger(SalesforceModel):
 class BusinessHours(SalesforceModel):
 	Name = models.CharField(db_column='Name', max_length=80)
 	# The default record is automatically created by Salesforce.
-	IsDefault = models.BooleanField(verbose_name='Default Business Hours')
+	IsDefault = models.BooleanField(default=False, verbose_name='Default Business Hours')
 	# ... much more fields, but we use only this one TimeFiled for test
 	MondayStartTime = models.TimeField()
 
