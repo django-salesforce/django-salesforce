@@ -25,11 +25,13 @@ from salesforce.backend import sf_alias
 import logging
 log = logging.getLogger(__name__)
 
+random_slug = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for x in range(32))
 current_user = settings.DATABASES['salesforce']['USER']
-test_email = 'test-djsf-unittests-email@example.com'
+test_email = 'test-djsf-unittests-%s@example.com' % random_slug
 sf_tables = [x['name'] for x in
 		connections['salesforce'].introspection.table_list_cache['sobjects']
 		]
+
 
 def refresh(obj):
 	"""
