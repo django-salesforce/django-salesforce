@@ -308,11 +308,12 @@ class CursorWrapper(object):
 			else:
 				raise base.DatabaseError(data)
 
-			if('count()' in q.lower()):
+			if q.upper().startswith('SELECT COUNT() FROM'):
+				# TODO what about raw query COUNT()
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
-				data['records'] = [{self.rowcount:'COUNT'}]
-
-			self.results = self.query_results(data)
+				self.results = [[self.rowcount]]
+			else:
+				self.results = self.query_results(data)
 		else:
 			self.results = []
 
@@ -379,6 +380,10 @@ class CursorWrapper(object):
 		output = []
 		while True:
 			for rec in results['records']:
+				if rec['attributes']['type'] == 'AggregateResult':
+					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
+					# The 'attributes' info is unexpected for Django within fields.
+					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]
 				output.append(rec)
 
 			if results['done']:

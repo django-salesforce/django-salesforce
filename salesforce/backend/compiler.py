@@ -40,24 +40,23 @@ class SQLCompiler(compiler.SQLCompiler):
 			result.append(row[field.column])
 		return result
 
-	# Simple related fields work only without this, but for more complicated
-	# cases this must be fixed and re-enabled.
-	#def get_columns(self, with_aliases=False):
-	#	"""
-	#	Remove table names and strip quotes from column names.
-	#	"""
-	#	if DJANGO_16:
-	#		cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
-	#	else:
-	#		cols = compiler.SQLCompiler.get_columns(self, with_aliases)
-	#	result = []
-	#	for col in cols:
-	#		if('.' in col):
-	#			name = col.split('.')[1]
-	#		else:
-	#			name = col
-	#		result.append(name.strip('"'))
-	#	return (result, col_params) if DJANGO_16 else result
+	def get_columns(self, with_aliases=False):
+		"""
+		Remove table names and strip quotes from column names.
+		"""
+		if DJANGO_16:
+			cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
+		else:
+			cols = compiler.SQLCompiler.get_columns(self, with_aliases)
+		result = [x.replace(' AS ', ' ') for x in cols]
+		#result = []
+		#for col in cols:
+		#	if('.' in col):
+		#		name = col.split('.')[1]
+		#	else:
+		#		name = col
+		#	result.append(name.strip('"'))
+		return (result, col_params) if DJANGO_16 else result
 
 	def get_from_clause(self):
 		"""

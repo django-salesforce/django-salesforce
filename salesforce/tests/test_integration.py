@@ -5,13 +5,13 @@
 # See LICENSE.md for details
 #
 
+from decimal import Decimal
 import datetime
-import decimal
 import pytz
 
 from django.conf import settings
 from django.db import connections
-from django.db.models import Q
+from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
 from django.utils.unittest import skip, skipUnless
 
@@ -303,7 +303,7 @@ class BasicSOQLTest(TestCase):
 		# The price for a product must be set in the standard price book.
 		# http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_objects_pricebookentry.htm
 		pricebook = Pricebook.objects.get(Name="Standard Price Book")
-		saved_pricebook_entry = PricebookEntry(Product2Id=product, Pricebook2Id=pricebook, UnitPrice=decimal.Decimal('1234.56'), UseStandardPrice=False)
+		saved_pricebook_entry = PricebookEntry(Product2Id=product, Pricebook2Id=pricebook, UnitPrice=Decimal('1234.56'), UseStandardPrice=False)
 		saved_pricebook_entry.save()
 		retrieved_pricebook_entry = PricebookEntry.objects.get(pk=saved_pricebook_entry.pk)
 
@@ -445,5 +445,27 @@ class BasicSOQLTest(TestCase):
 		# This was recently fixed
 		len(Contact.objects.filter(Q(FirstName=u'\xe1') | Q(LastName=u'\xe9')))
 		len(Contact.objects.filter(Q(FirstName='\xc3\xa1') | Q(LastName='\xc3\xa9')))
+
+	def test_aggregate_query(self):
+		"""
+		Test for different aggregate function.
+		"""
+		test_product = Product(Name='test soap')
+		test_product.save()
+		test_product2 = Product(Name='test brush')
+		test_product2.save()
+		pricebook = Pricebook.objects.get(Name="Standard Price Book")
+		PricebookEntry(Product2Id=test_product, Pricebook2Id=pricebook,
+				UseStandardPrice=False, UnitPrice=Decimal(100)).save()
+		PricebookEntry(Product2Id=test_product2, Pricebook2Id=pricebook,
+				UseStandardPrice=False, UnitPrice=Decimal(80)).save()
+		try:
+			x_products = PricebookEntry.objects.filter(Name__startswith='test ')
+			result = x_products.aggregate(Sum('UnitPrice'), Count('UnitPrice'), Avg('UnitPrice'), Min('UnitPrice'))
+			self.assertDictEqual(result, {'UnitPrice__sum': 180, 'UnitPrice__count': 2, 'UnitPrice__avg': 90.0, 'UnitPrice__min': 80})
+		finally:
+			# dependent PricebookEntries are just deleted automatically by SF
+			test_product.delete()
+			test_product2.delete()
 
 	#@skip("Waiting for bug fix")
