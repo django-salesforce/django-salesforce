@@ -43,6 +43,7 @@ def get_tagged_version():
 			stdout	= subprocess.PIPE,
 			cwd		= os.path.dirname(__file__) or None
 		)
+		(stdoutdata, stderrdata) = proc.communicate()
 		
 		if(proc.returncode):
 			raise RuntimeError(stderrdata)
