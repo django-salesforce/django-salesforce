@@ -8,7 +8,8 @@
 from django.test import TestCase
 from django.conf import settings
 
-from salesforce import auth, sf_alias
+from salesforce import auth
+from salesforce.backend import sf_alias
 from salesforce.testrunner.example import models
 
 import logging

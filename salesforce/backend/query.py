@@ -25,8 +25,8 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_14, DJANGO_16, sf_alias
-from salesforce.backend import compiler
+from salesforce import auth, models, DJANGO_16, DJANGO_17_PLUS
+from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 try:
@@ -45,10 +45,7 @@ API_STUB = '/services/data/v28.0'
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
-if DJANGO_14:
-	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
-else:
-	DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
+DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
 def quoted_string_literal(s, d):
 	"""
@@ -157,9 +154,6 @@ def prep_for_deserialize(model, record, using):
 				import pytz
 				d = d.replace(tzinfo=pytz.utc)
 				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
-			elif (x.__class__.__name__ == 'TimeField' and field_val is not None
-					and not DJANGO_14 and field_val.endswith('Z')):
-				fields[x.name] = field_val[:-1]  # Fix time e.g. "23:59:59.000Z"
 			else:
 				fields[x.name] = field_val
 
@@ -182,13 +176,16 @@ def extract_values(query):
 				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
-			[value] = [value for qfield, model, value in query.values if qfield.name == field.name]
+			value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
+			if value_or_empty:
+				[value] = value_or_empty
+			else:
+				assert len(query.values) < len(fields), \
+						"Match name can miss only with an 'update_fields' argument."
+				continue
 		else:  # insert
-			if(DJANGO_14):  # Django >= 1.4
-				assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
-				value = getattr(query.objs[0], field.attname)
-			else:   # Django == 1.3
-				value = query.values[index][1]
+			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
+			value = getattr(query.objs[0], field.attname)
 			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
 				continue
 		[arg] = process_json_args([value])
@@ -231,7 +228,7 @@ class SalesforceRawQuery(RawQuery):
 		converter = connections[self.using].introspection.table_name_converter
 		if(len(self.cursor.results) > 0):
 			return [converter(col) for col in self.cursor.results[0].keys() if col != 'attributes']
-		return []
+		return ['Id']
 
 	def _execute_query(self):
 		self.cursor = CursorWrapper(connections[self.using], self)
@@ -244,8 +241,10 @@ class SalesforceQuery(Query):
 	"""
 	Override aggregates.
 	"""
-	from salesforce.backend import aggregates
-	aggregates_module = aggregates
+	# Warn against name collision: The name 'aggregates' is the name of
+	# a new property introduced by Django 1.7 to the parent class
+	# 'django.db.models.sql.query.Query'.
+	from salesforce.backend import aggregates as aggregates_module
 
 	def clone(self, klass=None, memo=None, **kwargs):
 		return Query.clone(self, klass, memo, **kwargs)
@@ -315,16 +314,17 @@ class CursorWrapper(object):
 			else:
 				raise base.DatabaseError(data)
 
-			if('count()' in q.lower()):
+			if q.upper().startswith('SELECT COUNT() FROM'):
+				# TODO what about raw query COUNT()
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
-				data['records'] = [{self.rowcount:'COUNT'}]
-
-			self.results = self.query_results(data)
+				self.results = [[self.rowcount]]
+			else:
+				self.results = self.query_results(data)
 		else:
 			self.results = []
 
 	def execute_select(self, q, args):
-		processed_sql = q % process_args(args)
+		processed_sql = str(q) % process_args(args)
 		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urlencode(dict(
 			q	= processed_sql,
 		)))
@@ -347,7 +347,9 @@ class CursorWrapper(object):
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
-		if DJANGO_16:
+		if DJANGO_17_PLUS:
+			pk = query.where.children[0].rhs
+		elif DJANGO_16:
 			pk = query.where.children[0][3]
 		else:
 			pk = query.where.children[0].children[0][-1]
@@ -365,10 +367,13 @@ class CursorWrapper(object):
 		## the root where node's children may itself have children..
 		def recurse_for_pk(children):
 			for node in children:
-				try:
-					pk = node[-1][0]
-				except TypeError:
-					pk = recurse_for_pk(node.children)
+				if hasattr(node, 'rhs'):
+					pk = node.rhs[0]  # for Django 1.7+
+				else:
+					try:
+						pk = node[-1][0]
+					except TypeError:
+						pk = recurse_for_pk(node.children)
 				return pk
 		pk = recurse_for_pk(self.query.where.children)
 		assert pk
@@ -381,6 +386,10 @@ class CursorWrapper(object):
 		output = []
 		while True:
 			for rec in results['records']:
+				if rec['attributes']['type'] == 'AggregateResult':
+					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
+					# The 'attributes' info is unexpected for Django within fields.
+					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]
 				output.append(rec)
 
 			if results['done']:
@@ -419,6 +428,9 @@ class CursorWrapper(object):
 		Fetch all results from a previously executed query.
 		"""
 		return list(self.results)
+
+	def close(self):  # for Django 1.7+
+		pass
 
 string_literal = quoted_string_literal
 def date_literal(d, c):

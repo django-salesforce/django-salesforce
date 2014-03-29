@@ -12,7 +12,7 @@ from django.db import models
 from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 
-from salesforce import DJANGO_14, DJANGO_15, DJANGO_16
+from salesforce import DJANGO_15, DJANGO_16, DJANGO_17_PLUS
 
 
 def process_name(name):
@@ -48,34 +48,33 @@ class SQLCompiler(compiler.SQLCompiler):
 			cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
 		else:
 			cols = compiler.SQLCompiler.get_columns(self, with_aliases)
-		result = []
-		for col in cols:
-			if('.' in col):
-				name = col.split('.')[1]
-			else:
-				name = col
-			result.append(name.strip('"'))
+		result = [x.replace(' AS ', ' ') for x in cols]
+		#result = []
+		#for col in cols:
+		#	if('.' in col):
+		#		name = col.split('.')[1]
+		#	else:
+		#		name = col
+		#	result.append(name.strip('"'))
 		return (result, col_params) if DJANGO_16 else result
 
 	def get_from_clause(self):
 		"""
 		Return the FROM clause, converted the SOQL dialect.
+
+		It should be only the name of base object, even in parent-to-child and
+		child-to-parent relationships queries.
 		"""
-		result = []
-		first = True
 		for alias in self.query.tables:
-			if not self.query.alias_refcount[alias]:
-				continue
-			try:
-				name, alias, join_type, lhs, lhs_col, col, nullable = self.query.alias_map[alias]
-			except KeyError:
-				# Extra tables can end up in self.tables, but not in the
-				# alias_map if they aren't in a join. That's OK. We skip them.
-				continue
-			connector = not first and ', ' or ''
-			result.append('%s%s' % (connector, name))
-			first = False
-		return result, []
+			if self.query.alias_refcount[alias]:
+				try:
+					name, alias, join_type, lhs, lhs_col, col, nullable = self.query.alias_map[alias]
+				except KeyError:
+					# Extra tables can end up in self.tables, but not in the
+					# alias_map if they aren't in a join. That's OK. We skip them.
+					continue
+				return [name], []
+		raise AssertionError("At least one table should be referenced in the query.")
 
 	def quote_name_unless_alias(self, name):
 		"""
@@ -112,7 +111,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		cursor = self.connection.cursor(self.query)
 		cursor.execute(sql, params)
 
-		if not result_type:
+		if not result_type or result_type == 'cursor':
 			return cursor
 
 		ordering_aliases = self.ordering_aliases if DJANGO_16 else self.query.ordering_aliases
@@ -139,17 +138,21 @@ class SQLCompiler(compiler.SQLCompiler):
 class SalesforceWhereNode(where.WhereNode):
 	overridden_types = ['isnull']
 
-	def sql_for_columns(self, data, qn, connection, internal_type=None):  # Fixed for Django 1.6
-		"""
-		Don't attempt to quote column names.
-		"""
-		table_alias, name, db_type = data
-		if DJANGO_16:
-			return connection.ops.field_cast_sql(db_type, internal_type) % name
-		else:
-			return connection.ops.field_cast_sql(db_type) % name
+	# Simple related fields work only without this, but for more complicated
+	# cases this must be fixed and re-enabled.
+	#def sql_for_columns(self, data, qn, connection, internal_type=None):  # Fixed for Django 1.6
+	#	"""
+	#	Don't attempt to quote column names.
+	#	"""
+	#	table_alias, name, db_type = data
+	#	if DJANGO_16:
+	#		return connection.ops.field_cast_sql(db_type, internal_type) % name
+	#	else:
+	#		return connection.ops.field_cast_sql(db_type) % name
 
 	def make_atom(self, child, qn, connection):
+		# The make_atom() method is ignored in Django 1.7 unless explicitely required.
+		# Use Lookup class instead. The make_atom() method will be removed in Django 1.9.
 		lvalue, lookup_type, value_annot, params_or_value = child
 		result = super(SalesforceWhereNode, self).make_atom(child, qn, connection)
 
@@ -172,7 +175,8 @@ class SalesforceWhereNode(where.WhereNode):
 		else:
 			return result
 
-	if(DJANGO_14 and not DJANGO_15):
+	DJANGO_14_EXACT = not DJANGO_15
+	if DJANGO_14_EXACT:
 		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.4
 		def as_sql(self, qn, connection):
 			"""
@@ -234,7 +238,7 @@ class SalesforceWhereNode(where.WhereNode):
 					sql_string = '(%s)' % sql_string
 			return sql_string, result_params
 	else:
-		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6.
+		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.74
 		def as_sql(self, qn, connection):
 			"""
 			Returns the SQL version of the where clause and the value to be
@@ -256,7 +260,12 @@ class SalesforceWhereNode(where.WhereNode):
 			for child in self.children:
 				try:
 					if hasattr(child, 'as_sql'):
-						sql, params = child.as_sql(qn=qn, connection=connection)
+						# patch begin (combined Django 1,5, 1.6, 1.7)
+						if DJANGO_17_PLUS:
+							sql, params = qn.compile(child)
+						else:
+							sql, params = child.as_sql(qn=qn, connection=connection)
+						# patch end
 					else:
 						# A leaf node in the tree.
 						sql, params = self.make_atom(child, qn, connection)
@@ -308,18 +317,30 @@ class SalesforceWhereNode(where.WhereNode):
 					sql_string = '(%s)' % sql_string
 			return sql_string, result_params
 
+	if DJANGO_17_PLUS:
+		def add(self, data, conn_type, **kwargs):
+			cond = isinstance(data, models.lookups.IsNull) and not isinstance(data, IsNull)
+			if cond:
+				# "lhs" and "rhs" means Left and Right Hand Side of an condition
+				data = IsNull(data.lhs, data.rhs)
+			return super(SalesforceWhereNode, self).add(data, conn_type, **kwargs)
+
+		as_salesforce = as_sql
+		del as_sql
+
+
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
-	if(DJANGO_14):
-		def execute_sql(self, return_id=False):
-			assert not (return_id and len(self.query.objs) != 1)
-			self.return_id = return_id
-			cursor = self.connection.cursor(query=self.query)
-			for sql, params in self.as_sql():
-				cursor.execute(sql, params)
-			if not return_id:
-				return
-			return self.connection.ops.last_insert_id(cursor,
-					self.query.model._meta.db_table, self.query.model._meta.pk.column)
+	def execute_sql(self, return_id=False):
+		assert not (return_id and len(self.query.objs) != 1)
+		self.return_id = return_id
+		cursor = self.connection.cursor(query=self.query)
+		for sql, params in self.as_sql():
+			cursor.execute(sql, params)
+		if not return_id:
+			return
+		return self.connection.ops.last_insert_id(cursor,
+				self.query.model._meta.db_table, self.query.model._meta.pk.column)
+
 
 class SQLDeleteCompiler(compiler.SQLDeleteCompiler, SQLCompiler):
 	pass
@@ -332,3 +353,19 @@ class SQLAggregateCompiler(compiler.SQLAggregateCompiler, SQLCompiler):
 
 class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
 	pass
+
+
+# Lookups
+if DJANGO_17_PLUS:
+	class IsNull(models.Field.get_lookup(models.Field(), 'isnull')):
+		# The expected result base class above is `models.lookups.IsNull`.
+		lookup_name = 'isnull'
+
+		def as_sql(self, qn, connection):
+			if connection.vendor == 'salesforce':
+				sql, params = qn.compile(self.lhs)
+				return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
+			else:
+				return super(IsNull, self).as_sql(qn, connection)
+
+	models.Field.register_lookup(IsNull)
