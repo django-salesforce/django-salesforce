@@ -5,6 +5,8 @@ This library allows you to load and edit the objects in any Salesforce instance 
 is fairly complete, and generally seamless for most uses. It works by integrating with the Django ORM, allowing access
 to the objects in your SFDC instance as if they were "local" databases.
 
+Python 2.6, 2.7, 3.3, 3.4; Django 1.4 - 1.7 (Django 1.4 can be combined only with any Python 2.x)
+
 Quick Start
 -----------
 

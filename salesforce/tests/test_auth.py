@@ -8,7 +8,7 @@
 from django.test import TestCase
 from django.conf import settings
 
-from salesforce import auth
+from salesforce import auth, sf_alias
 from salesforce.testrunner.example import models
 
 import logging
@@ -29,14 +29,14 @@ class OAuthTest(TestCase):
 				self.fail("Empty value for %s key in returned oauth data." % key)
 	
 	def test_token_renewal(self):
-		auth.authenticate(settings.DATABASES[settings.SALESFORCE_DB_ALIAS])
-		self.validate_oauth(auth.oauth_data)
+		auth.authenticate(settings.DATABASES[sf_alias])
+		self.validate_oauth(auth.oauth_data[sf_alias])
 		old_data = auth.oauth_data
 		
 		auth.expire_token()
-		self.assertEqual(auth.oauth_data, None)
+		self.assertEqual(auth.oauth_data, {})
 		
-		auth.authenticate(settings.DATABASES[settings.SALESFORCE_DB_ALIAS])
-		self.validate_oauth(auth.oauth_data)
+		auth.authenticate(settings.DATABASES[sf_alias])
+		self.validate_oauth(auth.oauth_data[sf_alias])
 		
-		self.assertEqual(old_data['access_token'], auth.oauth_data['access_token'])
+		self.assertEqual(old_data[sf_alias]['access_token'], auth.oauth_data[sf_alias]['access_token'])

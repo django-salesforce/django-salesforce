@@ -16,15 +16,14 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseIntrospection
 from django.utils.datastructures import SortedDict
-from django.utils.encoding import force_unicode
+from django.utils.encoding import force_text
 
 from salesforce.backend import compiler, query
 from salesforce import models
 
-import restkit
 try:
 	import json
-except ImportError, e:
+except ImportError:
 	import simplejson as json
 
 log = logging.getLogger(__name__)
@@ -77,34 +76,19 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		if(self._table_list_cache is None):
 			url = self.oauth['instance_url'] + query.API_STUB + '/sobjects/'
 			
-			headers = dict()
-			headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-			headers['Content-Type'] = 'application/json'
-			
-			salesforce_timeout = getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)
-			resource = restkit.Resource(url, timeout=salesforce_timeout)
 			log.debug('Request API URL: %s' % url)
-			response = query.handle_api_exceptions(url, resource.get, headers=headers)
-			body = response.body_string()
-			jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
-			self._table_list_cache = json.loads(jsrc)
+			response = query.handle_api_exceptions(url, self.connection.sf_session.get)
+			# charset is detected from headers by requests package
+			self._table_list_cache = response.json()
 		return self._table_list_cache
 	
 	def table_description_cache(self, table):
 		if(table not in self._table_description_cache):
 			url = self.oauth['instance_url'] + query.API_STUB + ('/sobjects/%s/describe/' % table)
 		
-			headers = dict()
-			headers['Authorization'] = 'OAuth %s' % self.oauth['access_token']
-			headers['Content-Type'] = 'application/json'
-		
-			salesforce_timeout = getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)
-			resource = restkit.Resource(url, timeout=salesforce_timeout)
 			log.debug('Request API URL: %s' % url)
-			response = query.handle_api_exceptions(url, resource.get, headers=headers)
-			body = response.body_string()
-			jsrc = force_unicode(body).encode(settings.DEFAULT_CHARSET)
-			self._table_description_cache[table] = json.loads(jsrc)
+			response = query.handle_api_exceptions(url, self.connection.sf_session.get)
+			self._table_description_cache[table] = response.json()
 			assert self._table_description_cache[table]['fields'][0]['type'] == 'id'
 			assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
 			del self._table_description_cache[table]['fields'][0]
