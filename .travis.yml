@@ -1,22 +1,10 @@
 language: python
 env:
   global:
-    # philchristensen/salesforce/SF_CONSUMER_KEY
-    - secure: "WpioWh/E1dQt5BwWl4JrilOmcHUkFKmp8zQcnUIPcl+jUAOyP8ovrosc+5zACqCG0TEGgjacp6ReJhsjplrYccDigYMz99mxaRUGVGyv9iS/FaV0CRir2KgIfOOvv7gQZSOmwLMzxxInyaGRwCngIY1ThUN1f6dStMgbM7+pGaM="
-    # philchristensen/salesforce/SF_CONSUMER_SECRET
-    - secure: "hu55Vx/7/CfwBqei8rSaFeZwF/hMQuR5Gwon105HuldUZjK0/ytm3SsWlfHZhEsq9J80rtug0/XcQ1r99QFUd3A8zpiKz0FJpq8C/SihsJ3kA6NkI/xEQk1BvVB7CV3Qb606yz5n2dFv4g2Dy88ZkVo9J6LfUL1DRquBpfa8Lsk="
-    # philchristensen/salesforce/SF_USER
-    - secure: "ivtuPI0Q23lHnto30VW3QRGN8HTajDoSE5fhMtMi1yLR3NQ5QpTENBZQ8KzidPJuIfLuJf/AnY+xSDdsKOEOvXXp6Gz8gUFPmfvUJ3+ch3LvixDD7UImWIU3VGi3tiWTuPdw4Frb/18uKASiv6PE7mVS2Q0xRKVkHeLC1tloKoo="
-    # philchristensen/salesforce/SF_PASSWORD
-    - secure: "CP0nKxo9q/d329wWJETaPCnB5XwFgZ4T/lH0AIzT1nf/m9KDTDKMpt2Cu/CUzwfvUqi/2CBXB3jJLa7hy+Zq+jAmC2JNDs6O8PmwIwe+zgyDddJEQpW/17L2mbdeFbtLhrv+NSRvRSzIC2T7KEXELq26+r42Y5H+tV5GrlHROWI="
-    # # freelancersunion/salesforce/SF_CONSUMER_KEY
-    # - secure: "HBwhGwcz9FxrM8jWp9CoT+iinDPj9FdbHvO/bgDQ8kmpOsXoL8kgpV9GQA3m4Fxkrhrki/H82aYUBePCGhap0yzhtGaVrrjwH/YRxM3Wehk3HDloYQ5uhL81L8mztEkFvFGFLleqnUi/At1DQebpvXCI+p2euyaLaaPlEz8LFA0="
-    # # freelancersunion/salesforce/SF_CONSUMER_SECRET
-    # - secure: "EjrO9t5btjQzJ58Ugxt2X0OUDigQSUe0YqlY9v7zOXAS1N39AC0z5rcR5jTbYDhesHawEu/KQj/j6QOqFTFsWXM+yrAWs6PXvB59p2DBjY1/gNLOUHTIJ7QGwYATnDUnzeppa0R5wWCSy1Fsi8TdnOcwF/uere05QysQrBq19yQ="
-    # # freelancersunion/salesforce/SF_USER
-    # - secure: "MCNLcUvBmgmMVP2IahrkTa42qyWIjViFaE+bZ2TxWX42DIhU6WxSkXq1hQcAVI/u9EHkfuqfcw6WUsOAzrpz0HCATkFLY+Q3IFt3eS9oZxB+VHlLxnEIY5ISPO9x7Fqq/2Gq+U6xhKYpm+/7nig9JO3yrHq5U81F2fWTy97Mg2o="
-    # # freelancersunion/salesforce/SF_PASSWORD
-    # - secure: "I/W3KDMFnst69+4OMGN4VAGdXDyFUslUZ7b+ZGigTj8VIaQP2NJTta0HfYx+sGLwHiTg7PWOtn4dyXtiFnA9lhBdKR9kb470BYpIqk97DMsLKUdr0+wpL6N6s2dcP0kWWPLKiaV9jn+BkG7UZNrStwYuuQ+kjm9INjiBMT8h6Pk="
+    secure: "jAANvfE+drTGjH15nItP5hahymAWjUNyXCJST5OCLCMjoVT47r2vY0dV8VBNESlHfxPzm4ZmqglqNJZJY/JW3BC7wNMHxHeJtZVi9nYN87WYfFdxmRUPY7EjC7TIDxArcflGGIAPDaIHmh81iz5I8izNn+iCZs7vsc3i7/a6TtE="
+    secure: "L5sD1yZnMcD03xYgKQTrRSOf3sAMb0hzalS6awZIlTZ2Nf1G3ley8AI4P5mrCdkyjJgOB/67WJa5ICJ9YL/+S32S8xHy5Ocy9z62HBTdJ0m3zaJ7GGwFNqDWsXPvIi0e/ynqZn9QgHbRz6W6sariTIklR7VJlUQl8pQstvMeNIw="
+    secure: "lkjfCuzea/d66W+nYQ0MKP2QFLAg5qI5MusNUOb2cVSf+2IziEf2mmMvOBepSwLkqQEgafNgcU6KlKzYOR++rJKEXpvj536J6PxipjeLN0r/jNWLUgncjLzBR1QX5vqH3lTRBL7fPf+uDpITn0q4TWLhf4SEseMADnCpBkE6YfQ="
+    secure: "cshkRF9grIqsIt50faE5XBy2JyMaYEfCNcxgkRvgBwjxqxVMPfleyl6Su+74yXxCyxbNEuSdRUjaV8z/P5ARb3cbeYtyPwrjbxIhP/m/gAqOvI8bLYgLoE/tWJpBs2zc/ipbOCzDpF695Nj4dwSzSnYWEmc0ZKejkOENYbuMHnA="
 python:
   - "2.6"
   - "2.7"
