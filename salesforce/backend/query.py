@@ -176,7 +176,13 @@ def extract_values(query):
 				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
-			[value] = [value for qfield, model, value in query.values if qfield.name == field.name]
+			value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
+			if value_or_empty:
+				[value] = value_or_empty
+			else:
+				assert len(query.values) < len(fields), \
+						"Match name can miss only with an 'update_fields' argument."
+				continue
 		else:  # insert
 			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
 			value = getattr(query.objs[0], field.attname)

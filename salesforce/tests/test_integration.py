@@ -19,7 +19,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, test_custom_db_table, test_custom_db_column)
-from salesforce import router
+from salesforce import router, DJANGO_15
 from salesforce.backend import sf_alias
 
 import logging
@@ -467,5 +467,19 @@ class BasicSOQLTest(TestCase):
 			# dependent PricebookEntries are just deleted automatically by SF
 			test_product.delete()
 			test_product2.delete()
+
+	@skipUnless(DJANGO_15, "the parameter 'update_fields' requires Django 1.5+")
+	def test_save_update_fields(self):
+		"""
+		Test the save method with parameter `update_fields`
+		that updates only required fields.
+		"""
+		company_orig = self.test_lead.Company
+		self.test_lead.Company = 'A'  # TODO None
+		self.test_lead.FirstName = 'John'
+		self.test_lead.save(update_fields=['FirstName'])
+		test_lead = refresh(self.test_lead)
+		self.assertEqual(test_lead.FirstName, 'John')
+		self.assertEqual(test_lead.Company, company_orig)
 
 	#@skip("Waiting for bug fix")
