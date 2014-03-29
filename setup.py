@@ -43,14 +43,17 @@ def get_tagged_version():
 			stdout	= subprocess.PIPE,
 			cwd		= os.path.dirname(__file__) or None
 		)
-		(stdoutdata, stderrdata) = proc.communicate()
+		
 		if(proc.returncode):
 			raise RuntimeError(stderrdata)
-		version = stdoutdata.strip().lstrip('v')
+		
+		version = stdoutdata.decode("utf-8").strip().lstrip('v')
 		
 		print("writing version file...")
-		with open(relative_path('VERSION'), 'w') as f:
-			f.write(version)
+		f = open(relative_path('VERSION'), 'w')
+		f.write(version)
+		f.close()
+	
 	print('package version: %s' % version)
 	return version
 
