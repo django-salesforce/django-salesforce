@@ -1,13 +1,17 @@
 language: python
 env:
   global:
-    - secure: "jAANvfE+drTGjH15nItP5hahymAWjUNyXCJST5OCLCMjoVT47r2vY0dV8VBNESlHfxPzm4ZmqglqNJZJY/JW3BC7wNMHxHeJtZVi9nYN87WYfFdxmRUPY7EjC7TIDxArcflGGIAPDaIHmh81iz5I8izNn+iCZs7vsc3i7/a6TtE="
-    - secure: "L5sD1yZnMcD03xYgKQTrRSOf3sAMb0hzalS6awZIlTZ2Nf1G3ley8AI4P5mrCdkyjJgOB/67WJa5ICJ9YL/+S32S8xHy5Ocy9z62HBTdJ0m3zaJ7GGwFNqDWsXPvIi0e/ynqZn9QgHbRz6W6sariTIklR7VJlUQl8pQstvMeNIw="
-    - secure: "lkjfCuzea/d66W+nYQ0MKP2QFLAg5qI5MusNUOb2cVSf+2IziEf2mmMvOBepSwLkqQEgafNgcU6KlKzYOR++rJKEXpvj536J6PxipjeLN0r/jNWLUgncjLzBR1QX5vqH3lTRBL7fPf+uDpITn0q4TWLhf4SEseMADnCpBkE6YfQ="
-    - secure: "cshkRF9grIqsIt50faE5XBy2JyMaYEfCNcxgkRvgBwjxqxVMPfleyl6Su+74yXxCyxbNEuSdRUjaV8z/P5ARb3cbeYtyPwrjbxIhP/m/gAqOvI8bLYgLoE/tWJpBs2zc/ipbOCzDpF695Nj4dwSzSnYWEmc0ZKejkOENYbuMHnA="
+    - secure: "Z6wS6a/YcyT8w5l+2HfMItbn2mbv+f1W43WixoqB4QkgiocjBWvmAQD6PN1sEgWVmZlRvWCABK8FcGG+Y6RPFeNdCE0U1h9hEgOiAnhUpWWH/AhOYDZ0PnFwA3/iRrHS2VFPmhdkjw1BUEfqXaJfDYtlZLgpMMfRvEjIJ8Uqq6M="
+    - secure: "JJGGbExBKyXkAltrc4rRLG56ks20/GfGcfugI9mqjeHgQ7IcDvhnouqAIjfbNlhgclyAkWHwJRs7taaM0T9a9AcEQujs2B0JJYOLQSBGnWJSCbsDspWAdlT92U+PzhnZrDm7apg1iBk/c8KtofBo6DqsTveBocFnYXTjeqbSVuY="
+    - secure: "TrsYtntXQWgjrXPFaL3aUPoyPtR7pBVqsRx5dIj0yhrPuZR0L2bFi0MOA8cXflaYucx+xa+PEyrPO6FfLl+ri8I2WiXeDLbXlUC614UW6Od1kCklZ7/gk5wor7RwfEtIAtxh5erljUw2N2O9utkRFBDCuASRaQCqBzMItgcUOhA="
+    - secure: "IIcUd3p7k0RFZJW9b+t5NRATvoS3kERIWBTQoE2LkFRaMFbwAJ/CMFxnGzF7whwEGqgWDtDiILYj9KHchiUMw85A+qEXDlwk60hVJyVJzqm5jyPewV19WK4JRo/21BrwNErvJm6echWHtfboHEWxHousVH7uyrujrK4ULDWZRnc="
 python:
   - "2.6"
   - "2.7"
+  - "3.0"
+  - "3.1"
+  - "3.2"
+  - "3.3"
 before_install:
  - "pip install setuptools_git"
 install:
