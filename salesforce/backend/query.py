@@ -394,15 +394,10 @@ class CursorWrapper(object):
 
 			if results['done']:
 				break
-
+			# see about Retrieving the Remaining SOQL Query Results
 			# http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#heading_2_1
 			response = self.query_more(results['nextRecordsUrl'])
-			jsrc = force_text(response.body_string()).encode(settings.DEFAULT_CHARSET)
-
-			if(jsrc):
-				results = json.loads(jsrc)
-			else:
-				break
+			results = response.json(parse_float=decimal.Decimal)
 		return output
 
 	def __iter__(self):

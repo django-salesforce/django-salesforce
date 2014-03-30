@@ -1,8 +1,6 @@
 # Django settings for testrunner project.
 import os
 
-import os
-
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -21,10 +19,10 @@ DATABASES = {
 	# in order to protect private secret values from unintentional committing.
 	'salesforce': {
 		'ENGINE': 'salesforce.backend',
-		"CONSUMER_KEY" : os.environ['SF_CONSUMER_KEY'],
-		"CONSUMER_SECRET" : os.environ['SF_CONSUMER_SECRET'],
-		'USER': os.environ['SF_USER'],
-		'PASSWORD': os.environ['SF_PASSWORD'],
+		"CONSUMER_KEY" : os.environ.get('SF_CONSUMER_KEY', ''),
+		"CONSUMER_SECRET" : os.environ.get('SF_CONSUMER_SECRET', ''),
+		'USER': os.environ.get('SF_USER', ''),
+		'PASSWORD': os.environ.get('SF_PASSWORD', ''),
 		'HOST': 'https://login.salesforce.com',
 	}
 }
