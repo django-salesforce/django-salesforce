@@ -96,42 +96,43 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	log.debug('Request API URL: %s' % url)
 	try:
 		response = f(url, *args, **kwargs_in)
-		if response.status_code in (200, 201, 204):
-			return response
 	except requests.exceptions.Timeout:
 		raise base.SalesforceError("Timeout, URL=%s" % url)
+	if response.status_code == 401:
+		# Unauthorized (expired or invalid session ID or OAuth)
+		data = response.json()[0]
+		if(data['errorCode'] == 'INVALID_SESSION_ID'):
+			token = reauthenticate()
+			if('headers' in kwargs):
+				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
+			try:
+				response = f(url, *args, **kwargs_in)
+			except requests.exceptions.Timeout:
+				raise base.SalesforceError("Timeout, URL=%s" % url)
+
+	if response.status_code in (200, 201, 204):
+		return response
+
+	# TODO Remove this print after tuning of specific messages. Currently is
+	#      better more than less
+	# http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
+	print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
+	if response.status_code == 404:  # ResourceNotFound
+		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
+				% (response.text, url))
+	# Errors are reported in the body
+	data = response.json()[0]
+	if(data['errorCode'] == 'INVALID_FIELD'):
+		raise base.SalesforceError(data['message'])
+	elif(data['errorCode'] == 'MALFORMED_QUERY'):
+		raise base.SalesforceError(data['message'])
+	elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
+		raise base.SalesforceError(data['message'])
+	elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
+		raise base.SalesforceError('%s: %s' % (url, data['message']))
+	# some kind of failed query
 	else:
-		# TODO Remove this print after tuning of specific messages. Currently is
-		#      better more than less
-		print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
-		if response.status_code >= 400:
-			if response.status_code == 404:  # ResourceNotFound
-				raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
-						% (response.text, url))
-			if response.status_code in (401, 403):  # Unauthorized
-				data = response.json()[0]
-				if(data['errorCode'] == 'INVALID_SESSION_ID'):
-					token = reauthenticate()
-					if('headers' in kwargs):
-						kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
-					return f(url, *args, **kwargs)
-				raise base.SalesforceError(response.text)
-			# TODO remove: According to SF docs: The status code 410 is unused by SF.
-			if response.status_code == 410:  # ResourceGone
-				raise base.SalesforceError("Couldn't connect to API (410): %s" % response.text)
-			else:   # RequestFailed
-				data = response.json()[0]
-				if(data['errorCode'] == 'INVALID_FIELD'):
-					raise base.SalesforceError(data['message'])
-				elif(data['errorCode'] == 'MALFORMED_QUERY'):
-					raise base.SalesforceError(data['message'])
-				elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
-					raise base.SalesforceError(data['message'])
-				elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
-					raise base.SalesforceError('%s: %s' % (url, data['message']))
-				# some kind of failed query
-				else:
-					raise base.SalesforceError('%s' % data)
+		raise base.SalesforceError('%s' % data)
 
 def prep_for_deserialize(model, record, using):
 	attribs = record.pop('attributes')
