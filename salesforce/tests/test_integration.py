@@ -508,8 +508,9 @@ class BasicSOQLTest(TestCase):
 			self.assertLessEqual(len(leads_list), 2000)
 			print("Not enough Leads accumulated (currently %d including deleted) "
 					"in the last two weeks that are necessary for splitting the "
-					"query into more requests. Number 1001 or 2001 is sure." %
+					"query into more requests. Number 1001 or 2001 is enough." %
 					len(leads_list))
+			self.skipTest("Not enough Leads found for big query test")
 
 	def test_errors(self):
 		"""
