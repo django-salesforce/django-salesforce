@@ -23,6 +23,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		GeneralCustomModel, test_custom_db_table, test_custom_db_column)
 from salesforce import router, DJANGO_15
 from salesforce.backend import sf_alias
+import salesforce
 
 import logging
 log = logging.getLogger(__name__)
@@ -485,5 +486,14 @@ class BasicSOQLTest(TestCase):
 		test_lead = refresh(self.test_lead)
 		self.assertEqual(test_lead.FirstName, 'John')
 		self.assertEqual(test_lead.Company, company_orig)
+
+	def test_errors(self):
+		"""
+		Test for improving code coverage.
+		"""
+		# broken query raises exception
+		bad_queryset = Lead.objects.raw("select XYZ from Lead")
+		bad_queryset.query.debug_silent = True
+		self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
 
 	#@skip("Waiting for bug fix")

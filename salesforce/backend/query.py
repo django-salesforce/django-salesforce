@@ -88,11 +88,14 @@ def reauthenticate():
 
 def handle_api_exceptions(url, f, *args, **kwargs):
 	"""Call REST API and handle exceptions
-	Params:  f:  requests.get or requests.post...
+	Params:
+		f:  requests.get or requests.post...
+		_cursor: sharing the debug information in cursor
 	"""
 	from salesforce.backend import base
 	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)}
 	kwargs_in.update(kwargs)
+	_cursor = kwargs_in.pop('_cursor', None)
 	log.debug('Request API URL: %s' % url)
 	try:
 		response = f(url, *args, **kwargs_in)
@@ -116,7 +119,8 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	# TODO Remove this print after tuning of specific messages. Currently is
 	#      better more than less
 	# http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
-	print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
+	if not getattr(getattr(_cursor, 'query', None), 'debug_silent', False):
+		print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
 	if response.status_code == 404:  # ResourceNotFound
 		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
 				% (response.text, url))
@@ -330,11 +334,11 @@ class CursorWrapper(object):
 			q	= processed_sql,
 		)))
 		log.debug(processed_sql)
-		return handle_api_exceptions(url, self.session.get)
+		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def query_more(self, nextRecordsUrl):
 		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
-		return handle_api_exceptions(url, self.session.get)
+		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def execute_insert(self, query):
 		table = query.model._meta.db_table
@@ -343,7 +347,7 @@ class CursorWrapper(object):
 		post_data = extract_values(query)
 
 		log.debug('INSERT %s%s' % (table, post_data))
-		return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data))
+		return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
 
 	def execute_update(self, query):
 		table = query.model._meta.db_table
@@ -359,7 +363,7 @@ class CursorWrapper(object):
 		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-		ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data))
+		ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data), _cursor=self)
 		self.rowcount = 1
 		return ret
 
@@ -381,7 +385,7 @@ class CursorWrapper(object):
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 
 		log.debug('DELETE %s(%s)' % (table, pk))
-		return handle_api_exceptions(url, self.session.delete)
+		return handle_api_exceptions(url, self.session.delete, _cursor=self)
 
 	def query_results(self, results):
 		output = []
