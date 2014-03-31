@@ -480,7 +480,7 @@ class BasicSOQLTest(TestCase):
 		that updates only required fields.
 		"""
 		company_orig = self.test_lead.Company
-		self.test_lead.Company = 'A'  # TODO None
+		self.test_lead.Company = 'nonsense'
 		self.test_lead.FirstName = 'John'
 		self.test_lead.save(update_fields=['FirstName'])
 		test_lead = refresh(self.test_lead)

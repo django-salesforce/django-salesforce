@@ -259,6 +259,7 @@ class SalesforceQuery(Query):
 	# Warn against name collision: The name 'aggregates' is the name of
 	# a new property introduced by Django 1.7 to the parent class
 	# 'django.db.models.sql.query.Query'.
+	# 'aggregates_module' is overriden here, to be visible in the base class.
 	from salesforce.backend import aggregates as aggregates_module
 
 	def __init__(self, *args, **kwargs):
@@ -422,6 +423,9 @@ class CursorWrapper(object):
 
 			if results['done']:
 				break
+			# TODO convert this method to an iterator providing data after
+			#      every request, not many thousands objects list.
+
 			# see about Retrieving the Remaining SOQL Query Results
 			# http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#heading_2_1
 			response = self.query_more(results['nextRecordsUrl'])
