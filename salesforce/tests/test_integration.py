@@ -487,6 +487,16 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(test_lead.FirstName, 'John')
 		self.assertEqual(test_lead.Company, company_orig)
 
+	def test_query_all_deleted(self):
+		"""
+		Test query for deleted objects (queryAll resource).
+		"""
+		self.test_lead.delete()
+		# TODO optimize counting because this can load thousands of records
+		count_deleted = Lead.objects.filter(IsDeleted=True, LastName="Unittest General").query_all().count()
+		self.assertGreaterEqual(count_deleted, 1)
+		self.test_lead.save()  # save anything again to be cleaned finally
+
 	def test_errors(self):
 		"""
 		Test for improving code coverage.

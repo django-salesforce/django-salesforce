@@ -40,7 +40,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v28.0'
+API_STUB = '/services/data/v29.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
@@ -223,6 +223,16 @@ class SalesforceQuerySet(query.QuerySet):
 		for res in python.Deserializer(pfd(self.model, r, self.db) for r in cursor.results):
 			yield res.object
 
+	def query_all(self):
+		"""
+		Allows querying for also deleted or merged records.
+			Lead.objects.query_all().filter(IsDeleted=True,...)
+		https://www.salesforce.com/us/developer/docs/api_rest/Content/resources_queryall.htm
+		"""
+		obj = self._clone(klass=SalesforceQuerySet)
+		obj.query.set_query_all()
+		return obj
+
 class SalesforceRawQuery(RawQuery):
 	def clone(self, using):
 		return SalesforceRawQuery(self.sql, using, params=self.params)
@@ -251,13 +261,23 @@ class SalesforceQuery(Query):
 	# 'django.db.models.sql.query.Query'.
 	from salesforce.backend import aggregates as aggregates_module
 
+	def __init__(self, *args, **kwargs):
+		super(SalesforceQuery, self).__init__(*args, **kwargs)
+		self.is_query_all = False
+		self.first_chunk_len = None
+
 	def clone(self, klass=None, memo=None, **kwargs):
-		return Query.clone(self, klass, memo, **kwargs)
+		query = Query.clone(self, klass, memo, **kwargs)
+		query.is_query_all = self.is_query_all
+		return query
 
 	def has_results(self, using):
 		q = self.clone()
 		compiler = q.get_compiler(using=using)
 		return bool(compiler.execute_sql(constants.SINGLE))
+
+	def set_query_all(self):
+		self.is_query_all = True
 
 class CursorWrapper(object):
 	"""
@@ -330,9 +350,11 @@ class CursorWrapper(object):
 
 	def execute_select(self, q, args):
 		processed_sql = str(q) % process_args(args)
-		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urlencode(dict(
-			q	= processed_sql,
-		)))
+		cmd = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
+		url = u'{base}{api}/{cmd}?{query_str}'.format(
+				base=self.oauth['instance_url'], api=API_STUB, cmd=cmd,
+				query_str=urlencode(dict(q=processed_sql)),
+		)
 		log.debug(processed_sql)
 		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
