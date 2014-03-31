@@ -206,6 +206,7 @@ class PricebookEntry(SalesforceModel):
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'PricebookEntry'
+		verbose_name_plural = "PricebookEntries"
 
 	def __unicode__(self):
 		return self.Name
@@ -319,6 +320,9 @@ class BusinessHours(SalesforceModel):
 	IsDefault = models.BooleanField(default=False, verbose_name='Default Business Hours')
 	# ... much more fields, but we use only this one TimeFiled for test
 	MondayStartTime = models.TimeField()
+
+	class Meta:
+		verbose_name_plural = "BusinessHours"
 
 
 test_custom_db_table, test_custom_db_column = getattr(settings,

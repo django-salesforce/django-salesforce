@@ -15,11 +15,10 @@ from salesforce.admin import RoutedModelAdmin
 import salesforce
 
 # This example is commented out in order to demonstrate capabilities of all models
-#class AccountAdmin(RoutedModelAdmin):
-#	#list_display = ('Salutation', 'FirstName', 'LastName', 'PersonEmail')
-#	list_display = ('name', 'phone')
-#	pass
-#admin.site.register(models.Account, AccountAdmin)
+class AccountAdmin(RoutedModelAdmin):
+	#list_display = ('Salutation', 'Name', 'PersonEmail')
+	list_display = ('Name', 'Phone')
+admin.site.register(models.Account, AccountAdmin)
 
 # Simple dynamic registration of all other models, with respect to read only fields.
 # Can be improved for fields that are only not creatable but are updateable or viceversa.
