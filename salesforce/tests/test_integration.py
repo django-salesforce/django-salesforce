@@ -497,6 +497,20 @@ class BasicSOQLTest(TestCase):
 		self.assertGreaterEqual(count_deleted, 1)
 		self.test_lead.save()  # save anything again to be cleaned finally
 
+	def test_z_big_query(self):
+		"""
+		Test a big query that will be splitted to more requests.
+		Test it as late as possible when 
+		"""
+		all_leads = Lead.objects.query_all()
+		leads_list = list(all_leads)
+		if all_leads.query.first_chunk_len == len(leads_list):
+			self.assertLessEqual(len(leads_list), 2000)
+			print("Not enough Leads accumulated (currently %d including deleted) "
+					"in the last two weeks that are necessary for splitting the "
+					"query into more requests. Number 1001 or 2001 is sure." %
+					len(leads_list))
+
 	def test_errors(self):
 		"""
 		Test for improving code coverage.

@@ -344,6 +344,7 @@ class CursorWrapper(object):
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
 				self.results = [[self.rowcount]]
 			else:
+				self.query.first_chunk_len = len(data['records'])
 				self.results = self.query_results(data)
 		else:
 			self.results = []
