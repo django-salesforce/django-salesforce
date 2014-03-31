@@ -520,4 +520,13 @@ class BasicSOQLTest(TestCase):
 		bad_queryset.query.debug_silent = True
 		self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
 
+	def test_expired_auth_id(self):
+		"""
+		Test the code for expired auth ID.
+		"""
+		# simulate that a request with invalid/expired auth ID re-authenticates
+		# and succeeds.
+		salesforce.auth.oauth_data['salesforce']['access_token'] += 'simulated invalid/expired' 
+		self.assertEqual(len(Lead.objects.raw("select Id from Lead limit 1")[0].Id), 18)
+
 	#@skip("Waiting for bug fix")
