@@ -35,10 +35,12 @@ class SalesforceManager(manager.Manager):
 
 	if DJANGO_17_PLUS:
 		get_queryset = get_query_set
-		del get_query_set
 
 
 	def raw(self, raw_query, params=None, *args, **kwargs):
 		from salesforce.backend import query
 		q = query.SalesforceRawQuery(raw_query, self.db, params)
 		return query.SalesforceRawQuerySet(raw_query=raw_query, model=self.model, query=q, params=params, using=self.db)
+
+	def query_all(self):
+		return self.get_query_set().query_all()

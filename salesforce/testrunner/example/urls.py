@@ -5,7 +5,7 @@
 # See LICENSE.md for details
 #
 
-from django.conf.urls.defaults import patterns, url, include
+from django.conf.urls import patterns, url, include
 
 urlpatterns = patterns('salesforce.testrunner.example.views',
 	url(r'^$', 'list_accounts', name='list_accounts'),

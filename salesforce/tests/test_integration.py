@@ -23,6 +23,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		GeneralCustomModel, test_custom_db_table, test_custom_db_column)
 from salesforce import router, DJANGO_15
 from salesforce.backend import sf_alias
+import salesforce
 
 import logging
 log = logging.getLogger(__name__)
@@ -479,11 +480,53 @@ class BasicSOQLTest(TestCase):
 		that updates only required fields.
 		"""
 		company_orig = self.test_lead.Company
-		self.test_lead.Company = 'A'  # TODO None
+		self.test_lead.Company = 'nonsense'
 		self.test_lead.FirstName = 'John'
 		self.test_lead.save(update_fields=['FirstName'])
 		test_lead = refresh(self.test_lead)
 		self.assertEqual(test_lead.FirstName, 'John')
 		self.assertEqual(test_lead.Company, company_orig)
+
+	def test_query_all_deleted(self):
+		"""
+		Test query for deleted objects (queryAll resource).
+		"""
+		self.test_lead.delete()
+		# TODO optimize counting because this can load thousands of records
+		count_deleted = Lead.objects.filter(IsDeleted=True, LastName="Unittest General").query_all().count()
+		self.assertGreaterEqual(count_deleted, 1)
+		self.test_lead.save()  # save anything again to be cleaned finally
+
+	def test_z_big_query(self):
+		"""
+		Test a big query that will be splitted to more requests.
+		Test it as late as possible when 
+		"""
+		all_leads = Lead.objects.query_all()
+		leads_list = list(all_leads)
+		if all_leads.query.first_chunk_len == len(leads_list):
+			self.assertLessEqual(len(leads_list), 2000)
+			print("Not enough Leads accumulated (currently %d including deleted) "
+					"in the last two weeks that are necessary for splitting the "
+					"query into more requests. Number 1001 or 2001 is sure." %
+					len(leads_list))
+
+	def test_errors(self):
+		"""
+		Test for improving code coverage.
+		"""
+		# broken query raises exception
+		bad_queryset = Lead.objects.raw("select XYZ from Lead")
+		bad_queryset.query.debug_silent = True
+		self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
+
+	def test_expired_auth_id(self):
+		"""
+		Test the code for expired auth ID.
+		"""
+		# simulate that a request with invalid/expired auth ID re-authenticates
+		# and succeeds.
+		salesforce.auth.oauth_data['salesforce']['access_token'] += 'simulated invalid/expired' 
+		self.assertEqual(len(Lead.objects.raw("select Id from Lead limit 1")[0].Id), 18)
 
 	#@skip("Waiting for bug fix")

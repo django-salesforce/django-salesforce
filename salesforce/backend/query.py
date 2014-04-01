@@ -40,7 +40,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v28.0'
+API_STUB = '/services/data/v29.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
@@ -88,50 +88,55 @@ def reauthenticate():
 
 def handle_api_exceptions(url, f, *args, **kwargs):
 	"""Call REST API and handle exceptions
-	Params:  f:  requests.get or requests.post...
+	Params:
+		f:  requests.get or requests.post...
+		_cursor: sharing the debug information in cursor
 	"""
 	from salesforce.backend import base
 	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)}
 	kwargs_in.update(kwargs)
+	_cursor = kwargs_in.pop('_cursor', None)
 	log.debug('Request API URL: %s' % url)
 	try:
 		response = f(url, *args, **kwargs_in)
-		if response.status_code in (200, 201, 204):
-			return response
 	except requests.exceptions.Timeout:
 		raise base.SalesforceError("Timeout, URL=%s" % url)
-	else:
-		# TODO Remove this print after tuning of specific messages. Currently is
-		#      better more than less
+	if response.status_code == 401:
+		# Unauthorized (expired or invalid session ID or OAuth)
+		data = response.json()[0]
+		if(data['errorCode'] == 'INVALID_SESSION_ID'):
+			token = reauthenticate()
+			if('headers' in kwargs):
+				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
+			try:
+				response = f(url, *args, **kwargs_in)
+			except requests.exceptions.Timeout:
+				raise base.SalesforceError("Timeout, URL=%s" % url)
+
+	if response.status_code in (200, 201, 204):
+		return response
+
+	# TODO Remove this print after tuning of specific messages. Currently is
+	#      better more than less
+	# http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
+	if not getattr(getattr(_cursor, 'query', None), 'debug_silent', False):
 		print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
-		if response.status_code >= 400:
-			if response.status_code == 404:  # ResourceNotFound
-				raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
-						% (response.text, url))
-			if response.status_code in (401, 403):  # Unauthorized
-				data = response.json()[0]
-				if(data['errorCode'] == 'INVALID_SESSION_ID'):
-					token = reauthenticate()
-					if('headers' in kwargs):
-						kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
-					return f(url, *args, **kwargs)
-				raise base.SalesforceError(response.text)
-			# TODO remove: According to SF docs: The status code 410 is unused by SF.
-			if response.status_code == 410:  # ResourceGone
-				raise base.SalesforceError("Couldn't connect to API (410): %s" % response.text)
-			else:   # RequestFailed
-				data = response.json()[0]
-				if(data['errorCode'] == 'INVALID_FIELD'):
-					raise base.SalesforceError(data['message'])
-				elif(data['errorCode'] == 'MALFORMED_QUERY'):
-					raise base.SalesforceError(data['message'])
-				elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
-					raise base.SalesforceError(data['message'])
-				elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
-					raise base.SalesforceError('%s: %s' % (url, data['message']))
-				# some kind of failed query
-				else:
-					raise base.SalesforceError('%s' % data)
+	if response.status_code == 404:  # ResourceNotFound
+		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
+				% (response.text, url))
+	# Errors are reported in the body
+	data = response.json()[0]
+	if(data['errorCode'] == 'INVALID_FIELD'):
+		raise base.SalesforceError(data['message'])
+	elif(data['errorCode'] == 'MALFORMED_QUERY'):
+		raise base.SalesforceError(data['message'])
+	elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
+		raise base.SalesforceError(data['message'])
+	elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
+		raise base.SalesforceError('%s: %s' % (url, data['message']))
+	# some kind of failed query
+	else:
+		raise base.SalesforceError('%s' % data)
 
 def prep_for_deserialize(model, record, using):
 	attribs = record.pop('attributes')
@@ -218,6 +223,16 @@ class SalesforceQuerySet(query.QuerySet):
 		for res in python.Deserializer(pfd(self.model, r, self.db) for r in cursor.results):
 			yield res.object
 
+	def query_all(self):
+		"""
+		Allows querying for also deleted or merged records.
+			Lead.objects.query_all().filter(IsDeleted=True,...)
+		https://www.salesforce.com/us/developer/docs/api_rest/Content/resources_queryall.htm
+		"""
+		obj = self._clone(klass=SalesforceQuerySet)
+		obj.query.set_query_all()
+		return obj
+
 class SalesforceRawQuery(RawQuery):
 	def clone(self, using):
 		return SalesforceRawQuery(self.sql, using, params=self.params)
@@ -244,15 +259,26 @@ class SalesforceQuery(Query):
 	# Warn against name collision: The name 'aggregates' is the name of
 	# a new property introduced by Django 1.7 to the parent class
 	# 'django.db.models.sql.query.Query'.
+	# 'aggregates_module' is overriden here, to be visible in the base class.
 	from salesforce.backend import aggregates as aggregates_module
 
+	def __init__(self, *args, **kwargs):
+		super(SalesforceQuery, self).__init__(*args, **kwargs)
+		self.is_query_all = False
+		self.first_chunk_len = None
+
 	def clone(self, klass=None, memo=None, **kwargs):
-		return Query.clone(self, klass, memo, **kwargs)
+		query = Query.clone(self, klass, memo, **kwargs)
+		query.is_query_all = self.is_query_all
+		return query
 
 	def has_results(self, using):
 		q = self.clone()
 		compiler = q.get_compiler(using=using)
 		return bool(compiler.execute_sql(constants.SINGLE))
+
+	def set_query_all(self):
+		self.is_query_all = True
 
 class CursorWrapper(object):
 	"""
@@ -319,21 +345,24 @@ class CursorWrapper(object):
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
 				self.results = [[self.rowcount]]
 			else:
+				self.query.first_chunk_len = len(data['records'])
 				self.results = self.query_results(data)
 		else:
 			self.results = []
 
 	def execute_select(self, q, args):
 		processed_sql = str(q) % process_args(args)
-		url = u'%s%s?%s' % (self.oauth['instance_url'], '%s/query' % API_STUB, urlencode(dict(
-			q	= processed_sql,
-		)))
+		cmd = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
+		url = u'{base}{api}/{cmd}?{query_str}'.format(
+				base=self.oauth['instance_url'], api=API_STUB, cmd=cmd,
+				query_str=urlencode(dict(q=processed_sql)),
+		)
 		log.debug(processed_sql)
-		return handle_api_exceptions(url, self.session.get)
+		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def query_more(self, nextRecordsUrl):
 		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
-		return handle_api_exceptions(url, self.session.get)
+		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def execute_insert(self, query):
 		table = query.model._meta.db_table
@@ -342,7 +371,7 @@ class CursorWrapper(object):
 		post_data = extract_values(query)
 
 		log.debug('INSERT %s%s' % (table, post_data))
-		return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data))
+		return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
 
 	def execute_update(self, query):
 		table = query.model._meta.db_table
@@ -358,7 +387,7 @@ class CursorWrapper(object):
 		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-		ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data))
+		ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data), _cursor=self)
 		self.rowcount = 1
 		return ret
 
@@ -380,7 +409,7 @@ class CursorWrapper(object):
 		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 
 		log.debug('DELETE %s(%s)' % (table, pk))
-		return handle_api_exceptions(url, self.session.delete)
+		return handle_api_exceptions(url, self.session.delete, _cursor=self)
 
 	def query_results(self, results):
 		output = []
@@ -394,6 +423,9 @@ class CursorWrapper(object):
 
 			if results['done']:
 				break
+			# TODO convert this method to an iterator providing data after
+			#      every request, not many thousands objects list.
+
 			# see about Retrieving the Remaining SOQL Query Results
 			# http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#heading_2_1
 			response = self.query_more(results['nextRecordsUrl'])

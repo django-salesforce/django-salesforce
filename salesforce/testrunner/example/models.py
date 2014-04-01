@@ -168,6 +168,8 @@ class Lead(SalesforceModel):
 	# TODO write test for it
 	EmailBouncedDate = models.DateTimeField(blank=True, null=True,
 											sf_read_only=models.NOT_CREATEABLE)
+	# Deleted object can be found only in querysets with "query_all" SF method.
+	IsDeleted = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
 
 	def __unicode__(self):
 		return self.Name
@@ -204,6 +206,7 @@ class PricebookEntry(SalesforceModel):
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'PricebookEntry'
+		verbose_name_plural = "PricebookEntries"
 
 	def __unicode__(self):
 		return self.Name
@@ -317,6 +320,9 @@ class BusinessHours(SalesforceModel):
 	IsDefault = models.BooleanField(default=False, verbose_name='Default Business Hours')
 	# ... much more fields, but we use only this one TimeFiled for test
 	MondayStartTime = models.TimeField()
+
+	class Meta:
+		verbose_name_plural = "BusinessHours"
 
 
 test_custom_db_table, test_custom_db_column = getattr(settings,
