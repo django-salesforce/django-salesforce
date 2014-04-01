@@ -1,6 +1,8 @@
 django-salesforce
 =================
 
+[![Build Status](https://travis-ci.org/freelancersunion/django-salesforce.svg?branch=master)](https://travis-ci.org/freelancersunion/django-salesforce)
+
 This library allows you to load and edit the objects in any Salesforce instance using Django models. The integration
 is fairly complete, and generally seamless for most uses. It works by integrating with the Django ORM, allowing access
 to the objects in your SFDC instance as if they were "local" databases.
