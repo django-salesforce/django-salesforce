@@ -84,7 +84,7 @@ relationships based on a custom field. This is because related objects
 [SOQL](http://www.salesforce.com/us/developer/docs/soql_sosl/). If the
 relation is by ID the columns are named `FieldName__c`, whereas if the relation
 is stored by object the column is named `FieldName__r`. More details about
-this can be found in the discussion about #43.
+this can be found in the discussion about freelancersunion/django-salesforce#43 .
 
 Caveats
 -------
