@@ -81,10 +81,10 @@ type of ``Owner`` is a different name (``User``).
 Along similar lines, it's not currently possible to fitler by `ForeignKey`
 relationships based on a custom field. This is because related objects
 (Lookup field or Master-Detail Relationship) use two different names in
-[SOQL](http://www.salesforce.com/us/developer/docs/soql_sosl/). If the
+`SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
 relation is by ID the columns are named `FieldName__c`, whereas if the relation
 is stored by object the column is named `FieldName__r`. More details about
-this can be found in the discussion about [#43](https://github.com/freelancersunion/django-salesforce/issues/43).
+this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43`__.
 
 Caveats
 -------
