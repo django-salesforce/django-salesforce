@@ -63,8 +63,8 @@ Quick Start
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
 9. You're all done! Just use your model like a normal Django model.
 
-Supported features
-------------------
+Foreign Key Support
+-------------------
 
 Foreign key filters are currently possible only for the first level of
 relationship and only for fields whose name equals the name of object.
@@ -77,6 +77,14 @@ Example:
 
 But the relationship ``Owner__Name`` is not currently possible because the
 type of ``Owner`` is a different name (``User``).
+
+Along similar lines, it's not currently possible to fitler by `ForeignKey`
+relationships based on a custom field. This is because related objects
+(Lookup field or Master-Detail Relationship) use two different names in
+`SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
+relation is by ID the columns are named `FieldName__c`, whereas if the relation
+is stored by object the column is named `FieldName__r`. More details about
+this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
 
 Caveats
 -------
