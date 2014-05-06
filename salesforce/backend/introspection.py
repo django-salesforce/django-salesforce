@@ -177,7 +177,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
 	def get_additional_meta(self, table_name):
 		item = [x for x in self.table_list_cache['sobjects'] if x['name'] == table_name][0]
-		return ["verbose_name = '%s'" % item['labelPlural'],
+		return ["verbose_name = '%s'" % item['label'],
 			"verbose_name_plural = '%s'" % item['labelPlural'],
 			"# keyPrefix = '%s'" % item['keyPrefix'],
 
