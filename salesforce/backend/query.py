@@ -99,6 +99,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	log.debug('Request API URL: %s' % url)
 	try:
 		response = f(url, *args, **kwargs_in)
+	# TODO some timeouts can be rarely raised as "SSLError: The read operation timed out"
 	except requests.exceptions.Timeout:
 		raise base.SalesforceError("Timeout, URL=%s" % url)
 	if response.status_code == 401:
