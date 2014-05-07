@@ -52,7 +52,7 @@ Quick Start
    setting::
 
     DATABASE_ROUTERS = [
-        "salesforce.router.ModelRouter" 
+        "salesforce.router.ModelRouter"
 	]
 
 7. Define a model that extends ``salesforce.models.SalesforceModel``
@@ -66,7 +66,7 @@ Quick Start
 Foreign Key Support
 -------------------
 
-Foreign key filters are currently possible only for the first level of
+**Foreign key** filters are currently possible only for the first level of
 relationship and only for fields whose name equals the name of object.
 Foreign keys of an object can be normally accessed by dot notation without any
 restriction
@@ -78,13 +78,25 @@ Example:
 But the relationship ``Owner__Name`` is not currently possible because the
 type of ``Owner`` is a different name (``User``).
 
-Along similar lines, it's not currently possible to fitler by `ForeignKey`
+Along similar lines, it's not currently possible to filter by `ForeignKey`
 relationships based on a custom field. This is because related objects
 (Lookup field or Master-Detail Relationship) use two different names in
 `SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
 relation is by ID the columns are named `FieldName__c`, whereas if the relation
 is stored by object the column is named `FieldName__r`. More details about
 this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+
+**Generic foreign keys** are frequently used in SF for fields that relate to
+objects of different types, e.g. the Parent of Note or Attachment can be almost
+any type of ususal SF objects. Filters by `Parent.Type` and retrieving this
+type is now supported:
+
+    note = Note.objects.filter(parent_type='Contact')[0]
+	parent_model = getattr(example.models, note.parent_type)
+	parent_object = parent_model.objects.get(pk=note.parent_id)
+	assert note.parent_type == 'Contact'
+
+Example of `Note` model is in `salesforce.testrunner.example.models.Note`.
 
 Caveats
 -------

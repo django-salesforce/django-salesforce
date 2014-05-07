@@ -344,3 +344,10 @@ class GeneralCustomModel(SalesforceModel):
  		managed = False
 
  	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)
+
+
+class Note(SalesforceModel):
+    title = models.CharField(max_length=80, db_column='Title')
+    body = models.TextField(null=True, db_column='Body')
+    parent_id = models.CharField(max_length=18, db_column='ParentId')
+    parent_type =  models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
