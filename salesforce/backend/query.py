@@ -299,6 +299,12 @@ class CursorWrapper(object):
 		self.results = []
 		self.rowcount = None
 
+	def __enter__(self):
+		return self
+
+	def __exit__(self, type, value, traceback):
+		self.close()
+
 	@property
 	def oauth(self):
 		return auth.authenticate(self.settings_dict)
