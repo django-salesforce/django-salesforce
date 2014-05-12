@@ -19,7 +19,9 @@ def is_sf_database(db):
 	"""The alias is a Salesforce database."""
 	from django.db import connections
 	from salesforce.backend.base import DatabaseWrapper 
-	return isinstance(connections[db], DatabaseWrapper)
+	engine = connections[db].settings_dict['ENGINE']
+	return (engine == 'salesforce.backend' or
+			isinstance(connections[db], DatabaseWrapper))
 
 #def is_testing(db):
 #	return not is_sf_database(db)
@@ -58,12 +60,16 @@ class ModelRouter(object):
 
 	def allow_syncdb(self, db, model):
 		"""
-		Don't attempt to sync salesforce models or db.
+		Don't attempt to sync SF models to non SF databases and vice versa.
 		"""
-		from django.db import connections
-		if(is_testing(db)):
-			return True
-		if(connections[db].settings_dict['ENGINE'] == 'salesforce.backend'):
+		if is_sf_database(db) != hasattr(model, '_salesforce_object'):
 			return False
+		# TODO: It is usual that syncdb is currently disallowed for SF but in
+		# the future it can be allowed to do deep check of compatibily Django
+		# models with SF models by introspection.
 		if(hasattr(model, '_salesforce_object')):
-			return False
+			#return False
+			pass
+		# Nothing is said about non SF models with non SF databases, because
+		# it can be solved by other routers, otherwise is enabled if all
+		# routers say None.
