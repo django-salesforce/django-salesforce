@@ -99,6 +99,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	log.debug('Request API URL: %s' % url)
 	try:
 		response = f(url, *args, **kwargs_in)
+	# TODO some timeouts can be rarely raised as "SSLError: The read operation timed out"
 	except requests.exceptions.Timeout:
 		raise base.SalesforceError("Timeout, URL=%s" % url)
 	if response.status_code == 401:
@@ -152,15 +153,22 @@ def prep_for_deserialize(model, record, using):
 	fields = dict()
 	for x in model._meta.fields:
 		if not x.primary_key:
-			field_val = record[x.column]
-			db_type = x.db_type(connection=connections[using])
-			if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
-				d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
-				import pytz
-				d = d.replace(tzinfo=pytz.utc)
-				fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+			if x.column.endswith('.Type'):
+				# Type of generic foreign key
+				simple_column, _ = x.column.split('.')
+				fields[x.name] = record[simple_column]['Type']
 			else:
-				fields[x.name] = field_val
+				# Normal fields
+				field_val = record[x.column]
+				#db_type = x.db_type(connection=connections[using])
+				if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
+					d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
+					import pytz
+					d = d.replace(tzinfo=pytz.utc)
+					fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+				else:
+					fields[x.name] = field_val
+
 
 	return dict(
 		model	= '.'.join([app_label, model.__name__]),
@@ -297,6 +305,12 @@ class CursorWrapper(object):
 		self.query = query
 		self.results = []
 		self.rowcount = None
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, type, value, traceback):
+		self.close()
 
 	@property
 	def oauth(self):

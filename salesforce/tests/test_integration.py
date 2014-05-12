@@ -20,7 +20,7 @@ from django.utils.unittest import skip, skipUnless
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Product, Pricebook, PricebookEntry,
-		GeneralCustomModel, test_custom_db_table, test_custom_db_column)
+		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
 from salesforce import router, DJANGO_15
 from salesforce.backend import sf_alias
 import salesforce
@@ -508,8 +508,9 @@ class BasicSOQLTest(TestCase):
 			self.assertLessEqual(len(leads_list), 2000)
 			print("Not enough Leads accumulated (currently %d including deleted) "
 					"in the last two weeks that are necessary for splitting the "
-					"query into more requests. Number 1001 or 2001 is sure." %
+					"query into more requests. Number 1001 or 2001 is enough." %
 					len(leads_list))
+			self.skipTest("Not enough Leads found for big query test")
 
 	def test_errors(self):
 		"""
@@ -528,5 +529,30 @@ class BasicSOQLTest(TestCase):
 		# and succeeds.
 		salesforce.auth.oauth_data['salesforce']['access_token'] += 'simulated invalid/expired' 
 		self.assertEqual(len(Lead.objects.raw("select Id from Lead limit 1")[0].Id), 18)
+
+	def test_generic_type_field(self):
+		"""
+		Test that a generic foreign key can be filtered by type name and
+		the type name can be referenced.
+		"""
+		test_contact = Contact(FirstName = 'sf_test', LastName='my')
+		test_contact.save()
+		note_1 = Note(title='note for Lead', parent_id=self.test_lead.pk)
+		note_2 = Note(title='note for Contact', parent_id=test_contact.pk)
+		note_1.save()
+		note_2.save()
+		try:
+			self.assertEqual(Note.objects.filter(parent_type='Contact')[0].parent_type, 'Contact')
+			self.assertEqual(Note.objects.filter(parent_type='Lead')[0].parent_type, 'Lead')
+
+			note = Note.objects.filter(parent_type='Contact')[0] 
+			parent_model = getattr(salesforce.testrunner.example.models, note.parent_type) 
+			parent_object = parent_model.objects.get(pk=note.parent_id)
+			self.assertEqual(parent_object.pk, note.parent_id)
+		finally:
+			note_1.delete()
+			note_2.delete()
+			test_contact.delete()
+
 
 	#@skip("Waiting for bug fix")
