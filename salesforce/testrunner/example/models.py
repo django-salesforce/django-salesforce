@@ -321,7 +321,7 @@ class BusinessHours(SalesforceModel):
 	# ... much more fields, but we use only this one TimeFiled for test
 	MondayStartTime = models.TimeField()
 
-	class Meta(SalesforceModel.Meta):
+	class Meta:
 		verbose_name_plural = "BusinessHours"
 
 
