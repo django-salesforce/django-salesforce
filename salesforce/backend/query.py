@@ -325,13 +325,13 @@ class CursorWrapper(object):
 		self.rowcount = None
 		if isinstance(self.query, SalesforceQuery) or self.query is None:
 			response = self.execute_select(q, args)
-		elif(isinstance(self.query, SalesforceRawQuery)):
+		elif isinstance(self.query, SalesforceRawQuery):
 			response = self.execute_select(q, args)
-		elif(isinstance(self.query, subqueries.InsertQuery)):
+		elif isinstance(self.query, subqueries.InsertQuery):
 			response = self.execute_insert(self.query)
-		elif(isinstance(self.query, subqueries.UpdateQuery)):
+		elif isinstance(self.query, subqueries.UpdateQuery):
 			response = self.execute_update(self.query)
-		elif(isinstance(self.query, subqueries.DeleteQuery)):
+		elif isinstance(self.query, subqueries.DeleteQuery):
 			response = self.execute_delete(self.query)
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % self.query)

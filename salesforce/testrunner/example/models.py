@@ -222,7 +222,7 @@ class ChargentOrder(SalesforceModel):
 	CreatedDate = models.CharField(max_length=255, db_column='CreatedDate')
 	CreatedById = models.CharField(max_length=255, db_column='CreatedById')
 	LastModifiedDate = models.CharField(max_length=255,
-									    db_column='LastModifiedDate')
+										db_column='LastModifiedDate')
 	LastModifiedById = models.CharField(max_length=255,
 										db_column='LastModifiedById')
 	SystemModstamp = models.CharField(max_length=255, db_column='SystemModstamp')
@@ -347,7 +347,7 @@ class GeneralCustomModel(SalesforceModel):
 
 
 class Note(SalesforceModel):
-    title = models.CharField(max_length=80, db_column='Title')
-    body = models.TextField(null=True, db_column='Body')
-    parent_id = models.CharField(max_length=18, db_column='ParentId')
-    parent_type =  models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
+	title = models.CharField(max_length=80, db_column='Title')
+	body = models.TextField(null=True, db_column='Body')
+	parent_id = models.CharField(max_length=18, db_column='ParentId')
+	parent_type =  models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)

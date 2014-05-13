@@ -95,7 +95,7 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(len(contacts), 2)
 		'%s' % contacts[0].__dict__  # Check that all fields are accessible
 		self.assertIn('@', contacts[0].Owner.Email)
-	
+
 	def test_select_all(self):
 		"""
 		Get the first two contact records.
