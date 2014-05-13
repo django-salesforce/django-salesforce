@@ -514,6 +514,20 @@ class BasicSOQLTest(TestCase):
 					len(leads_list))
 			self.skipTest("Not enough Leads found for big query test")
 
+	def test_cursor_execute_fetch(self):
+		"""
+		Get results by cursor.execute(...); fetchone(), fetchmany(), fetchall()
+		"""
+		sql = "SELECT Id, LastName, FirstName, OwnerId FROM Contact LIMIT 2"
+		cursor = connections['salesforce'].cursor()
+		cursor.execute(sql)
+		contacts = cursor.fetchall()
+		self.assertEqual(len(contacts), 2)
+		self.assertIn('OwnerId', contacts[0])
+		cursor.execute(sql)
+		self.assertEqual(cursor.fetchone(), contacts[0])
+		self.assertEqual(cursor.fetchmany(200), contacts[1:])
+	
 	def test_errors(self):
 		"""
 		Test for improving code coverage.

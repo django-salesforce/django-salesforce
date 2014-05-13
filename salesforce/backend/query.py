@@ -316,14 +316,14 @@ class CursorWrapper(object):
 	def oauth(self):
 		return auth.authenticate(self.settings_dict)
 
-	def execute(self, q, args=None):
+	def execute(self, q, args=()):
 		"""
 		Send a query to the Salesforce API.
 		"""
 		from salesforce.backend import base
 
 		self.rowcount = None
-		if(isinstance(self.query, SalesforceQuery)):
+		if isinstance(self.query, SalesforceQuery) or self.query is None:
 			response = self.execute_select(q, args)
 		elif(isinstance(self.query, SalesforceRawQuery)):
 			response = self.execute_select(q, args)
