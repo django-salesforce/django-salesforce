@@ -555,4 +555,23 @@ class BasicSOQLTest(TestCase):
 			test_contact.delete()
 
 
+	def test_queryset_values(self):
+		"""
+		Test list of dict qs.values() and list of tuples qs.values_list()
+		"""
+		values = Contact.objects.values()[:2]
+		self.assertEqual(len(values), 2)
+		self.assertIn('FirstName', values[0])
+		self.assertGreater(len(values[0]), 3)
+
+		values = Contact.objects.values('pk', 'FirstName', 'LastName')[:2]
+		self.assertEqual(len(values), 2)
+		self.assertIn('FirstName', values[0])
+		self.assertEqual(len(values[0]), 3)
+
+		values_list = Contact.objects.values_list('pk', 'FirstName', 'LastName')[:2]
+		self.assertEqual(len(values_list), 2)
+		v0 = values[0]
+		self.assertEqual(values_list[0], (v0['pk'], v0['FirstName'], v0['LastName']))
+
 	#@skip("Waiting for bug fix")
