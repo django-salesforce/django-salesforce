@@ -526,7 +526,7 @@ class BasicSOQLTest(TestCase):
 		self.assertIn('OwnerId', contacts[0])
 		cursor.execute(sql)
 		self.assertEqual(cursor.fetchone(), contacts[0])
-		self.assertEqual(cursor.fetchmany(200), contacts[1:])
+		self.assertEqual(cursor.fetchmany(), contacts[1:])
 	
 	def test_errors(self):
 		"""

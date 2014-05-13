@@ -456,10 +456,12 @@ class CursorWrapper(object):
 		except StopIteration:
 			return None
 
-	def fetchmany(self, size=0):
+	def fetchmany(self, size=None):
 		"""
 		Fetch multiple results from a previously executed query.
 		"""
+		if size is None:
+			size = 200
 		return list(islice(self.results, size))
 
 	def fetchall(self):
