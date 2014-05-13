@@ -207,12 +207,10 @@ def extract_values(query):
 
 class SalesforceRawQuerySet(query.RawQuerySet):
 	def __len__(self):
-		if(self.query.cursor is None):
+		if self.query.cursor is None:
 			# force the query
 			self.query.get_columns()
-			return self.query.cursor.rowcount
-		else:
-			return 0;
+		return self.query.cursor.rowcount
 
 class SalesforceQuerySet(query.QuerySet):
 	"""

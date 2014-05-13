@@ -81,6 +81,8 @@ class BasicSOQLTest(TestCase):
 				"SELECT Id, LastName, FirstName FROM Contact "
 				"LIMIT 2")
 		self.assertEqual(len(contacts), 2)
+		# It had a side effect that the same assert failed second times.
+		self.assertEqual(len(contacts), 2)
 		'%s' % contacts[0].__dict__  # Check that all fields are accessible
 
 	def test_raw_foreignkey_id(self):
