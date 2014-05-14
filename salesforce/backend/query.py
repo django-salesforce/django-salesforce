@@ -207,12 +207,10 @@ def extract_values(query):
 
 class SalesforceRawQuerySet(query.RawQuerySet):
 	def __len__(self):
-		if(self.query.cursor is None):
+		if self.query.cursor is None:
 			# force the query
 			self.query.get_columns()
-			return len(self.query.cursor.results)
-		else:
-			return 0;
+		return self.query.cursor.rowcount
 
 class SalesforceQuerySet(query.QuerySet):
 	"""
@@ -249,8 +247,8 @@ class SalesforceRawQuery(RawQuery):
 		if self.cursor is None:
 			self._execute_query()
 		converter = connections[self.using].introspection.table_name_converter
-		if(len(self.cursor.results) > 0):
-			return [converter(col) for col in self.cursor.results[0].keys() if col != 'attributes']
+		if self.cursor.rowcount > 0:
+			return [converter(col) for col in self.cursor.first_row.keys() if col != 'attributes']
 		return ['Id']
 
 	def _execute_query(self):
@@ -303,8 +301,10 @@ class CursorWrapper(object):
 		self.connection = connection
 		self.session = connection.sf_session
 		self.query = query
-		self.results = []
+		# A consistent value is iter([]), but `self.results` can be undefined until execute
+		self.results = None
 		self.rowcount = None
+		self.first_row = None
 
 	def __enter__(self):
 		return self
@@ -316,22 +316,22 @@ class CursorWrapper(object):
 	def oauth(self):
 		return auth.authenticate(self.settings_dict)
 
-	def execute(self, q, args=None):
+	def execute(self, q, args=()):
 		"""
 		Send a query to the Salesforce API.
 		"""
 		from salesforce.backend import base
 
 		self.rowcount = None
-		if(isinstance(self.query, SalesforceQuery)):
+		if isinstance(self.query, SalesforceQuery) or self.query is None:
 			response = self.execute_select(q, args)
-		elif(isinstance(self.query, SalesforceRawQuery)):
+		elif isinstance(self.query, SalesforceRawQuery):
 			response = self.execute_select(q, args)
-		elif(isinstance(self.query, subqueries.InsertQuery)):
+		elif isinstance(self.query, subqueries.InsertQuery):
 			response = self.execute_insert(self.query)
-		elif(isinstance(self.query, subqueries.UpdateQuery)):
+		elif isinstance(self.query, subqueries.UpdateQuery):
 			response = self.execute_update(self.query)
-		elif(isinstance(self.query, subqueries.DeleteQuery)):
+		elif isinstance(self.query, subqueries.DeleteQuery):
 			response = self.execute_delete(self.query)
 		else:
 			raise base.DatabaseError("Unsupported query: %s" % self.query)
@@ -357,12 +357,14 @@ class CursorWrapper(object):
 			if q.upper().startswith('SELECT COUNT() FROM'):
 				# TODO what about raw query COUNT()
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
-				self.results = [[self.rowcount]]
+				self.results = iter([[self.rowcount]])
 			else:
-				self.query.first_chunk_len = len(data['records'])
+				if self.query:
+					self.query.first_chunk_len = len(data['records'])
+				self.first_row = data['records'][0] if data['records'] else None
 				self.results = self.query_results(data)
 		else:
-			self.results = []
+			self.results = iter([])
 
 	def execute_select(self, q, args):
 		processed_sql = str(q) % process_args(args)
@@ -426,25 +428,21 @@ class CursorWrapper(object):
 		return handle_api_exceptions(url, self.session.delete, _cursor=self)
 
 	def query_results(self, results):
-		output = []
 		while True:
 			for rec in results['records']:
 				if rec['attributes']['type'] == 'AggregateResult':
 					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
 					# The 'attributes' info is unexpected for Django within fields.
 					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]
-				output.append(rec)
+				yield rec
 
 			if results['done']:
 				break
-			# TODO convert this method to an iterator providing data after
-			#      every request, not many thousands objects list.
 
 			# see about Retrieving the Remaining SOQL Query Results
-			# http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#heading_2_1
+			# http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#retrieve_remaining_results_title
 			response = self.query_more(results['nextRecordsUrl'])
 			results = response.json(parse_float=decimal.Decimal)
-		return output
 
 	def __iter__(self):
 		return iter(self.results)
@@ -454,14 +452,16 @@ class CursorWrapper(object):
 		Fetch a single result from a previously executed query.
 		"""
 		try:
-			return self.results.pop(0)
+			return next(self.results)
 		except StopIteration:
 			return None
 
-	def fetchmany(self, size=0):
+	def fetchmany(self, size=None):
 		"""
 		Fetch multiple results from a previously executed query.
 		"""
+		if size is None:
+			size = 200
 		return list(islice(self.results, size))
 
 	def fetchall(self):

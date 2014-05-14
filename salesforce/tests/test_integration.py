@@ -81,6 +81,8 @@ class BasicSOQLTest(TestCase):
 				"SELECT Id, LastName, FirstName FROM Contact "
 				"LIMIT 2")
 		self.assertEqual(len(contacts), 2)
+		# It had a side effect that the same assert failed second times.
+		self.assertEqual(len(contacts), 2)
 		'%s' % contacts[0].__dict__  # Check that all fields are accessible
 
 	def test_raw_foreignkey_id(self):
@@ -93,7 +95,7 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(len(contacts), 2)
 		'%s' % contacts[0].__dict__  # Check that all fields are accessible
 		self.assertIn('@', contacts[0].Owner.Email)
-	
+
 	def test_select_all(self):
 		"""
 		Get the first two contact records.
@@ -512,6 +514,20 @@ class BasicSOQLTest(TestCase):
 					len(leads_list))
 			self.skipTest("Not enough Leads found for big query test")
 
+	def test_cursor_execute_fetch(self):
+		"""
+		Get results by cursor.execute(...); fetchone(), fetchmany(), fetchall()
+		"""
+		sql = "SELECT Id, LastName, FirstName, OwnerId FROM Contact LIMIT 2"
+		cursor = connections['salesforce'].cursor()
+		cursor.execute(sql)
+		contacts = cursor.fetchall()
+		self.assertEqual(len(contacts), 2)
+		self.assertIn('OwnerId', contacts[0])
+		cursor.execute(sql)
+		self.assertEqual(cursor.fetchone(), contacts[0])
+		self.assertEqual(cursor.fetchmany(), contacts[1:])
+	
 	def test_errors(self):
 		"""
 		Test for improving code coverage.
@@ -554,5 +570,24 @@ class BasicSOQLTest(TestCase):
 			note_2.delete()
 			test_contact.delete()
 
+
+	def test_queryset_values(self):
+		"""
+		Test list of dict qs.values() and list of tuples qs.values_list()
+		"""
+		values = Contact.objects.values()[:2]
+		self.assertEqual(len(values), 2)
+		self.assertIn('FirstName', values[0])
+		self.assertGreater(len(values[0]), 3)
+
+		values = Contact.objects.values('pk', 'FirstName', 'LastName')[:2]
+		self.assertEqual(len(values), 2)
+		self.assertIn('FirstName', values[0])
+		self.assertEqual(len(values[0]), 3)
+
+		values_list = Contact.objects.values_list('pk', 'FirstName', 'LastName')[:2]
+		self.assertEqual(len(values_list), 2)
+		v0 = values[0]
+		self.assertEqual(values_list[0], (v0['pk'], v0['FirstName'], v0['LastName']))
 
 	#@skip("Waiting for bug fix")

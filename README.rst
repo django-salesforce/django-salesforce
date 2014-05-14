@@ -58,7 +58,11 @@ Quick Start
 7. Define a model that extends ``salesforce.models.SalesforceModel``
    or export the complete SF schema by
    ``python manage.py inspectdb --database=salesforce`` and simplify it
-   to what you need.
+   to what you need. If an inner ``Meta`` class is used, e.g. for a
+   ``db_table`` option of custom SF object with a name that ends with ``__c``,
+   then that Meta must be a descendant of ``SalesforceModel.Meta`` or must have
+   the attribute ``managed=False``.
+
 8. If you want to use the model in the Django admin interface, use a
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
 9. You're all done! Just use your model like a normal Django model.

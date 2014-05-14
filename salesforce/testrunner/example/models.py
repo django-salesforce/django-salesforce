@@ -222,7 +222,7 @@ class ChargentOrder(SalesforceModel):
 	CreatedDate = models.CharField(max_length=255, db_column='CreatedDate')
 	CreatedById = models.CharField(max_length=255, db_column='CreatedById')
 	LastModifiedDate = models.CharField(max_length=255,
-									    db_column='LastModifiedDate')
+										db_column='LastModifiedDate')
 	LastModifiedById = models.CharField(max_length=255,
 										db_column='LastModifiedById')
 	SystemModstamp = models.CharField(max_length=255, db_column='SystemModstamp')
@@ -321,7 +321,7 @@ class BusinessHours(SalesforceModel):
 	# ... much more fields, but we use only this one TimeFiled for test
 	MondayStartTime = models.TimeField()
 
-	class Meta:
+	class Meta(SalesforceModel.Meta):
 		verbose_name_plural = "BusinessHours"
 
 
@@ -337,7 +337,7 @@ class GeneralCustomModel(SalesforceModel):
  		TEST_CUSTOM_FIELD = 'TIMBASURVEYS__SurveyQuestion__c.TIMBASURVEYS__Question__c'
  	Other fields shouldn't be required for saving that object.
  	"""
-	# The line "managed = False" or Meta inherited from SalesforceMoled.Meta
+	# The line "managed = False" or Meta inherited from SalesforceModel.Meta
 	# is especially important if the model shares a table with other model.
  	class Meta:
  		db_table = test_custom_db_table
@@ -347,7 +347,7 @@ class GeneralCustomModel(SalesforceModel):
 
 
 class Note(SalesforceModel):
-    title = models.CharField(max_length=80, db_column='Title')
-    body = models.TextField(null=True, db_column='Body')
-    parent_id = models.CharField(max_length=18, db_column='ParentId')
-    parent_type =  models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
+	title = models.CharField(max_length=80, db_column='Title')
+	body = models.TextField(null=True, db_column='Body')
+	parent_id = models.CharField(max_length=18, db_column='ParentId')
+	parent_type =  models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
