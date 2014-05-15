@@ -502,7 +502,7 @@ class BasicSOQLTest(TestCase):
 	def test_z_big_query(self):
 		"""
 		Test a big query that will be splitted to more requests.
-		Test it as late as possible when 
+		Test it as late as possible when
 		"""
 		all_leads = Lead.objects.query_all()
 		leads_list = list(all_leads)
@@ -543,7 +543,7 @@ class BasicSOQLTest(TestCase):
 		"""
 		# simulate that a request with invalid/expired auth ID re-authenticates
 		# and succeeds.
-		salesforce.auth.oauth_data['salesforce']['access_token'] += 'simulated invalid/expired' 
+		salesforce.auth.oauth_data['salesforce']['access_token'] += 'simulated invalid/expired'
 		self.assertEqual(len(Lead.objects.raw("select Id from Lead limit 1")[0].Id), 18)
 
 	def test_generic_type_field(self):
@@ -561,8 +561,8 @@ class BasicSOQLTest(TestCase):
 			self.assertEqual(Note.objects.filter(parent_type='Contact')[0].parent_type, 'Contact')
 			self.assertEqual(Note.objects.filter(parent_type='Lead')[0].parent_type, 'Lead')
 
-			note = Note.objects.filter(parent_type='Contact')[0] 
-			parent_model = getattr(salesforce.testrunner.example.models, note.parent_type) 
+			note = Note.objects.filter(parent_type='Contact')[0]
+			parent_model = getattr(salesforce.testrunner.example.models, note.parent_type)
 			parent_object = parent_model.objects.get(pk=note.parent_id)
 			self.assertEqual(parent_object.pk, note.parent_id)
 		finally:
