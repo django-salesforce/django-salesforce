@@ -122,11 +122,20 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	# http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
 	if not getattr(getattr(_cursor, 'query', None), 'debug_silent', False):
 		print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
-	if response.status_code == 404:  # ResourceNotFound
-		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
-				% (response.text, url))
 	# Errors are reported in the body
 	data = response.json()[0]
+	if response.status_code == 404:  # ResourceNotFound
+		if (f.__func__.__name__ == 'delete') and data['errorCode'] in (
+				'ENTITY_IS_DELETED', 'INVALID_CROSS_REFERENCE_KEY'):
+			# It is a delete command and the object is in trash bin or
+			# completely deleted or it only could be a valid Id for this type
+			# then is ignored similarly to delete by a classic database query:
+			# DELETE FROM xy WHERE id = 'something_deleted_yet'
+			return None
+		else:
+			# if this Id can not be ever valid.
+			raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
+					% (response.text, url))
 	if(data['errorCode'] == 'INVALID_FIELD'):
 		raise base.SalesforceError(data['message'])
 	elif(data['errorCode'] == 'MALFORMED_QUERY'):
