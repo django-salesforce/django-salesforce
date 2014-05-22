@@ -33,8 +33,23 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+
 class SalesforceError(DatabaseError):
-	pass
+	"""
+	DatabaseError that usually gets detailed error information from SF response
+	
+	in the second parameter, decoded from REST, that frequently need not to be
+	displayed.
+	"""
+	def __init__(self, message='', data=None, response=None, verbose=False):
+		DatabaseError.__init__(self, message)
+		self.data = data
+		self.response = response
+		self.verbose = verbose
+		if verbose:
+			print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
+
+
 
 class DatabaseFeatures(BaseDatabaseFeatures):
 	"""
@@ -51,6 +66,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	# be loaded and cleaned by the testcase code. From the viewpoint of SF it is
 	# irrelevant, but due to issue #28 it should be True.
 	supports_transactions = True
+
 
 class DatabaseWrapper(BaseDatabaseWrapper):
 	"""

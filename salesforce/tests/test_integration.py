@@ -502,7 +502,7 @@ class BasicSOQLTest(TestCase):
 	def test_z_big_query(self):
 		"""
 		Test a big query that will be splitted to more requests.
-		Test it as late as possible when 
+		Test it as late as possible when
 		"""
 		all_leads = Lead.objects.query_all()
 		leads_list = list(all_leads)
@@ -543,7 +543,7 @@ class BasicSOQLTest(TestCase):
 		"""
 		# simulate that a request with invalid/expired auth ID re-authenticates
 		# and succeeds.
-		salesforce.auth.oauth_data['salesforce']['access_token'] += 'simulated invalid/expired' 
+		salesforce.auth.oauth_data['salesforce']['access_token'] += 'simulated invalid/expired'
 		self.assertEqual(len(Lead.objects.raw("select Id from Lead limit 1")[0].Id), 18)
 
 	def test_generic_type_field(self):
@@ -561,8 +561,8 @@ class BasicSOQLTest(TestCase):
 			self.assertEqual(Note.objects.filter(parent_type='Contact')[0].parent_type, 'Contact')
 			self.assertEqual(Note.objects.filter(parent_type='Lead')[0].parent_type, 'Lead')
 
-			note = Note.objects.filter(parent_type='Contact')[0] 
-			parent_model = getattr(salesforce.testrunner.example.models, note.parent_type) 
+			note = Note.objects.filter(parent_type='Contact')[0]
+			parent_model = getattr(salesforce.testrunner.example.models, note.parent_type)
 			parent_object = parent_model.objects.get(pk=note.parent_id)
 			self.assertEqual(parent_object.pk, note.parent_id)
 		finally:
@@ -589,5 +589,27 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(len(values_list), 2)
 		v0 = values[0]
 		self.assertEqual(values_list[0], (v0['pk'], v0['FirstName'], v0['LastName']))
+
+	def test_double_delete(self):
+		"""
+		Test that repeated delete of the same object is ignored the same way
+		like "DELETE FROM Contact WHERE Id='deleted yet'" would do.
+		"""
+		contact = Contact(LastName='sf_test',
+				Owner=User.objects.get(Username=current_user))
+		contact.save()
+		contact_id = contact.pk
+		Contact(pk=contact_id).delete()
+		# Id of a deleted object or a too small valid Id shouldn't raise
+		Contact(pk=contact_id).delete()
+		# Simulate the same with obsoleted oauth session
+		# It is not possible to use salesforce.auth.expire_token() to simulate
+		# expiration because it forces reauhentication before the next request
+		salesforce.auth.oauth_data[sf_alias]['access_token'] = '* something invalid *'
+		Contact(pk=contact_id).delete()
+		# Id of completely deleted item or fake but valid item.
+		Contact(pk='003000000000000AAA').delete()
+		bad_id = '003000000000000AAB' # Id with an incorrect uppercase mask
+		self.assertRaises(salesforce.backend.base.SalesforceError, Contact(pk=bad_id).delete)
 
 	#@skip("Waiting for bug fix")

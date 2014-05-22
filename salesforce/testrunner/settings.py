@@ -119,6 +119,8 @@ INSTALLED_APPS = (
 
 SALESFORCE_DB_ALIAS = 'salesforce'
 SALESFORCE_QUERY_TIMEOUT = 3
+# Maximal number of retries after timeout.
+#REQUESTS_MAX_RETRIES = 1
 DATABASE_ROUTERS = [
 	"salesforce.router.ModelRouter"
 ]

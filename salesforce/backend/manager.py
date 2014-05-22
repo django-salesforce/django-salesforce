@@ -25,7 +25,7 @@ class SalesforceManager(manager.Manager):
 		"""
 		Returns a QuerySet which access remote SF objects.
 		"""
-		if router.is_testing(self.db):
+		if not router.is_sf_database(self.db):
 			warnings.warn("Incorrectly called SalesforceManager. (probably)", DeprecationWarning)
 			return super(SalesforceManager, self).get_query_set()
 		else:

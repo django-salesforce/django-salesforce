@@ -117,27 +117,35 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	if response.status_code in (200, 201, 204):
 		return response
 
-	# TODO Remove this print after tuning of specific messages. Currently is
-	#      better more than less
+	# TODO Remove this verbose setting after tuning of specific messages.
+	#      Currently it is better more or less.
 	# http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
-	if not getattr(getattr(_cursor, 'query', None), 'debug_silent', False):
-		print("Error (debug details) %s\n%s" % (response.text, response.__dict__))
-	if response.status_code == 404:  # ResourceNotFound
-		raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
-				% (response.text, url))
+	verbose = not getattr(getattr(_cursor, 'query', None), 'debug_silent', False)
 	# Errors are reported in the body
 	data = response.json()[0]
+	if response.status_code == 404:  # ResourceNotFound
+		if (f.__func__.__name__ == 'delete') and data['errorCode'] in (
+				'ENTITY_IS_DELETED', 'INVALID_CROSS_REFERENCE_KEY'):
+			# It is a delete command and the object is in trash bin or
+			# completely deleted or it only could be a valid Id for this type
+			# then is ignored similarly to delete by a classic database query:
+			# DELETE FROM xy WHERE id = 'something_deleted_yet'
+			return None
+		else:
+			# if this Id can not be ever valid.
+			raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
+					% (response.text, url), data, response, verbose)
 	if(data['errorCode'] == 'INVALID_FIELD'):
-		raise base.SalesforceError(data['message'])
+		raise base.SalesforceError(data['message'], data, response, verbose)
 	elif(data['errorCode'] == 'MALFORMED_QUERY'):
-		raise base.SalesforceError(data['message'])
+		raise base.SalesforceError(data['message'], data, response, verbose)
 	elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
-		raise base.SalesforceError(data['message'])
+		raise base.SalesforceError(data['message'], data, response, verbose)
 	elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
-		raise base.SalesforceError('%s: %s' % (url, data['message']))
+		raise base.SalesforceError('%s: %s' % (url, data['message']), data, response, verbose)
 	# some kind of failed query
 	else:
-		raise base.SalesforceError('%s' % data)
+		raise base.SalesforceError('%s' % data, data, response, verbose)
 
 def prep_for_deserialize(model, record, using):
 	attribs = record.pop('attributes')

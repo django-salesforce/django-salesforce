@@ -15,7 +15,7 @@ from django.conf import settings
 sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 
 # The maximal number of retries for requests to SF API.
-MAX_RETRIES = 1
+MAX_RETRIES = getattr(settings, 'REQUESTS_MAX_RETRIES', 1)
 
 
 def getaddrinfo_wrapper(host, port, family=socket.AF_INET, socktype=0, proto=0, flags=0):
