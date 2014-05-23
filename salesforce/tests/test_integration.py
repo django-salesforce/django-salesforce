@@ -610,6 +610,8 @@ class BasicSOQLTest(TestCase):
 		# Id of completely deleted item or fake but valid item.
 		Contact(pk='003000000000000AAA').delete()
 		bad_id = '003000000000000AAB' # Id with an incorrect uppercase mask
-		self.assertRaises(salesforce.backend.base.SalesforceError, Contact(pk=bad_id).delete)
+		bad_queryset = Contact(pk=bad_id).delete
+		bad_queryset.query.debug_silent = True
+		self.assertRaises(salesforce.backend.base.SalesforceError, bad_queryset)
 
 	#@skip("Waiting for bug fix")
