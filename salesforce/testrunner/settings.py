@@ -168,8 +168,10 @@ LOGGING = {
 	}
 }
 
-IPV4_ONLY = True  # for networks with only IPv4 (default is currently IPv4
-# for compatibily with previous beviour and until IPv6 on SF become stable.)
+# Preventive workaround for some problems with IPv6 by restricting DNS queries
+# in the Python process only to IPv4, until the support by SFDC become stable.
+# SFDC enabled IPv6 for a week in March 2014. It caused long delays somewhere.
+IPV4_ONLY = True
 
 try:
 	from salesforce.testrunner.local_settings import *

@@ -22,7 +22,7 @@ def getaddrinfo_wrapper(host, port, family=socket.AF_INET, socktype=0, proto=0, 
 	    return orig_getaddrinfo(host, port, family, socktype, proto, flags)
 
 # patch to IPv4 if required and not patched by anything other yet
-if getattr(settings, 'IPV4_ONLY', True) and socket.getaddrinfo.__module__ in ('socket', '_socket'):
+if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('socket', '_socket'):
 	print("Patched socket to IPv4 only")
 	orig_getaddrinfo = socket.getaddrinfo
 	# replace the original socket.getaddrinfo by our version
