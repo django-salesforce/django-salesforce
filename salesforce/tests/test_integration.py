@@ -4,12 +4,13 @@
 # (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 # See LICENSE.md for details
 #
-
+from __future__ import print_function
 from decimal import Decimal
 import datetime
 import pytz
 import random
 import string
+import sys
 
 from django.conf import settings
 from django.db import connections
@@ -514,7 +515,7 @@ class BasicSOQLTest(TestCase):
 			print("Not enough Leads accumulated (currently %d including deleted) "
 					"in the last two weeks that are necessary for splitting the "
 					"query into more requests. Number 1001 or 2001 is enough." %
-					len(leads_list))
+					len(leads_list), file=sys.stderr)
 			self.skipTest("Not enough Leads found for big query test")
 
 	def test_cursor_execute_fetch(self):
