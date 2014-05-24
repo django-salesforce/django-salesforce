@@ -128,6 +128,7 @@ class TimeField(SfField, models.TimeField):
 	"""TimeField with sf_read_only attribute for Salesforce."""
 	pass
 
+
 class ForeignKey(SfField, models.ForeignKey):
 	"""ForeignKey with sf_read_only attribute for Salesforce."""
 	def __init__(self, *args, **kwargs):
@@ -144,5 +145,9 @@ class ForeignKey(SfField, models.ForeignKey):
 					"DO_NOTHING are currently supported, not %s related to %s"
 					% (on_delete, related_object))
 		super(ForeignKey, self).__init__(*args, **kwargs)
+
+	def get_attname(self):
+		return '%sId' % self.name
+
 
 AutoField = SalesforceAutoField

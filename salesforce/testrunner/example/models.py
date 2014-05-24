@@ -112,9 +112,10 @@ class Contact(SalesforceModel):
 			verbose_name='Full Name')
 	Email = models.EmailField(blank=True, null=True)
 	EmailBouncedDate = models.DateTimeField(blank=True, null=True)
+	# tested example that db_column is not necessary for a normal ForeignKey
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
 			default=lambda:User(Id='DEFAULT'),
-			db_column='OwnerId', related_name='contact_owner_set')
+			related_name='contact_owner_set')
 
 
 	def __unicode__(self):

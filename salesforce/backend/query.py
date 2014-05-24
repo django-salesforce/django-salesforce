@@ -211,7 +211,7 @@ def extract_values(query):
 			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
 				continue
 		[arg] = process_json_args([value])
-		d[field.db_column or field.name] = arg
+		d[field.column] = arg
 	return d
 
 class SalesforceRawQuerySet(query.RawQuerySet):
