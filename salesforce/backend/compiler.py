@@ -15,17 +15,6 @@ from django.db.models.sql.datastructures import EmptyResultSet
 from salesforce import DJANGO_15, DJANGO_16, DJANGO_17_PLUS
 
 
-def process_name(name):
-	"""
-	Convert a Djangofied column name into a Salesforce-compliant column name.
-
-	TODO: this is sketchy
-	"""
-	if(name.startswith('example_')):
-		name = name[8:]
-		name = ''.join([x.capitalize() for x in name.split('_')])
-	return name
-
 class SQLCompiler(compiler.SQLCompiler):
 	"""
 	A subclass of the default SQL compiler for the SOQL dialect.
