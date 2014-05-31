@@ -26,6 +26,8 @@ https://github.com/xjsender/SublimeApex/blob/master/salesforce/api.py
 import re
 from collections import namedtuple, OrderedDict
 import datetime
+import requests
+import urllib
 from django.db import connections
 from salesforce import auth
 from salesforce.backend.query import (API_STUB, SALESFORCE_DATETIME_FORMAT,
@@ -33,7 +35,9 @@ from salesforce.backend.query import (API_STUB, SALESFORCE_DATETIME_FORMAT,
 
 __all__ = ('sf_query', 'sf_get', 'sf_post', 'sf_delete', 'sf_patch',
 		'sf_get_text', 'get_all_names', 
-		'set_trace_flag', 'execute_anonymous', 'execute_anonymous_logged')
+		'set_trace_flag', 'execute_anonymous', 'execute_anonymous_logged',
+		'install_metadata_service', 'call_metadata_api',
+		'create_demo_test_object')
 # TODO Test with international characters
 # TODO Stabilize the API: basic functions, parameters...
 #      to be easy usable now and
@@ -233,3 +237,113 @@ def get_all_names(sobject, is_tooling=False, using=sf_alias):
 #	return result
 
 # Important fields of 'tooling/TraceFlag' are 'ScopeId', 'TracedEntityId' 
+
+
+
+# --- Metadata API ---
+
+# copied from the blog by Anderew Fawcett
+# http://andyinthecloud.com/2014/04/24/apex-metadata-api-and-spring14-keys-to-the-kingdom/
+# http://andyinthecloud.com/2013/10/27/introduction-to-calling-the-metadata-api-from-apex/
+
+# This implementation of Metadate API requires enabled callouts to your SF site.
+
+def install_metadata_service():
+	"""
+	Installs an wrapper `MetadataService.cls` to Salesforce
+	
+	for use Metadata API from Apex.
+	Can be installed without callouts, but then are callouts necessary
+	"""
+	name = 'MetadataService'
+	pattern = 'https://github.com/financialforcedev/apex-mdapi/raw/master/apex-mdapi/src/classes/{0}.cls'
+	response = sf_get('tooling/query', q="select Name from ApexClass where Name='{0}'".format(name))
+	if not response['records']:
+		source = requests.get(pattern.format(name)).text
+		response = sf_post('tooling/sobjects/ApexClass', name=name, body=source)
+
+def call_metadata_api(apex_code):
+	"""
+	Call Metadata API with an Apex code.
+
+	Only synchronous CRUD-based calls are supported.
+	More Metadata of the same type can be used in one call to createMetadata,
+	but not CustomObject and CustomField together.
+	http://www.salesforce.com/us/developer/docs/api_meta/Content/meta_crud_based_calls_intro.htm
+
+	See `create_demo_test_object` function for an example.
+	"""
+	# universal common code for synchronous CRUD-based calls
+	common_apex_code = """
+	public class MetadataServiceException extends Exception { }
+
+	public void handleSaveResults(List<MetadataService.SaveResult> saveResults) {
+		for(MetadataService.SaveResult saveResult : saveResults) {
+			if(saveResult==null || saveResult.success)
+				continue;
+			List<String> messages = new List<String>();
+			messages.add('Errors in ' + saveResult.fullName);
+			for(MetadataService.Error error : saveResult.errors)
+				messages.add(
+				error.message + ' (' + error.statusCode + ').' +
+				( error.fields!=null && error.fields.size()>0 ?
+				' Fields ' + String.join(error.fields, ',') + '.' : '' ) );
+			if(messages.size()>0)
+				throw new MetadataServiceException(String.join(messages, '; '));
+		}
+	}
+
+	MetadataService.MetadataPort service = new MetadataService.MetadataPort();
+	service.SessionHeader = new MetadataService.SessionHeader_element();
+	service.SessionHeader.sessionId = UserInfo.getSessionId();
+	"""
+	apex_code = apex_code or demo_apex_code
+	resp = execute_anonymous(common_apex_code + apex_code)
+	if not resp['success']:
+		err_pattern = (r'System.CalloutException: IO Exception: Unauthorized endpoint.*'
+				r'endpoint = (https://\w+.salesforce.com)/')
+		match = re.match(err_pattern, resp['exceptionMessage'] or '')
+		if match:
+			# Solution with callouts is easier than with SOAP in Python
+			# also because example code is available only for Java.
+			site = match.groups()[0]
+			print("Error: Metadata can not be changed without enabled callouts (by this method).\n"
+				'Callouts can be enabled manually by:\n'
+				'  Setup => Administration Setup => Security Controls => Remote Site Settings\n'
+				'    Remote Site Name: e.g. "sf_soap_api"\n'
+				'    Remote Site URL:  "{site}"\n'.format(site=site))
+			# Callouts to SF can be disabled manually again after db structure deployment.
+		else:
+			print("Error: " + (resp['exceptionMessage'] if resp['compiled'] else resp['compileProblem']))
+	return resp
+
+
+def create_demo_test_object():
+	"""
+	Creates an object `Test__c` with the name field `Test Record` and the text field `Test__c`.
+
+	More Metadata of the same type in the list can be used in one call to
+	createMetadata, but not together e.g. CustomObject and CustomField.
+	"""
+	# This can be used internally if syncan example output of `manage.py sqlall`
+	demo_apex_code = """ 
+	MetadataService.CustomObject customObject = new MetadataService.CustomObject();
+	String objectName = 'Test';
+	customObject.fullName = objectName + '__c';
+	customObject.label = objectName;
+	customObject.pluralLabel = objectName+'s';
+	customObject.nameField = new MetadataService.CustomField();
+	customObject.nameField.type_x = 'Text';
+	customObject.nameField.label = 'Test Record';
+	customObject.deploymentStatus = 'Deployed';
+	customObject.sharingModel = 'ReadWrite';
+	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customObject }));
+
+	MetadataService.CustomField customField = new MetadataService.CustomField();
+	customField.fullName = 'Test__c.TestField__c';
+	customField.label = 'Test Field';
+	customField.type_x = 'Text';
+	customField.length = 42;
+	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customField }));
+	"""
+	call_metadata_api(demo_apex_code)
