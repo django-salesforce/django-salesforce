@@ -7,6 +7,16 @@
 
 """
 Database backend for the Salesforce API.
+
+No code in this directory is used with standard databases, even if a standard
+database is used for running some application tests on objects defined by
+SalesforceModel. All code for SF models that can be used with non SF databases
+should be located directly in the 'salesforce' directory in files 'models.py',
+'fields.py', 'manager.py', 'router.py', 'admin.py'.
+
+Incorrectly located files: (It is better not to change it now.)
+	backend/manager.py   => manager.py
+	auth.py              => backend/auth.py
 """
 
 import socket
