@@ -148,6 +148,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		raise base.SalesforceError('%s' % data, data, response, verbose)
 
 def prep_for_deserialize(model, record, using):
+	# TODO the parameter 'using' is not currently important.
 	attribs = record.pop('attributes')
 
 	mod = model.__module__.split('.')
@@ -305,15 +306,14 @@ class CursorWrapper(object):
 	This is the class that is actually responsible for making connections
 	to the SF REST API
 	"""
-	def __init__(self, connection, query=None):
+	def __init__(self, db, query=None):
 		"""
 		Connect to the Salesforce API.
 		"""
-		self.settings_dict = connection.settings_dict
-		self.db = connection
-		self.session = connection.sf_session
+		self.db = db
 		self.query = query
-		# A consistent value is iter([]), but `self.results` can be undefined until execute
+		self.session = db.sf_session
+		# A consistent value of empty self.results after execute will be `iter([])`
 		self.results = None
 		self.rowcount = None
 		self.first_row = None
@@ -386,7 +386,6 @@ class CursorWrapper(object):
 				query_str=urlencode(dict(q=processed_sql)),
 		)
 		log.debug(processed_sql)
-		db = self.db.alias
 		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def query_more(self, nextRecordsUrl):
