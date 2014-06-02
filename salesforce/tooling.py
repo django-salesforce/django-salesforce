@@ -192,6 +192,7 @@ def set_trace_flag(traced_entity_id, scope_id, seconds=300, level=None, using=sf
 	>>> user_id = sf_get('')['identity'].split('/')[-1]
 	>>> set_trace_flag(user_id, user_id, level='Debug', ApexProfiling='Warn', System='Warn')
 	"""
+	# TODO This requires a properly set the local clock. Do it relative.
 	levels = "Finest Finer Fine Debug Info Warn Error".split()
 	log_categories = "ApexCode ApexProfiling Callout Database System Validation VisualForce Workflow".split()
 	soql = ("SELECT Id, ExpirationDate, {log_categories} "
