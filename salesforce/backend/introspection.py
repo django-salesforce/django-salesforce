@@ -69,7 +69,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	@property
 	def oauth(self):
 		from salesforce import auth
-		return auth.authenticate(self.connection.settings_dict)
+		return auth.authenticate(db_alias=self.connection.alias)
 	
 	@property
 	def table_list_cache(self):

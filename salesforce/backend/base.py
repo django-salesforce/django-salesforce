@@ -110,7 +110,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.validation = DatabaseValidation(self)
 		self.sf_session = requests.Session()
 		self.sf_session.auth = SalesforceAuth(db_alias=alias)
-		sf_instance_url = authenticate(settings_dict=settings_dict)['instance_url']
+		sf_instance_url = authenticate(alias, settings_dict=settings_dict)['instance_url']
 		sf_requests_adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
 		self.sf_session.mount(sf_instance_url, sf_requests_adapter)
 		# Additional header works, but the improvement unmeasurable for me.

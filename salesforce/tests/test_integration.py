@@ -29,18 +29,21 @@ import logging
 log = logging.getLogger(__name__)
 
 random_slug = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for x in range(32))
-current_user = settings.DATABASES['salesforce']['USER']
+sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
+current_user = settings.DATABASES[sf_alias]['USER']
 test_email = 'test-djsf-unittests-%s@example.com' % random_slug
 sf_tables = [x['name'] for x in
-		connections['salesforce'].introspection.table_list_cache['sobjects']
+		connections[sf_alias].introspection.table_list_cache['sobjects']
 		]
+sf_databases = [db for db in connections if router.is_sf_database(db)]
 
 
 def refresh(obj):
 	"""
-	Get the same object refreshed from db.
+	Get the same object refreshed from the same db.
 	"""
-	return obj.__class__.objects.get(pk=obj.pk)
+	db = obj._state.db
+	return type(obj).objects.using(db).get(pk=obj.pk)
 	
 def round_datetime_utc(timestamp):
 	"""Round to seconds and set zone to UTC."""
@@ -519,7 +522,7 @@ class BasicSOQLTest(TestCase):
 		Get results by cursor.execute(...); fetchone(), fetchmany(), fetchall()
 		"""
 		sql = "SELECT Id, LastName, FirstName, OwnerId FROM Contact LIMIT 2"
-		cursor = connections['salesforce'].cursor()
+		cursor = connections[sf_alias].cursor()
 		cursor.execute(sql)
 		contacts = cursor.fetchall()
 		self.assertEqual(len(contacts), 2)
@@ -536,15 +539,6 @@ class BasicSOQLTest(TestCase):
 		bad_queryset = Lead.objects.raw("select XYZ from Lead")
 		bad_queryset.query.debug_silent = True
 		self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
-
-	def test_expired_auth_id(self):
-		"""
-		Test the code for expired auth ID.
-		"""
-		# simulate that a request with invalid/expired auth ID re-authenticates
-		# and succeeds.
-		salesforce.auth.oauth_data['salesforce']['access_token'] += 'simulated invalid/expired'
-		self.assertEqual(len(Lead.objects.raw("select Id from Lead limit 1")[0].Id), 18)
 
 	def test_generic_type_field(self):
 		"""
@@ -612,4 +606,51 @@ class BasicSOQLTest(TestCase):
 		#bad_id = '003000000000000AAB' # Id with an incorrect uppercase mask
 		#self.assertRaises(salesforce.backend.base.SalesforceError, Contact(pk=bad_id).delete)
 
-	#@skip("Waiting for bug fix")
+	def test_multiple_sf_databases(self):
+		"""
+		Test a connection to two sf databases with the same user.
+		(with sandboxes of the same organization)
+		"""
+		other_dbs = [k for k, v in settings.DATABASES.items() if
+				k != 'salesforce' and v['ENGINE'] == 'salesforce.backend']
+		if not other_dbs:
+			self.testSkip('Only one SF database found.')
+		other_db = other_dbs[0]
+		c1 = Contact(LastName='sf_test 1')
+		c2 = Contact(LastName='sf_test 2')
+		c1.save()
+		c2.save(using=other_db)
+		try:
+			user1 = refresh(c1).Owner
+			user2 = refresh(c2).Owner
+			username1 = user1.Username
+			username2 = user2.Username
+			# Verify different, but similar usernames like usual in sandboxes
+			self.assertNotEqual(user1._state.db, user2._state.db)
+			self.assertNotEqual(username1, username2)
+			self.assertEqual(username1.split('@')[0], username2.split('@')[0])
+		finally:
+			c1.delete()
+			c2.delete()
+
+	def test_expired_auth_id(self):
+		"""
+		Test the code for expired auth ID for multiple SF databases.
+		No similar test exists for a single db.
+		"""
+		self.assertGreaterEqual(len(sf_databases), 1)
+		objects = []
+		for db in sf_databases:
+			c = Contact(LastName='sf_test %s' % db)
+			c.save(using=db)
+			objects.append(c)
+		try:
+			# simulate that a request with invalid/expired auth ID re-authenticates
+			# and succeeds.
+			for db in sf_databases:
+				salesforce.auth.oauth_data[db]['access_token'] += 'simulated invalid/expired'
+			for x in objects:
+				self.assertTrue(refresh(x))
+		finally:
+			for x in objects:
+				x.delete()
