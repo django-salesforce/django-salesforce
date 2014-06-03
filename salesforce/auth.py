@@ -38,7 +38,7 @@ def authenticate(db_alias=None, settings_dict=None):
 				   It is only important for the first connection.
 
 	This function can be called multiple times, but will only make
-	an external request once per the lifetime of the process. Subsequent
+	an external request once per the lifetime of the auth token. Subsequent
 	calls to authenticate(...) will return the original oauth response.
 	
 	This function is thread-safe.

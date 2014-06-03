@@ -33,7 +33,7 @@ log = logging.getLogger(__name__)
 class SalesforceModelBase(ModelBase):
 	"""
 	This is a sub-metaclass of the normal Django ModelBase.
-	
+
 	This metaclass overrides the default table-guessing behavior of Django
 	and replaces it with code that defaults to the model name.
 	"""

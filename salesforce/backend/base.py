@@ -93,8 +93,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		'endswith': 'LIKE %s',
 		'istartswith': 'LIKE %s',
 		'iendswith': 'LIKE %s',
-		# TODO remove 'isnull' because it's incorrect and unused
-		#'isnull': '!= %s',
 	}
 
 	Database = Database
