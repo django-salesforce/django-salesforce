@@ -74,9 +74,7 @@ class ModelRouter(object):
 		# models with SF models by introspection.
 		if(hasattr(model, '_salesforce_object')):
 			#return False
-			print("alow_migrate: %s %s" % (model, db))
-			return True
-			#pass
+			pass
 		# Nothing is said about non SF models with non SF databases, because
 		# it can be solved by other routers, otherwise is enabled if all
 		# routers say None.
