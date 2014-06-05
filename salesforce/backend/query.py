@@ -492,15 +492,13 @@ class CursorWrapper(object):
 
 string_literal = quoted_string_literal
 def date_literal(d, c):
-	if(d.tzinfo):
-		tzname = datetime.datetime.strftime(d, "%z").replace(':', '')
-		return datetime.datetime.strftime(d, "%Y-%m-%dT%H:%M:%S.000") + tzname
-	else:
+	if not d.tzinfo:
 		import time
 		tz = pytz.timezone(settings.TIME_ZONE)
-		nd = tz.localize(d, is_dst=time.daylight)
-		tzname = datetime.datetime.strftime(nd, "%z").replace(':', '')
-		return datetime.datetime.strftime(nd, "%Y-%m-%dT%H:%M:%S.000") + tzname
+		d = tz.localize(d, is_dst=time.daylight)
+	# Format of `%z` is "+HHMM"
+	tzname = datetime.datetime.strftime(d, "%z")
+	return datetime.datetime.strftime(d, "%Y-%m-%dT%H:%M:%S.000") + tzname
 
 def sobj_id(obj, conv):
 	return obj.pk
