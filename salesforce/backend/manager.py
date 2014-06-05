@@ -16,12 +16,12 @@ from django.db import connections
 from django.db.models import manager
 from django.db.models.query import RawQuerySet
 
-from salesforce import router, DJANGO_17_PLUS
+from salesforce import router, DJANGO_16_PLUS
 
 class SalesforceManager(manager.Manager):
 	use_for_related_fields = True
 	
-	def get_query_set(self):
+	def get_queryset(self):
 		"""
 		Returns a QuerySet which access remote SF objects.
 		"""
@@ -33,8 +33,8 @@ class SalesforceManager(manager.Manager):
 			q = query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
 			return query.SalesforceQuerySet(self.model, query=q, using=self.db)
 
-	if DJANGO_17_PLUS:
-		get_queryset = get_query_set
+	if not DJANGO_16_PLUS:
+		get_query_set = get_queryset
 
 
 	def raw(self, raw_query, params=None, *args, **kwargs):

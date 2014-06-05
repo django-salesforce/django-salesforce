@@ -14,8 +14,9 @@ import logging
 import ssl
 
 import django
-DJANGO_15 = django.VERSION[:2] >= (1, 5)
-DJANGO_16 = django.VERSION[:2] >= (1, 6)
+# The names DJANGO_1* are deprecated as less clear in the code
+DJANGO_15_PLUS = DJANGO_15 = django.VERSION[:2] >= (1, 5)
+DJANGO_16_PLUS = DJANGO_16 = django.VERSION[:2] >= (1, 6)
 DJANGO_17_PLUS = django.VERSION[:2] >= (1, 7)
 if not django.VERSION[:2] >= (1, 4):
 	raise ImportError("Django 1.4 or higher is required for django-salesforce.")
