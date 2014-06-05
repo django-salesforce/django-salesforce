@@ -17,6 +17,7 @@ from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
 from django.utils.unittest import skip, skipUnless
+from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
@@ -47,14 +48,6 @@ def refresh(obj):
 	db = obj._state.db
 	return type(obj).objects.using(db).get(pk=obj.pk)
 	
-def round_datetime_utc(timestamp):
-	"""Round to seconds and set zone to UTC."""
-	## sfdates are UTC to seconds precision but use a fixed-offset
-	## of +0000 (as opposed to a named tz)
-	timestamp = timestamp.replace(microsecond=0)
-	timestamp = timestamp.replace(tzinfo=pytz.utc)
-	return timestamp
-
 
 class BasicSOQLTest(TestCase):
 	def setUp(self):
@@ -170,7 +163,7 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test updating a date.
 		"""
-		now = round_datetime_utc(datetime.datetime.utcnow())
+		now = timezone.now().replace(microsecond=0)
 		contact = Contact(FirstName = 'sf_test', LastName='my')
 		contact.save()
 		contact = refresh(contact)
@@ -185,11 +178,11 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test inserting a date.
 		"""
-		now = round_datetime_utc(datetime.datetime.utcnow())
+		now = timezone.now().replace(microsecond=0)
 		contact = Contact(
 				FirstName = 'Joe',
 				LastName = 'Freelancer',
-				EmailBouncedDate=now.replace(tzinfo=pytz.utc))
+				EmailBouncedDate=now)
 		contact.save()
 		try:
 			self.assertEqual(refresh(contact).EmailBouncedDate, now)
@@ -274,7 +267,9 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test that date comparisons work properly.
 		"""
-		today = round_datetime_utc(datetime.datetime(2013, 8, 27))
+		today = datetime.datetime(2013, 8, 27)
+		if settings.USE_TZ:
+			today = timezone.make_aware(today, pytz.utc)
 		yesterday = today - datetime.timedelta(days=1)
 		tomorrow = today + datetime.timedelta(days=1)
 		contact = Contact(FirstName='sf_test', LastName='date',

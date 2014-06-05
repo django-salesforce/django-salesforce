@@ -174,7 +174,12 @@ def prep_for_deserialize(model, record, using):
 					d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
 					import pytz
 					d = d.replace(tzinfo=pytz.utc)
-					fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+					if settings.USE_TZ:
+						fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+					else:
+						tz = pytz.timezone(settings.TIME_ZONE)
+						d = tz.normalize(d.astimezone(tz))
+						fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT[:-6])
 				else:
 					fields[x.name] = field_val
 
