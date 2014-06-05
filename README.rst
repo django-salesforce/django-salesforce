@@ -38,10 +38,10 @@ Quick Start
     }
 
 
-4. **(optional)** To override the default REST timeout of 3 seconds,
+4. **(optional)** To override the default timeout of 15 seconds,
    define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file::
 
-    SALESFORCE_QUERY_TIMEOUT = 3
+    SALESFORCE_QUERY_TIMEOUT = 15
 
 5. **(optional)** If you want to use another name for your Salesforce DB
    connection, define ``SALESFORCE_DB_ALIAS`` in your settings file::
@@ -58,13 +58,11 @@ Quick Start
 7. Define a model that extends ``salesforce.models.SalesforceModel``
    or export the complete SF schema by
    ``python manage.py inspectdb --database=salesforce`` and simplify it
-   to what you need. If an inner ``Meta`` class is used, e.g. for a
-   ``db_table`` option of custom SF object with a name that ends with ``__c``,
-   then that Meta must be a descendant of ``SalesforceModel.Meta`` or must have
-   the attribute ``managed=False``.
+   to what you need.
 
 8. If you want to use the model in the Django admin interface, use a
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
+
 9. You're all done! Just use your model like a normal Django model.
 
 Foreign Key Support
@@ -102,6 +100,28 @@ type is now supported::
 
 Example of `Note` model is in `salesforce.testrunner.example.models.Note`.
 
+Advanced usage
+--------------
+
+-  **Testing** You can set ``SALESFORCE_DB_ALIAS = 'default'`` if you want to
+   run your unit tests fast in memory with the sqlite3 driver, without access
+   to the SF database. (Only login server is accessed but not the data server.)
+-  **Multiple databases** of similar structure can be used with the SF model,
+   including more SF databases. If ``SALESFORCE_DB_ALIAS`` is set to a non SF
+   database, than tables defined by SF model can be created by syncdb in that
+   database if a model has a ``Meta`` class with the attribute ``managed=True``
+   or undefined. This behaviour can be also configured by ``DATABASE_ROUTERS``.
+-  **Non SF databases** If an inner ``Meta`` class is used, e.g. for a
+   ``db_table`` option of custom SF object for a name that ends with ``__c``,
+   then that Meta must be a descendant of ``SalesforceModel.Meta`` or must have
+   the attribute ``managed=False``.
+-  **Custom Managers** Custom managers of a model must be descendants of
+   ``salesforce.manager.SalesforceManager``.
+   Switching the type by ``SALESFORCE_DB_ALIAS`` is easy, e.g. for fast tests.
+   If SF non SF databases should be used for SF models together, switched by
+   ``.using(alias).``, you shall switch it by ``.db_manager(alias)`` instead.
+   e.g. ``Contact.objects.db_manager(alias).my_manager(params...)``
+
 Caveats
 -------
 
@@ -124,8 +144,6 @@ here are the potential pitfalls and unimplemented operations:
    extend salesforce.models.SalesforceModel. The model router checks for
    this to determine which models to handle through the Salesforce
    connection.
--  **Multiple Salesforce Connections** — Creating more than one salesforce
-   connection entry in ``DATABASES`` will probably fail in unpredictable ways. ``;-)``
 -  **Multiple Updates** — Multiple update support is not yet
    implemented.
 -  **Multiple Deletes** — Multiple delete support is not yet
