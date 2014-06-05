@@ -53,7 +53,7 @@ def quoted_string_literal(s, d):
 	http://www.salesforce.com/us/developer/docs/soql_sosl/Content/sforce_api_calls_soql_select_quotedstringescapes.htm
 	"""
 	try:
-		return "'%s'" % (s.replace("'", "\\'"),)
+		return "'%s'" % (s.replace("\\", "\\\\").replace("'", "\\'"),)
 	except TypeError as e:
 		raise NotImplementedError("Cannot quote %r objects: %r" % (type(s), s))
 
