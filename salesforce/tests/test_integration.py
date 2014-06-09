@@ -17,6 +17,7 @@ from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
 from django.utils.unittest import skip, skipUnless
+from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
@@ -33,11 +34,12 @@ random_slug = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowerc
 sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 current_user = settings.DATABASES[sf_alias]['USER']
 test_email = 'test-djsf-unittests-%s@example.com' % random_slug
-sf_tables = [x['name'] for x in
-		connections[sf_alias].introspection.table_list_cache['sobjects']
-		]
+sf_tables = []
+if router.is_sf_database(sf_alias):
+	sf_tables = [x['name'] for x in
+			connections[sf_alias].introspection.table_list_cache['sobjects']]
 sf_databases = [db for db in connections if router.is_sf_database(db)]
-
+default_is_sf = router.is_sf_database(sf_alias)
 
 def refresh(obj):
 	"""
@@ -46,20 +48,16 @@ def refresh(obj):
 	db = obj._state.db
 	return type(obj).objects.using(db).get(pk=obj.pk)
 	
-def round_datetime_utc(timestamp):
-	"""Round to seconds and set zone to UTC."""
-	## sfdates are UTC to seconds precision but use a fixed-offset
-	## of +0000 (as opposed to a named tz)
-	timestamp = timestamp.replace(microsecond=0)
-	timestamp = timestamp.replace(tzinfo=pytz.utc)
-	return timestamp
-
 
 class BasicSOQLTest(TestCase):
 	def setUp(self):
 		"""
 		Create our test lead record.
 		"""
+		def add_obj(obj):
+			obj.save()
+			self.objs.append(obj)
+		#
 		self.test_lead = Lead(
 			FirstName	= "User",
 			LastName	= "Unittest General",
@@ -67,15 +65,26 @@ class BasicSOQLTest(TestCase):
 			Status		= 'Open',
 			Company = "Some company, Ltd.",
 		)
+		self.objs = []
 		self.test_lead.save()
+		if not default_is_sf:
+			add_obj(Contact(LastName='Test contact 1'))
+			add_obj(Contact(LastName='Test contact 2'))
+			add_obj(User(Username=current_user))
 	
 	def tearDown(self):
 		"""
-		Clean up our test lead record.
+		Clean up our test records.
 		"""
-		self.test_lead.delete()
+		if self.test_lead.pk is not None:
+			self.test_lead.delete()
+		for obj in self.objs:
+			if obj.pk is not None:
+				obj.delete()
+		self.objs = []
 
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_raw(self):
 		"""
 		Get the first two contact records.
@@ -89,6 +98,7 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(len(contacts), 2)
 		'%s' % contacts[0].__dict__  # Check that all fields are accessible
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_raw_foreignkey_id(self):
 		"""
 		Get the first two contacts by raw query with a ForeignKey id field.
@@ -118,6 +128,7 @@ class BasicSOQLTest(TestCase):
 		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General").filter(FirstName="User", LastName="Unittest General")
 		self.assertEqual(leads.count(), 1)
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_foreign_key(self):
 		"""
 		Verify that the owner of an Contact is the currently logged admin.
@@ -152,33 +163,33 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test updating a date.
 		"""
-		now = round_datetime_utc(datetime.datetime.utcnow())
-		contact = Contact.objects.all()[0]
-		old_date = contact.EmailBouncedDate
-		contact.EmailBouncedDate = now.replace(tzinfo=pytz.utc)
+		now = timezone.now().replace(microsecond=0)
+		contact = Contact(FirstName = 'sf_test', LastName='my')
 		contact.save()
+		contact = refresh(contact)
 		try:
+			contact.EmailBouncedDate = now
+			contact.save()
 			self.assertEqual(refresh(contact).EmailBouncedDate, now)
 		finally:
-			contact.EmailBouncedDate = old_date
-			contact.save()
-		self.assertEqual(refresh(contact).EmailBouncedDate, old_date)
+			contact.delete()
 	
 	def test_insert_date(self):
 		"""
 		Test inserting a date.
 		"""
-		now = round_datetime_utc(datetime.datetime.utcnow())
+		now = timezone.now().replace(microsecond=0)
 		contact = Contact(
 				FirstName = 'Joe',
 				LastName = 'Freelancer',
-				EmailBouncedDate=now.replace(tzinfo=pytz.utc))
+				EmailBouncedDate=now)
 		contact.save()
 		try:
 			self.assertEqual(refresh(contact).EmailBouncedDate, now)
 		finally:
 			contact.delete()
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_default_specified_by_sf(self):
 		"""
 		Verify that an object with a field with default value specified by some
@@ -211,6 +222,8 @@ class BasicSOQLTest(TestCase):
 		lead = Lead.objects.get(Email=test_email)
 		self.assertEqual(lead.FirstName, 'User')
 		self.assertEqual(lead.LastName, 'Unittest General')
+		if not default_is_sf:
+			self.skipTest("Default database should be any Salesforce.")
 		# test a read only field (formula of full name)
 		self.assertEqual(lead.Name, 'User Unittest General')
 	
@@ -254,7 +267,9 @@ class BasicSOQLTest(TestCase):
 		"""
 		Test that date comparisons work properly.
 		"""
-		today = round_datetime_utc(datetime.datetime(2013, 8, 27))
+		today = datetime.datetime(2013, 8, 27)
+		if settings.USE_TZ:
+			today = timezone.make_aware(today, pytz.utc)
 		yesterday = today - datetime.timedelta(days=1)
 		tomorrow = today + datetime.timedelta(days=1)
 		contact = Contact(FirstName='sf_test', LastName='date',
@@ -268,6 +283,7 @@ class BasicSOQLTest(TestCase):
 		finally:
 			contact.delete()
 	
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_insert(self):
 		"""
 		Create a lead record, and make sure it ends up with a valid Salesforce ID.
@@ -303,6 +319,7 @@ class BasicSOQLTest(TestCase):
 		test_lead.save()
 		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_decimal_precision(self):
 		"""
 		Ensure that the precision on a DecimalField of a record saved to
@@ -360,6 +377,7 @@ class BasicSOQLTest(TestCase):
 		# The reliability of this is only 99.9%, therefore it is commented out.
 		#self.assertNotEqual(trigger.PreviousFireTime.microsecond, 0)
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_time_field(self):
 		"""
 		Test a TimeField (read, modify, verify).
@@ -405,6 +423,7 @@ class BasicSOQLTest(TestCase):
 		User.objects.get(Username__iendswith=current_user[1:].upper())
 		# Operators regex and iregex not tested because they are not supported.
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_unsupported_bulk_create(self):
 		"""
 		Unsupported bulk_create: "Errors should never pass silently."
@@ -417,7 +436,7 @@ class BasicSOQLTest(TestCase):
 		Test that single quotes in strings used in filtering a QuerySet
 		are escaped properly.
 		"""
-		account_name = '''Dr. Evil's Giant "Laser", LLC'''
+		account_name = '''Dr. Evil's Giant\\' "Laser", LLC'''
 		account = Account(Name=account_name)
 		account.save()
 		try:
@@ -425,15 +444,16 @@ class BasicSOQLTest(TestCase):
 		finally:
 			account.delete()
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_escape_single_quote_in_raw_query(self):
 		"""
 		Test that manual escaping within a raw query is not double escaped.
 		"""
-		account_name = '''Dr. Evil's Giant "Laser", LLC'''
+		account_name = '''Dr. Evil's Giant\\' "Laser", LLC'''
 		account = Account(Name=account_name)
 		account.save()
 
-		manually_escaped = '''Dr. Evil\\'s Giant "Laser", LLC'''
+		manually_escaped = '''Dr. Evil\\'s Giant\\\\\\' "Laser", LLC'''
 		try:
 			retrieved_account = Account.objects.raw(
 				"SELECT Id, Name FROM Account WHERE Name = '%s'" % manually_escaped)[0]
@@ -457,6 +477,7 @@ class BasicSOQLTest(TestCase):
 		len(Contact.objects.filter(Q(FirstName=u'\xe1') | Q(LastName=u'\xe9')))
 		len(Contact.objects.filter(Q(FirstName='\xc3\xa1') | Q(LastName='\xc3\xa9')))
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_aggregate_query(self):
 		"""
 		Test for different aggregate function.
@@ -499,10 +520,15 @@ class BasicSOQLTest(TestCase):
 		"""
 		self.test_lead.delete()
 		# TODO optimize counting because this can load thousands of records
-		count_deleted = Lead.objects.filter(IsDeleted=True, LastName="Unittest General").query_all().count()
+		count_deleted = Lead.objects.db_manager(sf_alias).query_all().filter(IsDeleted=True, LastName="Unittest General").count()
+		if not default_is_sf:
+			self.skipTest("Default database should be any Salesforce.")
 		self.assertGreaterEqual(count_deleted, 1)
+		count_deleted2 = Lead.objects.filter(IsDeleted=True, LastName="Unittest General").query_all().count()
+		self.assertGreaterEqual(count_deleted2, count_deleted)
 		self.test_lead.save()  # save anything again to be cleaned finally
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_z_big_query(self):
 		"""
 		Test a big query that will be splitted to more requests.
@@ -518,6 +544,7 @@ class BasicSOQLTest(TestCase):
 					len(leads_list), file=sys.stderr)
 			self.skipTest("Not enough Leads found for big query test")
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_cursor_execute_fetch(self):
 		"""
 		Get results by cursor.execute(...); fetchone(), fetchmany(), fetchall()
@@ -532,6 +559,7 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(cursor.fetchone(), contacts[0])
 		self.assertEqual(cursor.fetchmany(), contacts[1:])
 	
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_errors(self):
 		"""
 		Test for improving code coverage.
@@ -541,6 +569,7 @@ class BasicSOQLTest(TestCase):
 		bad_queryset.query.debug_silent = True
 		self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_generic_type_field(self):
 		"""
 		Test that a generic foreign key can be filtered by type name and
@@ -585,6 +614,7 @@ class BasicSOQLTest(TestCase):
 		v0 = values[0]
 		self.assertEqual(values_list[0], (v0['pk'], v0['FirstName'], v0['LastName']))
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_double_delete(self):
 		"""
 		Test that repeated delete of the same object is ignored the same way
@@ -607,6 +637,7 @@ class BasicSOQLTest(TestCase):
 		#bad_id = '003000000000000AAB' # Id with an incorrect uppercase mask
 		#self.assertRaises(salesforce.backend.base.SalesforceError, Contact(pk=bad_id).delete)
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_multiple_sf_databases(self):
 		"""
 		Test a connection to two sf databases with the same user.
@@ -634,6 +665,7 @@ class BasicSOQLTest(TestCase):
 			c1.delete()
 			c2.delete()
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_expired_auth_id(self):
 		"""
 		Test the code for expired auth ID for multiple SF databases.

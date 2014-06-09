@@ -7,14 +7,17 @@
 
 from django.test import TestCase
 from django.conf import settings
+from django.utils.unittest import skipUnless
 
 from salesforce import auth
 from salesforce.backend import sf_alias
 from salesforce.testrunner.example import models
+from salesforce.tests.test_integration import default_is_sf
 
 import logging
 log = logging.getLogger(__name__)
 
+@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 class OAuthTest(TestCase):
 	def setUp(self):
 		pass

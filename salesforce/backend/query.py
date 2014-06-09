@@ -53,7 +53,7 @@ def quoted_string_literal(s, d):
 	http://www.salesforce.com/us/developer/docs/soql_sosl/Content/sforce_api_calls_soql_select_quotedstringescapes.htm
 	"""
 	try:
-		return "'%s'" % (s.replace("'", "\\'"),)
+		return "'%s'" % (s.replace("\\", "\\\\").replace("'", "\\'"),)
 	except TypeError as e:
 		raise NotImplementedError("Cannot quote %r objects: %r" % (type(s), s))
 
@@ -174,7 +174,12 @@ def prep_for_deserialize(model, record, using):
 					d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
 					import pytz
 					d = d.replace(tzinfo=pytz.utc)
-					fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+					if settings.USE_TZ:
+						fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+					else:
+						tz = pytz.timezone(settings.TIME_ZONE)
+						d = tz.normalize(d.astimezone(tz))
+						fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT[:-6])
 				else:
 					fields[x.name] = field_val
 
@@ -211,7 +216,7 @@ def extract_values(query):
 			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
 				continue
 		[arg] = process_json_args([value])
-		d[field.db_column or field.name] = arg
+		d[field.column] = arg
 	return d
 
 class SalesforceRawQuerySet(query.RawQuerySet):
@@ -487,15 +492,13 @@ class CursorWrapper(object):
 
 string_literal = quoted_string_literal
 def date_literal(d, c):
-	if(d.tzinfo):
-		tzname = datetime.datetime.strftime(d, "%z").replace(':', '')
-		return datetime.datetime.strftime(d, "%Y-%m-%dT%H:%M:%S.000") + tzname
-	else:
+	if not d.tzinfo:
 		import time
 		tz = pytz.timezone(settings.TIME_ZONE)
-		nd = tz.localize(d, is_dst=time.daylight)
-		tzname = datetime.datetime.strftime(nd, "%z").replace(':', '')
-		return datetime.datetime.strftime(nd, "%Y-%m-%dT%H:%M:%S.000") + tzname
+		d = tz.localize(d, is_dst=time.daylight)
+	# Format of `%z` is "+HHMM"
+	tzname = datetime.datetime.strftime(d, "%z")
+	return datetime.datetime.strftime(d, "%Y-%m-%dT%H:%M:%S.000") + tzname
 
 def sobj_id(obj, conv):
 	return obj.pk

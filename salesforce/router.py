@@ -62,8 +62,13 @@ class ModelRouter(object):
 		"""
 		Don't attempt to sync SF models to non SF databases and vice versa.
 		"""
-		if is_sf_database(db) != hasattr(model, '_salesforce_object'):
-			return False
+		if hasattr(model, '_salesforce_object'):
+			# If SALESFORCE_DB_ALIAS is e.g. a sqlite3 database, than it can migrate SF models
+			if not (is_sf_database(db) or db == self.sf_alias):
+				return False
+		else:
+			if is_sf_database(db):
+				return False
 		# TODO: It is usual that syncdb is currently disallowed for SF but in
 		# the future it can be allowed to do deep check of compatibily Django
 		# models with SF models by introspection.
