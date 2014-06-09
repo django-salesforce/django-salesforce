@@ -58,7 +58,7 @@ class ModelRouter(object):
 		if getattr(model, '_salesforce_object', False):
 			return self.sf_alias
 
-	def allow_syncdb(self, db, model):
+	def allow_migrate(self, db, model):
 		"""
 		Don't attempt to sync SF models to non SF databases and vice versa.
 		"""
@@ -73,3 +73,6 @@ class ModelRouter(object):
 		# Nothing is said about non SF models with non SF databases, because
 		# it can be solved by other routers, otherwise is enabled if all
 		# routers say None.
+	
+	# alias for Django 1.6 and older. The new name is useful for sqlall etc.
+	allow_syncdb = allow_migrate

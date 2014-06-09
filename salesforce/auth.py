@@ -28,23 +28,27 @@ def expire_token(db_alias=None):
 	with oauth_lock:
 		del oauth_data[db_alias or sf_alias]
 
-def authenticate(settings_dict=None, db_alias=None):
+def authenticate(db_alias=None, settings_dict=None):
 	"""
 	Authenticate to the Salesforce API with the provided credentials.
 	
         Params:
+			db_alias:  The database alias e.g. the default SF alias 'salesforce'.
 			settings_dict: Should be obtained from django.conf.DATABASES['salesforce'].
-			db_alias:  The database alias e.g. the default alias 'salesforce'.
+				   It is only important for the first connection.
 
 	This function can be called multiple times, but will only make
-	an external request once per the lifetime of the process. Subsequent
-	calls to authenticate() will return the original oauth response.
+	an external request once per the lifetime of the auth token. Subsequent
+	calls to authenticate(...) will return the original oauth response.
 	
 	This function is thread-safe.
 	"""
 	# if another thread is in this method, wait for it to finish.
 	# always release the lock no matter what happens in the block
 	db_alias = db_alias or sf_alias
+	if not db_alias in connections:
+		raise KeyError("authentificate function header has been changed. "
+				"The db_alias parameter more important than settings_dict")
 	with oauth_lock:
 		if db_alias in oauth_data:
 			return oauth_data[db_alias]
@@ -52,7 +56,7 @@ def authenticate(settings_dict=None, db_alias=None):
 		settings_dict = settings_dict or connections[db_alias].settings_dict
 		url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
 		
-		log.info("attempting authentication to %s" % url)
+		log.info("attempting authentication to %s" % settings_dict['HOST'])
 		session = requests.Session()
 		session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=MAX_RETRIES))
 		response = session.post(url, data=dict(
@@ -74,6 +78,8 @@ class SalesforceAuth(AuthBase):
 	"""
 	Attaches OAuth 2 Salesforce authentication to the Session
 	or the given Request object.
+
+	http://docs.python-requests.org/en/latest/user/advanced/#custom-authentication
 	"""
 	def __init__(self, db_alias):
 		self.db_alias = db_alias

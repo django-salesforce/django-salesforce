@@ -81,9 +81,9 @@ def process_json_args(args):
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, json_conversions) for x in args])
 
-def reauthenticate():
-	auth.expire_token()
-	oauth = auth.authenticate(settings.DATABASES[sf_alias])
+def reauthenticate(db_alias):
+	auth.expire_token(db_alias)
+	oauth = auth.authenticate(db_alias=db_alias)
 	return oauth['access_token']
 
 def handle_api_exceptions(url, f, *args, **kwargs):
@@ -106,7 +106,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		# Unauthorized (expired or invalid session ID or OAuth)
 		data = response.json()[0]
 		if(data['errorCode'] == 'INVALID_SESSION_ID'):
-			token = reauthenticate()
+			token = reauthenticate(db_alias=f.__self__.auth.db_alias)
 			if('headers' in kwargs):
 				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
 			try:
@@ -148,6 +148,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		raise base.SalesforceError('%s' % data, data, response, verbose)
 
 def prep_for_deserialize(model, record, using):
+	# TODO the parameter 'using' is not currently important.
 	attribs = record.pop('attributes')
 
 	mod = model.__module__.split('.')
@@ -235,6 +236,10 @@ class SalesforceQuerySet(query.QuerySet):
 
 		pfd = prep_for_deserialize
 		for res in python.Deserializer(pfd(self.model, r, self.db) for r in cursor.results):
+			# Store the source database of the object
+			res.object._state.db = self.db
+			# This object came from the database; it's not being added.
+			res.object._state.adding = False
 			yield res.object
 
 	def query_all(self):
@@ -301,15 +306,14 @@ class CursorWrapper(object):
 	This is the class that is actually responsible for making connections
 	to the SF REST API
 	"""
-	def __init__(self, connection, query=None):
+	def __init__(self, db, query=None):
 		"""
 		Connect to the Salesforce API.
 		"""
-		self.settings_dict = connection.settings_dict
-		self.connection = connection
-		self.session = connection.sf_session
+		self.db = db
 		self.query = query
-		# A consistent value is iter([]), but `self.results` can be undefined until execute
+		self.session = db.sf_session
+		# A consistent value of empty self.results after execute will be `iter([])`
 		self.results = None
 		self.rowcount = None
 		self.first_row = None
@@ -322,7 +326,7 @@ class CursorWrapper(object):
 
 	@property
 	def oauth(self):
-		return auth.authenticate(self.settings_dict)
+		return auth.authenticate(db_alias=self.db.alias)
 
 	def execute(self, q, args=()):
 		"""

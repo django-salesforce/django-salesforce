@@ -53,7 +53,7 @@ Quick Start
 
     DATABASE_ROUTERS = [
         "salesforce.router.ModelRouter"
-	]
+    ]
 
 7. Define a model that extends ``salesforce.models.SalesforceModel``
    or export the complete SF schema by
@@ -74,10 +74,10 @@ Foreign Key Support
 relationship and only for fields whose name equals the name of object.
 Foreign keys of an object can be normally accessed by dot notation without any
 restriction
-Example:
+Example::
 
     contacts = Contact.objects.filter(Account__Name='FOO Company')
-	print(contacts[0].Account.Owner.LastName)
+    print(contacts[0].Account.Owner.LastName)
 
 But the relationship ``Owner__Name`` is not currently possible because the
 type of ``Owner`` is a different name (``User``).
@@ -93,12 +93,12 @@ this can be found in the discussion about `#43 <https://github.com/freelancersun
 **Generic foreign keys** are frequently used in SF for fields that relate to
 objects of different types, e.g. the Parent of Note or Attachment can be almost
 any type of ususal SF objects. Filters by `Parent.Type` and retrieving this
-type is now supported:
+type is now supported::
 
     note = Note.objects.filter(parent_type='Contact')[0]
-	parent_model = getattr(example.models, note.parent_type)
-	parent_object = parent_model.objects.get(pk=note.parent_id)
-	assert note.parent_type == 'Contact'
+    parent_model = getattr(example.models, note.parent_type)
+    parent_object = parent_model.objects.get(pk=note.parent_id)
+    assert note.parent_type == 'Contact'
 
 Example of `Note` model is in `salesforce.testrunner.example.models.Note`.
 
