@@ -47,7 +47,7 @@ def authenticate(db_alias=None, settings_dict=None):
 	# always release the lock no matter what happens in the block
 	db_alias = db_alias or sf_alias
 	if not db_alias in connections:
-		raise KeyError("authentificate function header has been changed. "
+		raise KeyError("authenticate function signature has been changed. "
 				"The db_alias parameter more important than settings_dict")
 	with oauth_lock:
 		if db_alias in oauth_data:
