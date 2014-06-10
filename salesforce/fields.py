@@ -78,7 +78,7 @@ class SalesforceAutoField(fields.Field):
 
 class SfField(models.Field):
 	"""
-	Add support of sf_read_only attribute for Salesforce fields.
+	Add support of 'sf_read_only' and 'custom' parameters to Salesforce fields.
 
 		sf_read_only=3 (READ_ONLY):  The field can not be specified neither on insert or update.
 			e.g. LastModifiedDate (the most frequent type of read only)
@@ -87,11 +87,39 @@ class SfField(models.Field):
 		sf_read_only=2 (NOT_CREATEABLE):  The field can not be specified on insert but can be later modified.
 			e.g. RecordType.IsActive or Lead.EmailBouncedReason
 		sf_read_only=0:  normal writable (default)
+
+		custom=True : Add '__c' to the column name if no db_column is defined.
 	"""
 	def __init__(self, *args, **kwargs):
-		sf_read_only = kwargs.pop('sf_read_only', 0)
+		self.sf_read_only = kwargs.pop('sf_read_only', 0)
+		self.sf_custom = kwargs.pop('custom', False)
 		super(SfField, self).__init__(*args, **kwargs)
-		self.sf_read_only = sf_read_only
+
+	def get_attname_column(self):
+		"""
+		Get the database column name automatically in most cases.
+		"""
+		# See "A guide to Field parameters": django/db/models/fields/__init__.py
+		#   * attname:   The attribute to use on the model object. This is the same as
+		#                "name", except in the case of ForeignKeys, where "_id" is
+		#                appended.
+		#   * column:    The database column for this field. This is the same as
+		#                "attname", except if db_column is specified.
+		attname = self.get_attname()
+		if self.db_column is not None:
+			# explicit name
+			column = self.db_column
+		else:
+			if not self.name.islower():
+				# a Salesforce style name e.g. 'LastName' or 'MyCustomField'
+				column = self.name
+			else:
+				# a Django style name like 'last_name' or 'my_custom_field'
+				column = self.name.title().replace('_', '')
+			# Fix custom fields
+			if self.sf_custom:
+				column += '__c'
+		return attname, column
 
 
 class CharField(SfField, models.CharField):
@@ -136,6 +164,7 @@ class TimeField(SfField, models.TimeField):
 class ForeignKey(SfField, models.ForeignKey):
 	"""ForeignKey with sf_read_only attribute for Salesforce."""
 	def __init__(self, *args, **kwargs):
+		# Checks parameters before call to ancestor.
 		on_delete = kwargs.get('on_delete', models.CASCADE).__name__
 		if not on_delete in ('PROTECT', 'DO_NOTHING'):
 			# The option CASCADE (currently fails) would be unsafe after a fix
@@ -151,7 +180,17 @@ class ForeignKey(SfField, models.ForeignKey):
 		super(ForeignKey, self).__init__(*args, **kwargs)
 
 	def get_attname(self):
-		return '%sId' % self.name
+		if self.name.islower():
+			# the same as django.db.models.fields.related.ForeignKey.get_attname
+			return '%s_id' % self.name
+		else:
+			return '%sId' % self.name
+
+	def get_attname_column(self):
+		attname, column = super(ForeignKey, self).get_attname_column()
+		if self.db_column is None and not self.sf_custom:
+			column += 'Id'
+		return attname, column
 
 
 AutoField = SalesforceAutoField
