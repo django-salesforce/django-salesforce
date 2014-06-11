@@ -290,6 +290,7 @@ class SalesforceQuery(Query):
 		super(SalesforceQuery, self).__init__(*args, **kwargs)
 		self.is_query_all = False
 		self.first_chunk_len = None
+		self.max_depth = 1
 
 	def clone(self, klass=None, memo=None, **kwargs):
 		query = Query.clone(self, klass, memo, **kwargs)
