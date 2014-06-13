@@ -64,7 +64,7 @@ def sf_get_universal(cmd, using=sf_alias, **kwargs):
 	Get information from SF REST API - universal format for internal use
 	"""
 	connection = connections[using]
-	base = auth.authenticate(connection.settings_dict)['instance_url']
+	base = auth.authenticate(using)['instance_url']
 	if kwargs:
 		cmd += '?' + urlencode(kwargs)
 	url = u'{base}{api}/{cmd}'.format(base=base, api=API_STUB, cmd=cmd)
@@ -97,7 +97,7 @@ def sf_post(cmd, using=sf_alias, **kwargs):
 	>>> sf_delete('tooling/sobjects/ApexClass', response.id)
 	"""
 	connection = connections[using]
-	base = auth.authenticate(connection.settings_dict)['instance_url']
+	base = auth.authenticate(using)['instance_url']
 	url = u'{base}{api}/{cmd}'.format(base=base, api=API_STUB, cmd=cmd)
 	headers = {'Content-Type': 'application/json'}
 	post_data = kwargs
@@ -105,7 +105,7 @@ def sf_post(cmd, using=sf_alias, **kwargs):
 
 def sf_patch(cmd, using=sf_alias, **kwargs):
 	connection = connections[using]
-	base = auth.authenticate(connection.settings_dict)['instance_url']
+	base = auth.authenticate(using)['instance_url']
 	id = kwargs.pop('Id')
 	url = u'{base}{api}/{cmd}/{id}'.format(base=base, api=API_STUB, cmd=cmd, id=id)
 	headers = {'Content-Type': 'application/json'}
@@ -117,7 +117,7 @@ def sf_delete(cmd, pk, using=sf_alias):
 	Delete by SF REST API
 	"""
 	connection = connections[using]
-	base = auth.authenticate(connection.settings_dict)['instance_url']
+	base = auth.authenticate(using)['instance_url']
 	url = u'{base}{api}/{cmd}/{id}'.format(base=base, api=API_STUB, cmd=cmd, id=pk)
 	return handle_api_exceptions(url, connection.sf_session.delete)
 
@@ -348,3 +348,37 @@ def create_demo_test_object():
 	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customField }));
 	"""
 	call_metadata_api(demo_apex_code)
+
+	current_user = connections[sf_alias].settings_dict['USER']
+	import pdb; pdb.set_trace()
+	result, log_item, log_body = execute_anonymous_logged("""
+	System.debug('{username}');
+	Id profile_id = [SELECT ProfileId FROM User WHERE Username='{username}'][0].ProfileId;
+	System.debug(profile_id);
+	List<PermissionSet> permission_sets = [SELECT Id FROM PermissionSet WHERE ProfileId=:profile_id];
+	System.debug(permission_sets);
+	FieldPermissions perm = new FieldPermissions(ParentId=permission_sets[0].Id,
+			SObjectType='Test__c', Field='Test__c.TestField__c',
+			PermissionsEdit=true, PermissionsRead=true);
+	insert perm;
+	""".format(username=current_user))
+	print(result, log_item)
+	print(log_body)
+	profile_id = sf_query("""SELECT ProfileId FROM User WHERE Username='%s'""" %
+			current_user)['records'][0]['ProfileId']
+	permission_set_id = sf_query("SELECT Id FROM PermissionSet WHERE ProfileId='%s'" %
+			profile_id)['records'][0]['Id']
+	#object_permissions = sf_query("SELECT Id FROM ObjectPermissions "
+	#		"WHERE ParentId='%s' AND SObjectType='%s'" %
+	#		(permission_set_id, 'Test__c'))['records']
+	PERMISSION_NAMES = ('PermissionsCreate,PermissionsDelete,PermissionsEdit,'
+			'PermissionsModifyAllRecords,PermissionsRead,'
+			'PermissionsViewAllRecords'.split(','))
+	response = sf_post('sobjects/FieldPermissions',
+			ParentId=permission_set_id, SObjectType='Test__c', Field='Test__c.TestField__c',
+			PermissionsEdit=True, PermissionsRead=True)
+	assert response['success']
+	response = sf_post('sobjects/ObjectPermissions',
+			ParentId=permission_set_id, SObjectType='Test__c',
+			**dict.fromkeys(PERMISSION_NAMES, True))
+	assert response['success']
