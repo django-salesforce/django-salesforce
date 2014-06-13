@@ -341,6 +341,44 @@ class BusinessHours(SalesforceModel):
 test_custom_db_table, test_custom_db_column = getattr(settings,
 		'TEST_CUSTOM_FIELD', 'ChargentOrders__ChargentOrder__c.Name').split('.')
 
+class SalesforceParentModel(SalesforceModel):
+	"""
+	Example of standard fields present in all custom models.
+	"""
+	# This is not a custom field because is not defined in a custom model.
+	# The API name is therefore 'Name'.
+	name = models.CharField(max_length=80)
+	last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+	# This model is not custom because it has not an explicit attribute
+	# `custom = True` in Meta and also has not a `db_table` that ends with
+	# '__c'.
+	class Meta:
+		abstract = True
+
+
+class TestCustomExample(SalesforceParentModel):
+	"""
+	Simple custom model with one custom and more standard fields.
+
+	Salesforce object for this model can be created from the branch
+	  hynekcer/tooling-api-and-metadata  by commands
+	$ python manage.py shell
+		>> from salesforce.tooling import *
+		>> install_metadata_service()
+		>> create_demo_test_object()
+	
+	or create an object with `API Name`: `Test__c`
+	`Data Type` of the Record Name: `Text`
+	with a text field `API Name`: `TestField__c`.
+	and set it accessible by you. (`Set Field-Leved Security`)
+	"""
+	# This is a custom field because it is defined in the custom model.
+	# The API name is therefore 'TestField__c'
+	test_field = models.CharField(max_length=42)
+	class Meta:
+		db_table = 'Test__c'
+		custom = True
+
 
 class GeneralCustomModel(SalesforceModel):
 	"""
@@ -361,7 +399,7 @@ class GeneralCustomModel(SalesforceModel):
 class Note(models.Model):
 	title = models.CharField(max_length=80)
 	body = models.TextField(null=True)
-	parent_id = models.CharField(max_length=18)  # db_column: 'ParentId'
+	parent_id = models.CharField(max_length=18)
 	parent_type = models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
 
 

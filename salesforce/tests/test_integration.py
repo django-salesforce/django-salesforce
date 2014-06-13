@@ -20,7 +20,7 @@ from django.utils.unittest import skip, skipUnless
 from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
-		BusinessHours, ChargentOrder, CronTrigger,
+		BusinessHours, ChargentOrder, CronTrigger, TestCustomExample,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
 from salesforce import router, DJANGO_15
@@ -349,6 +349,21 @@ class BasicSOQLTest(TestCase):
 		"""
 		orders = ChargentOrder.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
+
+	@skipUnless('Test__c' in sf_tables, "Not found custom object 'Test__c'")
+	def test_simple_custom_object(self):
+		"""
+		Create, read and delete a simple custom object Test__c.
+		"""
+		results = TestCustomExample.objects.all()[0:1]
+		obj = TestCustomExample(test_field='sf_test')
+		obj.save()
+		try:
+			results = TestCustomExample.objects.all()[0:1]
+			self.assertEqual(len(results), 1)
+			self.assertEqual(results[0].test_field, 'sf_test')
+		finally:
+			obj.delete()
 
 	@skipUnless(test_custom_db_table in sf_tables,
 			"Not found the expected custom object '%s'" % test_custom_db_table)
