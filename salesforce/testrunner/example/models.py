@@ -8,6 +8,7 @@
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
 
+import django
 from django.conf import settings
 
 SALUTATIONS = [
@@ -49,7 +50,7 @@ class AbstractAccount(SalesforceModel):
 	]
 
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-			default=lambda:User(Id='DEFAULT'),
+			default=lambda:User(pk='DEFAULT'),
 			db_column='OwnerId')
 	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
 							null=True)
@@ -113,22 +114,25 @@ else:
 
 
 class Contact(SalesforceModel):
-	Account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
-			db_column='AccountId', blank=True, null=True)
-	LastName = models.CharField(max_length=80)
-	FirstName = models.CharField(max_length=40, blank=True)
-	Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
+	# Example that db_column is not necessary for most of fields even with
+	# lower case names and for ForeignKey
+	account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
+			blank=True, null=True)  # db_column: 'OwnerId'
+	last_name = models.CharField(max_length=80)
+	first_name = models.CharField(max_length=40, blank=True)
+	name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
 			verbose_name='Full Name')
-	Email = models.EmailField(blank=True, null=True)
-	EmailBouncedDate = models.DateTimeField(blank=True, null=True)
-	# tested example that db_column is not necessary for a normal ForeignKey
-	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-			default=lambda:User(Id='DEFAULT'),
+	email = models.EmailField(blank=True, null=True)
+	email_bounced_date = models.DateTimeField(blank=True, null=True)
+	# The `default=` with lambda function is easy readable, but can be
+	# problematic with migrations in the future because it is not serializable.
+	# It can be replaced by normal function.
+	owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=lambda:User(pk='DEFAULT'),
 			related_name='contact_owner_set')
 
-
 	def __unicode__(self):
-		return self.Name
+		return self.name
 
 
 class Lead(SalesforceModel):
