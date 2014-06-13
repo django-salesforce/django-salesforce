@@ -352,12 +352,23 @@ def create_demo_test_object():
 	current_user = connections[sf_alias].settings_dict['USER']
 	import pdb; pdb.set_trace()
 	result, log_item, log_body = execute_anonymous_logged("""
-	System.debug('{username}');
-	Id profile_id = [SELECT ProfileId FROM User WHERE Username='{username}'][0].ProfileId;
-	System.debug(profile_id);
-	List<PermissionSet> permission_sets = [SELECT Id FROM PermissionSet WHERE ProfileId=:profile_id];
-	System.debug(permission_sets);
-	FieldPermissions perm = new FieldPermissions(ParentId=permission_sets[0].Id,
+	//System.debug('{username}');
+	//Id profile_id = [SELECT ProfileId FROM User WHERE Username='{username}'][0].ProfileId;
+	//System.debug(profile_id);
+	//List<PermissionSet> permission_sets = [SELECT Id FROM PermissionSet WHERE ProfileId=:profile_id];
+	//System.debug(permission_sets);
+
+	List<PermissionssionSet> pslist = [SELECT Id FROM PermissionSet \
+			WHERE profile.name='Django_Salesforce' AND IsOwnedByProfile=false LIMIT 1];
+	if (pslist.isEmpty()) {
+		PermissionssionSet ps = new PermissionSet(Name='Django_Salesforce', Label='Django Salesforce',
+				Description='Additional permissions managed by Django-Salesforce '
+				+ 'that should be applied only to the user(s) running django-salesforce');
+		ps.insert;
+	} else {
+	    ps = pslist[0];
+	}
+	FieldPermissions perm = new FieldPermissions(Parent=ps,
 			SObjectType='Test__c', Field='Test__c.TestField__c',
 			PermissionsEdit=true, PermissionsRead=true);
 	insert perm;
