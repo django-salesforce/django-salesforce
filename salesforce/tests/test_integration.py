@@ -687,3 +687,19 @@ class BasicSOQLTest(TestCase):
 		finally:
 			for x in objects:
 				x.delete()
+
+	@skip("Waiting for bug fix")
+	def test_raw_aggregate(self):
+		# raises "TypeError: list indices must be integers, not str" in resolve_columns
+		list(Contact.objects.raw("select Count() from Contact"))
+
+	@skip("Waiting for bug fix")
+	def test_only_fields(self):
+		# raises KeyError: 'Username'
+		xx = User.objects.only('Id')
+		xx[0]
+
+	@skip("Waiting for bug fix")
+	def test_incomplete_raw(self):
+		# raises KeyError: 'AccountId'
+		Contact.objects.raw("select id from Contact")[0].last_name
