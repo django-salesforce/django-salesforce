@@ -44,6 +44,17 @@ class SalesforceModelBase(ModelBase):
 			result._meta.db_table = name
 		return result
 
+	def add_to_class(cls, name, value):
+		if name == '_meta':
+			sf_custom = False
+			if hasattr(value.meta, 'custom'):
+				sf_custom = value.meta.custom
+				delattr(value.meta, 'custom')
+			super(SalesforceModelBase, cls).add_to_class(name, value)
+			setattr(cls._meta, 'sf_custom', sf_custom)
+		else:
+			super(SalesforceModelBase, cls).add_to_class(name, value)
+
 
 # Backported for Django 1.4 from django.utils.six version 1.7
 def with_metaclass(meta, *bases):

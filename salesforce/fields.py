@@ -92,7 +92,8 @@ class SfField(models.Field):
 	"""
 	def __init__(self, *args, **kwargs):
 		self.sf_read_only = kwargs.pop('sf_read_only', 0)
-		self.sf_custom = kwargs.pop('custom', False)
+		self.sf_custom = kwargs.pop('custom', None)
+		self.sf_namespace = ''
 		super(SfField, self).__init__(*args, **kwargs)
 
 	def get_attname_column(self):
@@ -118,8 +119,19 @@ class SfField(models.Field):
 				column = self.name.title().replace('_', '')
 			# Fix custom fields
 			if self.sf_custom:
-				column += '__c'
+				column = self.sf_namespace + column + '__c'
 		return attname, column
+
+	def contribute_to_class(self, cls, name, **kwargs):
+		super(SfField, self).contribute_to_class(cls, name, **kwargs)
+		if self.sf_custom is None:
+			# Only custom fields in models explicitly marked by
+			# Meta custom=True are recognized automatically - for
+			# backward compatibility reasons.
+			self.sf_custom = cls._meta.sf_custom
+		if self.sf_custom and '__' in cls._meta.db_table[:-3]:
+			self.sf_namespace = cls._meta.db_table.split('__')[0] + '__'
+		self.set_attributes_from_name(name)
 
 
 class CharField(SfField, models.CharField):
