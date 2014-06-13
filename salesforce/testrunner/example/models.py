@@ -190,7 +190,7 @@ class Lead(SalesforceModel):
 
 
 class Product(SalesforceModel):
-	Name = models.CharField(max_length=255, db_column='Name')
+	Name = models.CharField(max_length=255)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'Product2'
@@ -200,7 +200,7 @@ class Product(SalesforceModel):
 
 
 class Pricebook(SalesforceModel):
-	Name = models.CharField(max_length=255, db_column='Name')
+	Name = models.CharField(max_length=255)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'Pricebook2'
@@ -211,12 +211,10 @@ class Pricebook(SalesforceModel):
 
 class PricebookEntry(SalesforceModel):
 	Name = models.CharField(max_length=255, db_column='Name', sf_read_only=models.READ_ONLY)
-	Pricebook2Id = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING,
-			db_column='Pricebook2Id')
-	Product2Id = models.ForeignKey('Product', on_delete=models.DO_NOTHING,
-			db_column='Product2Id')
-	UseStandardPrice = models.BooleanField(default=False, db_column='UseStandardPrice')
-	UnitPrice = models.DecimalField(decimal_places=2, max_digits=18, db_column='UnitPrice')
+	Pricebook2 = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING)
+	Product2 = models.ForeignKey('Product', on_delete=models.DO_NOTHING)
+	UseStandardPrice = models.BooleanField(default=False)
+	UnitPrice = models.DecimalField(decimal_places=2, max_digits=18)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'PricebookEntry'
@@ -330,7 +328,7 @@ class CronTrigger(SalesforceModel):
 
 
 class BusinessHours(SalesforceModel):
-	Name = models.CharField(db_column='Name', max_length=80)
+	Name = models.CharField(max_length=80)
 	# The default record is automatically created by Salesforce.
 	IsDefault = models.BooleanField(default=False, verbose_name='Default Business Hours')
 	# ... much more fields, but we use only this one TimeFiled for test
@@ -360,8 +358,21 @@ class GeneralCustomModel(SalesforceModel):
 	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)
 
 
-class Note(SalesforceModel):
-	title = models.CharField(max_length=80, db_column='Title')
-	body = models.TextField(null=True, db_column='Body')
-	parent_id = models.CharField(max_length=18, db_column='ParentId')
-	parent_type =  models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
+class Note(models.Model):
+	title = models.CharField(max_length=80)
+	body = models.TextField(null=True)
+	parent_id = models.CharField(max_length=18)  # db_column: 'ParentId'
+	parent_type = models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
+
+
+class Opportunity(models.Model):
+	name = models.CharField(max_length=255)
+	contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole', related_name='opportunities')
+	close_date = models.DateField()
+	stage = models.CharField(max_length=255, db_column='StageName') # e.g. "Prospecting"
+
+
+class OpportunityContactRole(models.Model):
+	opportunity = models.ForeignKey(Opportunity, on_delete=models.DO_NOTHING, related_name='contact_roles')
+	contact = models.ForeignKey(Contact, on_delete=models.DO_NOTHING, related_name='opportunity_roles')
+	role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
