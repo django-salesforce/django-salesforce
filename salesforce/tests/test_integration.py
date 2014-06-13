@@ -644,7 +644,7 @@ class BasicSOQLTest(TestCase):
 		(with sandboxes of the same organization)
 		"""
 		other_dbs = [k for k, v in settings.DATABASES.items() if
-				k != 'salesforce' and v['ENGINE'] == 'salesforce.backend']
+				k != sf_alias and v['ENGINE'] == 'salesforce.backend']
 		if not other_dbs:
 			self.skipTest('Only one SF database found.')
 		other_db = other_dbs[0]
