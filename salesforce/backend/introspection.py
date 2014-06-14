@@ -108,7 +108,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			if field['label']:
 				params['verbose_name'] = field['label']
 			if not field['updateable'] or not field['createable']:
-				# Fields that are result of a formula or system fields modified by triggers or by other apex code
+				# Fields that are result of a formula or system fields modified
+				# by triggers or by other apex code
 				sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
 				# use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
 				params['sf_read_only'] = reverse_models_names[sf_read_only]
@@ -118,12 +119,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 				params['help_text'] = field['inlineHelpText']
 			if field['picklistValues']:
 				params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
-			if field['referenceTo']:
-				if field['relationshipName'] and field['name'].lower() == field['relationshipName'].lower() + 'id':
-					# change '*id' to '*_id', e.g. the name 'Account' instead of 'AccountId'
-					field['name'] = field['name'][:-2] + '_' + field['name'][-2:]
-			# We prefer length over byteLength for internal_size.
-			#(usually length == 3 * length for strings)
+			# We prefer "length" over "byteLength" for "internal_size".
+			# (because strings have usually: byteLength == 3 * length)
 			result.append((
 				field['name'], # name,
 				field['type'], # type_code,
@@ -142,7 +139,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		representing all relationships to the given table. Indexes are 0-based.
 		"""
 		global last_introspected_model, last_with_important_related_name, last_read_only
-		table2model = lambda table_name: SfProtectName(table_name).title().replace('_', '').replace(' ', '').replace('-', '')
+		table2model = lambda table_name: (SfProtectName(table_name).title()
+				.replace(' ', '').replace('-', ''))
 		result = {}
 		reverse = {}
 		last_with_important_related_name = []
@@ -158,9 +156,15 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 					# use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
 					last_read_only[field['name']] = reverse_models_names[sf_read_only]
 		for ref, ilist in reverse.items():
-			similar_back_references = [x['name'] for x in self.table_description_cache(ref)['fields']
-				if re.sub('Id$', '', x['name']).lower() == table2model(table_name).lower()]
-			if len(ilist) >1 or similar_back_references:  # add `related_name` only if necessary
+			# Example of back_collision: a class Aaa has a ForeignKey to a class
+			# Bbb and the class Bbb has any field with the name 'aaa'.
+			back_name_collisions = [x['name'] for x
+					in self.table_description_cache(ref)['fields']
+					if re.sub('Id$' if x['type'] == 'reference' else '', '',
+						re.sub('__c$', '', x['name'])).replace('_', '').lower()
+					== table2model(table_name).lower()]
+			# add `related_name` only if necessary
+			if len(ilist) > 1 or back_name_collisions:
 				last_with_important_related_name.extend(ilist)
 		last_introspected_model = table2model(table_name)
 		return result
@@ -174,7 +178,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		"""
 		result = {}
 		for field in self.table_description_cache(table_name)['fields']:
-			result[field['name']] = dict(primary_key=(field['type'] == 'id'), unique=field['unique'])
+			if field['type'] == 'id' or field['unique']:
+				result[field['name']] = dict(
+						primary_key=(field['type'] == 'id'),
+						unique=field['unique']
+						)
 		return result
 
 	def get_additional_meta(self, table_name):

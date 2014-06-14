@@ -38,27 +38,42 @@ class Command(InspectDBCommand):
 
 
 	def get_field_type(self, connection, table_name, row):
-		field_type, field_params, field_notes = super(Command, self).get_field_type(connection, table_name, row)
+		field_type, field_params, field_notes = super(Command, self
+				).get_field_type(connection, table_name, row)
 		if connection.vendor == 'salesforce':
 			name, type_code, display_size, internal_size, precision, scale, null_ok, sf_params = row
 			field_params.update(sf_params)
 		return field_type, field_params, field_notes
 
 	def normalize_col_name(self, col_name, used_column_names, is_relation):
-		new_name, field_params, field_notes = super(Command, self).normalize_col_name(col_name, used_column_names, is_relation)
 		if self.connection.vendor == 'salesforce':
+			beautified = re.sub('__c$', '', col_name)
+			beautified = re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', beautified)
+			beautified = beautified.lower()
+			new_name, field_params, field_notes = super(Command, self
+					).normalize_col_name(beautified, used_column_names, is_relation)
+			# *reconstructed* : is what will SfField reconstruct to db column
+			reconstructed = new_name.title().replace('_', '')
+			if col_name.endswith('__c'):
+				reconstructed += '__c'
+				field_params['custom'] = True
+			elif is_relation:
+				reconstructed += 'Id'
+			# TODO: Discuss whether 'db_column' should be rather compared case insensitive
+			if reconstructed != col_name or 'db_column' in field_params:
+				field_params['db_column'] = col_name
 			if is_relation:
-				if col_name.lower().endswith('_id'):
-					field_params['db_column'] = col_name[:-3] + col_name[-2:]
-				if field_params['db_column'] in sf_introspection.last_with_important_related_name:
-					field_params['related_name'] = ('%s_%s_set' % (
-						sf_introspection.last_introspected_model,
-						re.sub('_Id$', '', new_name).replace('_', '')
-						)).lower()
-				if field_params['db_column'] in  sf_introspection.last_read_only:
-					field_params['sf_read_only'] = sf_introspection.last_read_only[field_params['db_column']]
+				if col_name in sf_introspection.last_with_important_related_name:
+					field_params['related_name'] = '%s_%s_set' % (
+							sf_introspection.last_introspected_model.lower(),
+							new_name.replace('_', '')
+							)
+				if col_name in sf_introspection.last_read_only:
+					field_params['sf_read_only'] = sf_introspection.last_read_only[col_name]
 				field_params['on_delete'] = sf_introspection.SymbolicModelsName('DO_NOTHING')
-			field_notes = [x for x in field_notes if x != 'Field name made lowercase.']
+		else:
+			new_name, field_params, field_notes = super(Command, self
+					).normalize_col_name(col_name, used_column_names, is_relation)
 		return new_name, field_params, field_notes
 
 	def get_meta(self, table_name):
@@ -67,7 +82,7 @@ class Command(InspectDBCommand):
 		to construct the inner Meta class for the model corresponding
 		to the given database table name.
 		"""
-		ret =  ["    class Meta(models.SalesforceModel.Meta):",
+		ret =  ["    class Meta(models.Model.Meta):",
 			"        db_table = '%s'" % table_name,
 			]
 		if self.connection.vendor == 'salesforce':
