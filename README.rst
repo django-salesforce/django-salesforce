@@ -8,7 +8,7 @@ This library allows you to load and edit the objects in any Salesforce instance 
 is fairly complete, and generally seamless for most uses. It works by integrating with the Django ORM, allowing access
 to the objects in your SFDC instance as if they were "local" databases.
 
-Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7 (but Django 1.4 can't be combined with Python 3)
+Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7 (but Django 1.4.x can't be combined with Python 3)
 
 Quick Start
 -----------
@@ -58,7 +58,8 @@ Quick Start
 7. Define a model that extends ``salesforce.models.SalesforceModel``
    or export the complete SF schema by
    ``python manage.py inspectdb --database=salesforce`` and simplify it
-   to what you need.
+   to what you need. An inner ``Meta`` class with the ``db_table`` option must
+   be used for custom Salesforce objects where the name ends with ``__c``.
 
 8. If you want to use the model in the Django admin interface, use a
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
@@ -87,6 +88,18 @@ relationships based on a custom field. This is because related objects
 relation is by ID the columns are named `FieldName__c`, whereas if the relation
 is stored by object the column is named `FieldName__r`. More details about
 this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+
+In case of a ForeignKey you can specify the field name suffixed with ``_id``,
+as it is automatically allowed by Django. For example: ``account_id`` instead
+of ``account.id``, or ``AccountId`` instead of ``Account.Id``. It is faster,
+if you need not to access to the related ``Account`` object.
+
+Querysets can be easily inspected whether they are correctly compiled to SOQL.
+You can compare the meaning with the same compiled to SQL::
+
+    my_qs = Contact.objects.filter(my__little_more__complicated='queryset')
+    print my_qs.query.get_compiler('salesforce').as_sql()    # SOQL
+    print my_qs.query.get_compiler('default').as_sql()       # SQL
 
 **Generic foreign keys** are frequently used in SF for fields that relate to
 objects of different types, e.g. the Parent of Note or Attachment can be almost
