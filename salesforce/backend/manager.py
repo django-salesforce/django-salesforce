@@ -26,14 +26,17 @@ class SalesforceManager(manager.Manager):
 		Returns a QuerySet which access remote SF objects.
 		"""
 		if not router.is_sf_database(self.db):
-			return super(SalesforceManager, self).get_query_set()
+			if DJANGO_16_PLUS:
+				return super(SalesforceManager, self).get_queryset()
+			else:
+				return super(SalesforceManager, self).get_query_set()
 		else:
 			from salesforce.backend import query, compiler
 			q = query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
 			return query.SalesforceQuerySet(self.model, query=q, using=self.db)
 
-	if not DJANGO_16_PLUS:
-		get_query_set = get_queryset
+	#if not DJANGO_16_PLUS:  - keep back obsoleted qs is better than to get broken qs.
+	get_query_set = get_queryset
 
 	def using(self, alias):
 		if router.is_sf_database(alias):
@@ -51,6 +54,6 @@ class SalesforceManager(manager.Manager):
 
 	def query_all(self):
 		if router.is_sf_database(self.db):
-			return self.get_query_set().query_all()
+			return self.get_queryset().query_all()
 		else:
-			return self.get_query_set()
+			return self.get_queryset()
