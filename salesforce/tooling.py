@@ -327,6 +327,7 @@ def create_demo_test_object():
 	createMetadata, but not together e.g. CustomObject and CustomField.
 	"""
 	# This can be used internally if syncan example output of `manage.py sqlall`
+	from salesforce.tests.test_integration import sf_tables
 	demo_apex_code = """ 
 	MetadataService.CustomObject customObject = new MetadataService.CustomObject();
 	String objectName = 'Test';
@@ -347,38 +348,48 @@ def create_demo_test_object():
 	customField.length = 42;
 	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customField }));
 	"""
-	call_metadata_api(demo_apex_code)
+	if not 'Test__c' in sf_tables:
+		call_metadata_api(demo_apex_code)
 
 	current_user = connections[sf_alias].settings_dict['USER']
 	import pdb; pdb.set_trace()
 	result, log_item, log_body = execute_anonymous_logged("""
-	//System.debug('{username}');
-	//Id profile_id = [SELECT ProfileId FROM User WHERE Username='{username}'][0].ProfileId;
-	//System.debug(profile_id);
-	//List<PermissionSet> permission_sets = [SELECT Id FROM PermissionSet WHERE ProfileId=:profile_id];
+	System.debug('{username}');
+	User xuser = [SELECT Id, ProfileId FROM User WHERE Username='{username}'][0];
+	System.debug(xuser.ProfileId);
+	//List<PermissionSet> permission_sets = [SELECT Id FROM PermissionSet WHERE ProfileId=:xuser.ProfileId];
 	//System.debug(permission_sets);
 
-	List<PermissionssionSet> pslist = [SELECT Id FROM PermissionSet \
-			WHERE profile.name='Django_Salesforce' AND IsOwnedByProfile=false LIMIT 1];
-	if (pslist.isEmpty()) {
-		PermissionssionSet ps = new PermissionSet(Name='Django_Salesforce', Label='Django Salesforce',
+	PermissionSet ps;
+	List<PermissionSet> pslist = [SELECT Id FROM PermissionSet \
+			WHERE Name='Django_Salesforce' AND IsOwnedByProfile=false LIMIT 1];
+	if (pslist.isEmpty()) {{
+		ps = new PermissionSet(Name='Django_Salesforce', Label='Django Salesforce',
 				Description='Additional permissions managed by Django-Salesforce '
 				+ 'that should be applied only to the user(s) running django-salesforce');
-		ps.insert;
-	} else {
-	    ps = pslist[0];
-	}
-	FieldPermissions perm = new FieldPermissions(Parent=ps,
-			SObjectType='Test__c', Field='Test__c.TestField__c',
-			PermissionsEdit=true, PermissionsRead=true);
-	insert perm;
+		insert ps;
+		pslist.add(ps);
+	}}
+	List<FieldPermissions> fpl = [SELECT Id FROM FieldPermissions WHERE 
+			ParentId=:pslist[0].Id AND SObjectType='Test__c' AND Field='Test__c.TestField__c'];
+	if (fpl.isEmpty()) {{
+		FieldPermissions perm = new FieldPermissions(ParentId=pslist[0].Id,
+				SObjectType='Test__c', Field='Test__c.TestField__c',
+				PermissionsEdit=true, PermissionsRead=true);
+		insert perm;
+		fpl.add(perm);
+	}}
+	List<PermissionSetAssignment> psal = [SELECT Id FROM PermissionSetAssignment
+			WHERE AssigneeId='{username}' AND PermissionSetId=:pslist[0].Id];
+	if (psal.isEmpty()) {{
+		PermissionSetAssignment psa = new PermissionSetAssignment(
+				AssigneeId=xuser.Id, PermissionSetId=pslist[0].Id);
+		insert psa;
+	}}
 	""".format(username=current_user))
 	print(result, log_item)
 	print(log_body)
-	profile_id = sf_query("""SELECT ProfileId FROM User WHERE Username='%s'""" %
-			current_user)['records'][0]['ProfileId']
-	permission_set_id = sf_query("SELECT Id FROM PermissionSet WHERE ProfileId='%s'" %
-			profile_id)['records'][0]['Id']
+	permission_set_id = sf_query("SELECT Id FROM PermissionSet WHERE Name='Django_Salesforce'")['records'][0]['Id']
 	#object_permissions = sf_query("SELECT Id FROM ObjectPermissions "
 	#		"WHERE ParentId='%s' AND SObjectType='%s'" %
 	#		(permission_set_id, 'Test__c'))['records']
