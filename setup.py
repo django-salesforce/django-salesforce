@@ -66,7 +66,7 @@ def autosetup():
 		
 		include_package_data = True,
 		zip_safe		= False,
-		packages		= find_packages(),
+		packages		= find_packages(exclude=['tests']),
 
 		# setuptools won't auto-detect Git managed files without this
 		setup_requires = [ "setuptools_git >= 0.4.2", ],
