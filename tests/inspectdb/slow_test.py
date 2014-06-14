@@ -1,8 +1,9 @@
-"""Test introspection
+"""Test the completness ad validity of inspectdb by read and write for all tables.
 
-It tries to read one record from all retrieveable tables, except objects with
-extraordinal filter conditions (3%). It tries to write this record back if
-the table is updateable, except some tables (5%).)
+It tries to find model and read one record from all retrieveable tables, except
+objects with extraordinal filter conditions (3%). Then it tries to write this
+record back if the table is updateable, except some tables (5%). This can fail
+on permissions.
 Requirements: Django 1.5+
 
 Usage:
@@ -20,10 +21,13 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.inspectdb.settings'
 
 import django
 from django.db import connections
+from salesforce import DJANGO_17_PLUS
 from salesforce.backend.base import SalesforceError
 from tests.inspectdb import models as mdl
 
 sf = connections['salesforce']
+if DJANGO_17_PLUS:
+	django.setup()
 
 def run():
 	start_name = sys.argv[1] if sys.argv[1:] else ''
