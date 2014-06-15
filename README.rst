@@ -141,7 +141,7 @@ Advanced usage
      FirstName = models.CharField(max_length=80)     # db_column='FirstName'
 	 custom_bool = models.BooleanField(custom=True)  # db_column='CustomBool__c'
 
-   Custom fields can be marked by the parameter "custom=True" or they are 
+   Custom fields can be marked by the parameter "custom=True" or they are
    automatically custom if they are directly in a model that is explicitly
    marked custom by the attribute "custom=True" in class Meta. Standard
    fields used in a custom model can be marked "custom=False" or they can be
@@ -153,6 +153,14 @@ Advanced usage
    removed underscore. Only a namespace prefix or '__c' are added according to
    the context.
 
+-  **inspectdb** Tables that are exported into a new model can be restricted
+   by regular expression::
+
+    python manage.py inspectdb --table-filter="Contact$|Account" --database=salesforce
+
+   Exports only models for tables with exact API name ``Contact`` and all
+   tables with name wtarting with ``Account``. This filter works also with
+   other databases.
 
 Caveats
 -------
