@@ -160,7 +160,8 @@ class SmallIntegerField(SfField, models.SmallIntegerField):
 	pass
 class BooleanField(SfField, models.BooleanField):
 	"""BooleanField with sf_read_only attribute for Salesforce."""
-	pass
+	def __init__(self, default=False, **kwargs):
+		super(BooleanField, self).__init__(default=default, **kwargs)
 class DecimalField(SfField, models.DecimalField):
 	"""DecimalField with sf_read_only attribute for Salesforce."""
 	pass
