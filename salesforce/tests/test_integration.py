@@ -4,13 +4,11 @@
 # (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 # See LICENSE.md for details
 #
-from __future__ import print_function
 from decimal import Decimal
 import datetime
 import pytz
 import random
 import string
-import sys
 
 from django.conf import settings
 from django.db import connections
@@ -566,10 +564,10 @@ class BasicSOQLTest(TestCase):
 		leads_list = list(all_leads)
 		if all_leads.query.first_chunk_len == len(leads_list):
 			self.assertLessEqual(len(leads_list), 2000)
-			print("Not enough Leads accumulated (currently %d including deleted) "
+			log.info("Not enough Leads accumulated (currently %d including deleted) "
 					"in the last two weeks that are necessary for splitting the "
-					"query into more requests. Number 1001 or 2001 is enough." %
-					len(leads_list), file=sys.stderr)
+					"query into more requests. Number 1001 or 2001 is enough.",
+					len(leads_list))
 			self.skipTest("Not enough Leads found for big query test")
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")

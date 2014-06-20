@@ -9,10 +9,8 @@
 Salesforce database backend for Django.
 """
 
-from __future__ import print_function
 import logging
 import requests
-import sys
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
@@ -49,8 +47,8 @@ class SalesforceError(DatabaseError):
 		self.response = response
 		self.verbose = verbose
 		if verbose:
-			print("Error (debug details) %s\n%s" % (response.text,
-					response.__dict__), file=sys.stderr)
+			log.info("Error (debug details) %s\n%s", response.text,
+					response.__dict__)
 
 
 

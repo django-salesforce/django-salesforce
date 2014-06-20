@@ -9,10 +9,10 @@
 Database backend for the Salesforce API.
 """
 
-from __future__ import print_function
 import socket
-import sys
 from django.conf import settings
+import logging
+log = logging.getLogger(__name__)
 
 sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 
@@ -25,7 +25,7 @@ def getaddrinfo_wrapper(host, port, family=socket.AF_INET, socktype=0, proto=0, 
 
 # patch to IPv4 if required and not patched by anything other yet
 if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('socket', '_socket'):
-	print("Patched socket to IPv4 only", file=sys.stderr)
+	log.info("Patched socket to IPv4 only")
 	orig_getaddrinfo = socket.getaddrinfo
 	# replace the original socket.getaddrinfo by our version
 	socket.getaddrinfo = getaddrinfo_wrapper
