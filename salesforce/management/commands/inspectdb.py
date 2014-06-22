@@ -2,6 +2,7 @@ import re
 import warnings
 from django.core.management.commands.inspectdb import Command as InspectDBCommand
 from django.db import connections, DEFAULT_DB_ALIAS
+from salesforce.backend.introspection import SymbolicModelsName
 import django
 import salesforce
 
@@ -48,6 +49,7 @@ class Command(InspectDBCommand):
 						)).lower()
 				if field_params['db_column'] in  salesforce.backend.introspection.last_read_only:
 					field_params['sf_read_only'] = salesforce.backend.introspection.last_read_only[field_params['db_column']]
+				field_params['on_delete'] = SymbolicModelsName('DO_NOTHING')
 			field_notes = [x for x in field_notes if x != 'Field name made lowercase.']
 		return new_name, field_params, field_notes
 

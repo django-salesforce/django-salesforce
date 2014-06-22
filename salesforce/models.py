@@ -22,18 +22,18 @@ from django.db.models.sql import compiler
 # Only these two `on_delete` options are currently supported
 from django.db.models import PROTECT, DO_NOTHING
 #from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
-from django.utils.six import with_metaclass
 
 from salesforce.backend import manager
 from salesforce.fields import *  # modified django.db.models.CharField etc.
-from salesforce import fields, DJANGO_15
+from salesforce import fields
 
 log = logging.getLogger(__name__)
+
 
 class SalesforceModelBase(ModelBase):
 	"""
 	This is a sub-metaclass of the normal Django ModelBase.
-	
+
 	This metaclass overrides the default table-guessing behavior of Django
 	and replaces it with code that defaults to the model name.
 	"""
@@ -45,35 +45,37 @@ class SalesforceModelBase(ModelBase):
 		return result
 
 
-if DJANGO_15:
+# Backported for Django 1.4 from django.utils.six version 1.7
+def with_metaclass(meta, *bases):
+    """Create a base class with a metaclass."""
+    # This requires a bit of explanation: the basic idea is to make a
+    # dummy metaclass for one level of class instantiation that replaces
+    # itself with the actual metaclass.  Because of internal type checks
+    # we also need to make sure that we downgrade the custom metaclass
+    # for one level to something closer to type (that's why __call__ and
+    # __init__ comes back from type etc.).
+    class metaclass(meta):
+        __call__ = type.__call__
+        __init__ = type.__init__
+        def __new__(cls, name, this_bases, d):
+            if this_bases is None:
+                return type.__new__(cls, name, (), d)
+            return meta(name, bases, d)
+    return metaclass('temporary_class', None, {})
 
-	class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
-		"""
-		Abstract model class for Salesforce objects.
-		"""
-		_base_manager = objects = manager.SalesforceManager()
-		_salesforce_object = True
-		
-		class Meta:
-			managed = False
-			abstract = True
-		
-		Id = fields.SalesforceAutoField(primary_key=True)
 
-else:  # old Django 1.4 uncompatible with Python 3
+class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
+	"""
+	Abstract model class for Salesforce objects.
+	"""
+	_base_manager = objects = manager.SalesforceManager()
+	_salesforce_object = True
 
-	class SalesforceModel(models.Model):
-		"""
-		Abstract model class for Salesforce objects.
-		"""
-		__metaclass__ = SalesforceModelBase
-		_base_manager = objects = manager.SalesforceManager()
-		_salesforce_object = True
-		
-		class Meta:
-			managed = False
-			abstract = True
-		
-		Id = fields.SalesforceAutoField(primary_key=True)
+	class Meta:
+		managed = False
+		abstract = True
+
+	Id = fields.SalesforceAutoField(primary_key=True)
+
 
 Model = SalesforceModel

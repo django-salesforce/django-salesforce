@@ -9,6 +9,8 @@
 Automatic table creation is not supported by the Salesforce backend.
 """
 
+from __future__ import print_function
+import sys
 from django.db.backends.creation import BaseDatabaseCreation
 
 class DatabaseCreation(BaseDatabaseCreation):
@@ -19,7 +21,8 @@ class DatabaseCreation(BaseDatabaseCreation):
 			test_db_repr = ''
 			if verbosity >= 2:
 				test_db_repr = " ('%s')" % test_database_name
-			print("Ignoring test database creation for alias '%s'%s..." % (self.connection.alias, test_db_repr))
+			print("Ignoring test database creation for alias '%s'%s..." %
+					(self.connection.alias, test_db_repr), file=sys.stderr)
 		
 		return test_database_name
 	
@@ -29,6 +32,7 @@ class DatabaseCreation(BaseDatabaseCreation):
 			test_db_repr = ''
 			if verbosity >= 2:
 				test_db_repr = " ('%s')" % test_database_name
-			print("No test database to destroy for alias '%s'%s..." % (self.connection.alias, test_db_repr))
+			print("No test database to destroy for alias '%s'%s..." %
+					(self.connection.alias, test_db_repr), file=sys.stderr)
 		self.connection.settings_dict['NAME'] = old_database_name
 

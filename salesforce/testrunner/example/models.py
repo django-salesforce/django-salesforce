@@ -6,7 +6,7 @@
 #
 
 from salesforce import models
-from salesforce.models import SalesforceModel
+from salesforce.models import SalesforceModel as SalesforceModelParent
 
 from django.conf import settings
 
@@ -23,6 +23,12 @@ INDUSTRIES = [
 	'Other', 'Recreation', 'Retail', 'Shipping', 'Technology',
 	'Telecommunications', 'Transportation', 'Utilities'
 ]
+
+# This class customizes `managed = True` for tests and does not disturbe SF
+class SalesforceModel(SalesforceModelParent):
+	class Meta:
+		abstract = True
+		managed = True
 
 
 class User(SalesforceModel):
@@ -64,8 +70,11 @@ class AbstractAccount(SalesforceModel):
 								choices=[(x, x) for x in INDUSTRIES])
 	Description = models.TextField()
 	# Added read only option, otherwise the object can not be never saved
+	# If the model is used also with non SF databases then there should be set
+	# allow_now=True or null=True
 	LastModifiedDate = models.DateTimeField(db_column='LastModifiedDate',
-											sf_read_only=models.READ_ONLY)
+											sf_read_only=models.READ_ONLY,
+											auto_now=True)
 
 	class Meta(SalesforceModel.Meta):
 		abstract = True
@@ -112,9 +121,10 @@ class Contact(SalesforceModel):
 			verbose_name='Full Name')
 	Email = models.EmailField(blank=True, null=True)
 	EmailBouncedDate = models.DateTimeField(blank=True, null=True)
+	# tested example that db_column is not necessary for a normal ForeignKey
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
 			default=lambda:User(Id='DEFAULT'),
-			db_column='OwnerId', related_name='contact_owner_set')
+			related_name='contact_owner_set')
 
 
 	def __unicode__(self):
@@ -222,7 +232,7 @@ class ChargentOrder(SalesforceModel):
 	CreatedDate = models.CharField(max_length=255, db_column='CreatedDate')
 	CreatedById = models.CharField(max_length=255, db_column='CreatedById')
 	LastModifiedDate = models.CharField(max_length=255,
-										db_column='LastModifiedDate')
+										db_column='LastModifiedDate', null=True)
 	LastModifiedById = models.CharField(max_length=255,
 										db_column='LastModifiedById')
 	SystemModstamp = models.CharField(max_length=255, db_column='SystemModstamp')
@@ -326,24 +336,23 @@ class BusinessHours(SalesforceModel):
 
 
 test_custom_db_table, test_custom_db_column = getattr(settings,
- 		'TEST_CUSTOM_FIELD', 'ChargentOrders__ChargentOrder__c.Name').split('.')
+		'TEST_CUSTOM_FIELD', 'ChargentOrders__ChargentOrder__c.Name').split('.')
 
 
 class GeneralCustomModel(SalesforceModel):
- 	"""
- 	This model is used for tests on a field of type CharField on a custom model
- 	specified in local_settings.py:
- 	Example:
- 		TEST_CUSTOM_FIELD = 'TIMBASURVEYS__SurveyQuestion__c.TIMBASURVEYS__Question__c'
- 	Other fields shouldn't be required for saving that object.
- 	"""
+	"""
+	This model is used for tests on a field of type CharField on a custom model
+	specified in local_settings.py:
+	Example:
+		TEST_CUSTOM_FIELD = 'TIMBASURVEYS__SurveyQuestion__c.TIMBASURVEYS__Question__c'
+	Other fields shouldn't be required for saving that object.
+	"""
 	# The line "managed = False" or Meta inherited from SalesforceModel.Meta
 	# is especially important if the model shares a table with other model.
- 	class Meta:
- 		db_table = test_custom_db_table
- 		managed = False
+	class Meta:
+		db_table = test_custom_db_table
 
- 	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)
+	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)
 
 
 class Note(SalesforceModel):

@@ -15,30 +15,14 @@ from django.db.models.sql.datastructures import EmptyResultSet
 from salesforce import DJANGO_15, DJANGO_16, DJANGO_17_PLUS
 
 
-def process_name(name):
-	"""
-	Convert a Djangofied column name into a Salesforce-compliant column name.
-
-	TODO: this is sketchy
-	"""
-	if(name.startswith('example_')):
-		name = name[8:]
-		name = ''.join([x.capitalize() for x in name.split('_')])
-	return name
-
 class SQLCompiler(compiler.SQLCompiler):
 	"""
 	A subclass of the default SQL compiler for the SOQL dialect.
 	"""
 	def resolve_columns(self, row, fields):
-		# TODO @hynekcer: Create class salesforce.fields.ForeignKey with customized
-		#      get_attname method where "_id" is replaced by "Id".
-		#      Then no db_column='....Id" in models will be necessary and
-		#      this method can be also removed
-		result = []
-		for field in fields:
-			result.append(row[field.column])
-		return result
+		# This method (conversion from row dict to list) is necessary only for
+		# SF raw query, but if it exists then it is used by all SOQL queries.
+		return [row[field.column] for field in fields]
 
 	def get_columns(self, with_aliases=False):
 		"""

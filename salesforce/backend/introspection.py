@@ -69,7 +69,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	@property
 	def oauth(self):
 		from salesforce import auth
-		return auth.authenticate(self.connection.settings_dict)
+		return auth.authenticate(db_alias=self.connection.alias)
 	
 	@property
 	def table_list_cache(self):
@@ -194,13 +194,13 @@ class SymbolicModelsName(object):
 	"""
 	def __init__(self, name):
 		self.name = 'models.%s' % name
-		self.value = int(getattr(models, name))
+		self.value = getattr(models, name)
 	def __repr__(self):
 		return self.name
-	def __int__(self):
-		return self.value
 
 
 reverse_models_names = dict((obj.value, obj) for obj in
-	[SymbolicModelsName(name) for name in ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')]
+	[SymbolicModelsName(name) for name in (
+		'NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY',
+		'DO_NOTHING')]
 )

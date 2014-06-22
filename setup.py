@@ -64,19 +64,12 @@ def autosetup():
 		name			= "django-salesforce",
 		version			= get_tagged_version(),
 		
+		include_package_data = True,
 		zip_safe		= False,
 		packages		= find_packages(),
 
 		# setuptools won't auto-detect Git managed files without this
 		setup_requires = [ "setuptools_git >= 0.4.2", ],
-		
-		entry_points	= {
-			# Dependencies suck, but this is definitely preferable
-			# to writing everything into MANIFEST.in by hand.
-			'setuptools.file_finders'	: [
-				'git = setuptools_git:gitlsfiles',
-			],
-		},
 		
 		# okay, so, normally install_requires is a list, right? Well, setuptools
 		# really just iterates over it. As it happens, the pip requirements file

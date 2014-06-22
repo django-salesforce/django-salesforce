@@ -53,7 +53,7 @@ def quoted_string_literal(s, d):
 	http://www.salesforce.com/us/developer/docs/soql_sosl/Content/sforce_api_calls_soql_select_quotedstringescapes.htm
 	"""
 	try:
-		return "'%s'" % (s.replace("'", "\\'"),)
+		return "'%s'" % (s.replace("\\", "\\\\").replace("'", "\\'"),)
 	except TypeError as e:
 		raise NotImplementedError("Cannot quote %r objects: %r" % (type(s), s))
 
@@ -81,9 +81,9 @@ def process_json_args(args):
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, json_conversions) for x in args])
 
-def reauthenticate():
-	auth.expire_token()
-	oauth = auth.authenticate(settings.DATABASES[sf_alias])
+def reauthenticate(db_alias):
+	auth.expire_token(db_alias)
+	oauth = auth.authenticate(db_alias=db_alias)
 	return oauth['access_token']
 
 def handle_api_exceptions(url, f, *args, **kwargs):
@@ -106,7 +106,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		# Unauthorized (expired or invalid session ID or OAuth)
 		data = response.json()[0]
 		if(data['errorCode'] == 'INVALID_SESSION_ID'):
-			token = reauthenticate()
+			token = reauthenticate(db_alias=f.__self__.auth.db_alias)
 			if('headers' in kwargs):
 				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
 			try:
@@ -148,6 +148,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		raise base.SalesforceError('%s' % data, data, response, verbose)
 
 def prep_for_deserialize(model, record, using):
+	# TODO the parameter 'using' is not currently important.
 	attribs = record.pop('attributes')
 
 	mod = model.__module__.split('.')
@@ -173,7 +174,12 @@ def prep_for_deserialize(model, record, using):
 					d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
 					import pytz
 					d = d.replace(tzinfo=pytz.utc)
-					fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+					if settings.USE_TZ:
+						fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+					else:
+						tz = pytz.timezone(settings.TIME_ZONE)
+						d = tz.normalize(d.astimezone(tz))
+						fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT[:-6])
 				else:
 					fields[x.name] = field_val
 
@@ -210,7 +216,7 @@ def extract_values(query):
 			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
 				continue
 		[arg] = process_json_args([value])
-		d[field.db_column or field.name] = arg
+		d[field.column] = arg
 	return d
 
 class SalesforceRawQuerySet(query.RawQuerySet):
@@ -235,6 +241,10 @@ class SalesforceQuerySet(query.QuerySet):
 
 		pfd = prep_for_deserialize
 		for res in python.Deserializer(pfd(self.model, r, self.db) for r in cursor.results):
+			# Store the source database of the object
+			res.object._state.db = self.db
+			# This object came from the database; it's not being added.
+			res.object._state.adding = False
 			yield res.object
 
 	def query_all(self):
@@ -301,15 +311,14 @@ class CursorWrapper(object):
 	This is the class that is actually responsible for making connections
 	to the SF REST API
 	"""
-	def __init__(self, connection, query=None):
+	def __init__(self, db, query=None):
 		"""
 		Connect to the Salesforce API.
 		"""
-		self.settings_dict = connection.settings_dict
-		self.connection = connection
-		self.session = connection.sf_session
+		self.db = db
 		self.query = query
-		# A consistent value is iter([]), but `self.results` can be undefined until execute
+		self.session = db.sf_session
+		# A consistent value of empty self.results after execute will be `iter([])`
 		self.results = None
 		self.rowcount = None
 		self.first_row = None
@@ -322,7 +331,7 @@ class CursorWrapper(object):
 
 	@property
 	def oauth(self):
-		return auth.authenticate(self.settings_dict)
+		return auth.authenticate(db_alias=self.db.alias)
 
 	def execute(self, q, args=()):
 		"""
@@ -483,15 +492,13 @@ class CursorWrapper(object):
 
 string_literal = quoted_string_literal
 def date_literal(d, c):
-	if(d.tzinfo):
-		tzname = datetime.datetime.strftime(d, "%z").replace(':', '')
-		return datetime.datetime.strftime(d, "%Y-%m-%dT%H:%M:%S.000") + tzname
-	else:
+	if not d.tzinfo:
 		import time
 		tz = pytz.timezone(settings.TIME_ZONE)
-		nd = tz.localize(d, is_dst=time.daylight)
-		tzname = datetime.datetime.strftime(nd, "%z").replace(':', '')
-		return datetime.datetime.strftime(nd, "%Y-%m-%dT%H:%M:%S.000") + tzname
+		d = tz.localize(d, is_dst=time.daylight)
+	# Format of `%z` is "+HHMM"
+	tzname = datetime.datetime.strftime(d, "%z")
+	return datetime.datetime.strftime(d, "%Y-%m-%dT%H:%M:%S.000") + tzname
 
 def sobj_id(obj, conv):
 	return obj.pk

@@ -7,14 +7,17 @@
 
 from django.test import TestCase
 from django.conf import settings
+from django.utils.unittest import skipUnless
 
 from salesforce import auth
 from salesforce.backend import sf_alias
 from salesforce.testrunner.example import models
+from salesforce.tests.test_integration import default_is_sf
 
 import logging
 log = logging.getLogger(__name__)
 
+@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 class OAuthTest(TestCase):
 	def setUp(self):
 		pass
@@ -30,14 +33,15 @@ class OAuthTest(TestCase):
 				self.fail("Empty value for %s key in returned oauth data." % key)
 	
 	def test_token_renewal(self):
-		auth.authenticate(settings.DATABASES[sf_alias])
+		auth.authenticate(sf_alias, settings_dict=settings.DATABASES[sf_alias])
 		self.validate_oauth(auth.oauth_data[sf_alias])
 		old_data = auth.oauth_data
 		
+		self.assertIn(sf_alias, auth.oauth_data)
 		auth.expire_token()
-		self.assertEqual(auth.oauth_data, {})
+		self.assertNotIn(sf_alias, auth.oauth_data)
 		
-		auth.authenticate(settings.DATABASES[sf_alias])
+		auth.authenticate(sf_alias, settings_dict=settings.DATABASES[sf_alias])
 		self.validate_oauth(auth.oauth_data[sf_alias])
 		
 		self.assertEqual(old_data[sf_alias]['access_token'], auth.oauth_data[sf_alias]['access_token'])
