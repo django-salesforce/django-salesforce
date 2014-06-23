@@ -366,6 +366,16 @@ class BasicSOQLTest(TestCase):
 		finally:
 			obj.delete()
 
+	def test_namespaces_auto(self):
+		"""
+		Verify that the database column name can be correctly autodetected
+		from model Meta for managed packages with a namespace prefix.
+		(The package need not be installed for this unit test.)
+		"""
+		tested_field = ChargentOrder._meta.get_field('Balance_Due')
+		self.assertEqual(tested_field.sf_custom, True)
+		self.assertEqual(tested_field.column, 'ChargentOrders__Balance_Due__c')
+
 	def test_datetime_miliseconds(self):
 		"""
 		Verify that a field with milisecond resolution is readable.

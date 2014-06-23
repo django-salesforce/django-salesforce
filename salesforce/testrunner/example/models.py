@@ -229,6 +229,7 @@ class PricebookEntry(SalesforceModel):
 class ChargentOrder(SalesforceModel):
 	class Meta(SalesforceModel.Meta):
 		db_table = 'ChargentOrders__ChargentOrder__c'
+		custom = True
 
 	OwnerId = models.CharField(max_length=255, db_column='OwnerId')
 	IsDeleted = models.CharField(max_length=255, db_column='IsDeleted')
@@ -242,8 +243,8 @@ class ChargentOrder(SalesforceModel):
 	SystemModstamp = models.CharField(max_length=255, db_column='SystemModstamp')
 	LastActivityDate = models.CharField(max_length=255,
 										db_column='LastActivityDate')
-	Balance_Due = models.CharField(max_length=255,
-									db_column='ChargentOrders__Balance_Due__c')
+	# example of automatically recognized name  db_column='ChargentOrders__Balance_Due__c'
+	Balance_Due = models.CharField(max_length=255)
 	Bank_Account_Name = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Name__c')
 	Bank_Account_Number = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Number__c')
 	Bank_Account_Type = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Type__c')

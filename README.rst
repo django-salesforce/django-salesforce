@@ -121,6 +121,25 @@ Advanced usage
    If SF non SF databases should be used for SF models together, switched by
    ``.using(alias).``, you shall switch it by ``.db_manager(alias)`` instead.
    e.g. ``Contact.objects.db_manager(alias).my_manager(params...)``
+-  **Automatic db_field** Most of database columns names can be automatically
+   deduced from Django field name, if no ``db_column`` is specified::
+
+     last_name = models.CharField(max_length=80)     # db_column='LastName'
+     FirstName = models.CharField(max_length=80)     # db_column='FirstName'
+	 custom_bool = models.BooleanField(custom=True)  # db_column='CustomBool__c'
+
+   Custom fields can be marked by the parameter "custom=True" or they are 
+   automatically custom if they are directly in a model that is explicitly
+   marked custom by the attribute "custom=True" in class Meta. Standard
+   fields used in a custom model can be marked "custom=False" or they can be
+   defined in an abstract parent standard model that can be common for many
+   models. The Meta attribute ``custom`` is not inherited. Also namespaces
+   prefixes of managed packages with "__" can be automatically applied to
+   custom fields without db_column.
+   Fields with names with an upper case character are never modified by case or
+   removed underscore. Only a namespace prefix or '__c' are added according to
+   the context.
+
 
 Caveats
 -------
