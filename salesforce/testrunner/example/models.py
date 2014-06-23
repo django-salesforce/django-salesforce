@@ -293,7 +293,7 @@ class TestCustomExample(SalesforceParentModel):
 		>> install_metadata_service()
 		>> create_demo_test_object()
 	
-	or create an object with `API Name`: `Test__c`
+	or create an object with `API Name`: `django_Test__c`
 	`Data Type` of the Record Name: `Text`
 	with a text field `API Name`: `TestField__c`.
 	and set it accessible by you. (`Set Field-Leved Security`)
@@ -302,7 +302,7 @@ class TestCustomExample(SalesforceParentModel):
 	# The API name is therefore 'TestField__c'
 	test_field = models.CharField(max_length=42)
 	class Meta:
-		db_table = 'Test__c'
+		db_table = 'django_Test__c'
 		custom = True
 
 

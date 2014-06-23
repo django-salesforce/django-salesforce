@@ -349,10 +349,10 @@ class BasicSOQLTest(TestCase):
 		orders = ChargentOrder.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
 
-	@skipUnless('Test__c' in sf_tables, "Not found custom object 'Test__c'")
+	@skipUnless('django_Test__c' in sf_tables, "Not found custom object 'django_Test__c'")
 	def test_simple_custom_object(self):
 		"""
-		Create, read and delete a simple custom object Test__c.
+		Create, read and delete a simple custom object `django_Test__c`.
 		"""
 		results = TestCustomExample.objects.all()[0:1]
 		obj = TestCustomExample(test_field='sf_test')
