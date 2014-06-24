@@ -15,3 +15,4 @@ setuptools_git-*.egg
 .coverage
 htmlcov
 log
+tests/inspectdb/models.py

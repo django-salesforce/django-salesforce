@@ -644,7 +644,7 @@ class BasicSOQLTest(TestCase):
 		(with sandboxes of the same organization)
 		"""
 		other_dbs = [k for k, v in settings.DATABASES.items() if
-				k != 'salesforce' and v['ENGINE'] == 'salesforce.backend']
+				k != sf_alias and v['ENGINE'] == 'salesforce.backend']
 		if not other_dbs:
 			self.skipTest('Only one SF database found.')
 		other_db = other_dbs[0]
@@ -687,3 +687,19 @@ class BasicSOQLTest(TestCase):
 		finally:
 			for x in objects:
 				x.delete()
+
+	@skip("Waiting for bug fix")
+	def test_raw_aggregate(self):
+		# raises "TypeError: list indices must be integers, not str" in resolve_columns
+		list(Contact.objects.raw("select Count() from Contact"))
+
+	@skip("Waiting for bug fix")
+	def test_only_fields(self):
+		# raises KeyError: 'Username'
+		xx = User.objects.only('Id')
+		xx[0]
+
+	@skip("Waiting for bug fix")
+	def test_incomplete_raw(self):
+		# raises KeyError: 'AccountId'
+		Contact.objects.raw("select id from Contact")[0].last_name

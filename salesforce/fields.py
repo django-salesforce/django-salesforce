@@ -26,6 +26,10 @@ try:
 except ImportError:
 	pass
 
+# None of field types defined in this module need a "deconstruct" method,
+# in Django 1.7+, because their parameters only describe fixed nature of SF
+# standard objects that can not be modified no ways by no API or spell.
+
 FULL_WRITABLE  = 0
 NOT_UPDATEABLE = 1
 NOT_CREATEABLE = 2
@@ -133,7 +137,6 @@ class ForeignKey(SfField, models.ForeignKey):
 	"""ForeignKey with sf_read_only attribute for Salesforce."""
 	def __init__(self, *args, **kwargs):
 		on_delete = kwargs.get('on_delete', models.CASCADE).__name__
-		related_object = args[0]
 		if not on_delete in ('PROTECT', 'DO_NOTHING'):
 			# The option CASCADE (currently fails) would be unsafe after a fix
 			# of on_delete because Cascade delete is not usually enabled in SF
@@ -141,6 +144,7 @@ class ForeignKey(SfField, models.ForeignKey):
 			# CreatedBy etc. Some related objects are deleted automatically
 			# by SF even with DO_NOTHING in Django, e.g. for
 			# Campaign/CampaignMember
+			related_object = args[0]
 			warnings.warn("Only foreign keys with on_delete = PROTECT or "
 					"DO_NOTHING are currently supported, not %s related to %s"
 					% (on_delete, related_object))
