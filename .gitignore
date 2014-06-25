@@ -16,3 +16,4 @@ setuptools_git-*.egg
 htmlcov
 log
 tests/inspectdb/models.py
+salesforce/packages/

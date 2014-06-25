@@ -8,7 +8,7 @@ This library allows you to load and edit the objects in any Salesforce instance 
 is fairly complete, and generally seamless for most uses. It works by integrating with the Django ORM, allowing access
 to the objects in your SFDC instance as if they were "local" databases.
 
-Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7 (but Django 1.4 can't be combined with Python 3)
+Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7 (but Django 1.4.x can't be combined with Python 3)
 
 Quick Start
 -----------
@@ -58,7 +58,8 @@ Quick Start
 7. Define a model that extends ``salesforce.models.SalesforceModel``
    or export the complete SF schema by
    ``python manage.py inspectdb --database=salesforce`` and simplify it
-   to what you need.
+   to what you need. An inner ``Meta`` class with the ``db_table`` option must
+   be used for custom Salesforce objects where the name ends with ``__c``.
 
 8. If you want to use the model in the Django admin interface, use a
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
@@ -87,6 +88,18 @@ relationships based on a custom field. This is because related objects
 relation is by ID the columns are named `FieldName__c`, whereas if the relation
 is stored by object the column is named `FieldName__r`. More details about
 this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+
+In case of a ForeignKey you can specify the field name suffixed with ``_id``,
+as it is automatically allowed by Django. For example: ``account_id`` instead
+of ``account.id``, or ``AccountId`` instead of ``Account.Id``. It is faster,
+if you need not to access to the related ``Account`` object.
+
+Querysets can be easily inspected whether they are correctly compiled to SOQL.
+You can compare the meaning with the same compiled to SQL::
+
+    my_qs = Contact.objects.filter(my__little_more__complicated='queryset')
+    print my_qs.query.get_compiler('salesforce').as_sql()    # SOQL
+    print my_qs.query.get_compiler('default').as_sql()       # SQL
 
 **Generic foreign keys** are frequently used in SF for fields that relate to
 objects of different types, e.g. the Parent of Note or Attachment can be almost
@@ -121,6 +134,33 @@ Advanced usage
    If SF non SF databases should be used for SF models together, switched by
    ``.using(alias).``, you shall switch it by ``.db_manager(alias)`` instead.
    e.g. ``Contact.objects.db_manager(alias).my_manager(params...)``
+-  **Automatic db_field** Most of database columns names can be automatically
+   deduced from Django field name, if no ``db_column`` is specified::
+
+     last_name = models.CharField(max_length=80)     # db_column='LastName'
+     FirstName = models.CharField(max_length=80)     # db_column='FirstName'
+	 custom_bool = models.BooleanField(custom=True)  # db_column='CustomBool__c'
+
+   Custom fields can be marked by the parameter "custom=True" or they are
+   automatically custom if they are directly in a model that is explicitly
+   marked custom by the attribute "custom=True" in class Meta. Standard
+   fields used in a custom model can be marked "custom=False" or they can be
+   defined in an abstract parent standard model that can be common for many
+   models. The Meta attribute ``custom`` is not inherited. Also namespaces
+   prefixes of managed packages with "__" can be automatically applied to
+   custom fields without db_column.
+   Fields with names with an upper case character are never modified by case or
+   removed underscore. Only a namespace prefix or '__c' are added according to
+   the context.
+
+-  **inspectdb** Tables that are exported into a new model can be restricted
+   by regular expression::
+
+    python manage.py inspectdb --table-filter="Contact$|Account" --database=salesforce
+
+   Exports only models for tables with exact API name ``Contact`` and all
+   tables with name wtarting with ``Account``. This filter works also with
+   other databases.
 
 Caveats
 -------
