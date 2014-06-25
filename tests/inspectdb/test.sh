@@ -12,7 +12,12 @@ if python manage.py inspectdb --database=salesforce --traceback >tests/inspectdb
 	python tests/inspectdb/slow_test.py
 	RESULT_2=$?
 
-	if [ $RESULT_1 == 0 -a $RESULT_2 == 0 ]; then
+	echo '*** parse test ***'   # it is OK that this requires Python 2.7
+	.tox/py27dj17/bin/python -m unittest tests.inspectdb.tests
+	#.tox/py27dj17/bin/python manage.py test --settings=tests.inspectdb.settings tests.inspectdb
+	RESULT_3=$?
+
+	if [ $RESULT_1 == 0 -a $RESULT_2 == 0 -a $RESULT_3 == 0 ]; then
 		echo OK
 	else
 		echo ERROR
