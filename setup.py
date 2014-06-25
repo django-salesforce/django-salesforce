@@ -5,6 +5,8 @@
 # See LICENSE.md for details
 #
 
+from __future__ import with_statement
+
 import os, os.path, subprocess
 
 # disables creation of .DS_Store files inside tarballs on Mac OS X
@@ -60,6 +62,10 @@ def get_tagged_version():
 
 def autosetup():
 	from setuptools import setup, find_packages
+	
+	with open(relative_path('requirements.txt'), 'rU') as f:
+		requirements_txt = f.read().split("\n")
+	
 	return setup(
 		name			= "django-salesforce",
 		version			= get_tagged_version(),
@@ -71,11 +77,7 @@ def autosetup():
 		# setuptools won't auto-detect Git managed files without this
 		setup_requires = [ "setuptools_git >= 0.4.2", ],
 		
-		# okay, so, normally install_requires is a list, right? Well, setuptools
-		# really just iterates over it. As it happens, the pip requirements file
-		# is in the same format, *and* file objects in python allow you to iterate
-		# over them, getting back each line in turn. Why doesn't everyone do this?
-		install_requires = open(relative_path('requirements.txt'), 'rU'),
+		install_requires = requirements_txt,
 		
 		# metadata for upload to PyPI
 		author			 = "Freelancers Union",
