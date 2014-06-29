@@ -128,7 +128,7 @@ class SfField(models.Field):
 
 	def contribute_to_class(self, cls, name, **kwargs):
 		super(SfField, self).contribute_to_class(cls, name, **kwargs)
-		if self.sf_custom is None:
+		if self.sf_custom is None and hasattr(cls._meta, 'sf_custom'):
 			# Only custom fields in models explicitly marked by
 			# Meta custom=True are recognized automatically - for
 			# backward compatibility reasons.
