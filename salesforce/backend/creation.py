@@ -14,7 +14,7 @@ import sys
 from django.db.backends.creation import BaseDatabaseCreation
 
 class DatabaseCreation(BaseDatabaseCreation):
-	def create_test_db(self, verbosity=1, autoclobber=False):
+	def create_test_db(self, verbosity=1, autoclobber=False, serialize=True):
 		test_database_name = self._get_test_db_name()
 		
 		if verbosity >= 1:
