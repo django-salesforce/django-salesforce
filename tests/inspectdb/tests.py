@@ -1,4 +1,5 @@
 """Tests by parsing the file modules.py exported by inspectdb."""
+from collections import OrderedDict
 from unittest import TestCase
 import os
 import re
@@ -15,7 +16,7 @@ def get_classes_texts():
 	"""
 	Get classes texts as a dict.
 	"""
-	result = {}
+	result = OrderedDict()
 	excluded_pattern = re.compile(r'^('
 			r'# This is an auto-generated Django model|'
 			r'from salesforce import models$'
@@ -31,7 +32,7 @@ def get_classes_texts():
 
 class ExportedModelTest(TestCase):
 	def test_nice_fields_names(self):
-		"""Test the typical nice name 'last_modified_date'"""
+		"""Test the typical nice field name 'last_modified_date'."""
 		for text in classes_texts.values():
 			if re.search(r' last_modified_date = ', text):
 				(matched_line,) = [line for line in text.split('\n')
@@ -42,7 +43,7 @@ class ExportedModelTest(TestCase):
 				self.assertNotIn('LastModifiedDate', text)
 
 	def test_custom_test_class(self):
-		"""Test the typical nice name 'last_modified_date'"""
+		"""Test the typical nice class name 'Test'."""
 		self.assertTrue('AccountContactRole' in classes_texts.keys())
 		for name, text in classes_texts.items():
 			if re.search(r"        db_table = 'Test__c'", text):
