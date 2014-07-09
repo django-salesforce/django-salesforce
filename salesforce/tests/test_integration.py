@@ -586,6 +586,19 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(cursor.fetchmany(), contacts[1:])
 	
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	def test_cursor_execute_aggregate(self):
+		"""
+		Verify that aggregate queries can be executed directly by SOQL.
+		"""
+		# Field 'Id' is very useful for COUNT over non empty fields.
+		sql = "SELECT LastName, COUNT(Id) FROM Contact GROUP BY LastName LIMIT 2"
+		cursor = connections[sf_alias].cursor()
+		cursor.execute(sql)
+		contact_aggregate = cursor.fetchone()
+		self.assertTrue('LastName' in contact_aggregate)
+		self.assertGreaterEqual(contact_aggregate['expr0'], 1)
+	
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_errors(self):
 		"""
 		Test for improving code coverage.

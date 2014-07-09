@@ -447,7 +447,7 @@ class CursorWrapper(object):
 	def query_results(self, results):
 		while True:
 			for rec in results['records']:
-				if rec['attributes']['type'] == 'AggregateResult':
+				if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, 'aggregate_select'):
 					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
 					# The 'attributes' info is unexpected for Django within fields.
 					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]
