@@ -666,16 +666,13 @@ class BasicSOQLTest(TestCase):
 		#self.assertRaises(salesforce.backend.base.SalesforceError, Contact(pk=bad_id).delete)
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	@skipUnless(len(sf_databases) > 1, "Only one SF database found.")
 	def test_multiple_sf_databases(self):
 		"""
 		Test a connection to two sf databases with the same user.
 		(with sandboxes of the same organization)
 		"""
-		other_dbs = [k for k, v in settings.DATABASES.items() if
-				k != sf_alias and v['ENGINE'] == 'salesforce.backend']
-		if not other_dbs:
-			self.testSkip('Only one SF database found.')
-		other_db = other_dbs[0]
+        other_db = sf_databases[0]
 		c1 = Contact(last_name='sf_test 1')
 		c2 = Contact(last_name='sf_test 2')
 		c1.save()
