@@ -4,11 +4,13 @@ django-salesforce
 .. image:: https://travis-ci.org/freelancersunion/django-salesforce.svg?branch=master
    :target: https://travis-ci.org/freelancersunion/django-salesforce
 
-This library allows you to load and edit the objects in any Salesforce instance using Django models. The integration
-is fairly complete, and generally seamless for most uses. It works by integrating with the Django ORM, allowing access
-to the objects in your SFDC instance as if they were "local" databases.
+This library allows you to load and edit the objects in any Salesforce instance
+using Django models. The integration is fairly complete, and generally seamless
+for most uses. It works by integrating with the Django ORM, allowing access to
+the objects in your SFDC instance as if they were in a traditional database.
 
-Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7 (but Django 1.4.x can't be combined with Python 3)
+Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7. Note that Django 1.4.x
+is not compatible with Python 3.
 
 Quick Start
 -----------
@@ -58,8 +60,7 @@ Quick Start
 7. Define a model that extends ``salesforce.models.SalesforceModel``
    or export the complete SF schema by
    ``python manage.py inspectdb --database=salesforce`` and simplify it
-   to what you need. An inner ``Meta`` class with the ``db_table`` option must
-   be used for custom Salesforce objects where the name ends with ``__c``.
+   to what you need.
 
 8. If you want to use the model in the Django admin interface, use a
    ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
@@ -116,51 +117,65 @@ Example of `Note` model is in `salesforce.testrunner.example.models.Note`.
 Advanced usage
 --------------
 
--  **Testing** You can set ``SALESFORCE_DB_ALIAS = 'default'`` if you want to
-   run your unit tests fast in memory with the sqlite3 driver, without access
-   to the SF database. (Only login server is accessed but not the data server.)
--  **Multiple databases** of similar structure can be used with the SF model,
-   including more SF databases. If ``SALESFORCE_DB_ALIAS`` is set to a non SF
-   database, than tables defined by SF model can be created by syncdb in that
-   database if a model has a ``Meta`` class with the attribute ``managed=True``
-   or undefined. This behaviour can be also configured by ``DATABASE_ROUTERS``.
--  **Non SF databases** If an inner ``Meta`` class is used, e.g. for a
-   ``db_table`` option of custom SF object for a name that ends with ``__c``,
-   then that Meta must be a descendant of ``SalesforceModel.Meta`` or must have
-   the attribute ``managed=False``.
--  **Custom Managers** Custom managers of a model must be descendants of
-   ``salesforce.manager.SalesforceManager``.
-   Switching the type by ``SALESFORCE_DB_ALIAS`` is easy, e.g. for fast tests.
-   If SF non SF databases should be used for SF models together, switched by
-   ``.using(alias).``, you shall switch it by ``.db_manager(alias)`` instead.
-   e.g. ``Contact.objects.db_manager(alias).my_manager(params...)``
--  **Automatic db_field** Most of database columns names can be automatically
+-  **Testing** - By default, tests will be run against the SFDC connection
+   specified in settings.py, which will substantially increase testing time.
+   
+   One way to speed this up is to change the SALESFORCE_DB_ALIAS to point to
+   another DB connection (preferably SQLite) during testing using the
+   ``TEST_*`` settings variables. The only outbound connections will then be to
+   the authentication servers.
+   
+-  **Multiple SFDC connections** - In most cases, a single connection is all
+   that most apps require, so the default DB connection to use for Salesforce
+   is defined by the ``SALESFORCE_DB_ALIAS`` settings variable. This behavior
+   can be also configured by ``DATABASE_ROUTERS``, replacing the use of
+   salesforce.backend.router.ModelRouter.
+
+-  **Non SF databases** - If ``SALESFORCE_DB_ALIAS`` is set to a conventional
+   database, the tables defined by the SF models will be created by syncdb. This
+   behavior can be disabled by adding a Meta class with ``managed=False``.
+
+-  **Custom Managers** - When creating a custom manager for a model, the manager
+   must be a descendant of ``salesforce.manager.SalesforceManager``.
+   
+   Changing the DB connection for a model with a custom manager with ``.using(alias).``,
+   will return an object with the default manager. Instead, use ``.db_manager(alias)``
+   to select a DB while returning the correct manager,
+   e.g. ``Contact.objects.db_manager(alias).filter(params...)``
+
+-  **Automatic Field Naming** - Most of database columns names can be automatically
    deduced from Django field name, if no ``db_column`` is specified::
 
      last_name = models.CharField(max_length=80)     # db_column='LastName'
-     FirstName = models.CharField(max_length=80)     # db_column='FirstName'
-	 custom_bool = models.BooleanField(custom=True)  # db_column='CustomBool__c'
+     FirstName = models.CharField(max_length=80)    # db_column='FirstName'
+     custom_bool = models.BooleanField(custom=True)  # db_column='CustomBool__c'
+   
+   Fields named with an upper case character are never modified, except for the
+   addition of the namespace prefix or the '__c' suffix for custom fields.
 
-   Custom fields can be marked by the parameter "custom=True" or they are
-   automatically custom if they are directly in a model that is explicitly
-   marked custom by the attribute "custom=True" in class Meta. Standard
-   fields used in a custom model can be marked "custom=False" or they can be
-   defined in an abstract parent standard model that can be common for many
-   models. The Meta attribute ``custom`` is not inherited. Also namespaces
-   prefixes of managed packages with "__" can be automatically applied to
-   custom fields without db_column.
-   Fields with names with an upper case character are never modified by case or
-   removed underscore. Only a namespace prefix or '__c' are added according to
-   the context.
+-  **Custom SF Objects and Fields** - Custom SF class objects are indicated by
+   adding a Meta class with parameter 'custom=True'. All child fields are
+   assumed to be custom as well, unless marked otherwise with a field parameter
+   marked "custom=False".
 
--  **inspectdb** Tables that are exported into a new model can be restricted
-   by regular expression::
+   Similarly, custom fields on standard objects can be indicated by "custom=True",
+   or they can be defined in an standard parent model (the ``custom`` Meta
+   parameter is not inherited). 
 
-    python manage.py inspectdb --table-filter="Contact$|Account" --database=salesforce
+   Also namespace prefixes of managed packages (prefixed with "PackageName\__"
+   can be automatically applied to custom fields without db_column.
 
-   Exports only models for tables with exact API name ``Contact`` and all
-   tables with name wtarting with ``Account``. This filter works also with
-   other databases.
+-  **Meta class options** - If an inner ``Meta`` class is used, it must be a
+   descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
+
+-  **Database Introspection with inspectdb** Tables that are exported into a
+   Python model can be restricted by regular expression::
+
+     python manage.py inspectdb --table-filter="Contact$|Account" --database=salesforce
+
+   In this example, inspectdb will only export models for tables with exact
+   name ``Contact`` and all tables that are prefixed with ``Account``. This
+   filter works with all supported database types.
 
 Caveats
 -------
@@ -175,18 +190,14 @@ here are the potential pitfalls and unimplemented operations:
    are specific to their individual applications' needs. Models that have
    been included with this library are for example and documentation
    purposes.
--  **Custom Object Names** — Custom Salesforce tables and columns (and a
-   couple of other SF concepts) are indicated with a double-underscore in
-   the name, and will need to have their Django field name overridden
-   (using 'db\_column'), so as not to interfere with the double-underscore
-   syntax used in Django query filters.
--  **Inheritence** — All models for object types on Salesforce must
-   extend salesforce.models.SalesforceModel. The model router checks for
-   this to determine which models to handle through the Salesforce
-   connection.
+-  **Inheritence** — When using the default router, all models for object
+   types on Salesforce must extend salesforce.models.SalesforceModel. The
+   model router checks for this to determine which models to handle through
+   the Salesforce connection.
 -  **Multiple Updates** — Multiple update support is not yet
    implemented.
 -  **Multiple Deletes** — Multiple delete support is not yet
    implemented.
--  **Database Sync** — There is no plan to support DB creation for the
-   forseeable future.
+-  **Database Sync** — ``syncdb`` will only create new databases in non-SF
+   databases (useful for unit tests); SFDC classes are assumed to already
+   exist with the appropriate permissions.
