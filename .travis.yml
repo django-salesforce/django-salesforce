@@ -25,5 +25,5 @@ install:
   - "pip install ."
 script:
   - python manage.py syncdb --noinput
-  - bash test.sh
+  - bash tests/test.sh
   - python manage.py test
