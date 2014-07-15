@@ -138,10 +138,10 @@ Advanced usage
 -  **Custom Managers** - When creating a custom manager for a model, the manager
    must be a descendant of ``salesforce.manager.SalesforceManager``.
    
-   Changing the DB connection for a model with a custom manager with ``.using(alias).``,
-   will return an object with the default manager. Instead, use ``.db_manager(alias)``
-   to select a DB while returning the correct manager,
-   e.g. ``Contact.objects.db_manager(alias).filter(params...)``
+   In most cases, switching DB connections with ``.using(alias).`` will be
+   sufficient, but if you need to call a method on your custom manager, you should
+   instead use ``.db_manager(alias)`` to select a DB while returning the correct
+   manager, e.g. ``Contact.objects.db_manager(alias).my_manager(params...)``
 
 -  **Automatic Field Naming** - Most of database columns names can be automatically
    deduced from Django field name, if no ``db_column`` is specified::
