@@ -672,7 +672,7 @@ class BasicSOQLTest(TestCase):
 		Test a connection to two sf databases with the same user.
 		(with sandboxes of the same organization)
 		"""
-        other_db = sf_databases[0]
+		other_db = sf_databases[0]
 		c1 = Contact(last_name='sf_test 1')
 		c2 = Contact(last_name='sf_test 2')
 		c1.save()
