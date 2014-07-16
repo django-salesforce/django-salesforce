@@ -67,6 +67,8 @@ def run():
 					# Insufficient access rights on cross-reference id
 					'Group',
 					'OpportunityShare', 'Profile',
+					# Temporarely removed from tests until version Summer '14 will be on my sandbox.
+					'Folder',
 					):
 				stdout.write('(write) ')
 				try:
