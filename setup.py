@@ -5,8 +5,6 @@
 # See LICENSE.md for details
 #
 
-from __future__ import with_statement
-
 import os, os.path, subprocess
 
 # disables creation of .DS_Store files inside tarballs on Mac OS X
@@ -65,6 +63,9 @@ def autosetup():
 	
 	with open(relative_path('requirements.txt'), 'rU') as f:
 		requirements_txt = f.read().split("\n")
+
+	# check if installed with git data (not via PyPi)
+	with_git = os.path.isdir(relative_path('.git'))
 	
 	return setup(
 		name			= "django-salesforce",
@@ -72,10 +73,10 @@ def autosetup():
 		
 		include_package_data = True,
 		zip_safe		= False,
-		packages		= find_packages(exclude=['tests']),
+		packages		= find_packages(exclude=['tests', 'tests.*']),
 
 		# setuptools won't auto-detect Git managed files without this
-		setup_requires = [ "setuptools_git >= 0.4.2", ],
+		setup_requires = ["setuptools_git >= 0.4.2"] if with_git else [],
 		
 		install_requires = requirements_txt,
 		

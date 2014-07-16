@@ -67,6 +67,8 @@ def run():
 					# Insufficient access rights on cross-reference id
 					'Group',
 					'OpportunityShare', 'Profile',
+					# Temporarely removed from tests until version Summer '14 will be on my sandbox.
+					'Folder',
 					):
 				stdout.write('(write) ')
 				try:
@@ -76,7 +78,7 @@ def run():
 					stderr.write("\n************** %s %s\n" % (tab['name'], e))
 					n_write_errors += 1
 				else:
-					assert test_class.objects.get(pk=obj.pk).lastmodifieddate > obj.lastmodifieddate
+					assert test_class.objects.get(pk=obj.pk).last_modified_date > obj.last_modified_date
 			stdout.write('\n')
 	n_tables = len(sf.introspection.table_list_cache['sobjects'])
 	print('Result: {n_tables} tables, {n_read} reads tried, {n_no_data} no data, '

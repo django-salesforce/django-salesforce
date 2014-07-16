@@ -8,6 +8,7 @@
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
 
+import django
 from django.conf import settings
 
 SALUTATIONS = [
@@ -49,7 +50,7 @@ class AbstractAccount(SalesforceModel):
 	]
 
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-			default=lambda:User(Id='DEFAULT'),
+			default=lambda:User(pk='DEFAULT'),
 			db_column='OwnerId')
 	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
 							null=True)
@@ -113,22 +114,25 @@ else:
 
 
 class Contact(SalesforceModel):
-	Account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
-			db_column='AccountId', blank=True, null=True)
-	LastName = models.CharField(max_length=80)
-	FirstName = models.CharField(max_length=40, blank=True)
-	Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
+	# Example that db_column is not necessary for most of fields even with
+	# lower case names and for ForeignKey
+	account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
+			blank=True, null=True)  # db_column: 'OwnerId'
+	last_name = models.CharField(max_length=80)
+	first_name = models.CharField(max_length=40, blank=True)
+	name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
 			verbose_name='Full Name')
-	Email = models.EmailField(blank=True, null=True)
-	EmailBouncedDate = models.DateTimeField(blank=True, null=True)
-	# tested example that db_column is not necessary for a normal ForeignKey
-	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-			default=lambda:User(Id='DEFAULT'),
+	email = models.EmailField(blank=True, null=True)
+	email_bounced_date = models.DateTimeField(blank=True, null=True)
+	# The `default=` with lambda function is easy readable, but can be
+	# problematic with migrations in the future because it is not serializable.
+	# It can be replaced by normal function.
+	owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=lambda:User(pk='DEFAULT'),
 			related_name='contact_owner_set')
 
-
 	def __unicode__(self):
-		return self.Name
+		return self.name
 
 
 class Lead(SalesforceModel):
@@ -186,7 +190,7 @@ class Lead(SalesforceModel):
 
 
 class Product(SalesforceModel):
-	Name = models.CharField(max_length=255, db_column='Name')
+	Name = models.CharField(max_length=255)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'Product2'
@@ -196,7 +200,7 @@ class Product(SalesforceModel):
 
 
 class Pricebook(SalesforceModel):
-	Name = models.CharField(max_length=255, db_column='Name')
+	Name = models.CharField(max_length=255)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'Pricebook2'
@@ -207,12 +211,10 @@ class Pricebook(SalesforceModel):
 
 class PricebookEntry(SalesforceModel):
 	Name = models.CharField(max_length=255, db_column='Name', sf_read_only=models.READ_ONLY)
-	Pricebook2Id = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING,
-			db_column='Pricebook2Id')
-	Product2Id = models.ForeignKey('Product', on_delete=models.DO_NOTHING,
-			db_column='Product2Id')
-	UseStandardPrice = models.BooleanField(default=False, db_column='UseStandardPrice')
-	UnitPrice = models.DecimalField(decimal_places=2, max_digits=18, db_column='UnitPrice')
+	Pricebook2 = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING)
+	Product2 = models.ForeignKey('Product', on_delete=models.DO_NOTHING)
+	UseStandardPrice = models.BooleanField(default=False)
+	UnitPrice = models.DecimalField(decimal_places=2, max_digits=18)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'PricebookEntry'
@@ -225,6 +227,7 @@ class PricebookEntry(SalesforceModel):
 class ChargentOrder(SalesforceModel):
 	class Meta(SalesforceModel.Meta):
 		db_table = 'ChargentOrders__ChargentOrder__c'
+		custom = True
 
 	OwnerId = models.CharField(max_length=255, db_column='OwnerId')
 	IsDeleted = models.CharField(max_length=255, db_column='IsDeleted')
@@ -238,8 +241,8 @@ class ChargentOrder(SalesforceModel):
 	SystemModstamp = models.CharField(max_length=255, db_column='SystemModstamp')
 	LastActivityDate = models.CharField(max_length=255,
 										db_column='LastActivityDate')
-	Balance_Due = models.CharField(max_length=255,
-									db_column='ChargentOrders__Balance_Due__c')
+	# example of automatically recognized name  db_column='ChargentOrders__Balance_Due__c'
+	Balance_Due = models.CharField(max_length=255)
 	Bank_Account_Name = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Name__c')
 	Bank_Account_Number = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Number__c')
 	Bank_Account_Type = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Type__c')
@@ -325,7 +328,7 @@ class CronTrigger(SalesforceModel):
 
 
 class BusinessHours(SalesforceModel):
-	Name = models.CharField(db_column='Name', max_length=80)
+	Name = models.CharField(max_length=80)
 	# The default record is automatically created by Salesforce.
 	IsDefault = models.BooleanField(default=False, verbose_name='Default Business Hours')
 	# ... much more fields, but we use only this one TimeFiled for test
@@ -337,6 +340,44 @@ class BusinessHours(SalesforceModel):
 
 test_custom_db_table, test_custom_db_column = getattr(settings,
 		'TEST_CUSTOM_FIELD', 'ChargentOrders__ChargentOrder__c.Name').split('.')
+
+class SalesforceParentModel(SalesforceModel):
+	"""
+	Example of standard fields present in all custom models.
+	"""
+	# This is not a custom field because is not defined in a custom model.
+	# The API name is therefore 'Name'.
+	name = models.CharField(max_length=80)
+	last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+	# This model is not custom because it has not an explicit attribute
+	# `custom = True` in Meta and also has not a `db_table` that ends with
+	# '__c'.
+	class Meta:
+		abstract = True
+
+
+class TestCustomExample(SalesforceParentModel):
+	"""
+	Simple custom model with one custom and more standard fields.
+
+	Salesforce object for this model can be created from the branch
+	  hynekcer/tooling-api-and-metadata  by commands
+	$ python manage.py shell
+		>> from salesforce.tooling import *
+		>> install_metadata_service()
+		>> create_demo_test_object()
+	
+	or create an object with `API Name`: `Test__c`
+	`Data Type` of the Record Name: `Text`
+	with a text field `API Name`: `TestField__c`.
+	and set it accessible by you. (`Set Field-Leved Security`)
+	"""
+	# This is a custom field because it is defined in the custom model.
+	# The API name is therefore 'TestField__c'
+	test_field = models.CharField(max_length=42)
+	class Meta:
+		db_table = 'Test__c'
+		custom = True
 
 
 class GeneralCustomModel(SalesforceModel):
@@ -355,8 +396,21 @@ class GeneralCustomModel(SalesforceModel):
 	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)
 
 
-class Note(SalesforceModel):
-	title = models.CharField(max_length=80, db_column='Title')
-	body = models.TextField(null=True, db_column='Body')
-	parent_id = models.CharField(max_length=18, db_column='ParentId')
-	parent_type =  models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
+class Note(models.Model):
+	title = models.CharField(max_length=80)
+	body = models.TextField(null=True)
+	parent_id = models.CharField(max_length=18)
+	parent_type = models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
+
+
+class Opportunity(models.Model):
+	name = models.CharField(max_length=255)
+	contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole', related_name='opportunities')
+	close_date = models.DateField()
+	stage = models.CharField(max_length=255, db_column='StageName') # e.g. "Prospecting"
+
+
+class OpportunityContactRole(models.Model):
+	opportunity = models.ForeignKey(Opportunity, on_delete=models.DO_NOTHING, related_name='contact_roles')
+	contact = models.ForeignKey(Contact, on_delete=models.DO_NOTHING, related_name='opportunity_roles')
+	role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
