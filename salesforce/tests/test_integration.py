@@ -564,7 +564,7 @@ class BasicSOQLTest(TestCase):
 		all_leads = Lead.objects.query_all()
 		leads_list = list(all_leads)
 		if all_leads.query.first_chunk_len == len(leads_list):
-			self.assertLessEqual(len(leads_list), 2000)
+			self.assertLessEqual(len(leads_list), 2000, "Obsoleted constants")
 			log.info("Not enough Leads accumulated (currently %d including deleted) "
 					"in the last two weeks that are necessary for splitting the "
 					"query into more requests. Number 1001 or 2001 is enough.",
