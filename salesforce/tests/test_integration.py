@@ -729,13 +729,18 @@ class BasicSOQLTest(TestCase):
 	#	# raises "TypeError: list indices must be integers, not str" in resolve_columns
 	#	list(Contact.objects.raw("select Count() from Contact"))
 
-	@skip("Waiting for bug fix")
 	def test_only_fields(self):
-		# raises KeyError: 'Username'
-		xx = User.objects.only('Id')
-		xx[0]
+		sql = User.objects.only('Id', 'Username').query.get_compiler('salesforce').as_sql()[0]
+		self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
+		user = User.objects.only('Id', 'Username')[0]
+		pk = user.pk
+		# Verify that deferred fields work
+		self.assertEqual(user.Username, User.objects.get(pk=user.pk).Username)
+		_ = Contact.objects.only('last_name')[0].last_name
+		xx = Contact.objects.only('account')[0]
+		_ = xx.account_id
 
-	@skip("Waiting for bug fix")
 	def test_incomplete_raw(self):
-		# raises KeyError: 'AccountId'
 		Contact.objects.raw("select id from Contact")[0].last_name
+
+	#@skip("Waiting for bug fix")
