@@ -48,6 +48,8 @@ API_STUB = '/services/data/v31.0'
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
+request_count = 0
+
 def quoted_string_literal(s, d):
 	"""
 	SOQL requires single quotes to be escaped.
@@ -88,11 +90,13 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		f:  requests.get or requests.post...
 		_cursor: sharing the debug information in cursor
 	"""
+	global request_count 
 	from salesforce.backend import base
 	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)}
 	kwargs_in.update(kwargs)
 	_cursor = kwargs_in.pop('_cursor', None)
 	log.debug('Request API URL: %s' % url)
+	request_count += 1
 	try:
 		response = f(url, *args, **kwargs_in)
 	# TODO some timeouts can be rarely raised as "SSLError: The read operation timed out"
