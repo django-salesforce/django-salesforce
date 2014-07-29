@@ -25,7 +25,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_16, DJANGO_17_PLUS
+from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS
 from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
@@ -412,7 +412,7 @@ class CursorWrapper(object):
 		# this will break in multi-row updates
 		if DJANGO_17_PLUS:
 			pk = query.where.children[0].rhs
-		elif DJANGO_16:
+		elif DJANGO_16_PLUS:
 			pk = query.where.children[0][3]
 		else:
 			pk = query.where.children[0].children[0][-1]

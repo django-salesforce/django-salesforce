@@ -23,7 +23,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger, TestCustomExample,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
-from salesforce import router, DJANGO_15
+from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
 
@@ -528,7 +528,7 @@ class BasicSOQLTest(TestCase):
 			test_product.delete()
 			test_product2.delete()
 
-	@skipUnless(DJANGO_15, "the parameter 'update_fields' requires Django 1.5+")
+	@skipUnless(DJANGO_15_PLUS, "the parameter 'update_fields' requires Django 1.5+")
 	def test_save_update_fields(self):
 		"""
 		Test the save method with parameter `update_fields`

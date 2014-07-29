@@ -27,7 +27,7 @@ from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
 from salesforce.backend import sf_alias, MAX_RETRIES
-from salesforce import DJANGO_16
+from salesforce import DJANGO_16_PLUS
 try:
 	from urllib.parse import urlparse
 except ImportError:
@@ -161,7 +161,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		cursor = CursorWrapper(self, query)
 		# prior to 1.6 you were expected to send this signal
 		# just after the cursor was constructed
-		if not DJANGO_16:
+		if not DJANGO_16_PLUS:
 			connection_created.send(self.__class__, connection=self)
 		return cursor
 

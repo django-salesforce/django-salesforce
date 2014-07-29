@@ -12,7 +12,7 @@ from django.db import models
 from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 
-from salesforce import DJANGO_15, DJANGO_16, DJANGO_17_PLUS
+from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS
 
 
 class SQLCompiler(compiler.SQLCompiler):
@@ -28,7 +28,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		"""
 		Remove table names and strip quotes from column names.
 		"""
-		if DJANGO_16:
+		if DJANGO_16_PLUS:
 			cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
 		else:
 			cols = compiler.SQLCompiler.get_columns(self, with_aliases)
@@ -40,7 +40,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		#	else:
 		#		name = col
 		#	result.append(name.strip('"'))
-		return (result, col_params) if DJANGO_16 else result
+		return (result, col_params) if DJANGO_16_PLUS else result
 
 	def get_from_clause(self):
 		"""
@@ -98,7 +98,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		if not result_type or result_type == 'cursor':
 			return cursor
 
-		ordering_aliases = self.ordering_aliases if DJANGO_16 else self.query.ordering_aliases
+		ordering_aliases = self.ordering_aliases if DJANGO_16_PLUS else self.query.ordering_aliases
 		if result_type == constants.SINGLE:
 			if ordering_aliases:
 				return cursor.fetchone()[:-len(ordering_aliases)]
@@ -129,7 +129,7 @@ class SalesforceWhereNode(where.WhereNode):
 	#	Don't attempt to quote column names.
 	#	"""
 	#	table_alias, name, db_type = data
-	#	if DJANGO_16:
+	#	if DJANGO_16_PLUS:
 	#		return connection.ops.field_cast_sql(db_type, internal_type) % name
 	#	else:
 	#		return connection.ops.field_cast_sql(db_type) % name
@@ -159,7 +159,7 @@ class SalesforceWhereNode(where.WhereNode):
 		else:
 			return result
 
-	DJANGO_14_EXACT = not DJANGO_15
+	DJANGO_14_EXACT = not DJANGO_15_PLUS
 	if DJANGO_14_EXACT:
 		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.4
 		def as_sql(self, qn, connection):
