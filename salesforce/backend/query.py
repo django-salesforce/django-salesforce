@@ -373,7 +373,6 @@ class CursorWrapper(object):
 				raise base.DatabaseError(data)
 
 			if q.upper().startswith('SELECT COUNT() FROM'):
-				# TODO what about raw query COUNT()
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
 				self.results = iter([[self.rowcount]])
 			else:

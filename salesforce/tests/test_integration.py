@@ -711,10 +711,10 @@ class BasicSOQLTest(TestCase):
 			for x in objects:
 				x.delete()
 
-	@skip("Waiting for bug fix")
-	def test_raw_aggregate(self):
-		# raises "TypeError: list indices must be integers, not str" in resolve_columns
-		list(Contact.objects.raw("select Count() from Contact"))
+	# This should not be implemented due to Django conventions.
+	#def test_raw_aggregate(self):
+	#	# raises "TypeError: list indices must be integers, not str" in resolve_columns
+	#	list(Contact.objects.raw("select Count() from Contact"))
 
 	@skip("Waiting for bug fix")
 	def test_only_fields(self):
