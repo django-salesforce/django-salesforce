@@ -9,10 +9,8 @@
 Salesforce database backend for Django.
 """
 
-from __future__ import print_function
 import logging
 import requests
-import sys
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
@@ -27,7 +25,7 @@ from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
 from salesforce.backend import sf_alias, MAX_RETRIES
-from salesforce import DJANGO_16
+from salesforce import DJANGO_16_PLUS
 try:
 	from urllib.parse import urlparse
 except ImportError:
@@ -49,8 +47,8 @@ class SalesforceError(DatabaseError):
 		self.response = response
 		self.verbose = verbose
 		if verbose:
-			print("Error (debug details) %s\n%s" % (response.text,
-					response.__dict__), file=sys.stderr)
+			log.info("Error (debug details) %s\n%s", response.text,
+					response.__dict__)
 
 
 
@@ -161,7 +159,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		cursor = CursorWrapper(self, query)
 		# prior to 1.6 you were expected to send this signal
 		# just after the cursor was constructed
-		if not DJANGO_16:
+		if not DJANGO_16_PLUS:
 			connection_created.send(self.__class__, connection=self)
 		return cursor
 

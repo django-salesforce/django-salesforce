@@ -4,13 +4,11 @@
 # (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 # See LICENSE.md for details
 #
-from __future__ import print_function
 from decimal import Decimal
 import datetime
 import pytz
 import random
 import string
-import sys
 
 from django.conf import settings
 from django.db import connections
@@ -23,7 +21,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger, TestCustomExample,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
-from salesforce import router, DJANGO_15
+from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
 
@@ -528,7 +526,7 @@ class BasicSOQLTest(TestCase):
 			test_product.delete()
 			test_product2.delete()
 
-	@skipUnless(DJANGO_15, "the parameter 'update_fields' requires Django 1.5+")
+	@skipUnless(DJANGO_15_PLUS, "the parameter 'update_fields' requires Django 1.5+")
 	def test_save_update_fields(self):
 		"""
 		Test the save method with parameter `update_fields`
@@ -566,10 +564,10 @@ class BasicSOQLTest(TestCase):
 		leads_list = list(all_leads)
 		if all_leads.query.first_chunk_len == len(leads_list):
 			self.assertLessEqual(len(leads_list), 2000)
-			print("Not enough Leads accumulated (currently %d including deleted) "
+			log.info("Not enough Leads accumulated (currently %d including deleted) "
 					"in the last two weeks that are necessary for splitting the "
-					"query into more requests. Number 1001 or 2001 is enough." %
-					len(leads_list), file=sys.stderr)
+					"query into more requests. Number 1001 or 2001 is enough.",
+					len(leads_list))
 			self.skipTest("Not enough Leads found for big query test")
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
@@ -586,6 +584,19 @@ class BasicSOQLTest(TestCase):
 		cursor.execute(sql)
 		self.assertEqual(cursor.fetchone(), contacts[0])
 		self.assertEqual(cursor.fetchmany(), contacts[1:])
+	
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	def test_cursor_execute_aggregate(self):
+		"""
+		Verify that aggregate queries can be executed directly by SOQL.
+		"""
+		# Field 'Id' is very useful for COUNT over non empty fields.
+		sql = "SELECT LastName, COUNT(Id) FROM Contact GROUP BY LastName LIMIT 2"
+		cursor = connections[sf_alias].cursor()
+		cursor.execute(sql)
+		contact_aggregate = cursor.fetchone()
+		self.assertTrue('LastName' in contact_aggregate)
+		self.assertGreaterEqual(contact_aggregate['expr0'], 1)
 	
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_errors(self):
@@ -713,10 +724,10 @@ class BasicSOQLTest(TestCase):
 			for x in objects:
 				x.delete()
 
-	@skip("Waiting for bug fix")
-	def test_raw_aggregate(self):
-		# raises "TypeError: list indices must be integers, not str" in resolve_columns
-		list(Contact.objects.raw("select Count() from Contact"))
+	# This should not be implemented due to Django conventions.
+	#def test_raw_aggregate(self):
+	#	# raises "TypeError: list indices must be integers, not str" in resolve_columns
+	#	list(Contact.objects.raw("select Count() from Contact"))
 
 	@skip("Waiting for bug fix")
 	def test_only_fields(self):

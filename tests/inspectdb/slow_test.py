@@ -37,6 +37,8 @@ def run():
 				# These require specific filters (descried in their error messages)
 				'ContentDocumentLink', 'Idea', 'IdeaComment', 'UserProfileFeed',
 				'Vote', #'OpportunityPartner', 'Product2Feed',
+				# UNKNOWN_EXCEPTION:
+				'TenantUsageEntitlement',
 				):
 			if tab['name'] < start_name:
 				continue
@@ -67,8 +69,11 @@ def run():
 					# Insufficient access rights on cross-reference id
 					'Group',
 					'OpportunityShare', 'Profile',
-					# Temporarely removed from tests until version Summer '14 will be on my sandbox.
+					# Some very old items can have empty Folder.Name, but can
+					# not be saved again without Name.
 					'Folder',
+					# Records with some values of UserShare.RowCause can not be updated.
+					'UserShare',
 					):
 				stdout.write('(write) ')
 				try:

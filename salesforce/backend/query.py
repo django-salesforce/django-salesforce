@@ -25,7 +25,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_16, DJANGO_17_PLUS
+from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS
 from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
@@ -40,7 +40,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v29.0'
+API_STUB = '/services/data/v31.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
@@ -373,7 +373,6 @@ class CursorWrapper(object):
 				raise base.DatabaseError(data)
 
 			if q.upper().startswith('SELECT COUNT() FROM'):
-				# TODO what about raw query COUNT()
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
 				self.results = iter([[self.rowcount]])
 			else:
@@ -412,7 +411,7 @@ class CursorWrapper(object):
 		# this will break in multi-row updates
 		if DJANGO_17_PLUS:
 			pk = query.where.children[0].rhs
-		elif DJANGO_16:
+		elif DJANGO_16_PLUS:
 			pk = query.where.children[0][3]
 		else:
 			pk = query.where.children[0].children[0][-1]
@@ -448,7 +447,7 @@ class CursorWrapper(object):
 	def query_results(self, results):
 		while True:
 			for rec in results['records']:
-				if rec['attributes']['type'] == 'AggregateResult':
+				if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, 'aggregate_select'):
 					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
 					# The 'attributes' info is unexpected for Django within fields.
 					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]
