@@ -119,14 +119,15 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
 	def make_session(self):
 		"""Authenticate and get the name of assigned SFDC data server"""
-		self._sf_session = requests.Session()
-		self._sf_session.auth = SalesforceAuth(db_alias=self.alias)
 		sf_instance_url = authenticate(self.alias, settings_dict=self.settings_dict)['instance_url']
+		sf_session = requests.Session()
+		sf_session.auth = SalesforceAuth(db_alias=self.alias)
 		sf_requests_adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
-		self._sf_session.mount(sf_instance_url, sf_requests_adapter)
+		sf_session.mount(sf_instance_url, sf_requests_adapter)
 		# Additional header works, but the improvement unmeasurable for me.
 		# (less than SF speed fluctuation)
-		#self.sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
+		#sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
+		self._sf_session = sf_session
 
 	@property
 	def sf_session(self):
