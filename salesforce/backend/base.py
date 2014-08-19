@@ -11,6 +11,7 @@ Salesforce database backend for Django.
 
 import logging
 import requests
+import threading
 
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
@@ -34,6 +35,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+connect_lock = threading.Lock()
 
 class SalesforceError(DatabaseError):
 	"""
@@ -119,15 +121,17 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
 	def make_session(self):
 		"""Authenticate and get the name of assigned SFDC data server"""
-		sf_instance_url = authenticate(self.alias, settings_dict=self.settings_dict)['instance_url']
-		sf_session = requests.Session()
-		sf_session.auth = SalesforceAuth(db_alias=self.alias)
-		sf_requests_adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
-		sf_session.mount(sf_instance_url, sf_requests_adapter)
-		# Additional header works, but the improvement unmeasurable for me.
-		# (less than SF speed fluctuation)
-		#sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
-		self._sf_session = sf_session
+		with connect_lock:
+			if self._sf_session is None:
+				sf_instance_url = authenticate(self.alias, settings_dict=self.settings_dict)['instance_url']
+				sf_session = requests.Session()
+				sf_session.auth = SalesforceAuth(db_alias=self.alias)
+				sf_requests_adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
+				sf_session.mount(sf_instance_url, sf_requests_adapter)
+				# Additional header works, but the improvement unmeasurable for me.
+				# (less than SF speed fluctuation)
+				#sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
+				self._sf_session = sf_session
 
 	@property
 	def sf_session(self):
