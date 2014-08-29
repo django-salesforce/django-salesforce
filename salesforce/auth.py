@@ -74,6 +74,11 @@ def authenticate(db_alias=None, settings_dict=None):
 		
 		return oauth_data[db_alias]
 
+def reauthenticate(db_alias):
+	expire_token(db_alias)
+	oauth = authenticate(db_alias=db_alias)
+	return oauth['access_token']
+
 class SalesforceAuth(AuthBase):
 	"""
 	Attaches OAuth 2 Salesforce authentication to the Session

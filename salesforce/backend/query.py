@@ -81,11 +81,6 @@ def process_json_args(args):
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, json_conversions) for x in args])
 
-def reauthenticate(db_alias):
-	auth.expire_token(db_alias)
-	oauth = auth.authenticate(db_alias=db_alias)
-	return oauth['access_token']
-
 def handle_api_exceptions(url, f, *args, **kwargs):
 	"""Call REST API and handle exceptions
 	Params:
@@ -106,7 +101,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		# Unauthorized (expired or invalid session ID or OAuth)
 		data = response.json()[0]
 		if(data['errorCode'] == 'INVALID_SESSION_ID'):
-			token = reauthenticate(db_alias=f.__self__.auth.db_alias)
+			token = auth.reauthenticate(db_alias=f.__self__.auth.db_alias)
 			if('headers' in kwargs):
 				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
 			try:
