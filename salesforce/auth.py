@@ -14,6 +14,7 @@ import requests
 import threading
 from django.db import connections
 from salesforce.backend import sf_alias, MAX_RETRIES
+from salesforce.backend.driver import DatabaseError
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
@@ -75,9 +76,15 @@ def authenticate(db_alias=None, settings_dict=None):
 		return oauth_data[db_alias]
 
 def reauthenticate(db_alias):
-	expire_token(db_alias)
-	oauth = authenticate(db_alias=db_alias)
-	return oauth['access_token']
+	if connections['salesforce'].sf_session.auth.dynamic_token is None:
+		expire_token(db_alias)
+		oauth = authenticate(db_alias=db_alias)
+		return oauth['access_token']
+	else:
+		# It is expected that with dynamic authentication we get a token that
+		# is valid at least for a few future seconds, because we don't get
+		# any password or permanent permission for it from the user.
+		raise DatabaseError("Dynamically authenticated connection can never reauthenticate.")
 
 class SalesforceAuth(AuthBase):
 	"""
@@ -88,7 +95,28 @@ class SalesforceAuth(AuthBase):
 	"""
 	def __init__(self, db_alias):
 		self.db_alias = db_alias
+		self.dynamic_token = None
 
 	def __call__(self, r):
-		r.headers['Authorization'] = 'OAuth %s' % authenticate(db_alias=self.db_alias)['access_token']
+		if self.dynamic_token:
+			access_token = self.dynamic_token
+		else:
+			access_token = authenticate(db_alias=self.db_alias)['access_token']
+		r.headers['Authorization'] = 'OAuth %s' % access_token
 		return r
+
+	def dynamic_start(self, access_token):
+		"""
+		Set the access token dynamically according to the current user.
+
+		Use it typically at the beginning of Django request in your middleware by:
+			connections['salesforce'].sf_session.auth.dynamic_start(access_token)
+		"""
+		self.dynamic_token = access_token
+
+	def dynamic_end(self):
+		"""
+		Clear the dynamic access token.
+		"""
+		self.dynamic_token = None
+
