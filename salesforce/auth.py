@@ -51,27 +51,29 @@ def authenticate(db_alias=None, settings_dict=None):
 		raise KeyError("authenticate function signature has been changed. "
 				"The db_alias parameter more important than settings_dict")
 	with oauth_lock:
-		if db_alias in oauth_data:
-			return oauth_data[db_alias]
-		
-		settings_dict = settings_dict or connections[db_alias].settings_dict
-		url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
-		
-		log.info("attempting authentication to %s" % settings_dict['HOST'])
-		session = requests.Session()
-		session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=MAX_RETRIES))
-		response = session.post(url, data=dict(
-			grant_type		= 'password',
-			client_id		= settings_dict['CONSUMER_KEY'],
-			client_secret	= settings_dict['CONSUMER_SECRET'],
-			username		= settings_dict['USER'],
-			password		= settings_dict['PASSWORD'],
-		))
-		if response.status_code == 200:
-			log.info("successfully authenticated %s" % settings_dict['USER'])
-			oauth_data[db_alias] = response.json()
-		else:
-			raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
+		if not db_alias in oauth_data:
+			settings_dict = settings_dict or connections[db_alias].settings_dict
+			if settings_dict['USER'] == 'dynamic auth':
+				settings_dict = settings_dict or connections[db_alias].settings_dict
+				oauth_data[db_alias] = {'instance_url': settings_dict['HOST']}
+			else:
+				url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
+				
+				log.info("attempting authentication to %s" % settings_dict['HOST'])
+				session = requests.Session()
+				session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=MAX_RETRIES))
+				response = session.post(url, data=dict(
+					grant_type		= 'password',
+					client_id		= settings_dict['CONSUMER_KEY'],
+					client_secret	= settings_dict['CONSUMER_SECRET'],
+					username		= settings_dict['USER'],
+					password		= settings_dict['PASSWORD'],
+				))
+				if response.status_code == 200:
+					log.info("successfully authenticated %s" % settings_dict['USER'])
+					oauth_data[db_alias] = response.json()
+				else:
+					raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
 		
 		return oauth_data[db_alias]
 

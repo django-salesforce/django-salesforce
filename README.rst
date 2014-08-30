@@ -242,6 +242,8 @@ Experimental Features
     }
 
 
+   Value `HOST` should be the url of SFDC data server. (not login server.
+   The data server url can be also used for login.)
    Items with `'.'` value are not important for `dynamic auth`, but can not be
    empty due to some validity checks.
 
