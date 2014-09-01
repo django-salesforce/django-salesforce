@@ -431,19 +431,19 @@ class CursorWrapper(object):
 		processed_sql = str(q) % process_args(args)
 		cmd = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
 		url = u'{base}{api}/{cmd}?{query_str}'.format(
-				base=self.oauth['instance_url'], api=API_STUB, cmd=cmd,
+				base=self.session.auth.instance_url, api=API_STUB, cmd=cmd,
 				query_str=urlencode(dict(q=processed_sql)),
 		)
 		log.debug(processed_sql)
 		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def query_more(self, nextRecordsUrl):
-		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
+		url = u'%s%s' % (self.session.auth.instance_url, nextRecordsUrl)
 		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def execute_insert(self, query):
 		table = query.model._meta.db_table
-		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
+		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/' % table)
 		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
 
@@ -460,7 +460,7 @@ class CursorWrapper(object):
 		else:
 			pk = query.where.children[0].children[0][-1]
 		assert pk
-		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
@@ -483,7 +483,7 @@ class CursorWrapper(object):
 				return pk
 		pk = recurse_for_pk(self.query.where.children)
 		assert pk
-		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 
 		log.debug('DELETE %s(%s)' % (table, pk))
 		return handle_api_exceptions(url, self.session.delete, _cursor=self)

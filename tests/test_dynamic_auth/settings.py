@@ -4,7 +4,7 @@ SF_LAZY_CONNECT = True
 assert 'salesforce2' in DATABASES
 DATABASES['salesforce'] = {
 		'ENGINE': 'salesforce.backend',
-		'HOST': 'https://cs8.salesforce.com',
+		'HOST': 'https://nonsense.example.com',
 		'CONSUMER_KEY': '.',
 		'CONSUMER_SECRET': '.',
 		'USER': 'dynamic auth',

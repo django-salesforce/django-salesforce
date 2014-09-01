@@ -242,8 +242,9 @@ Experimental Features
     }
 
 
-   Value `HOST` should be the url of SFDC data server. (not login server.
-   The data server url can be also used for login.)
+   If the SFDC data server should be static then the value `HOST` should be its
+   URL. (not URL of login server, because the data server url can be also used
+   for login.)
    Items with `'.'` value are not important for `dynamic auth`, but can not be
    empty due to some validity checks.
 
@@ -254,6 +255,8 @@ Experimental Features
         # get 'access_token' by yourself... and
         # put it into salesforce connection
         connections['salesforce'].sf_session.auth.dynamic_start(access_token)
+        # or also with dynamic `instance_url`
+        connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url)
 
    Forget the access token at the end of request::
 

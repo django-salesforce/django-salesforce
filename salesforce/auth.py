@@ -98,6 +98,7 @@ class SalesforceAuth(AuthBase):
 	def __init__(self, db_alias):
 		self.db_alias = db_alias
 		self.dynamic_token = None
+		self._instance_url = None
 
 	def __call__(self, r):
 		if self.dynamic_token:
@@ -107,7 +108,14 @@ class SalesforceAuth(AuthBase):
 		r.headers['Authorization'] = 'OAuth %s' % access_token
 		return r
 
-	def dynamic_start(self, access_token):
+	@property
+	def instance_url(self):
+		if self._instance_url:
+			return self._instance_url
+		else:
+			return authenticate(db_alias=self.db_alias)['instance_url']
+
+	def dynamic_start(self, access_token, instance_url=None):
 		"""
 		Set the access token dynamically according to the current user.
 
@@ -115,10 +123,11 @@ class SalesforceAuth(AuthBase):
 			connections['salesforce'].sf_session.auth.dynamic_start(access_token)
 		"""
 		self.dynamic_token = access_token
+		self._instance_url = instance_url
 
 	def dynamic_end(self):
 		"""
 		Clear the dynamic access token.
 		"""
 		self.dynamic_token = None
-
+		self._instance_url = None

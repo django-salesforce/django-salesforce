@@ -124,7 +124,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		with connect_lock:
 			if self._sf_session is None:
 				if self.settings_dict['USER'] == 'dynamic auth':
-					sf_instance_url = self.settings_dict['HOST']
+					sf_instance_url = self._sf_session or self.settings_dict['HOST']
 				else:
 					sf_instance_url = authenticate(self.alias, settings_dict=self.settings_dict)['instance_url']
 				sf_session = requests.Session()

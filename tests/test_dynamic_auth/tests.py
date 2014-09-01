@@ -26,7 +26,7 @@ class DynamicAuthTest(TestCase):
 		# verify fail
 		self.assertConnectionProblem(users)
 		# dynamic auth
-		connections['salesforce'].sf_session.auth.dynamic_start(access_token)
+		connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url='https://cs8.salesforce.com')
 		self.assertGreater(len(users), 0)
 		connections['salesforce'].sf_session.auth.dynamic_end()
 		# verify fail
