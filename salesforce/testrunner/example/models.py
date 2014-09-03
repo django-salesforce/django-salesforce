@@ -105,7 +105,7 @@ class PersonAccount(AbstractAccount):
 		abstract = True
 
 
-if settings.PERSON_ACCOUNT_ACTIVATED:
+if getattr(settings, 'PERSON_ACCOUNT_ACTIVATED', False):
 	class Account(PersonAccount):
 		pass
 else:
