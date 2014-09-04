@@ -26,4 +26,5 @@ install:
 script:
   - python manage.py syncdb --noinput
   - bash tests/inspectdb/test.sh
-  - python manage.py test
+  - bash tests/tests.sh
+  - python manage.py test salesforce
