@@ -352,7 +352,7 @@ class CursorWrapper(object):
 		elif isinstance(self.query, subqueries.DeleteQuery):
 			response = self.execute_delete(self.query)
 		else:
-			raise base.DatabaseError("Unsupported query: %s" % self.query)
+			raise base.DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
 
 		# the encoding is detected automatically, e.g. from headers
 		if(response and response.text):

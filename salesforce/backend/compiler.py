@@ -222,7 +222,7 @@ class SalesforceWhereNode(where.WhereNode):
 					sql_string = '(%s)' % sql_string
 			return sql_string, result_params
 	else:
-		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.74
+		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.7
 		def as_sql(self, qn, connection):
 			"""
 			Returns the SQL version of the where clause and the value to be
