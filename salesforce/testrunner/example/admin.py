@@ -14,8 +14,8 @@ from salesforce.testrunner.example import models
 from salesforce.admin import RoutedModelAdmin
 import salesforce
 
-# This example is commented out in order to demonstrate capabilities of all models
-class AccountAdmin(RoutedModelAdmin):
+# Experiment: replaced RoutedModelAdmin by normal ModelAdmin
+class AccountAdmin(admin.ModelAdmin):
 	#list_display = ('Salutation', 'Name', 'PersonEmail')
 	list_display = ('Name', 'Phone')
 admin.site.register(models.Account, AccountAdmin)

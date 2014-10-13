@@ -62,10 +62,7 @@ Quick Start
    ``python manage.py inspectdb --database=salesforce`` and simplify it
    to what you need.
 
-8. If you want to use the model in the Django admin interface, use a
-   ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
-
-9. You're all done! Just use your model like a normal Django model.
+8. You're all done! Just use your model like a normal Django model.
 
 Foreign Key Support
 -------------------
@@ -201,3 +198,11 @@ here are the potential pitfalls and unimplemented operations:
 -  **Database Sync** — ``syncdb`` will only create new databases in non-SF
    databases (useful for unit tests); SFDC classes are assumed to already
    exist with the appropriate permissions.
+
+Experimental Features
+---------------------
+
+-  The requirement that "ModelAdmin should extend
+   ``salesforce.admin.RoutedModelAdmin``" is probably not important any more
+   in your custom admin.py. It is still required if you use multiple Salesforce
+   databases and multiple instances of AdminSite etc.
