@@ -17,16 +17,19 @@
 		{{ form.as_p }}
 		<input type="submit" value="search">
 		</form>
-		{% if account %}
+		{% if accounts %}
 		<div class="content">
 			<div id="content-wrapper">
-			<div class="account">
-			{{ account.FirstName }} {{ account.LastName }}
-			</div>
+				<div>{{ accounts.count }} results:</div>
+				{% for account in accounts %}
+					<div class="account">
+					{{ account.Name }}
+					</div>
+				{% endfor %}
 			</div>
 		</div>
 		{% else %}
-		<strong>Enter an email to search for</strong>
+		<strong>Enter a name to search for</strong>
 		{% endif %}
 	</div>
 </div>
