@@ -274,7 +274,7 @@ class SalesforceRawQuery(RawQuery):
 		self.cursor.execute(self.sql, self.params)
 
 	def __repr__(self):
-		return "<SalesforceRawQuery: %r>" % (self.sql % tuple(self.params))
+		return "<SalesforceRawQuery: %s; %r>" % (self.sql, tuple(self.params))
 
 class SalesforceQuery(Query):
 	"""
