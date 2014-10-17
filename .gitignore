@@ -14,6 +14,7 @@ setuptools_git-*.egg
 .ropeproject/
 .coverage
 htmlcov
+coverage_html
 log
 tests/inspectdb/models.py
 salesforce/packages/
