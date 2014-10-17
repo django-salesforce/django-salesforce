@@ -182,6 +182,11 @@ Advanced usage
    name ``Contact`` and all tables that are prefixed with ``Account``. This
    filter works with all supported database types.
 
+-  **Inheritance from multiple abstract models** is very useful for Salesforce,
+   because the same sets of fields are frequently used in many models, but with
+   a hierarchy with one ancestor would be too deep, rigid and complicated.
+
+
 Caveats
 -------
 

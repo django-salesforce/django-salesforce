@@ -73,11 +73,21 @@ class SalesforceAutoField(fields.Field):
 		return self.to_python(value)
 	
 	def contribute_to_class(self, cls, name):
-		assert not cls._meta.has_auto_field, "A model can't have more than one AutoField."
 		name = name if self.name is None else self.name
 		if name != SF_PK or not self.primary_key:
 			raise ImproperlyConfigured("SalesforceAutoField must be a primary key "
 					"with name '%s' (as configured by settings)." % SF_PK)
+		if cls._meta.has_auto_field:
+			if (type(self) == type(cls._meta.auto_field) and self.model._meta.abstract and
+					cls._meta.auto_field.name == SF_PK):
+				# Creating the Model that inherits fields from more abstract classes
+				# with the same default SalesforceAutoFieldy The second one can be
+				# ignored.
+				return
+			else:
+				raise ImproperlyConfigured("The model %s can not have more than one AutoField, "
+						"but currently: (%s=%s, %s=%s)"
+						% (cls, cls._meta.auto_field.name, cls._meta.auto_field, name, self))
 		super(SalesforceAutoField, self).contribute_to_class(cls, name)
 		cls._meta.has_auto_field = True
 		cls._meta.auto_field = self
