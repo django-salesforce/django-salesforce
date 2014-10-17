@@ -41,8 +41,8 @@ class SalesforceModelBase(ModelBase):
 		attr_meta = attrs.get('Meta', None)
 		supplied_db_table = getattr(attr_meta, 'db_table', None)
 		result = super(SalesforceModelBase, cls).__new__(cls, name, bases, attrs)
-		if(models.Model not in bases and supplied_db_table is None):
-			result._meta.db_table = name
+		if models.Model not in bases and supplied_db_table is None:
+			result._meta.db_table = result._meta.concrete_model._meta.object_name
 		return result
 
 	def add_to_class(cls, name, value):

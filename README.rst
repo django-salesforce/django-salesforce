@@ -185,6 +185,7 @@ Advanced usage
 -  **Inheritance from multiple abstract models** is very useful for Salesforce,
    because the same sets of fields are frequently used in many models, but with
    a hierarchy with one ancestor would be too deep, rigid and complicated.
+   Also proxy models and mixins are supported.
 
 
 Caveats
