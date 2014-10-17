@@ -64,6 +64,14 @@ Quick Start
 
 8. You're all done! Just use your model like a normal Django model.
 
+Primary Key
+-----------
+Primary keys are added to models only automatically,
+because SFDC doesn't allow to define custom primary key. The lowercase name of
+primary key `id` can be configured globally for the project in its settings by
+`SF_PK='id'`. The backward compatible name `Id` is useful only for old projects,
+though it will stay as the default variant until `django-salesforce>=0.5`.
+
 Foreign Key Support
 -------------------
 

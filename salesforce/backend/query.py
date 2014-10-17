@@ -28,7 +28,7 @@ import pytz
 
 from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS
 from salesforce.backend import compiler, sf_alias
-from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
+from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 
 try:
 	from urllib.parse import urlencode
@@ -153,6 +153,7 @@ def prep_for_deserialize(model, record, using, init_list=None):
 	If fixes fields of some types. If names of required fields `init_list `are
 	specified, then only these fields are processed.
 	"""
+	from salesforce.backend import base
 	# TODO the parameter 'using' is not currently important.
 	attribs = record.pop('attributes')
 
@@ -187,7 +188,7 @@ def prep_for_deserialize(model, record, using, init_list=None):
 						fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT[:-6])
 				else:
 					fields[x.name] = field_val
-	if init_list and set(init_list).difference(fields).difference(['Id']):
+	if init_list and set(init_list).difference(fields).difference([SF_PK]):
 		raise base.DatabaseError("Not found some expected fields")
 
 	return dict(

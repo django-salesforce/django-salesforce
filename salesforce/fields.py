@@ -10,7 +10,8 @@ Adds support for Salesforce primary keys.
 """
 
 import warnings
-from django.core import exceptions
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
 from django.db import models
@@ -34,6 +35,10 @@ FULL_WRITABLE  = 0
 NOT_UPDATEABLE = 1
 NOT_CREATEABLE = 2
 READ_ONLY   = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
+
+SF_PK = getattr(settings, 'SF_PK', 'Id')
+if not SF_PK in ('id', 'Id'):
+	raise ImproperlyConfigured("Value of settings.SF_PK must be 'id' or 'Id' or undefined.")
 
 
 class SalesforceAutoField(fields.Field):
@@ -69,10 +74,10 @@ class SalesforceAutoField(fields.Field):
 	
 	def contribute_to_class(self, cls, name):
 		assert not cls._meta.has_auto_field, "A model can't have more than one AutoField."
-		if hasattr(cls, 'sf_pk'):
-			if not cls.sf_pk in ('id', 'Id'):
-				raise ImproperlyConfigured("The Meta option 'sf_pk' must be 'id' or 'Id'.")
-			name = cls.sf_pk
+		name = name if self.name is None else self.name
+		if name != SF_PK or not self.primary_key:
+			raise ImproperlyConfigured("SalesforceAutoField must be a primary key "
+					"with name '%s' (as configured by settings)." % SF_PK)
 		super(SalesforceAutoField, self).contribute_to_class(cls, name)
 		cls._meta.has_auto_field = True
 		cls._meta.auto_field = self
