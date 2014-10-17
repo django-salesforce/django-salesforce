@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 def is_sf_database(db, model=None):
 	"""The alias is a Salesforce database."""
 	from django.db import connections
-	from salesforce.backend.base import DatabaseWrapper 
+	from salesforce.backend.base import DatabaseWrapper
 	if db is None:
 		return getattr(model, '_salesforce_object', False)
 	else:

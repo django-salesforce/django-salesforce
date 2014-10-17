@@ -19,11 +19,11 @@ from django.utils.encoding import smart_text
 from django.utils.six import string_types
 try:
 	## in south >= 0.6, we have to explicitly tell south about this
-	## custom field.  Even though it will be on an unmanaged model, 
+	## custom field.  Even though it will be on an unmanaged model,
 	## south parses everything first and will crap out even though
 	## later it'd ignore this model anyway.
 	from south.modelsinspector import add_introspection_rules
-	add_introspection_rules([], ["^salesforce\.fields\.SalesforceAutoField"])
+	add_introspection_rules([], [r"^salesforce\.fields\.SalesforceAutoField"])
 except ImportError:
 	pass
 
