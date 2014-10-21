@@ -64,9 +64,9 @@ class SalesforceAutoField(fields.AutoField):
 
 	def contribute_to_class(self, cls, name):
 		name = name if self.name is None else self.name
-		if name != SF_PK or not self.primary_key:
-			raise ImproperlyConfigured("SalesforceAutoField must be a primary key "
-					"with name '%s' (as configured by settings)." % SF_PK)
+		if name != SF_PK or not self.primary_key or not self.auto_created:
+			raise ImproperlyConfigured("SalesforceAutoField must be an auto created "
+					"primary key with name '%s' (as configured by settings)." % SF_PK)
 		if cls._meta.has_auto_field:
 			if (type(self) == type(cls._meta.auto_field) and self.model._meta.abstract and
 					cls._meta.auto_field.name == SF_PK):

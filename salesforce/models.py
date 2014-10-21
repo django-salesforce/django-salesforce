@@ -92,7 +92,8 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
 
 	# Name of primary key 'Id' can be easily changed to 'id'
 	# by "settings.SF_PK='id'".
-	Id = fields.SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id')
+	id = fields.SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
+									verbose_name='ID', auto_created=True)
 
 
 Model = SalesforceModel
