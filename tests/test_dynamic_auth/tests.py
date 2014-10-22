@@ -22,11 +22,12 @@ class DynamicAuthTest(TestCase):
 		#_ = list(Contact.objects.all(using='salesforce2')[:1])
 		with connections['salesforce2'].cursor() as cursor:
 			access_token = cursor.oauth['access_token']
+			instance_url = cursor.oauth['instance_url']
 			#print(cursor.oauth)
 		# verify fail
 		self.assertConnectionProblem(users)
 		# dynamic auth
-		connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url='https://cs8.salesforce.com')
+		connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url=instance_url)
 		self.assertGreater(len(users), 0)
 		connections['salesforce'].sf_session.auth.dynamic_end()
 		# verify fail

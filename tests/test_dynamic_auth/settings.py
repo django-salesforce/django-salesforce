@@ -1,7 +1,7 @@
 from salesforce.testrunner.settings import *
 
 SF_LAZY_CONNECT = True
-assert 'salesforce2' in DATABASES
+DATABASES['salesforce2'] = DATABASES['salesforce']
 DATABASES['salesforce'] = {
 		'ENGINE': 'salesforce.backend',
 		'HOST': 'https://nonsense.example.com',
