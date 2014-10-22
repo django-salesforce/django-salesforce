@@ -14,6 +14,7 @@ import requests
 import threading
 from django.db import connections
 from salesforce.backend import sf_alias, MAX_RETRIES
+from salesforce.backend.driver import DatabaseError
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
@@ -50,34 +51,42 @@ def authenticate(db_alias=None, settings_dict=None):
 		raise KeyError("authenticate function signature has been changed. "
 				"The db_alias parameter more important than settings_dict")
 	with oauth_lock:
-		if db_alias in oauth_data:
-			return oauth_data[db_alias]
-		
-		settings_dict = settings_dict or connections[db_alias].settings_dict
-		url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
-		
-		log.info("attempting authentication to %s" % settings_dict['HOST'])
-		session = requests.Session()
-		session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=MAX_RETRIES))
-		response = session.post(url, data=dict(
-			grant_type		= 'password',
-			client_id		= settings_dict['CONSUMER_KEY'],
-			client_secret	= settings_dict['CONSUMER_SECRET'],
-			username		= settings_dict['USER'],
-			password		= settings_dict['PASSWORD'],
-		))
-		if response.status_code == 200:
-			log.info("successfully authenticated %s" % settings_dict['USER'])
-			oauth_data[db_alias] = response.json()
-		else:
-			raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
+		if not db_alias in oauth_data:
+			settings_dict = settings_dict or connections[db_alias].settings_dict
+			if settings_dict['USER'] == 'dynamic auth':
+				settings_dict = settings_dict or connections[db_alias].settings_dict
+				oauth_data[db_alias] = {'instance_url': settings_dict['HOST']}
+			else:
+				url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
+				
+				log.info("attempting authentication to %s" % settings_dict['HOST'])
+				session = requests.Session()
+				session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=MAX_RETRIES))
+				response = session.post(url, data=dict(
+					grant_type		= 'password',
+					client_id		= settings_dict['CONSUMER_KEY'],
+					client_secret	= settings_dict['CONSUMER_SECRET'],
+					username		= settings_dict['USER'],
+					password		= settings_dict['PASSWORD'],
+				))
+				if response.status_code == 200:
+					log.info("successfully authenticated %s" % settings_dict['USER'])
+					oauth_data[db_alias] = response.json()
+				else:
+					raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
 		
 		return oauth_data[db_alias]
 
 def reauthenticate(db_alias):
-	expire_token(db_alias)
-	oauth = authenticate(db_alias=db_alias)
-	return oauth['access_token']
+	if connections['salesforce'].sf_session.auth.dynamic_token is None:
+		expire_token(db_alias)
+		oauth = authenticate(db_alias=db_alias)
+		return oauth['access_token']
+	else:
+		# It is expected that with dynamic authentication we get a token that
+		# is valid at least for a few future seconds, because we don't get
+		# any password or permanent permission for it from the user.
+		raise DatabaseError("Dynamically authenticated connection can never reauthenticate.")
 
 class SalesforceAuth(AuthBase):
 	"""
@@ -88,7 +97,37 @@ class SalesforceAuth(AuthBase):
 	"""
 	def __init__(self, db_alias):
 		self.db_alias = db_alias
+		self.dynamic_token = None
+		self._instance_url = None
 
 	def __call__(self, r):
-		r.headers['Authorization'] = 'OAuth %s' % authenticate(db_alias=self.db_alias)['access_token']
+		if self.dynamic_token:
+			access_token = self.dynamic_token
+		else:
+			access_token = authenticate(db_alias=self.db_alias)['access_token']
+		r.headers['Authorization'] = 'OAuth %s' % access_token
 		return r
+
+	@property
+	def instance_url(self):
+		if self._instance_url:
+			return self._instance_url
+		else:
+			return authenticate(db_alias=self.db_alias)['instance_url']
+
+	def dynamic_start(self, access_token, instance_url=None):
+		"""
+		Set the access token dynamically according to the current user.
+
+		Use it typically at the beginning of Django request in your middleware by:
+			connections['salesforce'].sf_session.auth.dynamic_start(access_token)
+		"""
+		self.dynamic_token = access_token
+		self._instance_url = instance_url
+
+	def dynamic_end(self):
+		"""
+		Clear the dynamic access token.
+		"""
+		self.dynamic_token = None
+		self._instance_url = None
