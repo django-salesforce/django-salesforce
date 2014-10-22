@@ -15,8 +15,10 @@ import warnings
 from django.db import connections
 from django.db.models import manager
 from django.db.models.query import RawQuerySet
+from django.db.utils import DEFAULT_DB_ALIAS
 
 from salesforce import router, DJANGO_16_PLUS
+from salesforce.backend import sf_alias
 
 class SalesforceManager(manager.Manager):
 	use_for_related_fields = True
@@ -39,7 +41,12 @@ class SalesforceManager(manager.Manager):
 	get_query_set = get_queryset
 
 	def using(self, alias):
-		if router.is_sf_database(alias):
+		if alias is None:
+			if getattr(self.model, '_salesforce_object', False):
+				alias = sf_alias
+			else:
+				alias = DEFAULT_DB_ALIAS
+		if router.is_sf_database(alias, self.model):
 			return self.get_queryset().using(alias)
 		else:
 			return super(SalesforceManager, self).using(alias)

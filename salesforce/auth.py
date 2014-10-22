@@ -32,7 +32,7 @@ def authenticate(db_alias=None, settings_dict=None):
 	"""
 	Authenticate to the Salesforce API with the provided credentials.
 	
-        Params:
+		Params:
 			db_alias:  The database alias e.g. the default SF alias 'salesforce'.
 			settings_dict: Should be obtained from django.conf.DATABASES['salesforce'].
 				   It is only important for the first connection.
@@ -73,6 +73,11 @@ def authenticate(db_alias=None, settings_dict=None):
 			raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
 		
 		return oauth_data[db_alias]
+
+def reauthenticate(db_alias):
+	expire_token(db_alias)
+	oauth = authenticate(db_alias=db_alias)
+	return oauth['access_token']
 
 class SalesforceAuth(AuthBase):
 	"""

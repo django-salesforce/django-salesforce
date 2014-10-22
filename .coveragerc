@@ -1,0 +1,9 @@
+[run]
+omit = salesforce/tooling.py
+
+[report]
+ignore_errors = True
+
+[html]
+directory = coverage_html
+

@@ -62,10 +62,15 @@ Quick Start
    ``python manage.py inspectdb --database=salesforce`` and simplify it
    to what you need.
 
-8. If you want to use the model in the Django admin interface, use a
-   ModelAdmin that extends ``salesforce.admin.RoutedModelAdmin``
+8. You're all done! Just use your model like a normal Django model.
 
-9. You're all done! Just use your model like a normal Django model.
+Primary Key
+-----------
+Primary keys are added to models only automatically,
+because SFDC doesn't allow to define custom primary key. The lowercase name of
+primary key `id` can be configured globally for the project in its settings by
+`SF_PK='id'`. The backward compatible name `Id` is useful only for old projects,
+though it will stay as the default variant until `django-salesforce>=0.5`.
 
 Foreign Key Support
 -------------------
@@ -177,6 +182,12 @@ Advanced usage
    name ``Contact`` and all tables that are prefixed with ``Account``. This
    filter works with all supported database types.
 
+-  **Inheritance from multiple abstract models** is very useful for Salesforce,
+   because the same sets of fields are frequently used in many models, but with
+   a hierarchy with one ancestor would be too deep, rigid and complicated.
+   Also proxy models and mixins are supported.
+
+
 Caveats
 -------
 
@@ -201,3 +212,11 @@ here are the potential pitfalls and unimplemented operations:
 -  **Database Sync** — ``syncdb`` will only create new databases in non-SF
    databases (useful for unit tests); SFDC classes are assumed to already
    exist with the appropriate permissions.
+
+Experimental Features
+---------------------
+
+-  The requirement that "ModelAdmin should extend
+   ``salesforce.admin.RoutedModelAdmin``" is probably not important any more
+   in your custom admin.py. It is still required if you use multiple Salesforce
+   databases and multiple instances of AdminSite etc.

@@ -10,7 +10,8 @@ Adds support for Salesforce primary keys.
 """
 
 import warnings
-from django.core import exceptions
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
 from django.db import models
@@ -18,11 +19,11 @@ from django.utils.encoding import smart_text
 from django.utils.six import string_types
 try:
 	## in south >= 0.6, we have to explicitly tell south about this
-	## custom field.  Even though it will be on an unmanaged model, 
+	## custom field.  Even though it will be on an unmanaged model,
 	## south parses everything first and will crap out even though
 	## later it'd ignore this model anyway.
 	from south.modelsinspector import add_introspection_rules
-	add_introspection_rules([], ["^salesforce\.fields\.SalesforceAutoField"])
+	add_introspection_rules([], [r"^salesforce\.fields\.SalesforceAutoField"])
 except ImportError:
 	pass
 
@@ -34,6 +35,10 @@ FULL_WRITABLE  = 0
 NOT_UPDATEABLE = 1
 NOT_CREATEABLE = 2
 READ_ONLY   = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
+
+SF_PK = getattr(settings, 'SF_PK', 'Id')
+if not SF_PK in ('id', 'Id'):
+	raise ImproperlyConfigured("Value of settings.SF_PK must be 'id' or 'Id' or undefined.")
 
 
 class SalesforceAutoField(fields.Field):
@@ -68,11 +73,21 @@ class SalesforceAutoField(fields.Field):
 		return self.to_python(value)
 	
 	def contribute_to_class(self, cls, name):
-		assert not cls._meta.has_auto_field, "A model can't have more than one AutoField."
-		if hasattr(cls, 'sf_pk'):
-			if not cls.sf_pk in ('id', 'Id'):
-				raise ImproperlyConfigured("The Meta option 'sf_pk' must be 'id' or 'Id'.")
-			name = cls.sf_pk
+		name = name if self.name is None else self.name
+		if name != SF_PK or not self.primary_key:
+			raise ImproperlyConfigured("SalesforceAutoField must be a primary key "
+					"with name '%s' (as configured by settings)." % SF_PK)
+		if cls._meta.has_auto_field:
+			if (type(self) == type(cls._meta.auto_field) and self.model._meta.abstract and
+					cls._meta.auto_field.name == SF_PK):
+				# Creating the Model that inherits fields from more abstract classes
+				# with the same default SalesforceAutoFieldy The second one can be
+				# ignored.
+				return
+			else:
+				raise ImproperlyConfigured("The model %s can not have more than one AutoField, "
+						"but currently: (%s=%s, %s=%s)"
+						% (cls, cls._meta.auto_field.name, cls._meta.auto_field, name, self))
 		super(SalesforceAutoField, self).contribute_to_class(cls, name)
 		cls._meta.has_auto_field = True
 		cls._meta.auto_field = self

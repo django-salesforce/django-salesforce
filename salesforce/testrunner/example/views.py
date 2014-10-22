@@ -23,16 +23,16 @@ def list_accounts(request):
 	), context_instance=template.RequestContext(request))
 
 def search_accounts(request):
-	account = None
+	accounts = []
 	if(request.method == 'POST'):
 		form = forms.SearchForm(request.POST)
 		if(form.is_valid()):
-			account = models.Account.objects.get(PersonEmail=form.cleaned_data['query'])
+			accounts = models.Account.objects.filter(Name__icontains=form.cleaned_data['query'])
 	else:
 		form = forms.SearchForm()
 		
 	return shortcuts.render_to_response('search-accounts.html', dict(
 		title           = "Search Accounts by Email",
-		account         = account,
+		accounts        = accounts,
 		form            = form,
 	), context_instance=template.RequestContext(request))
