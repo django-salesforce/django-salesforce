@@ -13,22 +13,21 @@ class DynamicAuthTest(TestCase):
 
 	def test_dynamic_auth(self):
 		"""
-		Verify dynamic auth: Get access token from connection 'salesforce2'.
-		The connection 'salesforce' is without credentials.
-		Verify that exception is raised before dynamic_start or after dynamic_end.
+		Verify dynamic auth: Get access token from a backup 'salesforce_copy' of the normal connection.
+		The dynamic connection 'salesforce' is without credentials.
+		Verify that exception is raised before dynamic_start(...) or after dynamic_end().
 		"""
 		users = User.objects.all()[:2]
-		# force connection to 'salesforce2' and get access_token from it.
-		#_ = list(Contact.objects.all(using='salesforce2')[:1])
-		with connections['salesforce2'].cursor() as cursor:
+		# get access_token from the 'salesforce_copy' connection.
+		with connections['salesforce_copy'].cursor() as cursor:
 			access_token = cursor.oauth['access_token']
-			#print(cursor.oauth)
-		# verify fail
+			instance_url = cursor.oauth['instance_url']
+		# verify that uncofigured dynamic-auth 'salesforce' fails initially
 		self.assertConnectionProblem(users)
-		# dynamic auth
-		connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url='https://cs8.salesforce.com')
+		# dynamic auth succeeds after getting the token
+		connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url=instance_url)
 		self.assertGreater(len(users), 0)
+		# verify that it fails again after 'dynamic_end()'
 		connections['salesforce'].sf_session.auth.dynamic_end()
-		# verify fail
 		users = User.objects.all()[:2]
 		self.assertConnectionProblem(users)
