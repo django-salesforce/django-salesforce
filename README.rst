@@ -66,11 +66,12 @@ Quick Start
 
 Primary Key
 -----------
-Primary keys are added to models only automatically,
-because SFDC doesn't allow to define custom primary key. The lowercase name of
-primary key `id` can be configured globally for the project in its settings by
-`SF_PK='id'`. The backward compatible name `Id` is useful only for old projects,
-though it will stay as the default variant until `django-salesforce>=0.5`.
+Primary keys are added to models automatically only, because SFDC doesn't allow
+to define a custom primary key. It is possible to configure the name of primary
+key by settings.py: `SF_PK='id'` or `SF_PK='Id'`. The lowercase name is
+the default name since version django-salesforce 0.5 and it is compatible with
+Django. The capitalized name `Id` is backward compatible with projects created
+for an old django-salesforce.
 
 Foreign Key Support
 -------------------
@@ -264,3 +265,9 @@ Experimental Features
 
    SFDC can be used with a normal static auth before dynamic_start and after
    dynamic_end.
+
+Backward incompatible changes
+-----------------------------
+
+-  The name of primary key is currently `id`. The backward compatible behaviour
+   can be reached by settings `SF_PK='Id'`.
