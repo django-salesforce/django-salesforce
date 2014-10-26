@@ -5,6 +5,7 @@
 # See LICENSE.md for details
 #
 
+from __future__ import unicode_literals
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
 

@@ -13,6 +13,7 @@ column names are all in CamelCase. No attempt is made to work around this
 issue, but normal use of `db_column` and `db_table` parameters should work.
 """
 
+from __future__ import unicode_literals
 import logging
 
 from django.conf import settings
@@ -76,7 +77,7 @@ def with_metaclass(meta, *bases):
 			if this_bases is None:
 				return type.__new__(cls, name, (), d)
 			return meta(name, bases, d)
-	return metaclass('temporary_class', None, {})
+	return metaclass(str('temporary_class'), None, {})
 
 
 class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
