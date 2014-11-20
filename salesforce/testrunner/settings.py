@@ -173,8 +173,8 @@ LOGGING = {
 # SFDC enabled IPv6 for a week in March 2014. It caused long delays somewhere.
 IPV4_ONLY = True
 
-# Name of primary key - by default 'Id'. The value 'id' will be default for
-# version "django-salesforce>=0.5".
+# Name of primary key - by default 'id'. The value 'Id' was the default for
+# version "django-salesforce < 0.5".
 #SF_PK = 'Id'
 
 try:

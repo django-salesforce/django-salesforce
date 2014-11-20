@@ -36,7 +36,7 @@ NOT_UPDATEABLE = 1
 NOT_CREATEABLE = 2
 READ_ONLY   = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
 
-SF_PK = getattr(settings, 'SF_PK', 'Id')
+SF_PK = getattr(settings, 'SF_PK', 'id')
 if not SF_PK in ('id', 'Id'):
 	raise ImproperlyConfigured("Value of settings.SF_PK must be 'id' or 'Id' or undefined.")
 
