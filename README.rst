@@ -68,20 +68,11 @@ Quick Start
 
 Primary Key
 -----------
-<<<<<<< HEAD
 Salesforce doesn't allow you to define custom primary keys, so django-salesforce
 will add them automatically in all cases. You can override capitalization and use
 primary key `id` by configuring `SF_PK='id'` in your project settings. The previous
 capitalization of `Id` is only for old projects, but it will stay as the default
-variant until `django-salesforce>=0.6`.
-=======
-Primary keys are added to models automatically only, because SFDC doesn't allow
-to define a custom primary key. It is possible to configure the name of primary
-key by settings.py: `SF_PK='id'` or `SF_PK='Id'`. The lowercase name is
-the default name since version django-salesforce 0.5 and it is compatible with
-Django. The capitalized name `Id` is backward compatible with projects created
-for an old django-salesforce.
->>>>>>> 64c31b6b72349593bc410d197764ded48998aa8d
+variant until `django-salesforce>=0.5`.
 
 Foreign Key Support
 -------------------
