@@ -5,7 +5,7 @@
 # See LICENSE.md for details
 #
 
-from salesforce import models
+from salesforce import models, DJANGO_15_PLUS
 from salesforce.models import SalesforceModel as SalesforceModelParent
 
 import django
@@ -340,3 +340,32 @@ class OpportunityContactRole(models.Model):
 	opportunity = models.ForeignKey(Opportunity, on_delete=models.DO_NOTHING, related_name='contact_roles')
 	contact = models.ForeignKey(Contact, on_delete=models.DO_NOTHING, related_name='opportunity_roles')
 	role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
+
+
+class Organization(models.Model):
+    name = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE)
+    division = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE, blank=True)
+    organization_type = models.CharField(max_length=40, verbose_name='Edition',
+    		sf_read_only=models.READ_ONLY) # e.g 'Developer Edition', Enteprise, Unlimited...
+    instance_name = models.CharField(max_length=5, sf_read_only=models.READ_ONLY, blank=True)
+    is_sandbox = models.BooleanField(sf_read_only=models.READ_ONLY)
+
+
+# Skipping the model if a custom table isn't installed in your Salesforce
+# is important an old Django, even with "on_delete=DO_NOTHING",
+# due to how "delete" was implemented in Django 1.4
+if DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False):
+
+	class Test(models.Model):
+		test_text = models.CharField(max_length=40)
+		test_bool = models.BooleanField(default=False)
+		contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING)
+		class Meta:
+			custom = True
+			db_table = 'django_Test__c'
+
+
+	class NoteAttachment(models.Model):
+		# A standard SFDC object that can have a relationship to any custom object
+		parent = models.ForeignKey(Test, sf_read_only=models.NOT_UPDATEABLE, on_delete=models.DO_NOTHING)
+		title = models.CharField(max_length=80)
