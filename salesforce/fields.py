@@ -41,7 +41,7 @@ if not SF_PK in ('id', 'Id'):
 	raise ImproperlyConfigured("Value of settings.SF_PK must be 'id' or 'Id' or undefined.")
 
 
-class SalesforceAutoField(fields.Field):
+class SalesforceAutoField(fields.AutoField):
 	"""
 	An AutoField that works with Salesforce primary keys.
 	"""
@@ -53,7 +53,7 @@ class SalesforceAutoField(fields.Field):
 	}
 	def __init__(self, *args, **kwargs):
 		assert kwargs.get('primary_key', False) is True, "%ss must have primary_key=True." % self.__class__.__name__
-		kwargs['blank'] = False
+		kwargs['blank'] = True
 		kwargs['null'] = False
 		kwargs['default'] = None
 		fields.Field.__init__(self, *args, **kwargs)
