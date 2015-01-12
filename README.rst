@@ -32,13 +32,26 @@ Quick Start
 
     'salesforce': {
         'ENGINE': 'salesforce.backend',
-        "CONSUMER_KEY" : '',
-        "CONSUMER_SECRET" : '',
+        'CONSUMER_KEY': '',
+        'CONSUMER_SECRET': '',
         'USER': '',
         'PASSWORD': '',
         'HOST': 'https://test.salesforce.com',
     }
 
+   In the example above, all fields should be populated as follows:
+
+   * ``CONSUMER_KEY`` and ``CONSUMER_SECRET`` values are for the app used to
+     connect to your Salesforce account. Instructions for how get these are in
+     the Salesforce REST API Documentation.
+   * ``USER`` is the username used to connect.
+   * ``PASSWORD`` is a concatenation of the user's password and security token.
+   * ``HOST`` is ``https://test.salesforce.com`` to access the sandbox, or
+     ``https://login.salesforce.com`` to access production.
+
+   If an error message is received while connecting, review the error received.
+   Everything in the error message between ``{...}`` is exactly copied from the
+   Salesforce error message to assist debugging.
 
 4. **(optional)** To override the default timeout of 15 seconds,
    define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file::
@@ -57,10 +70,9 @@ Quick Start
         "salesforce.router.ModelRouter"
     ]
 
-7. Define a model that extends ``salesforce.models.SalesforceModel``
-   or export the complete SF schema by
-   ``python manage.py inspectdb --database=salesforce`` and simplify it
-   to what you need.
+7. Define a model that extends ``salesforce.models.Model`` or export the
+   complete SF schema by ``python manage.py inspectdb --database=salesforce``
+   and simplify it to what you need.
 
 8. You're all done! Just use your model like a normal Django model.
 
