@@ -53,7 +53,7 @@ Quick Start
    * ``USER`` is the username used to connect.
    * ``PASSWORD`` is a concatenation of the user's password and security token.
      Security token can be omitted if the local IP address has been
-     whitelisted.
+     whitelisted in Security Controls / Network Access.
    * ``HOST`` is ``https://test.salesforce.com`` to access the sandbox, or
      ``https://login.salesforce.com`` to access production.
 
