@@ -32,13 +32,43 @@ Quick Start
 
     'salesforce': {
         'ENGINE': 'salesforce.backend',
-        "CONSUMER_KEY" : '',
-        "CONSUMER_SECRET" : '',
+        'CONSUMER_KEY': '',
+        'CONSUMER_SECRET': '',
         'USER': '',
         'PASSWORD': '',
         'HOST': 'https://test.salesforce.com',
     }
 
+   In the example above, all fields should be populated as follows:
+
+   * ``CONSUMER_KEY`` and ``CONSUMER_SECRET`` values are for the app used to
+     connect to your Salesforce account. Instructions for how get these are in
+     the Salesforce REST API Documentation. Key and secret can be created on
+     web by:
+     - Salesforce web > Setup > App Setup > Create > Apps > Connected apps >
+       New.
+     - Click "Enable OAuth Settings" in API, then select "Access and manage
+       your data (api)" from available OAuth Scopes.
+     - Other red marked fields must be filled, but are not relevant for Django.
+   * ``USER`` is the username used to connect.
+   * ``PASSWORD`` is a concatenation of the user's password and security token.
+     Security token can be omitted if the local IP address has been
+     whitelisted in Security Controls / Network Access.
+   * ``HOST`` is ``https://test.salesforce.com`` to access the sandbox, or
+     ``https://login.salesforce.com`` to access production.
+
+   If an error message is received while connecting, review the error received.
+   Everything in the error message between ``{...}`` is exactly copied from the
+   Salesforce error message to assist debugging.
+
+   See also: `Information on settings up Salesforce connected apps
+   <https://help.salesforce.com/apex/HTViewHelpDoc?id=connected_app_create.htm>`_.
+
+   **Note about permissions**: Everything for a project can work under
+   restricted Salesforce user account if it has access to objects in your
+   models. Introspection (inspectdb) doesn't require any permissions. Running
+   tests for django_salesforce requires many permissions or Administrator
+   account for sandbox.
 
 4. **(optional)** To override the default timeout of 15 seconds,
    define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file::
@@ -57,10 +87,9 @@ Quick Start
         "salesforce.router.ModelRouter"
     ]
 
-7. Define a model that extends ``salesforce.models.SalesforceModel``
-   or export the complete SF schema by
-   ``python manage.py inspectdb --database=salesforce`` and simplify it
-   to what you need.
+7. Define a model that extends ``salesforce.models.Model`` or export the
+   complete SF schema by ``python manage.py inspectdb --database=salesforce``
+   and simplify it to what you need.
 
 8. You're all done! Just use your model like a normal Django model.
 
