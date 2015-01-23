@@ -174,7 +174,9 @@ def prep_for_deserialize(model, record, using, init_list=None):
 				fields[x.name] = record[simple_column]['Type']
 			else:
 				# Normal fields
-				field_val = record[x.column]
+				field_val = record
+				for col in x.column.split('.'):
+					field_val = field_val[col]
 				#db_type = x.db_type(connection=connections[using])
 				if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
 					d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
