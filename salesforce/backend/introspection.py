@@ -121,6 +121,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 				params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
 			if field['defaultedOnCreate'] and field['createable']:
 				params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
+			if field['type'] == 'reference' and not field['referenceTo']:
+				params['ref_comment'] = 'No Reference table'
+				field['type'] = 'string'
 			# We prefer "length" over "byteLength" for "internal_size".
 			# (because strings have usually: byteLength == 3 * length)
 			result.append((
@@ -140,7 +143,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		Returns a dictionary of {field_index: (field_index_other_table, other_table)}
 		representing all relationships to the given table. Indexes are 0-based.
 		"""
-		global last_introspected_model, last_with_important_related_name, last_read_only
+		global last_introspected_model, last_with_important_related_name, last_read_only, last_refs
 		table2model = lambda table_name: (SfProtectName(table_name).title()
 				.replace(' ', '').replace('-', ''))
 		result = {}
@@ -148,9 +151,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		last_with_important_related_name = []
 		last_read_only = {}
 		INDEX_OF_PRIMARY_KEY = 0
+		last_refs = {}
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
-			if field['type'] == 'reference':
+			if field['type'] == 'reference' and field['referenceTo']:
 				reference_to_name = SfProtectName(field['referenceTo'][0])
+				last_refs[field['name']] = field['referenceTo']
 				result[i] = (INDEX_OF_PRIMARY_KEY, reference_to_name)
 				reverse.setdefault(reference_to_name, []).append(field['name'])
 				if not field['updateable'] or not field['createable']:

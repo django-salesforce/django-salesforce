@@ -45,6 +45,8 @@ class Command(InspectDBCommand):
 				).get_field_type(connection, table_name, row)
 		if connection.vendor == 'salesforce':
 			name, type_code, display_size, internal_size, precision, scale, null_ok, sf_params = row
+			if 'ref_comment' in sf_params:
+				field_notes.append(sf_params.pop('ref_comment'))
 			field_params.update(sf_params)
 		return field_type, field_params, field_notes
 
@@ -74,6 +76,8 @@ class Command(InspectDBCommand):
 				if col_name in sf_introspection.last_read_only:
 					field_params['sf_read_only'] = sf_introspection.last_read_only[col_name]
 				field_params['on_delete'] = sf_introspection.SymbolicModelsName('DO_NOTHING')
+				if len(sf_introspection.last_refs[col_name]) > 1:
+					field_notes.append('Reference to tables [%s]' % (', '.join(sf_introspection.last_refs[col_name])))
 		else:
 			new_name, field_params, field_notes = super(Command, self
 					).normalize_col_name(col_name, used_column_names, is_relation)
