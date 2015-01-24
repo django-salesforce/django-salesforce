@@ -26,6 +26,12 @@ try:
 except ImportError:
 	import simplejson as json
 
+try:
+	from django.utils.text import camel_case_to_spaces
+except ImportError:
+	# Django 1.6 and older
+	from django.db.models.options import get_verbose_name as camel_case_to_spaces
+
 log = logging.getLogger(__name__)
 
 
@@ -105,7 +111,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		result = []
 		for field in self.table_description_cache(table_name)['fields']:
 			params = SortedDict()
-			if field['label']:
+			if field['label'] and field['label'] != camel_case_to_spaces(field['name']):
 				params['verbose_name'] = field['label']
 			if not field['updateable'] or not field['createable']:
 				# Fields that are result of a formula or system fields modified
