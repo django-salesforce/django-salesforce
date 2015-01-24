@@ -220,7 +220,10 @@ def extract_values(query):
 		else:  # insert
 			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
 			value = getattr(query.objs[0], field.attname)
-			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
+			# The 'DEFAULT' is a backward compatibility name.
+			if isinstance(field, models.ForeignKey) and value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
+				continue
+			if isinstance(value, models.DefaultedOnCreate):
 				continue
 		[arg] = process_json_args([value])
 		d[field.column] = arg

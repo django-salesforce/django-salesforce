@@ -25,7 +25,11 @@ from django.db.models import PROTECT, DO_NOTHING
 
 from salesforce.backend import manager
 from salesforce.fields import *  # modified django.db.models.CharField etc.
-from salesforce import fields
+from salesforce import fields, DJANGO_17_PLUS
+if DJANGO_17_PLUS:
+	from django.utils.deconstruct import deconstructible
+else:
+	deconstructible = lambda x: x
 
 log = logging.getLogger(__name__)
 
@@ -92,4 +96,23 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
 	Id = fields.SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id')
 
 
+@deconstructible
+class DefaultedOnCreate(object):
+	"""
+	Default value for foreign keys that but will get a smart auto value from
+	SFDC on create if the field is omitted, but can not be assigned to null in
+	the API.
+	(builtin SFDC fields with attributes 'defaultedOnCreate: true, nillable: false')
+
+	Example: `Owner` field is assigned to the current user if the field User is omitted.
+
+		Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+				default=models.DefaultedOnCreate(),
+				db_column='OwnerId')
+	"""
+	def __str__(self):
+		return 'DEFAULTED_ON_CREATE'
+
+
+DEFAULTED_ON_CREATE = DefaultedOnCreate()
 Model = SalesforceModel
