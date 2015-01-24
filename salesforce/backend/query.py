@@ -218,7 +218,8 @@ def extract_values(query):
 						"Match name can miss only with an 'update_fields' argument."
 				continue
 		else:  # insert
-			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
+			# TODO bulk insert
+			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce REST API"
 			value = getattr(query.objs[0], field.attname)
 			# The 'DEFAULT' is a backward compatibility name.
 			if isinstance(field, models.ForeignKey) and value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):

@@ -38,6 +38,14 @@ log = logging.getLogger(__name__)
 
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
+	"""
+	The most comfortable and complete output is by:
+		table_list_cache:               property with database and tables attributes
+		table_description_cache(name):  method   with table and fields attributes
+	Everything is with caching the results for the next use.
+	Other methods are very customized with hooks for
+	by django.core.management.commands.inspectdb
+	"""
 	data_types_reverse = {
 		'base64'                        : 'TextField',
 		'boolean'                       : 'BooleanField',

@@ -127,7 +127,7 @@ class Command(InspectDBCommand):
 			elif is_relation:
 				reconstructed += 'Id'
 			# TODO: Discuss: Maybe 'db_column' can be compared case insensitive,
-			#       but exact compare is safer. 
+			#       but exact compare is safer.
 			if reconstructed != col_name:
 				field_params['db_column'] = col_name
 			else:
