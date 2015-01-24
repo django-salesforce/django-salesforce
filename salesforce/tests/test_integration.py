@@ -730,10 +730,11 @@ class BasicSOQLTest(TestCase):
 	#	list(Contact.objects.raw("select Count() from Contact"))
 
 	def test_only_fields(self):
+		"""Verify that access to "only" fields doesn't require a request, but others do."""
 		request_count_0 = salesforce.backend.query.request_count
-		sql = User.objects.only('Id', 'Username').query.get_compiler('salesforce').as_sql()[0]
+		sql = User.objects.only('id', 'Username').query.get_compiler('salesforce').as_sql()[0]
 		self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
-		user = User.objects.only('Id', 'Username')[0]
+		user = User.objects.only('pk', 'Username')[0]
 		pk = user.pk
 		# Verify that deferred fields work
 		self.assertEqual(user.Username, User.objects.get(pk=user.pk).Username)
@@ -743,8 +744,8 @@ class BasicSOQLTest(TestCase):
 		# verify the necessary number of requests
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 4)
 
-	def test_only_fields(self):
-		"""Verify that access to a deferred field requires a new request."""
+	def test_defer_fields(self):
+		"""Verify that access to a deferred field requires a new request, but others don't."""
 		request_count_0 = salesforce.backend.query.request_count
 		contact = Contact.objects.defer('email')[0]
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 1)
