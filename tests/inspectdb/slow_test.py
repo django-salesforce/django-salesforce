@@ -26,6 +26,7 @@ from salesforce.backend.base import SalesforceError
 from tests.inspectdb import models as mdl
 
 sf = connections['salesforce']
+# The same "django.setup()" is used by manage.py subcommands in Django 1.7+.
 if DJANGO_17_PLUS:
 	django.setup()
 
@@ -35,6 +36,7 @@ def run():
 	for tab in sf.introspection.table_list_cache['sobjects']:
 		if tab['retrieveable'] and not tab['name'] in (
 				# These require specific filters (descried in their error messages)
+				'CollaborationGroupRecord',
 				'ContentDocumentLink', 'Idea', 'IdeaComment', 'UserProfileFeed',
 				'Vote', #'OpportunityPartner', 'Product2Feed',
 				# UNKNOWN_EXCEPTION:

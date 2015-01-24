@@ -41,37 +41,27 @@ if not SF_PK in ('id', 'Id'):
 	raise ImproperlyConfigured("Value of settings.SF_PK must be 'id' or 'Id' or undefined.")
 
 
-class SalesforceAutoField(fields.Field):
+class SalesforceAutoField(fields.AutoField):
 	"""
 	An AutoField that works with Salesforce primary keys.
+
+	It is used by SalesforceModel as a custom primary key. It doesn't convert
+	its value to int.
 	"""
 	description = _("Text")
-	
-	empty_strings_allowed = True
+
 	default_error_messages = {
 		'invalid': _('This value must be a valid Salesforce ID.'),
 	}
-	def __init__(self, *args, **kwargs):
-		assert kwargs.get('primary_key', False) is True, "%ss must have primary_key=True." % self.__class__.__name__
-		kwargs['blank'] = False
-		kwargs['null'] = False
-		kwargs['default'] = None
-		fields.Field.__init__(self, *args, **kwargs)
-	
-	def get_internal_type(self):
-		return "AutoField"
-	
+
 	def to_python(self, value):
 		if isinstance(value, string_types) or value is None:
 			return value
 		return smart_text(value)
-	
-	def validate(self, value, model_instance):
-		pass
-	
+
 	def get_prep_value(self, value):
 		return self.to_python(value)
-	
+
 	def contribute_to_class(self, cls, name):
 		name = name if self.name is None else self.name
 		if name != SF_PK or not self.primary_key:
@@ -91,9 +81,7 @@ class SalesforceAutoField(fields.Field):
 		super(SalesforceAutoField, self).contribute_to_class(cls, name)
 		cls._meta.has_auto_field = True
 		cls._meta.auto_field = self
-	
-	def formfield(self, **kwargs):
-		return None
+
 
 class SfField(models.Field):
 	"""
