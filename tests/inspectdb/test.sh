@@ -13,7 +13,7 @@ if python manage.py inspectdb --database=salesforce --traceback >tests/inspectdb
 	RESULT_2=$?
 
 	echo "*** parse test ***"
-	python -m unittest tests.inspectdb.tests
+	DJANGO_SETTINGS_MODULE=salesforce.testrunner.settings python -m unittest tests.inspectdb.tests
 	#python manage.py test --settings=tests.inspectdb.settings tests.inspectdb
 	RESULT_3=$?
 

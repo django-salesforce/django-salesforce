@@ -1,8 +1,12 @@
 """Tests by parsing the file modules.py exported by inspectdb."""
-from collections import OrderedDict
 import unittest
 import os
 import re
+
+try:
+	from collections import OrderedDict
+except ImportError:
+	from django.utils.datastructures import SortedDict as OrderedDict
 
 
 def relative_path(path):

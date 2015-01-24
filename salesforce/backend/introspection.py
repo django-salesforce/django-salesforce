@@ -15,17 +15,16 @@ import re
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db.backends import BaseDatabaseIntrospection
-from django.utils.datastructures import SortedDict
 from django.utils.encoding import force_text
 
 from salesforce.backend import compiler, query
 from salesforce import models, DJANGO_15_PLUS
 
 try:
-	import json
+	from collections import OrderedDict
 except ImportError:
-	import simplejson as json
-
+	# Python 2.6-
+	from django.utils.datastructures import SortedDict as OrderedDict
 try:
 	from django.utils.text import camel_case_to_spaces
 except ImportError:
@@ -110,7 +109,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		"Returns a description of the table, with the DB-API cursor.description interface."
 		result = []
 		for field in self.table_description_cache(table_name)['fields']:
-			params = SortedDict()
+			params = OrderedDict()
 			if field['label'] and field['label'] != camel_case_to_spaces(field['name']):
 				params['verbose_name'] = field['label']
 			if not field['updateable'] or not field['createable']:
