@@ -92,10 +92,8 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	"""
 	global request_count 
 	from salesforce.backend import base
-	kwargs_in = {
-			'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
-			'verify': getattr(settings, 'SF_SSL_SECURITY', {}).get('verify', True)
-			}
+	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
+				 'verify': True}
 	kwargs_in.update(kwargs)
 	_cursor = kwargs_in.pop('_cursor', None)
 	log.debug('Request API URL: %s' % url)

@@ -7,13 +7,12 @@
 import ssl
 from requests.adapters import HTTPAdapter, DEFAULT_POOLBLOCK
 from requests.packages.urllib3.poolmanager import PoolManager
-from django.conf import settings
 
 class SslHttpAdapter(HTTPAdapter):
 	"""Transport adapter with hardened SSL version."""
 
 	def init_poolmanager(self, connections, maxsize, block=DEFAULT_POOLBLOCK): 
-		ssl_version = getattr(settings, 'SF_SSL_SECURITY', {}).get('ssl_version', ssl.PROTOCOL_TLSv1)
+		ssl_version = ssl.PROTOCOL_TLSv1
 		self._pool_connections = connections 
 		self._pool_maxsize = maxsize 
 		self._pool_block = block 
