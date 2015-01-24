@@ -119,6 +119,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 				params['help_text'] = field['inlineHelpText']
 			if field['picklistValues']:
 				params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
+			if field['defaultedOnCreate'] and field['createable']:
+				params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
 			# We prefer "length" over "byteLength" for "internal_size".
 			# (because strings have usually: byteLength == 3 * length)
 			result.append((
@@ -230,7 +232,5 @@ class SfProtectName(str):
 		return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
 
 reverse_models_names = dict((obj.value, obj) for obj in
-	[SymbolicModelsName(name) for name in (
-		'NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY',
-		'DO_NOTHING')]
+	[SymbolicModelsName(name) for name in ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')]
 )

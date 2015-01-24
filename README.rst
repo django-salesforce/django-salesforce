@@ -207,6 +207,18 @@ Advanced usage
 -  **Meta class options** - If an inner ``Meta`` class is used, it must be a
    descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
 
+-  **Defaulted on create** - Some fields have a dynamic default value unknown
+   by Django and assigned by Salesforce if the field is omitted when a new object
+   is inserted. This rule will not be used if the value is ``None``.
+   Sometimes is ``None`` even not accepted by Salesforce, while the missing
+   value is ok. Django-salesforce supports it by a special default value
+   ``model.BooleanField(default=models.DEFAULTED_ON_CREATE)``. That means "let
+   it to Salesforce". This is useful for all fields marked by attribute
+   ``defaultedOnCreate`` in Salesforce. For example the current user of
+   Salesforce is assigned to ``owner`` field if no concrete user is  assigned,
+   but None would be rejected. All boolean fields have different default values
+   according to current ``Checked/Unchecked`` preferences.
+
 -  **Database Introspection with inspectdb** Tables that are exported into a
    Python model can be restricted by regular expression::
 
@@ -215,7 +227,6 @@ Advanced usage
    In this example, inspectdb will only export models for tables with exact
    name ``Contact`` and all tables that are prefixed with ``Account``. This
    filter works with all supported database types.
-
 
 Caveats
 -------
