@@ -141,7 +141,7 @@ You can compare the meaning with the same compiled to SQL::
 **Generic foreign keys** are frequently used in SF for fields that relate to
 objects of different types, e.g. the Parent of Note or Attachment can be almost
 any type of ususal SF objects. Filters by `Parent.Type` and retrieving this
-type is now supported::
+type is supported::
 
     note = Note.objects.filter(parent_type='Contact')[0]
     parent_model = getattr(example.models, note.parent_type)
@@ -207,6 +207,21 @@ Advanced usage
 -  **Meta class options** - If an inner ``Meta`` class is used, it must be a
    descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
 
+Introspection and special attributes of fields
+----------------------------------------------
+Some Salesforce fields can not be fully used without special attributes. You
+can see in the output of ``inspectdb`` in the most complete form.
+
+-  **sf_read_only** - Some fields require this special attributes to make the
+   model writable. Some fields are completely read only (``READ_ONLY``)
+   or insertable only but can not be later updated (``NOT_UPDATEABLE``) or
+   updateable only but can not be specified on insert (``NOT_CREATEABLE``).
+   Examples of such fields are automatically updated fields "last_modified_by" and
+   "last_modified_date" or fields defined by a formula like "name" of contact,
+   given by "first_name" and "last_name". Example::
+
+   last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+
 -  **Defaulted on create** - Some fields have a dynamic default value unknown
    by Django and assigned by Salesforce if the field is omitted when a new object
    is inserted. This rule will not be used if the value is ``None``.
@@ -219,7 +234,14 @@ Advanced usage
    but None would be rejected. All boolean fields have different default values
    according to current ``Checked/Unchecked`` preferences.
 
--  **Database Introspection with inspectdb** Tables that are exported into a
+-  **Comments # Reference to tables [...]**
+   Some builtin foreign keys are references to more tables. The class of first
+   table is used in the exported ``ForeignKey`` and all tables are listed in
+   the comment. Any of them can be used instead.::
+   models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
+   cl object  [SelfServiceUser, User]
+
+-  **Partial Database Introspection with inspectdb** Tables that are exported into a
    Python model can be restricted by regular expression::
 
      python manage.py inspectdb --table-filter="Contact$|Account" --database=salesforce
