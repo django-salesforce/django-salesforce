@@ -1,5 +1,6 @@
 # Django settings for testrunner project.
 import os
+import ssl
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -176,6 +177,17 @@ IPV4_ONLY = True
 # Name of primary key - by default 'id'. The value 'Id' was the default for
 # version "django-salesforce < 0.5".
 #SF_PK = 'Id'
+
+# SSL Security:
+# The minimal SSL version supported by SFDC is currently TLSv1 because SSLv3
+# is insecure.
+# It is possible to specify a path to CA bundle, like /etc/pki/tls/cert.pem
+# by "verify" or leave it default verify=True (which means your-python-version
+# site-packages/requests/cacert.pem)
+SF_SSL_SECURITY = {
+	'ssl_version': ssl.PROTOCOL_TLSv1,
+	'verify': True  # or path
+}
 
 try:
 	from salesforce.testrunner.local_settings import *

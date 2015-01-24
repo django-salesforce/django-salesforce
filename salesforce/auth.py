@@ -15,7 +15,7 @@ import threading
 from django.db import connections
 from salesforce.backend import sf_alias, MAX_RETRIES
 from salesforce.backend.driver import DatabaseError
-from requests.adapters import HTTPAdapter
+from salesforce.backend.adapter import SslHttpAdapter
 from requests.auth import AuthBase
 
 # TODO more advanced methods with ouathlib can be implemented, but the simple doesn't require a spec package
@@ -61,7 +61,7 @@ def authenticate(db_alias=None, settings_dict=None):
 				
 				log.info("attempting authentication to %s" % settings_dict['HOST'])
 				session = requests.Session()
-				session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=MAX_RETRIES))
+				session.mount(settings_dict['HOST'], SslHttpAdapter(max_retries=MAX_RETRIES))
 				response = session.post(url, data=dict(
 					grant_type		= 'password',
 					client_id		= settings_dict['CONSUMER_KEY'],

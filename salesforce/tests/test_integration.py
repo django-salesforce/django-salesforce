@@ -38,6 +38,7 @@ if router.is_sf_database(sf_alias):
 			connections[sf_alias].introspection.table_list_cache['sobjects']]
 sf_databases = [db for db in connections if router.is_sf_database(db)]
 default_is_sf = router.is_sf_database(sf_alias)
+manual_test = False  # skipped by automated tests
 
 def refresh(obj):
 	"""
@@ -758,5 +759,24 @@ class BasicSOQLTest(TestCase):
 
 	def test_incomplete_raw(self):
 		Contact.objects.raw("select id from Contact")[0].last_name
+
+	@skipUnless(manual_test, "This web service is for manual testing of SSLv3")
+	def test_disabled_sslv3(self):
+		from salesforce.backend.adapter import SslHttpAdapter
+		from requests.adapters import HTTPAdapter
+		import requests
+		# https://zmap.io/sslv3/sslv3test.html
+		url = "https://ssl3.zmap.io/sslv3test.js"
+		# https://www.ssllabs.com/ssltest/viewMyClient.html
+		session = requests.Session()
+		session.mount('https://', SslHttpAdapter())
+		try:
+			response = session.get(url)
+			raise Exception("SSLv3 should be disabled")
+		except requests.exceptions.SSLError:
+			pass
+		session.mount('https://', HTTPAdapter())
+		response = session.get(url)
+		self.assertEqual(response.status_code, 200)
 
 	#@skip("Waiting for bug fix")
