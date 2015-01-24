@@ -734,15 +734,17 @@ class BasicSOQLTest(TestCase):
 		request_count_0 = salesforce.backend.query.request_count
 		sql = User.objects.only('id', 'Username').query.get_compiler('salesforce').as_sql()[0]
 		self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
-		user = User.objects.only('pk', 'Username')[0]
+		user = User.objects.only('pk', 'Username')[0]                           # req 1
 		pk = user.pk
 		# Verify that deferred fields work
-		self.assertEqual(user.Username, User.objects.get(pk=user.pk).Username)
-		_ = Contact.objects.only('last_name')[0].last_name
-		xx = Contact.objects.only('account')[0]
-		_ = xx.account_id
+		self.assertEqual(user.Username, User.objects.get(pk=user.pk).Username)  # req 2
+		_ = Contact.objects.only('last_name')[0].last_name                      # req 3
+		xx = Contact.objects.only('account')[0]                                 # req 4
+		_ = xx.account_id                                                       # no request
 		# verify the necessary number of requests
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 4)
+		_ = xx.last_name                                                        # req 5
+		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 5)
 
 	def test_defer_fields(self):
 		"""Verify that access to a deferred field requires a new request, but others don't."""
