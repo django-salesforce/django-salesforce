@@ -10,6 +10,7 @@ from salesforce.models import SalesforceModel as SalesforceModelParent
 
 import django
 from django.conf import settings
+from django.utils.encoding import python_2_unicode_compatible
 
 SALUTATIONS = [
 	'Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Prof.'
@@ -48,6 +49,7 @@ def auto_assign_user():
 	return User(pk='DEFAULT')
 
 
+@python_2_unicode_compatible
 class AbstractAccount(SalesforceModel):
 	"""
 	Default Salesforce Account model.
@@ -88,7 +90,7 @@ class AbstractAccount(SalesforceModel):
 	class Meta(SalesforceModel.Meta):
 		abstract = True
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
@@ -121,6 +123,7 @@ else:
 		pass
 
 
+@python_2_unicode_compatible
 class Contact(SalesforceModel):
 	# Example that db_column is not necessary for most of fields even with
 	# lower case names and for ForeignKey
@@ -139,10 +142,11 @@ class Contact(SalesforceModel):
 			default=auto_assign_user,
 			related_name='contact_owner_set')
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.name
 
 
+@python_2_unicode_compatible
 class Lead(SalesforceModel):
 	"""
 	Default Salesforce Lead model.
@@ -193,30 +197,33 @@ class Lead(SalesforceModel):
 	# Deleted object can be found only in querysets with "query_all" SF method.
 	IsDeleted = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
+@python_2_unicode_compatible
 class Product(SalesforceModel):
 	Name = models.CharField(max_length=255)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'Product2'
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
+@python_2_unicode_compatible
 class Pricebook(SalesforceModel):
 	Name = models.CharField(max_length=255)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'Pricebook2'
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
+@python_2_unicode_compatible
 class PricebookEntry(SalesforceModel):
 	Name = models.CharField(max_length=255, db_column='Name', sf_read_only=models.READ_ONLY)
 	Pricebook2 = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING)
@@ -228,7 +235,7 @@ class PricebookEntry(SalesforceModel):
 		db_table = 'PricebookEntry'
 		verbose_name_plural = "PricebookEntries"
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
