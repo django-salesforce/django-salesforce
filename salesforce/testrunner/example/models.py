@@ -40,6 +40,14 @@ class User(SalesforceModel):
 	IsActive = models.BooleanField(default=False)
 
 
+def auto_assign_user():
+	"""
+	Function that can be used instead of default value of ForeignKey User,
+	where SFDC can assign an useful value, e.g. the current user for Owner field.
+	"""
+	return User(pk='DEFAULT')
+
+
 class AbstractAccount(SalesforceModel):
 	"""
 	Default Salesforce Account model.
@@ -50,7 +58,7 @@ class AbstractAccount(SalesforceModel):
 	]
 
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-			default=lambda:User(pk='DEFAULT'),
+			default=auto_assign_user,
 			db_column='OwnerId')
 	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
 							null=True)
@@ -128,7 +136,7 @@ class Contact(SalesforceModel):
 	# problematic with migrations in the future because it is not serializable.
 	# It can be replaced by normal function.
 	owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-			default=lambda:User(pk='DEFAULT'),
+			default=auto_assign_user,
 			related_name='contact_owner_set')
 
 	def __unicode__(self):
