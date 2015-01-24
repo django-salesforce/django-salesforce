@@ -3,6 +3,7 @@ import warnings
 from optparse import make_option
 from django.core.management.commands.inspectdb import Command as InspectDBCommand
 from django.db import connections, DEFAULT_DB_ALIAS
+from django.utils import six
 from salesforce.backend import introspection as sf_introspection
 import django
 import salesforce
@@ -22,6 +23,8 @@ class Command(InspectDBCommand):
 			options['table_name_filter'] = re.compile(options['table_name_filter']).match
 		self.connection = connections[options['database']]
 		if self.connection.vendor == 'salesforce':
+			if not six.PY3:
+				self.stdout.write("# coding: utf-8\n")
 			self.db_module = 'salesforce'
 			for line in self.handle_inspection(options):
 				line = line.replace(" Field renamed because it contained more than one '_' in a row.", "")
