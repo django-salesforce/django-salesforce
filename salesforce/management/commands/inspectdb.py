@@ -58,6 +58,7 @@ class Command(InspectDBCommand):
 			new_name, field_params, field_notes = super(Command, self
 					).normalize_col_name(beautified, used_column_names, is_relation)
 			# *reconstructed* : is what will SfField reconstruct to db column
+			field_params = OrderedDict(sorted(field_params.items()))
 			reconstructed = new_name.title().replace('_', '')
 			if col_name.endswith('__c'):
 				reconstructed += '__c'
