@@ -5,8 +5,69 @@ from django.core.management.commands.inspectdb import Command as InspectDBComman
 from django.db import connections, DEFAULT_DB_ALIAS
 from django.utils import six
 from salesforce.backend import introspection as sf_introspection
+from salesforce import DJANGO_15_PLUS
 import django
 import salesforce
+
+try:
+	from collections import OrderedDict
+except ImportError:
+	# Python 2.6-
+	from django.utils.datastructures import SortedDict as OrderedDict
+
+
+def fix_field_params_repr(params):
+	"""
+	Fixes repr() of "field_params" for Python 2 with future unicode_literals.
+	"""
+	class ReprUnicode(six.text_type):
+		def __new__(cls, text):
+			return unicode.__new__(cls, text)
+		def __repr__(self):
+			out = repr(unicode(self))
+			return out[1:] if out.startswith("u'") or out.startswith('u"') else out
+	class ReprChoices(list):
+		def __new__(cls, choices):
+			return list.__new__(cls, choices)
+		def __repr__(self):
+			out = []
+			for x0, x1 in self:
+				out.append('(%s, %s)' % (
+						repr(ReprUnicode(x0) if isinstance(x0, unicode) else x0),
+						repr(ReprUnicode(x1) if isinstance(x1, unicode) else x1)
+				))
+			return '[%s]' % (', '.join(out))
+	if not DJANGO_15_PLUS or six.PY3:
+		return params
+	out = OrderedDict()
+	for k, v in params.items():
+		if k == 'choices' and v:
+			v = ReprChoices(v)
+		elif isinstance(v, unicode):
+			v = ReprUnicode(v)
+		out[k] = v
+	return out
+
+def fix_international(text):
+	"Fix excaped international characters back to utf-8"
+	class SmartInternational(str):
+		def __new__(cls, text):
+			return str.__new__(cls, text)
+		def endswith(self, string):
+			return super(SmartInternational, self).endswith(str(string))
+	if six.PY3:
+		return text
+	out = []
+	last = 0
+	for match in re.finditer(r'(?<=[^\\])(?:\\x[0-9a-f]{2}|\\u[0-9a-f]{4})', text):
+		start, end, group = match.start(), match.end(), match.group()
+		out.append(text[last:start])
+		c = group.decode('unicode_escape')
+		out.append(c if ord(c) >160 and ord(c) != 173 else group)
+		last = end
+	out.append(text[last:])
+	return SmartInternational(''.join(out).encode('utf-8'))
+
 
 class Command(InspectDBCommand):
 	# This will export Salestorce to a valid models.py, if Django >=1.5.
@@ -35,7 +96,7 @@ class Command(InspectDBCommand):
 				elif django.VERSION[:2] == (1,5):
 					# fix bug in Django 1.5
 					line = line.replace("''self''", "'self'")
-				self.stdout.write("%s\n" % line)
+				self.stdout.write(fix_international("%s\n" % line))
 		else:
 			super(Command, self).handle_noargs(**options)
 
@@ -48,7 +109,7 @@ class Command(InspectDBCommand):
 			if 'ref_comment' in sf_params:
 				field_notes.append(sf_params.pop('ref_comment'))
 			field_params.update(sf_params)
-		return field_type, field_params, field_notes
+		return field_type, fix_field_params_repr(field_params), field_notes
 
 	def normalize_col_name(self, col_name, used_column_names, is_relation):
 		if self.connection.vendor == 'salesforce':
@@ -82,7 +143,7 @@ class Command(InspectDBCommand):
 		else:
 			new_name, field_params, field_notes = super(Command, self
 					).normalize_col_name(col_name, used_column_names, is_relation)
-		return new_name, field_params, field_notes
+		return new_name, fix_field_params_repr(field_params), field_notes
 
 	def get_meta(self, table_name):
 		"""
