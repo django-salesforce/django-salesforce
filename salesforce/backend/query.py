@@ -41,7 +41,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v31.0'
+API_STUB = '/services/data/v32.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
