@@ -126,9 +126,12 @@ class Command(InspectDBCommand):
 				field_params['custom'] = True
 			elif is_relation:
 				reconstructed += 'Id'
-			# TODO: Discuss whether 'db_column' should be rather compared case insensitive
-			if reconstructed != col_name or 'db_column' in field_params:
+			# TODO: Discuss: Maybe 'db_column' can be compared case insensitive,
+			#       but exact compare is safer. 
+			if reconstructed != col_name:
 				field_params['db_column'] = col_name
+			else:
+				field_params.pop('db_column', None)
 			if is_relation:
 				if col_name in sf_introspection.last_with_important_related_name:
 					field_params['related_name'] = '%s_%s_set' % (
