@@ -23,6 +23,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
 from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
+from salesforce.test import live_allow, live_deny, live_skip
 import salesforce
 
 import logging
@@ -48,7 +49,9 @@ def refresh(obj):
 	return type(obj).objects.using(db).get(pk=obj.pk)
 	
 
+@live_skip
 class BasicSOQLTest(TestCase):
+	@live_allow
 	def setUp(self):
 		"""
 		Create our test lead record.
@@ -71,6 +74,7 @@ class BasicSOQLTest(TestCase):
 			add_obj(Contact(LastName='Test contact 2'))
 			add_obj(User(Username=current_user))
 	
+	@live_allow
 	def tearDown(self):
 		"""
 		Clean up our test records.
