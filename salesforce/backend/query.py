@@ -29,6 +29,9 @@ import pytz
 from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS
 from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
+# If you use a different test engine than django.test then dynamically monkey
+# patch this SkipTest by your self.SkipTest.
+from salesforce.test import SkipTest
 
 try:
 	from urllib.parse import urlencode
@@ -446,7 +449,19 @@ class CursorWrapper(object):
 		url = u'%s%s' % (self.session.auth.instance_url, nextRecordsUrl)
 		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
+	def before_write_intent(self):
+		sf_live_test_policy = getattr(settings, 'SF_LIVE_TEST_POLICY', 'deny')
+		if sf_live_test_policy != 'allow' and not self.db.sf_is_write_safe:
+			if sf_live_test_policy == 'skip':
+				raise(SkipTest("Skipped because the test tries to write to a "
+						"production database. see SF_LIVE_TEST_POLICY"))
+			else:  # 'deny'
+				raise(ImproperlyConfigured("You must set SF_LIVE_TEST_POLICY "
+						"if you want to write to production SF databases in tests. "
+						"(Sandboxes are entirely writable.)"))
+
 	def execute_insert(self, query):
+		self.before_write_intent()
 		table = query.model._meta.db_table
 		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/' % table)
 		headers = {'Content-Type': 'application/json'}
@@ -456,6 +471,7 @@ class CursorWrapper(object):
 		return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
 
 	def execute_update(self, query):
+		self.before_write_intent()
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
 		if DJANGO_17_PLUS:
@@ -474,6 +490,7 @@ class CursorWrapper(object):
 		return ret
 
 	def execute_delete(self, query):
+		self.before_write_intent()
 		table = query.model._meta.db_table
 		## the root where node's children may itself have children..
 		def recurse_for_pk(children):
