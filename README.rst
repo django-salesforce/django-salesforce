@@ -250,6 +250,33 @@ can see in the output of ``inspectdb`` in the most complete form.
    name ``Contact`` and all tables that are prefixed with ``Account``. This
    filter works with all supported database types.
 
+Sandbox and tests
+-----------------
+It is recommended to develop and run tests only in a sandbox, but due to
+complicated synchronizing of production database structure and permissions with
+a sandbox in SFDC, it is useful to run some tests on the production database,
+that are read only tests and specially marked tests that you know they are safe.
+
+If a sub-setting DATABASES['salesforce']['TEST'] is specified, then it is used for
+the test database. Unspecified settings are copied from the main setting.
+The minimum is to set DATABASES['salesforce']['TEST']['USER'] for sandbox if all
+other settings are the same.
+
+If the test tries to write to the Salesforce database that is not a sandbox than
+the action depends on the value od SF_LIVE_TEST_POLICY. Possible values are "deny",
+"allow" or "skip", where "deny" is the default, in order to inform you. You can
+override this setting for individual tests or testcases by decorators "live_allow"
+"live_denyy", "live_skip" (see the support module "salesforce.test")
+You can also ask in the test if the database is a sandbox or other safe database by
+``salesforce.test.sf_is_write_safe(alias=None)``, where the alias can be omitted for
+the default SF database.
+
+Tip: You can easily compare the structure of sandbox and production databases
+by running ``inspectdb`` on both them and compare results by a visual tool as
+text.
+
+TODO: Move "Testing" chapter there.
+
 Caveats
 -------
 
