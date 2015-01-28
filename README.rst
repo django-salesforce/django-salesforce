@@ -263,7 +263,7 @@ The minimum is to set DATABASES['salesforce']['TEST']['USER'] for sandbox if all
 other settings are the same.
 
 If the test tries to write to the Salesforce database that is not a sandbox than
-the action depends on the value od SF_LIVE_TEST_POLICY. Possible values are "deny",
+the action depends on the value of ``SF_LIVE_TEST_POLICY``. Possible values are "deny",
 "allow" or "skip", where "deny" is the default, in order to inform you. You can
 override this setting for individual tests or testcases by decorators "live_allow"
 "live_denyy", "live_skip" (see the support module "salesforce.test")
@@ -274,6 +274,57 @@ the default SF database.
 Tip: You can easily compare the structure of sandbox and production databases
 by running ``inspectdb`` on both them and compare results by a visual tool as
 text.
+
+
+The "test write policy" helps to write faster and safer tests by declaring
+individual permission requirements of tests.
+It is faster becase it allows to reuse fixtures after tests that don't modify them
+It is safer and therefore it is conceivable to select types of tests that can run on a production database.
+
+# hierachic fixtures?
+
+SF_TEST_UNEXPECTED_WRITE_POLICY = {
+   # condition: action
+
+	'action': ...   # "deny" - raise exception if is writes to unexpected objects - useful to detect what exactly writes
+	                # "skip" - skip the test silently - the optimal action for tuned tests running on a live production database
+	                # "warning" - allow with warning
+					# "allow" - the old behaviour for old test (silent allow)
+	default_permission (default for blocks inside)
+	maximal_permission (never allow more than this in internal blocks) can be set for applications in settings (Django 1.7)
+	maximal_live permission
+
+  policy decorators:   what to do with such test
+    in_sandbox_test:  {'wild': 'assertive'   'proper'
+	in_live_test:     {'wild':..., ...,      ..., 'readonly':...}
+
+  declarative decorators - everytimes raises an exception if violated - is helps readability of tests in order to write a viable policy
+    type_decorator - declared types of writable objects and safe markers - useful also for eventual clean up. useful labels
+	     for easy cleaning the database if the process
+	default_decorator - the code can't write more (but permissions can be still overridden to higher inside)
+	max_decorator - declares that no test can write more
+
+		type of write:
+			wild_write:       can write anywhere: outside fixtures and objects - can not be cleaned automatically
+							  "wild" tests are very bad for running more concurrent tests.
+			modifies_fixture: can write into fixture and objects created in the test (important for speed, not for security)
+			write_inside:     (default if nothing specified) ("tearDown" can write to objects created by setUp and by test)
+			readonly          can not write into SF database
+		Even some test with *wild_write* can pass if it actually doesn't try to write.
+
+@live_test = the rest can run on the production database
+
+class Test(Model):  # table "django_test__c"
+	label  # "django test 012345-6789-abcd-ef01-2345-6789abcdef"
+    rules  # """{"Contact":"lastname", "Custom_object__c":"My_Text_Field__c", "CampaignMember": {"Campaign": {"Name": "endswith"}},...}""
+             rules to identify "orphants" of a killed test. They can be known before the test starts
+
+class TestItem(Model)
+    parent = ForeignKey(Test)
+	label  # the same label as parent - to easy rules
+	rules  # if same cleanup rule has not been known at the start of test
+	rules  # """{"CampaignMember": {"Campaign": ["id0001", "id002"...]}}"""
+	objects
 
 TODO: Move "Testing" chapter there.
 
