@@ -18,3 +18,4 @@ coverage_html
 log
 tests/inspectdb/models.py
 salesforce/packages/
+venv
