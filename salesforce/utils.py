@@ -13,7 +13,10 @@ conversion).
 
 from django.conf import settings
 
-import beatbox
+try:
+    import beatbox
+except ImportError:
+    beatbox = None
 
 
 def convert_lead(lead, converted_status="Qualified - converted"):
@@ -24,13 +27,25 @@ def convert_lead(lead, converted_status="Qualified - converted"):
     The parameter `lead` is expected to be a Lead object that
     has not been converted yet.
 
-    TODO:
+    -- BEWARE --
     The current implementation won't work in case your `Contact`,
     `Account` or `Opportunity` objects have some custom **and**
     required fields. This arises from the fact that `convertLead()`
     is only meant to deal with standard Salesforce fields, so it does
     not really care about populating custom fields at insert time.
+
+    One workaround is to map a custom required field in
+    your `Lead` object to every custom required field in the target
+    objects (i.e., `Contact`, `Opportunity` or `Account`). Follow the
+    instructions at
+
+    https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm
+
+    for more details.
     """
+    if not beatbox:
+        raise RuntimeError("To use convert_lead, you'll need to install the Beatbox library.")
+
     soap_client = beatbox.PythonClient()
     settings_dict = settings.DATABASES['salesforce']
 
@@ -46,5 +61,8 @@ def convert_lead(lead, converted_status="Qualified - converted"):
         'leadId': lead.pk,
         'convertedStatus': converted_status,
     })
+
+    if "Exception" in str(response):
+        raise RuntimeError("The Lead conversion failed: {}".format(str(response)))
 
     return response
