@@ -231,18 +231,18 @@ Advanced usage
      lead = Lead.objects.all()[0]
      response = convert_lead(lead)
 
-    For the particular case of ``Lead`` conversion, beware that having
-    some *custom* and *required* fields in either ``Contact``,
-    ``Account`` or ``Opportunity`` is not supported. This arises from
-    the fact that the conversion mechanism on the Salesforce side is only
-    meant to deal with standard Salesforce fields, so it does not really
-    care about populating custom fields at insert time.
+   For the particular case of ``Lead`` conversion, beware that having
+   some *custom* and *required* fields in either ``Contact``,
+   ``Account`` or ``Opportunity`` is not supported. This arises from
+   the fact that the conversion mechanism on the Salesforce side is only
+   meant to deal with standard Salesforce fields, so it does not really
+   care about populating custom fields at insert time.
 
-    One workaround is to map a custom required field in
-    your `Lead` object to every custom required field in the target
-    objects (i.e., `Contact`, `Opportunity` or `Account`). Follow the
-    `instructions<http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`_
-    for more details.
+   One workaround is to map a custom required field in
+   your `Lead` object to every custom required field in the target
+   objects (i.e., `Contact`, `Opportunity` or `Account`). Follow the
+   `instructions <http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`__
+   for more details.
 
 
 
