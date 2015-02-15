@@ -216,6 +216,29 @@ Advanced usage
    name ``Contact`` and all tables that are prefixed with ``Account``. This
    filter works with all supported database types.
 
+-  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
+   be implemented using the generic relational database abstraction and the REST API.
+   For some of these actions there is an available endpoint in the old Salesforce API
+   (SOAP) that can be accessed using our utility module. In order to use that module,
+   you will need to install an additional dependency ::
+
+     pip install beatbox
+
+   Here is an example of usage with ``Lead`` conversion ::
+
+     from salesforce.utils import convert_lead
+
+     lead = Lead.objects.all()[0]
+     response = convert_lead(lead)
+
+   For the particular case of ``Lead`` conversion, beware that having
+   some *custom* and *required* fields in either ``Contact``,
+   ``Account`` or ``Opportunity`` is not supported. This arises from
+   the fact that the conversion mechanism on the Salesforce side is only
+   meant to deal with standard Salesforce fields, so it does not really
+   care about populating custom fields at insert time.
+
+
 
 Caveats
 -------
