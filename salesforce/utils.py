@@ -53,7 +53,10 @@ def convert_lead(lead, converted_status="Qualified - converted"):
         'convertedStatus': converted_status,
     })
 
-    if "Exception" in str(response):
-        raise RuntimeError("The Lead conversion failed: {}".format(str(response)))
+    ret = dict((x._name[1], str(x)) for x in response)
+    
+    if "errors" in str(ret):
+        raise RuntimeError("The Lead conversion failed: {0}, leadId={1}".format(
+                ret['errors'], ret['leadId']))
 
-    return response
+    return ret
