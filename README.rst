@@ -238,6 +238,12 @@ Advanced usage
    meant to deal with standard Salesforce fields, so it does not really
    care about populating custom fields at insert time.
 
+   One workaround is to map a custom required field in
+   your `Lead` object to every custom required field in the target
+   objects (i.e., `Contact`, `Opportunity` or `Account`). Follow the
+   `instructions <http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`__
+   for more details.
+
 
 
 Caveats
