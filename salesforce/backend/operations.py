@@ -7,7 +7,12 @@
 
 import re
 
-from django.db.backends import BaseDatabaseOperations
+from salesforce import DJANGO_18_PLUS
+
+if DJANGO_18_PLUS:
+	from django.db.backends.base.operations import BaseDatabaseOperations
+else:
+	from django.db.backends import BaseDatabaseOperations
 
 """
 Default database operations, with unquoted names.
