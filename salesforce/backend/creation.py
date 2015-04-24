@@ -19,7 +19,7 @@ import logging
 log = logging.getLogger(__name__)
 
 class DatabaseCreation(BaseDatabaseCreation):
-	def create_test_db(self, verbosity=1, autoclobber=False, serialize=True):
+	def create_test_db(self, verbosity=1, autoclobber=False, serialize=True, keepdb=False):
 		test_database_name = self._get_test_db_name()
 		
 		if verbosity >= 1:
@@ -31,7 +31,7 @@ class DatabaseCreation(BaseDatabaseCreation):
 		
 		return test_database_name
 	
-	def destroy_test_db(self, old_database_name, verbosity=1):
+	def destroy_test_db(self, old_database_name, verbosity=1, keepdb=False):
 		test_database_name = self.connection.settings_dict['NAME']
 		if verbosity >= 1:
 			test_db_repr = ''

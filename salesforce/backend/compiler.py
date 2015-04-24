@@ -12,7 +12,7 @@ from django.db import models
 from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 
-from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS
+from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
 
 
 class SQLCompiler(compiler.SQLCompiler):
@@ -52,11 +52,15 @@ class SQLCompiler(compiler.SQLCompiler):
 		for alias in self.query.tables:
 			if self.query.alias_refcount[alias]:
 				try:
-					name, alias, join_type, lhs, lhs_col, col, nullable = self.query.alias_map[alias]
+					alias_map_info = self.query.alias_map[alias]
 				except KeyError:
 					# Extra tables can end up in self.tables, but not in the
 					# alias_map if they aren't in a join. That's OK. We skip them.
 					continue
+				if DJANGO_17_PLUS:
+					name = alias_map_info.table_name
+				else:
+					name, alias, join_type, lhs, lhs_col, col, nullable = alias_map_info
 				return [name], []
 		raise AssertionError("At least one table should be referenced in the query.")
 
@@ -98,7 +102,12 @@ class SQLCompiler(compiler.SQLCompiler):
 		if not result_type or result_type == 'cursor':
 			return cursor
 
-		ordering_aliases = self.ordering_aliases if DJANGO_16_PLUS else self.query.ordering_aliases
+		if DJANGO_18_PLUS:
+			ordering_aliases = None
+		elif DJANGO_16_PLUS:
+			ordering_aliases = self.ordering_aliases
+		else:
+			ordering_aliases = self.query.ordering_aliases
 		if result_type == constants.SINGLE:
 			if ordering_aliases:
 				return cursor.fetchone()[:-len(ordering_aliases)]
@@ -335,8 +344,9 @@ class SQLUpdateCompiler(compiler.SQLUpdateCompiler, SQLCompiler):
 class SQLAggregateCompiler(compiler.SQLAggregateCompiler, SQLCompiler):
 	pass
 
-class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
-	pass
+if not DJANGO_18_PLUS:
+	class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
+		pass
 
 
 # Lookups
