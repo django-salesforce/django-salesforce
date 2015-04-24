@@ -17,6 +17,7 @@ import django
 DJANGO_15_PLUS = django.VERSION[:2] >= (1, 5)
 DJANGO_16_PLUS = django.VERSION[:2] >= (1, 6)
 DJANGO_17_PLUS = django.VERSION[:2] >= (1, 7)
+DJANGO_18_PLUS = django.VERSION[:2] >= (1, 8)
 if not django.VERSION[:2] >= (1, 4):
 	raise ImportError("Django 1.4 or higher is required for django-salesforce.")
 

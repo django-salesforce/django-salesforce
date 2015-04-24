@@ -8,8 +8,13 @@
 """
 Automatic table creation is not supported by the Salesforce backend.
 """
+from salesforce import DJANGO_18_PLUS
 
-from django.db.backends.creation import BaseDatabaseCreation
+if DJANGO_18_PLUS:
+	from django.db.backends.base.creation import BaseDatabaseCreation
+else:
+	from django.db.backends.creation import BaseDatabaseCreation
+
 import logging
 log = logging.getLogger(__name__)
 
