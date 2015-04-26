@@ -68,6 +68,8 @@ def run():
 					'StaticResource', 'WebLink',
 					# This is not writable due to 'NamespacePrefix' field
 					'ApexPage',
+					# Some Leads are not writable becase they are coverted to Contact
+					'Lead',
 					# Insufficient access rights on cross-reference id
 					'Group',
 					'OpportunityShare', 'Profile',
