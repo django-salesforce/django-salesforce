@@ -127,6 +127,114 @@ class SQLCompiler(compiler.SQLCompiler):
 			return list(result)
 		return result
 
+	if DJANGO_18_PLUS:
+		def as_sql(self, with_limits=True, with_col_aliases=False, subquery=False):
+			"""
+			Creates the SQL for this query. Returns the SQL string and list of
+			parameters.
+
+			If 'with_limits' is False, any limit/offset information is not included
+			in the query.
+			"""
+			# After executing the query, we must get rid of any joins the query
+			# setup created. So, take note of alias counts before the query ran.
+			# However we do not want to get rid of stuff done in pre_sql_setup(),
+			# as the pre_sql_setup will modify query state in a way that forbids
+			# another run of it.
+			self.subquery = subquery
+			refcounts_before = self.query.alias_refcount.copy()
+			try:
+				extra_select, order_by, group_by = self.pre_sql_setup()
+				if with_limits and self.query.low_mark == self.query.high_mark:
+					return '', ()
+				distinct_fields = self.get_distinct()
+
+				# This must come after 'select', 'ordering', and 'distinct' -- see
+				# docstring of get_from_clause() for details.
+				from_, f_params = self.get_from_clause()
+
+				where, w_params = self.compile(self.query.where)
+				having, h_params = self.compile(self.query.having)
+				params = []
+				result = ['SELECT']
+
+				if self.query.distinct:
+					result.append(self.connection.ops.distinct_sql(distinct_fields))
+
+				out_cols = []
+				col_idx = 1
+				for _, (s_sql, s_params), alias in self.select + extra_select:
+					if alias:
+						# fixed by removing 'AS'
+						s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
+					elif with_col_aliases:
+						s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
+						col_idx += 1
+					params.extend(s_params)
+					out_cols.append(s_sql)
+
+				result.append(', '.join(out_cols))
+
+				result.append('FROM')
+				result.extend(from_)
+				params.extend(f_params)
+
+				if where:
+					result.append('WHERE %s' % where)
+					params.extend(w_params)
+
+				grouping = []
+				for g_sql, g_params in group_by:
+					grouping.append(g_sql)
+					params.extend(g_params)
+				if grouping:
+					if distinct_fields:
+						raise NotImplementedError(
+							"annotate() + distinct(fields) is not implemented.")
+					if not order_by:
+						order_by = self.connection.ops.force_no_ordering()
+					result.append('GROUP BY %s' % ', '.join(grouping))
+
+				if having:
+					result.append('HAVING %s' % having)
+					params.extend(h_params)
+
+				if order_by:
+					ordering = []
+					for _, (o_sql, o_params, _) in order_by:
+						ordering.append(o_sql)
+						params.extend(o_params)
+					result.append('ORDER BY %s' % ', '.join(ordering))
+
+				if with_limits:
+					if self.query.high_mark is not None:
+						result.append('LIMIT %d' % (self.query.high_mark - self.query.low_mark))
+					if self.query.low_mark:
+						if self.query.high_mark is None:
+							val = self.connection.ops.no_limit_value()
+							if val:
+								result.append('LIMIT %d' % val)
+						result.append('OFFSET %d' % self.query.low_mark)
+
+				if self.query.select_for_update and self.connection.features.has_select_for_update:
+					if self.connection.get_autocommit():
+						raise TransactionManagementError(
+							"select_for_update cannot be used outside of a transaction."
+						)
+
+					# If we've been asked for a NOWAIT query but the backend does
+					# not support it, raise a DatabaseError otherwise we could get
+					# an unexpected deadlock.
+					nowait = self.query.select_for_update_nowait
+					if nowait and not self.connection.features.has_select_for_update_nowait:
+						raise DatabaseError('NOWAIT is not supported on this database backend.')
+					result.append(self.connection.ops.for_update_sql(nowait=nowait))
+
+				return ' '.join(result), tuple(params)
+			finally:
+				# Finally do cleanup - get rid of the joins we created above.
+				self.query.reset_refcounts(refcounts_before)
+
 
 class SalesforceWhereNode(where.WhereNode):
 	overridden_types = ['isnull']
@@ -363,3 +471,18 @@ if DJANGO_17_PLUS:
 				return super(IsNull, self).as_sql(qn, connection)
 
 	models.Field.register_lookup(IsNull)
+
+if DJANGO_18_PLUS:
+	from django.db.models.aggregates import Count
+	def count_as_salesforce(self, *args, **kwargs):
+		if (len(self.source_expressions) == 1 and
+				isinstance(self.source_expressions[0], models.expressions.Value) and
+				self.source_expressions[0].value == '*'):
+			return 'COUNT(Id)', []
+		else:
+			#tmp = Count('pk')
+			#args[0].query.add_annotation(Count('pk'), alias='__count', is_summary=True)
+			#obj.add_annotation(Count('*'), alias='__count', is_summary=True
+			#self.source_expressions[0] = models.expressions.Col('__count', args[0].query.model._meta.fields[0])  #'Id'
+			return self.as_sql(*args, **kwargs)
+	setattr(Count, 'as_salesforce', count_as_salesforce)
