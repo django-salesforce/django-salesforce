@@ -21,7 +21,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger, TestCustomExample,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
-from salesforce import router, DJANGO_15_PLUS
+from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS
 from salesforce.backend import sf_alias
 import salesforce
 
@@ -733,10 +733,10 @@ class BasicSOQLTest(TestCase):
 	def test_only_fields(self):
 		"""Verify that access to "only" fields doesn't require a request, but others do."""
 		request_count_0 = salesforce.backend.query.request_count
-		sql = User.objects.only('id', 'Username').query.get_compiler('salesforce').as_sql()[0]
+		sql = User.objects.only('Username').query.get_compiler('salesforce').as_sql()[0]
 		self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
-		user = User.objects.only('pk', 'Username')[0]                           # req 1
-		pk = user.pk
+		user = User.objects.only('Username')[0]                                 # req 1
+		pk = user.pk                                                            # no request
 		# Verify that deferred fields work
 		self.assertEqual(user.Username, User.objects.get(pk=user.pk).Username)  # req 2
 		_ = Contact.objects.only('last_name')[0].last_name                      # req 3
@@ -778,5 +778,31 @@ class BasicSOQLTest(TestCase):
 		session.mount('https://', HTTPAdapter())
 		response = session.get(url)
 		self.assertEqual(response.status_code, 200)
+
+	def test_filter_by_more_fk_to_the_same_model(self):
+		"""
+		Test that aliases are correctly decoded if more relations to
+		the same model are present in the filter.
+		"""
+		test_lead = Lead(Company='sf_test lead', LastName='name')
+		test_lead.save()
+		try:
+			qs = Lead.objects.filter(pk=test_lead.pk,
+					owner__Username=current_user,
+					last_modified_by__Username=current_user)
+			# Verify that a coplicated analysis is not performed on old Django
+			# so that the query can be at least somehow simply compiled to SOQL
+			# without exceptions, in order to prevent regressions.
+			sql, params = qs.query.get_compiler('salesforce').as_sql()
+			if not DJANGO_17_PLUS:
+				self.skipTest("Skipped filters with nontrivial relations")
+			# Verify expected filters in SOQL compiled by new Django
+			self.assertTrue('Lead.Owner.Username = %s' in sql)
+			self.assertTrue('Lead.LastModifiedBy.Username = %s' in sql)
+			# verify validity for SFDC, verify results
+			refreshed_lead = qs.get()
+			self.assertEqual(refreshed_lead.id, test_lead.id)
+		finally:
+			test_lead.delete()
 
 	#@skip("Waiting for bug fix")

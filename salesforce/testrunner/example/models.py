@@ -188,6 +188,12 @@ class Lead(SalesforceModel):
 											sf_read_only=models.NOT_CREATEABLE)
 	# Deleted object can be found only in querysets with "query_all" SF method.
 	IsDeleted = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
+	owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=models.DEFAULTED_ON_CREATE,
+			related_name='lead_owner_set')
+	last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			sf_read_only=models.READ_ONLY,
+			related_name='lead_lastmodifiedby_set')
 
 	def __str__(self):
 		return self.Name

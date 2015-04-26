@@ -106,7 +106,12 @@ variant until `django-salesforce>=0.5`.
 Foreign Key Support
 -------------------
 
-**Foreign key** filters are currently possible only for the first level of
+**Foreign key filters** are currently possible only from child to parent with some
+restrictions:
+
+They are fully supported with Django 1.7+ without other restrictions. **New**
+
+With Django 1.6 and older, ForeignKey filters are  possible only for the first level of
 relationship and only for fields whose name equals the name of object.
 Foreign keys of an object can be normally accessed by dot notation without any
 restriction
@@ -331,3 +336,11 @@ Backwards-incompatible changes
 
 -  The name of primary key is currently `id`. The backward compatible behaviour
    can be reached by settings `SF_PK='Id'`.
+
+News since version 0.5
+----------------------
+
+-  All child to parent filters are still correctly supported for Django 1.7 in
+   many levels, including foreign keys between custom models or mixed builtin
+   and custom models, also filters where the same model is used multiple times,
+   e.g. filter Account objects by a field of their parent Account.
