@@ -7,6 +7,11 @@ from salesforce.testrunner.example.models import Account, Contact, Lead, Opportu
 from salesforce.utils import convert_lead
 
 try:
+	from unittest import skip, skipUnless
+except ImportError:
+	# old Python 2.6 (Django 1.4 - 1.6 simulated unittest2)
+	from django.utils.unittest import skip, skipUnless
+try:
     import beatbox
 except ImportError:
     beatbox = None
@@ -14,7 +19,7 @@ except ImportError:
 
 class UtilitiesTest(TestCase):
 
-    @unittest.skipUnless(beatbox, "Beatbox needs to be installed in order to run this test.")
+    @skipUnless(beatbox, "Beatbox needs to be installed in order to run this test.")
     def test_lead_conversion(self):
         """
         Create a Lead object within Salesforce and try to

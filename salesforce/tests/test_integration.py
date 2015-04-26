@@ -14,7 +14,6 @@ from django.conf import settings
 from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
-from django.utils.unittest import skip, skipUnless
 from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
@@ -24,6 +23,11 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
+try:
+	from unittest import skip, skipUnless
+except ImportError:
+	# old Python 2.6 (Django 1.4 - 1.6 simulated unittest2)
+	from django.utils.unittest import skip, skipUnless
 
 import logging
 log = logging.getLogger(__name__)
