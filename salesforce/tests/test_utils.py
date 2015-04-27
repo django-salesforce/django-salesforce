@@ -1,5 +1,5 @@
 from django.test import TestCase
-from django.core.exceptions import ObjectDoesNotExist
+from django.db import connections
 import unittest
 
 
@@ -22,16 +22,23 @@ class UtilitiesTest(TestCase):
         """
         lead = Lead(FirstName="Foo", LastName="Bar", Company="django-salesforce")
         lead.save()
-        r = convert_lead(lead)
-        print("Response from convertLead: " + str(r))
-        print("Account ID: " + str(r[0]))
-        print("Contact ID: " + str(r[1]))
-        print("Opportunity ID: " + str(r[3]))
+
+        # Get a status name setting for converted Leads
+        cur = connections['salesforce'].cursor()
+        cur.execute("SELECT MasterLabel FROM LeadStatus WHERE IsConverted=true")
+        converted_status = cur.fetchone()['MasterLabel']
+
+        ret = convert_lead(lead, converted_status=converted_status)
+        print("Response from convertLead: " +
+                ', '.join('%s: %s' % (k, v) for k, v in sorted(ret.items())))
+        expected_names = set(('accountId', 'contactId', 'leadId', 'opportunityId', 'success'))
+        self.assertEqual(set(ret), expected_names)
+        self.assertEqual(ret['success'], 'true')
 
         # Cleaning up...
         # Deleting the Account object will also delete the related Contact
         # and Opportunity objects.
-        account = Account.objects.get(pk=str(r[0]))
+        account = Account.objects.get(pk=ret['accountId'])
         account.delete()
-        
-        lead.delete()   # FYI, r[2] == lead.pk
+
+        lead.delete()   # FYI, ret['leadId'] == lead.pk

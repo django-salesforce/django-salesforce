@@ -54,6 +54,9 @@ class SalesforceModelBase(ModelBase):
 			super(SalesforceModelBase, cls).add_to_class(name, value)
 			setattr(cls._meta, 'sf_custom', sf_custom)
 		else:
+			if type(value) is models.manager.Manager:
+				# TODO use args:  obj._constructor_args = (args, kwargs)
+				value = manager.SalesforceManager()
 			super(SalesforceModelBase, cls).add_to_class(name, value)
 
 
@@ -80,7 +83,6 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
 	"""
 	Abstract model class for Salesforce objects.
 	"""
-	_base_manager = objects = manager.SalesforceManager()
 	_salesforce_object = True
 
 	class Meta:

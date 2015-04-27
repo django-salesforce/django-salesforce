@@ -9,8 +9,12 @@ using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance as if they were in a traditional database.
 
-Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7. Note that Django 1.4.x
-is not compatible with Python 3.
+Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7, partly Django 1.8.
+The best supported version is currently Django 1.7, including relative
+complicated subqueries. Django 1.8 is only very rudimentally supported, without
+raw queries and without values_list() and values() methods. The usual support
+can be expected in the next django-salesforce version.
+Note that Django 1.4.x is not compatible with Python 3.
 
 Quick Start
 -----------
@@ -237,6 +241,14 @@ Advanced usage
    the fact that the conversion mechanism on the Salesforce side is only
    meant to deal with standard Salesforce fields, so it does not really
    care about populating custom fields at insert time.
+
+   One workaround is to map a custom required field in
+   your `Lead` object a custom required field in target objects
+   (i.e., `Contact`, `Opportunity` or `Account`) or to garantee that
+   a suitable value is set by your application to the source Lead field,
+   at least just before the conversion. Follow the
+   `instructions <http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`__
+   for more details.
 
 
 

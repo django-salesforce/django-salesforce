@@ -15,7 +15,7 @@ from django.conf import settings
 from django.core.serializers import python
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
-from django.db.models import query
+from django.db.models import query, Count
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.query_utils import deferred_class_factory
 from django.utils.encoding import force_text
@@ -26,7 +26,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS
+from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
 from salesforce.backend import compiler, sf_alias
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 
@@ -348,6 +348,19 @@ class SalesforceQuery(Query):
 
 	def set_query_all(self):
 		self.is_query_all = True
+
+	if DJANGO_18_PLUS:
+		def get_count(self, using):
+			"""
+			Performs a COUNT() query using the current filter constraints.
+			"""
+			obj = self.clone()
+			obj.add_annotation(Count('pk'), alias='x_sf_count', is_summary=True)
+			number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']
+			if number is None:
+				number = 0
+			return number
+
 
 class CursorWrapper(object):
 	"""
