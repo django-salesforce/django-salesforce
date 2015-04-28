@@ -321,7 +321,7 @@ def call_metadata_api(apex_code):
 
 def create_demo_test_object():
 	"""
-	Creates an object `Test__c` with the name field `Test Record` and the text field `Test__c`.
+	Creates an object `django_Test__c` with the name field `Test Record` and the text field `django_Test__c`.
 
 	More Metadata of the same type in the list can be used in one call to
 	createMetadata, but not together e.g. CustomObject and CustomField.
@@ -330,7 +330,7 @@ def create_demo_test_object():
 	from salesforce.tests.test_integration import sf_tables
 	demo_apex_code = """ 
 	MetadataService.CustomObject customObject = new MetadataService.CustomObject();
-	String objectName = 'Test';
+	String objectName = 'django_Test';
 	customObject.fullName = objectName + '__c';
 	customObject.label = objectName;
 	customObject.pluralLabel = objectName+'s';
@@ -342,13 +342,13 @@ def create_demo_test_object():
 	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customObject }));
 
 	MetadataService.CustomField customField = new MetadataService.CustomField();
-	customField.fullName = 'Test__c.TestField__c';
+	customField.fullName = 'django_Test__c.TestField__c';
 	customField.label = 'Test Field';
 	customField.type_x = 'Text';
 	customField.length = 42;
 	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customField }));
 	"""
-	if not 'Test__c' in sf_tables:
+	if not 'django_Test__c' in sf_tables:
 		call_metadata_api(demo_apex_code)
 
 	current_user = connections[sf_alias].settings_dict['USER']
@@ -371,10 +371,10 @@ def create_demo_test_object():
 		pslist.add(ps);
 	}}
 	List<FieldPermissions> fpl = [SELECT Id FROM FieldPermissions WHERE 
-			ParentId=:pslist[0].Id AND SObjectType='Test__c' AND Field='Test__c.TestField__c'];
+			ParentId=:pslist[0].Id AND SObjectType='django_Test__c' AND Field='django_Test__c.TestField__c'];
 	if (fpl.isEmpty()) {{
 		FieldPermissions perm = new FieldPermissions(ParentId=pslist[0].Id,
-				SObjectType='Test__c', Field='Test__c.TestField__c',
+				SObjectType='django_Test__c', Field='django_Test__c.TestField__c',
 				PermissionsEdit=true, PermissionsRead=true);
 		insert perm;
 		fpl.add(perm);
@@ -392,15 +392,15 @@ def create_demo_test_object():
 	permission_set_id = sf_query("SELECT Id FROM PermissionSet WHERE Name='Django_Salesforce'")['records'][0]['Id']
 	#object_permissions = sf_query("SELECT Id FROM ObjectPermissions "
 	#		"WHERE ParentId='%s' AND SObjectType='%s'" %
-	#		(permission_set_id, 'Test__c'))['records']
+	#		(permission_set_id, 'django_Test__c'))['records']
 	PERMISSION_NAMES = ('PermissionsCreate,PermissionsDelete,PermissionsEdit,'
 			'PermissionsModifyAllRecords,PermissionsRead,'
 			'PermissionsViewAllRecords'.split(','))
 	response = sf_post('sobjects/FieldPermissions',
-			ParentId=permission_set_id, SObjectType='Test__c', Field='Test__c.TestField__c',
+			ParentId=permission_set_id, SObjectType='django_Test__c', Field='django_Test__c.TestField__c',
 			PermissionsEdit=True, PermissionsRead=True)
 	assert response['success']
 	response = sf_post('sobjects/ObjectPermissions',
-			ParentId=permission_set_id, SObjectType='Test__c',
+			ParentId=permission_set_id, SObjectType='django_Test__c',
 			**dict.fromkeys(PERMISSION_NAMES, True))
 	assert response['success']
