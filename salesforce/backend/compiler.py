@@ -14,7 +14,7 @@ from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 
 from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
-
+DJANGO_17_EXACT = DJANGO_17_PLUS and not DJANGO_18_PLUS
 
 class SQLCompiler(compiler.SQLCompiler):
 	"""
@@ -355,7 +355,7 @@ class SalesforceWhereNode(where.WhereNode):
 			# technically matches everything) for backwards compatibility reasons.
 			# Refs #5261.
 
-			if DJANGO_17_PLUS:
+			if DJANGO_17_EXACT:
 				# "rev" is a mapping from the table alias to the path in query
 				# structure tree, recursively reverse to join_map.
 				rev = {}
@@ -395,7 +395,7 @@ class SalesforceWhereNode(where.WhereNode):
 					nothing_childs += 1
 				else:
 					if sql:
-						if DJANGO_17_PLUS:
+						if DJANGO_17_EXACT:
 							x_match = re.match(r'(\w+)\.(.*)', sql)
 							if x_match:
 								x_table, x_field = x_match.groups()
