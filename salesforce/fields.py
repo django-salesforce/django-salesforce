@@ -113,6 +113,10 @@ class SfField(models.Field):
 		#                appended.
 		#   * column:    The database column for this field. This is the same as
 		#                "attname", except if db_column is specified.
+		if isinstance(self, ForeignKey):
+			#print(self.name)
+			pass
+			#import pdb; pdb.set_trace()
 		attname = self.get_attname()
 		if self.db_column is not None:
 			# explicit name

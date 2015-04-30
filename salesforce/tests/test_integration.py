@@ -20,7 +20,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger, TestCustomExample,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
-from salesforce import router, DJANGO_15_PLUS
+from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS
 from salesforce.backend import sf_alias
 import salesforce
 try:
@@ -42,6 +42,7 @@ if router.is_sf_database(sf_alias):
 			connections[sf_alias].introspection.table_list_cache['sobjects']]
 sf_databases = [db for db in connections if router.is_sf_database(db)]
 default_is_sf = router.is_sf_database(sf_alias)
+manual_test = False  # skipped by automated tests
 
 def refresh(obj):
 	"""
@@ -352,10 +353,10 @@ class BasicSOQLTest(TestCase):
 		orders = ChargentOrder.objects.all()[0:5]
 		self.assertEqual(len(orders), 5)
 
-	@skipUnless('Test__c' in sf_tables, "Not found custom object 'Test__c'")
+	@skipUnless('django_Test__c' in sf_tables, "Not found custom object 'django_Test__c'")
 	def test_simple_custom_object(self):
 		"""
-		Create, read and delete a simple custom object Test__c.
+		Create, read and delete a simple custom object `django_Test__c`.
 		"""
 		results = TestCustomExample.objects.all()[0:1]
 		obj = TestCustomExample(test_field='sf_test')
@@ -567,7 +568,7 @@ class BasicSOQLTest(TestCase):
 		all_leads = Lead.objects.query_all()
 		leads_list = list(all_leads)
 		if all_leads.query.first_chunk_len == len(leads_list):
-			self.assertLessEqual(len(leads_list), 2000)
+			self.assertLessEqual(len(leads_list), 2000, "Obsoleted constants")
 			log.info("Not enough Leads accumulated (currently %d including deleted) "
 					"in the last two weeks that are necessary for splitting the "
 					"query into more requests. Number 1001 or 2001 is enough.",
@@ -734,21 +735,24 @@ class BasicSOQLTest(TestCase):
 	#	list(Contact.objects.raw("select Count() from Contact"))
 
 	def test_only_fields(self):
+		"""Verify that access to "only" fields doesn't require a request, but others do."""
 		request_count_0 = salesforce.backend.query.request_count
-		sql = User.objects.only('Id', 'Username').query.get_compiler('salesforce').as_sql()[0]
+		sql = User.objects.only('Username').query.get_compiler('salesforce').as_sql()[0]
 		self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
-		user = User.objects.only('Id', 'Username')[0]
-		pk = user.pk
+		user = User.objects.only('Username')[0]                                 # req 1
+		pk = user.pk                                                            # no request
 		# Verify that deferred fields work
-		self.assertEqual(user.Username, User.objects.get(pk=user.pk).Username)
-		_ = Contact.objects.only('last_name')[0].last_name
-		xx = Contact.objects.only('account')[0]
-		_ = xx.account_id
+		self.assertEqual(user.Username, User.objects.get(pk=user.pk).Username)  # req 2
+		_ = Contact.objects.only('last_name')[0].last_name                      # req 3
+		xx = Contact.objects.only('account')[0]                                 # req 4
+		_ = xx.account_id                                                       # no request
 		# verify the necessary number of requests
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 4)
+		_ = xx.last_name                                                        # req 5
+		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 5)
 
-	def test_only_fields(self):
-		"""Verify that access to a deferred field requires a new request."""
+	def test_defer_fields(self):
+		"""Verify that access to a deferred field requires a new request, but others don't."""
 		request_count_0 = salesforce.backend.query.request_count
 		contact = Contact.objects.defer('email')[0]
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 1)
@@ -759,5 +763,50 @@ class BasicSOQLTest(TestCase):
 
 	def test_incomplete_raw(self):
 		Contact.objects.raw("select id from Contact")[0].last_name
+
+	@skipUnless(manual_test, "This web service is for manual testing of SSLv3")
+	def test_disabled_sslv3(self):
+		from salesforce.backend.adapter import SslHttpAdapter
+		from requests.adapters import HTTPAdapter
+		import requests
+		# https://zmap.io/sslv3/sslv3test.html
+		url = "https://ssl3.zmap.io/sslv3test.js"
+		# https://www.ssllabs.com/ssltest/viewMyClient.html
+		session = requests.Session()
+		session.mount('https://', SslHttpAdapter())
+		try:
+			response = session.get(url)
+			raise Exception("SSLv3 should be disabled")
+		except requests.exceptions.SSLError:
+			pass
+		session.mount('https://', HTTPAdapter())
+		response = session.get(url)
+		self.assertEqual(response.status_code, 200)
+
+	def test_filter_by_more_fk_to_the_same_model(self):
+		"""
+		Test that aliases are correctly decoded if more relations to
+		the same model are present in the filter.
+		"""
+		test_lead = Lead(Company='sf_test lead', LastName='name')
+		test_lead.save()
+		try:
+			qs = Lead.objects.filter(pk=test_lead.pk,
+					owner__Username=current_user,
+					last_modified_by__Username=current_user)
+			# Verify that a coplicated analysis is not performed on old Django
+			# so that the query can be at least somehow simply compiled to SOQL
+			# without exceptions, in order to prevent regressions.
+			sql, params = qs.query.get_compiler('salesforce').as_sql()
+			if not DJANGO_17_PLUS:
+				self.skipTest("Skipped filters with nontrivial relations")
+			# Verify expected filters in SOQL compiled by new Django
+			self.assertTrue('Lead.Owner.Username = %s' in sql)
+			self.assertTrue('Lead.LastModifiedBy.Username = %s' in sql)
+			# verify validity for SFDC, verify results
+			refreshed_lead = qs.get()
+			self.assertEqual(refreshed_lead.id, test_lead.id)
+		finally:
+			test_lead.delete()
 
 	#@skip("Waiting for bug fix")
