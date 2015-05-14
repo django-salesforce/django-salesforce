@@ -49,6 +49,21 @@ SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
 request_count = 0
+table_map = {}
+
+
+def demap_table_names(query, q):
+	global table_map
+
+	for table, aliases in query.table_map.items():
+		mapping = table_map.setdefault(table, [])
+		mapping += aliases
+
+		for alias in mapping:
+			if alias is not table:
+				q = q.replace(alias, table)
+
+	return q
 
 def quoted_string_literal(s, d):
 	"""
@@ -90,7 +105,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		f:  requests.get or requests.post...
 		_cursor: sharing the debug information in cursor
 	"""
-	global request_count 
+	global request_count
 	from salesforce.backend import base
 	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)}
 	kwargs_in.update(kwargs)
@@ -396,6 +411,9 @@ class CursorWrapper(object):
 		Send a query to the Salesforce API.
 		"""
 		from salesforce.backend import base
+
+		if DJANGO_17_PLUS:
+			q = demap_table_names(self.query, q)
 
 		self.rowcount = None
 		if isinstance(self.query, SalesforceQuery) or self.query is None:
