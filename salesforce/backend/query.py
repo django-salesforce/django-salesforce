@@ -41,7 +41,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v31.0'
+API_STUB = '/services/data/v32.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
@@ -92,7 +92,8 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	"""
 	global request_count 
 	from salesforce.backend import base
-	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)}
+	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
+				 'verify': True}
 	kwargs_in.update(kwargs)
 	_cursor = kwargs_in.pop('_cursor', None)
 	log.debug('Request API URL: %s' % url)
@@ -218,9 +219,13 @@ def extract_values(query):
 						"Match name can miss only with an 'update_fields' argument."
 				continue
 		else:  # insert
-			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
+			# TODO bulk insert
+			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce REST API"
 			value = getattr(query.objs[0], field.attname)
-			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
+			# The 'DEFAULT' is a backward compatibility name.
+			if isinstance(field, models.ForeignKey) and value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
+				continue
+			if isinstance(value, models.DefaultedOnCreate):
 				continue
 		[arg] = process_json_args([value])
 		d[field.column] = arg

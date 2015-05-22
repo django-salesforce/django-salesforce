@@ -33,6 +33,7 @@ from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
 from salesforce.backend import sf_alias, MAX_RETRIES
+from salesforce.backend.adapter import SslHttpAdapter
 try:
 	from urllib.parse import urlparse
 except ImportError:
@@ -134,7 +135,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 					sf_instance_url = authenticate(self.alias, settings_dict=self.settings_dict)['instance_url']
 				sf_session = requests.Session()
 				sf_session.auth = SalesforceAuth(db_alias=self.alias)
-				sf_requests_adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
+				sf_requests_adapter = SslHttpAdapter(max_retries=MAX_RETRIES)
 				sf_session.mount(sf_instance_url, sf_requests_adapter)
 				# Additional header works, but the improvement unmeasurable for me.
 				# (less than SF speed fluctuation)

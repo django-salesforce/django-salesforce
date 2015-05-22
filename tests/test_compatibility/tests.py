@@ -21,3 +21,13 @@ class CompatibilityTest(TestCase):
 			repr(test_lead.__dict__)
 		finally:
 			test_lead.delete()
+
+
+class DjangoCompatibility(TestCase):
+	def test_autofield_compatible(self):
+		"""Test that the light weigh AutoField is compatible in all Django ver."""
+		primary_key = [x for x in Lead._meta.fields if x.primary_key][0]
+		self.assertEqual(primary_key.auto_created, True)
+		self.assertEqual(primary_key.get_internal_type(), 'AutoField')
+		self.assertIn(primary_key.name, ('id', 'Id'))
+

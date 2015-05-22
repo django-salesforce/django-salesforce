@@ -8,12 +8,13 @@
 """
 Generate queries using the SOQL dialect.
 """
+import re
 from django.db import models
 from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 
 from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
-
+DJANGO_17_EXACT = DJANGO_17_PLUS and not DJANGO_18_PLUS
 
 class SQLCompiler(compiler.SQLCompiler):
 	"""
@@ -353,6 +354,26 @@ class SalesforceWhereNode(where.WhereNode):
 			# A match-everything node is different than empty node (which also
 			# technically matches everything) for backwards compatibility reasons.
 			# Refs #5261.
+
+			if DJANGO_17_EXACT:
+				# "rev" is a mapping from the table alias to the path in query
+				# structure tree, recursively reverse to join_map.
+				rev = {}
+				for k, v in qn.query.join_map.items():
+					if k[0] is None:
+						rev[k[1]] = k[1]
+				assert len(rev) == 1
+				xi = 0
+				#print('####', qn.query.join_map)
+				while len(rev) < len(qn.query.join_map) and xi < len(qn.query.join_map):
+					for k, v in qn.query.join_map.items():
+						if k[0] in rev:
+							rev[v[0]] = '.'.join((rev[k[0]], re.sub('\Id$', '', re.sub('__c$', '__r', k[2][0][0]))))
+					xi += 1
+				#print(rev, xi)
+				# Verify that the catch against infinite loop "xi" has not been reached.
+				assert xi < len(qn.query.join_map)
+
 			result = []
 			result_params = []
 			everything_childs, nothing_childs = 0, 0
@@ -374,6 +395,12 @@ class SalesforceWhereNode(where.WhereNode):
 					nothing_childs += 1
 				else:
 					if sql:
+						if DJANGO_17_EXACT:
+							x_match = re.match(r'(\w+)\.(.*)', sql)
+							if x_match:
+								x_table, x_field = x_match.groups()
+								sql = '%s.%s' % (rev[x_table], x_field)
+								#print('sql params:', sql, params)
 						result.append(sql)
 						result_params.extend(params)
 					else:
@@ -428,6 +455,13 @@ class SalesforceWhereNode(where.WhereNode):
 
 		as_salesforce = as_sql
 		del as_sql
+
+#	def as_salesforce(self, qn, connection):
+#		import pprint
+#		print('join_map:')
+#		pprint.PrettyPrinter(width=80).pprint(qn.query.join_map)
+#		import pdb; pdb.set_trace()
+#		return self.as_sql(qn, connection)
 
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):

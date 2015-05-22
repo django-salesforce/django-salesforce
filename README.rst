@@ -110,7 +110,12 @@ variant until `django-salesforce>=0.5`.
 Foreign Key Support
 -------------------
 
-**Foreign key** filters are currently possible only for the first level of
+**Foreign key filters** are currently possible only from child to parent with some
+restrictions:
+
+They are fully supported with Django 1.7+ without other restrictions. **New**
+
+With Django 1.6 and older, ForeignKey filters are  possible only for the first level of
 relationship and only for fields whose name equals the name of object.
 Foreign keys of an object can be normally accessed by dot notation without any
 restriction
@@ -145,7 +150,7 @@ You can compare the meaning with the same compiled to SQL::
 **Generic foreign keys** are frequently used in SF for fields that relate to
 objects of different types, e.g. the Parent of Note or Attachment can be almost
 any type of ususal SF objects. Filters by `Parent.Type` and retrieving this
-type is now supported::
+type is supported::
 
     note = Note.objects.filter(parent_type='Contact')[0]
     parent_model = getattr(example.models, note.parent_type)
@@ -211,7 +216,41 @@ Advanced usage
 -  **Meta class options** - If an inner ``Meta`` class is used, it must be a
    descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
 
--  **Database Introspection with inspectdb** Tables that are exported into a
+Introspection and special attributes of fields
+----------------------------------------------
+Some Salesforce fields can not be fully used without special attributes. You
+can see in the output of ``inspectdb`` in the most complete form.
+
+-  **sf_read_only** - Some fields require this special attributes to make the
+   model writable. Some fields are completely read only (``READ_ONLY``)
+   or insertable only but can not be later updated (``NOT_UPDATEABLE``) or
+   updateable only but can not be specified on insert (``NOT_CREATEABLE``).
+   Examples of such fields are automatically updated fields "last_modified_by" and
+   "last_modified_date" or fields defined by a formula like "name" of contact,
+   given by "first_name" and "last_name". Example::
+
+   last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+
+-  **Defaulted on create** - Some fields have a dynamic default value unknown
+   by Django and assigned by Salesforce if the field is omitted when a new object
+   is inserted. This rule will not be used if the value is ``None``.
+   Sometimes is ``None`` even not accepted by Salesforce, while the missing
+   value is ok. Django-salesforce supports it by a special default value
+   ``model.BooleanField(default=models.DEFAULTED_ON_CREATE)``. That means "let
+   it to Salesforce". This is useful for all fields marked by attribute
+   ``defaultedOnCreate`` in Salesforce. For example the current user of
+   Salesforce is assigned to ``owner`` field if no concrete user is  assigned,
+   but None would be rejected. All boolean fields have different default values
+   according to current ``Checked/Unchecked`` preferences.
+
+-  **Comments # Reference to tables [...]**
+   Some builtin foreign keys are references to more tables. The class of first
+   table is used in the exported ``ForeignKey`` and all tables are listed in
+   the comment. Any of them can be used instead.::
+   models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
+   cl object  [SelfServiceUser, User]
+
+-  **Partial Database Introspection with inspectdb** Tables that are exported into a
    Python model can be restricted by regular expression::
 
      python manage.py inspectdb --table-filter="Contact$|Account" --database=salesforce
@@ -249,8 +288,6 @@ Advanced usage
    at least just before the conversion. Follow the
    `instructions <http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`__
    for more details.
-
-
 
 Caveats
 -------
@@ -333,3 +370,11 @@ Backwards-incompatible changes
 
 -  The name of primary key is currently `id`. The backward compatible behaviour
    can be reached by settings `SF_PK='Id'`.
+
+News since version 0.5
+----------------------
+
+-  All child to parent filters are still correctly supported for Django 1.7 in
+   many levels, including foreign keys between custom models or mixed builtin
+   and custom models, also filters where the same model is used multiple times,
+   e.g. filter Account objects by a field of their parent Account.

@@ -1,4 +1,4 @@
-"""Demonstrate that a Model can inherite from more abstract models."""
+"""Backward compatible behaviour with primary key 'Id' and upper-case field names"""
 
 from django.conf import settings
 import salesforce
