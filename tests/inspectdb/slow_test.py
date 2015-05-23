@@ -36,7 +36,7 @@ def run():
 	for tab in sf.introspection.table_list_cache['sobjects']:
 		if tab['retrieveable'] and not tab['name'] in (
 				# These require specific filters (descried in their error messages)
-				'CollaborationGroupRecord',
+				'CollaborationGroupRecord', 'ContentFolderMember',
 				'ContentDocumentLink', 'Idea', 'IdeaComment', 'UserProfileFeed',
 				'Vote', #'OpportunityPartner', 'Product2Feed',
 				# UNKNOWN_EXCEPTION:
