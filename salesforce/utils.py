@@ -19,7 +19,7 @@ except ImportError:
     beatbox = None
 
 
-def convert_lead(lead, converted_status="Qualified - converted"):
+def convert_lead(lead, converted_status="Qualified"):
     """
     Convert `lead` using the `convertLead()` endpoint exposed
     by the SOAP API.
