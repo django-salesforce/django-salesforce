@@ -24,7 +24,7 @@ https://github.com/xjsender/SublimeApex/blob/master/salesforce/api.py
 """
 
 import re
-from collections import namedtuple, OrderedDict
+from collections import namedtuple
 import datetime
 import requests
 import urllib
@@ -32,6 +32,11 @@ from django.db import connections
 from salesforce import auth
 from salesforce.backend.query import (API_STUB, SALESFORCE_DATETIME_FORMAT,
 		handle_api_exceptions, sf_alias, urlencode, json)
+
+try:
+       from collections import OrderedDict
+except ImportError:
+       from django.utils.datastructures import SortedDict as OrderedDict
 
 __all__ = ('sf_query', 'sf_get', 'sf_post', 'sf_delete', 'sf_patch',
 		'sf_get_text', 'get_all_names', 
@@ -342,21 +347,34 @@ def create_demo_test_object():
 	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customObject }));
 
 	MetadataService.CustomField customField = new MetadataService.CustomField();
-	customField.fullName = 'django_Test__c.TestField__c';
-	customField.label = 'Test Field';
+	customField.fullName = 'django_Test__c.TestText__c';
+	customField.label = 'Test Text';
 	customField.type_x = 'Text';
 	customField.length = 42;
-	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customField }));
+
+	MetadataService.CustomField customField2 = new MetadataService.CustomField();
+	customField2.fullName = 'django_Test__c.TestBool__c';
+	customField2.label = 'Test Bool';
+	customField2.type_x = 'Checkbox';
+	customField2.defaultValue = 'false';
+
+	MetadataService.CustomField customField3 = new MetadataService.CustomField();
+	customField3.fullName = 'django_Test__c.Contact__c';
+	customField3.label = 'Contact';
+	customField3.type_x = 'Lookup';
+	customField3.referenceTo = 'Contact';
+	customField3.relationshipName = 'testContact';
+	//contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING)
+
+	handleSaveResults(service.createMetadata(new List<MetadataService.Metadata> { customField, customField2, customField3 }));
 	"""
 	if not 'django_Test__c' in sf_tables:
 		call_metadata_api(demo_apex_code)
 
 	current_user = connections[sf_alias].settings_dict['USER']
-	import pdb; pdb.set_trace()
-	result, log_item, log_body = execute_anonymous_logged("""
+	cmd = """
 	System.debug('{username}');
-	User xuser = [SELECT Id, ProfileId FROM User WHERE Username='{username}'][0];
-	System.debug(xuser.ProfileId);
+	User xuser = [SELECT Id FROM User WHERE Username='{username}'][0];
 	//List<PermissionSet> permission_sets = [SELECT Id FROM PermissionSet WHERE ProfileId=:xuser.ProfileId];
 	//System.debug(permission_sets);
 
@@ -371,22 +389,23 @@ def create_demo_test_object():
 		pslist.add(ps);
 	}}
 	List<FieldPermissions> fpl = [SELECT Id FROM FieldPermissions WHERE 
-			ParentId=:pslist[0].Id AND SObjectType='django_Test__c' AND Field='django_Test__c.TestField__c'];
+			ParentId=:pslist[0].Id AND SObjectType='django_Test__c' AND Field='django_Test__c.TestText__c'];
 	if (fpl.isEmpty()) {{
 		FieldPermissions perm = new FieldPermissions(ParentId=pslist[0].Id,
-				SObjectType='django_Test__c', Field='django_Test__c.TestField__c',
+				SObjectType='django_Test__c', Field='django_Test__c.TestText__c',
 				PermissionsEdit=true, PermissionsRead=true);
 		insert perm;
 		fpl.add(perm);
 	}}
 	List<PermissionSetAssignment> psal = [SELECT Id FROM PermissionSetAssignment
-			WHERE AssigneeId='{username}' AND PermissionSetId=:pslist[0].Id];
+			WHERE AssigneeId=:xuser.Id AND PermissionSetId=:pslist[0].Id];
 	if (psal.isEmpty()) {{
 		PermissionSetAssignment psa = new PermissionSetAssignment(
 				AssigneeId=xuser.Id, PermissionSetId=pslist[0].Id);
 		insert psa;
 	}}
-	""".format(username=current_user))
+	""".format(username=current_user)
+	result, log_item, log_body = execute_anonymous_logged(cmd)
 	print(result, log_item)
 	print(log_body)
 	permission_set_id = sf_query("SELECT Id FROM PermissionSet WHERE Name='Django_Salesforce'")['records'][0]['Id']
@@ -397,7 +416,7 @@ def create_demo_test_object():
 			'PermissionsModifyAllRecords,PermissionsRead,'
 			'PermissionsViewAllRecords'.split(','))
 	response = sf_post('sobjects/FieldPermissions',
-			ParentId=permission_set_id, SObjectType='django_Test__c', Field='django_Test__c.TestField__c',
+			ParentId=permission_set_id, SObjectType='django_Test__c', Field='django_Test__c.TestText__c',
 			PermissionsEdit=True, PermissionsRead=True)
 	assert response['success']
 	response = sf_post('sobjects/ObjectPermissions',
