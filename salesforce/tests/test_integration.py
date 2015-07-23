@@ -17,9 +17,10 @@ from django.test import TestCase
 from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
-		BusinessHours, ChargentOrder, CronTrigger, TestCustomExample,
+		BusinessHours, ChargentOrder, CronTrigger,
 		Product, Pricebook, PricebookEntry,
 		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
+from salesforce.testrunner.example.models import Test as TestCustomExample
 from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS
 from salesforce.backend import sf_alias
 import salesforce
@@ -359,7 +360,7 @@ class BasicSOQLTest(TestCase):
 		Create, read and delete a simple custom object `django_Test__c`.
 		"""
 		results = TestCustomExample.objects.all()[0:1]
-		obj = TestCustomExample(test_field='sf_test')
+		obj = TestCustomExample(test_text='sf_test')
 		obj.save()
 		try:
 			results = TestCustomExample.objects.all()[0:1]
