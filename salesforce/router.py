@@ -15,16 +15,17 @@ from django.conf import settings
 
 log = logging.getLogger(__name__)
 
-def is_sf_database(db):
+def is_sf_database(db, model=None):
 	"""The alias is a Salesforce database."""
 	from django.db import connections
-	from salesforce.backend.base import DatabaseWrapper 
-	engine = connections[db].settings_dict['ENGINE']
-	return (engine == 'salesforce.backend' or
-			isinstance(connections[db], DatabaseWrapper))
+	from salesforce.backend.base import DatabaseWrapper
+	if db is None:
+		return getattr(model, '_salesforce_object', False)
+	else:
+		engine = connections[db].settings_dict['ENGINE']
+		return (engine == 'salesforce.backend' or
+				isinstance(connections[db], DatabaseWrapper))
 
-#def is_testing(db):
-#	return not is_sf_database(db)
 
 class ModelRouter(object):
 	"""
@@ -79,5 +80,5 @@ class ModelRouter(object):
 		# it can be solved by other routers, otherwise is enabled if all
 		# routers say None.
 	
-	# alias for Django 1.6 and older. The new name is useful for sqlall etc.
+	# alias for Django 1.6 and older. The new name is useful for query_all etc.
 	allow_syncdb = allow_migrate

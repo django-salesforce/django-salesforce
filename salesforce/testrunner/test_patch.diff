@@ -1,0 +1,28 @@
+diff --git b/salesforce/testrunner/settings.py a/salesforce/testrunner/settings.py
+index abb4680..de8c9b4 100644
+--- b/salesforce/testrunner/settings.py
++++ a/salesforce/testrunner/settings.py
+@@ -117,7 +117,7 @@ INSTALLED_APPS = (
+ 	'salesforce.testrunner.example',
+ )
+ 
+-SALESFORCE_DB_ALIAS = 'salesforce'
++SALESFORCE_DB_ALIAS = 'salesforce2'
+ SALESFORCE_QUERY_TIMEOUT = 15
+ # Maximal number of retries after timeout.
+ #REQUESTS_MAX_RETRIES = 1
+diff --git a/salesforce/testrunner/example/models.py b/salesforce/testrunner/example/models.py
+index c977324..c9af45e 100644
+--- a/salesforce/testrunner/example/models.py
++++ b/salesforce/testrunner/example/models.py
+@@ -6,7 +6,9 @@
+ #
+ 
+ from salesforce import models
+-from salesforce.models import SalesforceModel
++#from salesforce.models import SalesforceModel
++# Demonstrate temporary that all tests pass with the model with lower case 'id'
++from salesforce.models import Model as SalesforceModel
+ 
+ from django.conf import settings
+ import django

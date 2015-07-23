@@ -9,14 +9,20 @@
 Salesforce database backend for Django.
 """
 
-from __future__ import print_function
 import logging
 import requests
-import sys
+import threading
+
+from salesforce import DJANGO_16_PLUS, DJANGO_18_PLUS
 
 from django.core.exceptions import ImproperlyConfigured
-from django.db.backends import BaseDatabaseFeatures, BaseDatabaseWrapper
+from django.conf import settings
 from django.db.backends.signals import connection_created
+if DJANGO_18_PLUS:
+	from django.db.backends.base.base import BaseDatabaseWrapper
+	from django.db.backends.base.features import BaseDatabaseFeatures
+else:
+	from django.db.backends import BaseDatabaseWrapper, BaseDatabaseFeatures
 
 from salesforce.auth import SalesforceAuth, authenticate
 from salesforce.backend.client import DatabaseClient
@@ -27,7 +33,7 @@ from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
 from salesforce.backend import sf_alias, MAX_RETRIES
-from salesforce import DJANGO_16
+from salesforce.backend.adapter import SslHttpAdapter
 try:
 	from urllib.parse import urlparse
 except ImportError:
@@ -35,6 +41,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
+connect_lock = threading.Lock()
 
 class SalesforceError(DatabaseError):
 	"""
@@ -49,8 +56,8 @@ class SalesforceError(DatabaseError):
 		self.response = response
 		self.verbose = verbose
 		if verbose:
-			print("Error (debug details) %s\n%s" % (response.text,
-					response.__dict__), file=sys.stderr)
+			log.info("Error (debug details) %s\n%s", response.text,
+					response.__dict__)
 
 
 
@@ -61,6 +68,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	allows_group_by_pk = True
 	supports_unspecified_pk = False
 	can_return_id_from_insert = False
+	# TODO If the following would be True, it requires a good relation name resolution
 	supports_select_related = False
 	# Though Salesforce doesn't support transactions, the setting
 	# `supports_transactions` is used only for switching between rollback or
@@ -69,6 +77,10 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 	# be loaded and cleaned by the testcase code. From the viewpoint of SF it is
 	# irrelevant, but due to issue #28 it should be True.
 	supports_transactions = True
+	
+	# Never use `interprets_empty_strings_as_nulls=True`. It is an opposite
+	# setting for Oracle, while Salesforce saves nulls as empty strings not vice
+	# versa.
 
 
 class DatabaseWrapper(BaseDatabaseWrapper):
@@ -109,14 +121,32 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.creation = DatabaseCreation(self)
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
-		self.sf_session = requests.Session()
-		self.sf_session.auth = SalesforceAuth(db_alias=alias)
-		sf_instance_url = authenticate(alias, settings_dict=settings_dict)['instance_url']
-		sf_requests_adapter = requests.adapters.HTTPAdapter(max_retries=MAX_RETRIES)
-		self.sf_session.mount(sf_instance_url, sf_requests_adapter)
-		# Additional header works, but the improvement unmeasurable for me.
-		# (less than SF speed fluctuation)
-		#self.sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
+		self._sf_session = None
+		if not getattr(settings, 'SF_LAZY_CONNECT', False):
+			self.make_session()
+
+	def make_session(self):
+		"""Authenticate and get the name of assigned SFDC data server"""
+		with connect_lock:
+			if self._sf_session is None:
+				if self.settings_dict['USER'] == 'dynamic auth':
+					sf_instance_url = self._sf_session or self.settings_dict['HOST']
+				else:
+					sf_instance_url = authenticate(self.alias, settings_dict=self.settings_dict)['instance_url']
+				sf_session = requests.Session()
+				sf_session.auth = SalesforceAuth(db_alias=self.alias)
+				sf_requests_adapter = SslHttpAdapter(max_retries=MAX_RETRIES)
+				sf_session.mount(sf_instance_url, sf_requests_adapter)
+				# Additional header works, but the improvement unmeasurable for me.
+				# (less than SF speed fluctuation)
+				#sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
+				self._sf_session = sf_session
+
+	@property
+	def sf_session(self):
+		if self._sf_session is None:
+			self.make_session()
+		return self._sf_session
 
 	def get_connection_params(self):
 		settings_dict = self.settings_dict
@@ -156,7 +186,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		cursor = CursorWrapper(self, query)
 		# prior to 1.6 you were expected to send this signal
 		# just after the cursor was constructed
-		if not DJANGO_16:
+		if not DJANGO_16_PLUS:
 			connection_created.send(self.__class__, connection=self)
 		return cursor
 

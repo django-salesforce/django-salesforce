@@ -3,9 +3,10 @@ Dummy Salesforce driver that simulates some parts of DB API 2
 
 used by the new Django >= 1.6b2
 """
-from __future__ import print_function
-import sys
 from django.utils.six import PY3
+
+import logging
+log = logging.getLogger(__name__)
 
 # All error types described in DB API 2 are implemented the same way as in
 # Django 1.6, otherwise some exceptions are not correctly reported in it.
@@ -58,7 +59,7 @@ class Connection(object):
 		pass
 
 	def rollback(self):
-		print("Rollback is not implemented.", file=sys.stderr)
+		log.info("Rollback is not implemented.")
 
 
 def connect(**params):

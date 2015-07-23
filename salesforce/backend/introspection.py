@@ -12,24 +12,44 @@ Salesforce introspection code.
 import logging
 import re
 
+from salesforce import models, DJANGO_15_PLUS, DJANGO_18_PLUS
+
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db.backends import BaseDatabaseIntrospection
-from django.utils.datastructures import SortedDict
 from django.utils.encoding import force_text
+if DJANGO_18_PLUS:
+	from django.db.backends.base.introspection import BaseDatabaseIntrospection
+else:
+	from django.db.backends import BaseDatabaseIntrospection
 
 from salesforce.backend import compiler, query
-from salesforce import models
+
+# require "simplejson" to ensure that it is available to "requests" hook.
+import simplejson
 
 try:
-	import json
+	from collections import OrderedDict
 except ImportError:
-	import simplejson as json
+	# Python 2.6-
+	from django.utils.datastructures import SortedDict as OrderedDict
+try:
+	from django.utils.text import camel_case_to_spaces
+except ImportError:
+	# Django 1.6 and older
+	from django.db.models.options import get_verbose_name as camel_case_to_spaces
 
 log = logging.getLogger(__name__)
 
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
+	"""
+	The most comfortable and complete output is by:
+		table_list_cache:               property with database and tables attributes
+		table_description_cache(name):  method   with table and fields attributes
+	Everything is with caching the results for the next use.
+	Other methods are very customized with hooks for
+	by django.core.management.commands.inspectdb
+	"""
 	data_types_reverse = {
 		'base64'                        : 'TextField',
 		'boolean'                       : 'BooleanField',
@@ -79,7 +99,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			log.debug('Request API URL: %s' % url)
 			response = query.handle_api_exceptions(url, self.connection.sf_session.get)
 			# charset is detected from headers by requests package
-			self._table_list_cache = response.json()
+			self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
 		return self._table_list_cache
 	
 	def table_description_cache(self, table):
@@ -88,7 +108,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		
 			log.debug('Request API URL: %s' % url)
 			response = query.handle_api_exceptions(url, self.connection.sf_session.get)
-			self._table_description_cache[table] = response.json()
+			self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
 			assert self._table_description_cache[table]['fields'][0]['type'] == 'id'
 			assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
 			del self._table_description_cache[table]['fields'][0]
@@ -96,18 +116,20 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	
 	def get_table_list(self, cursor):
 		"Returns a list of table names in the current database."
-		result = [x['name'] for x in self.table_list_cache['sobjects']]
+		result = [SfProtectName(x['name'])
+				for x in self.table_list_cache['sobjects']]
 		return result
 	
 	def get_table_description(self, cursor, table_name):
 		"Returns a description of the table, with the DB-API cursor.description interface."
 		result = []
 		for field in self.table_description_cache(table_name)['fields']:
-			params = SortedDict()
-			if field['label']:
+			params = OrderedDict()
+			if field['label'] and field['label'] != camel_case_to_spaces(re.sub('__c$', '', field['name'])).title():
 				params['verbose_name'] = field['label']
 			if not field['updateable'] or not field['createable']:
-				# Fields that are result of a formula or system fields modified by triggers or by other apex code
+				# Fields that are result of a formula or system fields modified
+				# by triggers or by other apex code
 				sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
 				# use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
 				params['sf_read_only'] = reverse_models_names[sf_read_only]
@@ -117,12 +139,13 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 				params['help_text'] = field['inlineHelpText']
 			if field['picklistValues']:
 				params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
-			if field['referenceTo']:
-				if field['relationshipName'] and field['name'].lower() == field['relationshipName'].lower() + 'id':
-					# change '*id' to '*_id', e.g. the name 'Account' instead of 'AccountId'
-					field['name'] = field['name'][:-2] + '_' + field['name'][-2:]
-			# We prefer length over byteLength for internal_size.
-			#(usually length == 3 * length for strings)
+			if field['defaultedOnCreate'] and field['createable']:
+				params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
+			if field['type'] == 'reference' and not field['referenceTo']:
+				params['ref_comment'] = 'No Reference table'
+				field['type'] = 'string'
+			# We prefer "length" over "byteLength" for "internal_size".
+			# (because strings have usually: byteLength == 3 * length)
 			result.append((
 				field['name'], # name,
 				field['type'], # type_code,
@@ -140,25 +163,35 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		Returns a dictionary of {field_index: (field_index_other_table, other_table)}
 		representing all relationships to the given table. Indexes are 0-based.
 		"""
-		global last_introspected_model, last_with_important_related_name, last_read_only
-		table2model = lambda table_name: table_name.title().replace('_', '').replace(' ', '').replace('-', '')
+		global last_introspected_model, last_with_important_related_name, last_read_only, last_refs
+		table2model = lambda table_name: (SfProtectName(table_name).title()
+				.replace(' ', '').replace('-', ''))
 		result = {}
 		reverse = {}
 		last_with_important_related_name = []
 		last_read_only = {}
 		INDEX_OF_PRIMARY_KEY = 0
+		last_refs = {}
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
-			if field['type'] == 'reference':
-				result[i] = (INDEX_OF_PRIMARY_KEY, field['referenceTo'][0])
-				reverse.setdefault(field['referenceTo'][0], []).append(field['name'])
+			if field['type'] == 'reference' and field['referenceTo']:
+				reference_to_name = SfProtectName(field['referenceTo'][0])
+				last_refs[field['name']] = field['referenceTo']
+				result[i] = (INDEX_OF_PRIMARY_KEY, reference_to_name)
+				reverse.setdefault(reference_to_name, []).append(field['name'])
 				if not field['updateable'] or not field['createable']:
 					sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
 					# use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
 					last_read_only[field['name']] = reverse_models_names[sf_read_only]
 		for ref, ilist in reverse.items():
-			similar_back_references = [x['name'] for x in self.table_description_cache(ref)['fields']
-				if re.sub('Id$', '', x['name']).lower() == table2model(table_name).lower()]
-			if len(ilist) >1 or similar_back_references:  # add `related_name` only if necessary
+			# Example of back_collision: a class Aaa has a ForeignKey to a class
+			# Bbb and the class Bbb has any field with the name 'aaa'.
+			back_name_collisions = [x['name'] for x
+					in self.table_description_cache(ref)['fields']
+					if re.sub('Id$' if x['type'] == 'reference' else '', '',
+						re.sub('__c$', '', x['name'])).replace('_', '').lower()
+					== table2model(table_name).lower()]
+			# add `related_name` only if necessary
+			if len(ilist) > 1 or back_name_collisions:
 				last_with_important_related_name.extend(ilist)
 		last_introspected_model = table2model(table_name)
 		return result
@@ -172,7 +205,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		"""
 		result = {}
 		for field in self.table_description_cache(table_name)['fields']:
-			result[field['name']] = dict(primary_key=(field['type'] == 'id'), unique=field['unique'])
+			if field['type'] == 'id' or field['unique']:
+				result[field['name']] = dict(
+						primary_key=(field['type'] == 'id'),
+						unique=field['unique']
+						)
 		return result
 
 	def get_additional_meta(self, table_name):
@@ -198,9 +235,27 @@ class SymbolicModelsName(object):
 	def __repr__(self):
 		return self.name
 
+class SfProtectName(str):
+	"""
+	Protect CamelCase class names and improve NOT_camelCase names by injecting
+	a milder method ".title()" on the table name string into Django method
+	inspectdb.
+	>>> SfProtectName('AccountContactRole').title()
+	'AccountContactRole'
+	>>> SfProtectName('some_STRANGE2TableName__c').title()
+	'SomeStrange2TableName'
+	>>> assert SfProtectName('an_ODD2TableName__c') == 'an_ODD2TableName__c'
+	"""
+	# This better preserves the names. It is exact for all SF builtin tables,
+	# though not perfect for names with more consecutive upper case characters,
+	# e.g 'MyURLTable__c' -> 'MyUrltable' is still better than 'MyurltableC'.
+	def title(self):
+		if not DJANGO_15_PLUS:
+			# the old behavior with old Django
+			return super(SfProtectName, self).title()
+		name = re.sub(r'__c$', '', self)   # fixed custom name
+		return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
 
 reverse_models_names = dict((obj.value, obj) for obj in
-	[SymbolicModelsName(name) for name in (
-		'NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY',
-		'DO_NOTHING')]
+	[SymbolicModelsName(name) for name in ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')]
 )

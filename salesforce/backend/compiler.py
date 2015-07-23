@@ -8,12 +8,13 @@
 """
 Generate queries using the SOQL dialect.
 """
+import re
 from django.db import models
 from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 
-from salesforce import DJANGO_15, DJANGO_16, DJANGO_17_PLUS
-
+from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
+DJANGO_17_EXACT = DJANGO_17_PLUS and not DJANGO_18_PLUS
 
 class SQLCompiler(compiler.SQLCompiler):
 	"""
@@ -28,7 +29,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		"""
 		Remove table names and strip quotes from column names.
 		"""
-		if DJANGO_16:
+		if DJANGO_16_PLUS:
 			cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
 		else:
 			cols = compiler.SQLCompiler.get_columns(self, with_aliases)
@@ -40,7 +41,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		#	else:
 		#		name = col
 		#	result.append(name.strip('"'))
-		return (result, col_params) if DJANGO_16 else result
+		return (result, col_params) if DJANGO_16_PLUS else result
 
 	def get_from_clause(self):
 		"""
@@ -52,11 +53,15 @@ class SQLCompiler(compiler.SQLCompiler):
 		for alias in self.query.tables:
 			if self.query.alias_refcount[alias]:
 				try:
-					name, alias, join_type, lhs, lhs_col, col, nullable = self.query.alias_map[alias]
+					alias_map_info = self.query.alias_map[alias]
 				except KeyError:
 					# Extra tables can end up in self.tables, but not in the
 					# alias_map if they aren't in a join. That's OK. We skip them.
 					continue
+				if DJANGO_17_PLUS:
+					name = alias_map_info.table_name
+				else:
+					name, alias, join_type, lhs, lhs_col, col, nullable = alias_map_info
 				return [name], []
 		raise AssertionError("At least one table should be referenced in the query.")
 
@@ -98,7 +103,12 @@ class SQLCompiler(compiler.SQLCompiler):
 		if not result_type or result_type == 'cursor':
 			return cursor
 
-		ordering_aliases = self.ordering_aliases if DJANGO_16 else self.query.ordering_aliases
+		if DJANGO_18_PLUS:
+			ordering_aliases = None
+		elif DJANGO_16_PLUS:
+			ordering_aliases = self.ordering_aliases
+		else:
+			ordering_aliases = self.query.ordering_aliases
 		if result_type == constants.SINGLE:
 			if ordering_aliases:
 				return cursor.fetchone()[:-len(ordering_aliases)]
@@ -118,6 +128,114 @@ class SQLCompiler(compiler.SQLCompiler):
 			return list(result)
 		return result
 
+	if DJANGO_18_PLUS:
+		def as_sql(self, with_limits=True, with_col_aliases=False, subquery=False):
+			"""
+			Creates the SQL for this query. Returns the SQL string and list of
+			parameters.
+
+			If 'with_limits' is False, any limit/offset information is not included
+			in the query.
+			"""
+			# After executing the query, we must get rid of any joins the query
+			# setup created. So, take note of alias counts before the query ran.
+			# However we do not want to get rid of stuff done in pre_sql_setup(),
+			# as the pre_sql_setup will modify query state in a way that forbids
+			# another run of it.
+			self.subquery = subquery
+			refcounts_before = self.query.alias_refcount.copy()
+			try:
+				extra_select, order_by, group_by = self.pre_sql_setup()
+				if with_limits and self.query.low_mark == self.query.high_mark:
+					return '', ()
+				distinct_fields = self.get_distinct()
+
+				# This must come after 'select', 'ordering', and 'distinct' -- see
+				# docstring of get_from_clause() for details.
+				from_, f_params = self.get_from_clause()
+
+				where, w_params = self.compile(self.query.where)
+				having, h_params = self.compile(self.query.having)
+				params = []
+				result = ['SELECT']
+
+				if self.query.distinct:
+					result.append(self.connection.ops.distinct_sql(distinct_fields))
+
+				out_cols = []
+				col_idx = 1
+				for _, (s_sql, s_params), alias in self.select + extra_select:
+					if alias:
+						# fixed by removing 'AS'
+						s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
+					elif with_col_aliases:
+						s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
+						col_idx += 1
+					params.extend(s_params)
+					out_cols.append(s_sql)
+
+				result.append(', '.join(out_cols))
+
+				result.append('FROM')
+				result.extend(from_)
+				params.extend(f_params)
+
+				if where:
+					result.append('WHERE %s' % where)
+					params.extend(w_params)
+
+				grouping = []
+				for g_sql, g_params in group_by:
+					grouping.append(g_sql)
+					params.extend(g_params)
+				if grouping:
+					if distinct_fields:
+						raise NotImplementedError(
+							"annotate() + distinct(fields) is not implemented.")
+					if not order_by:
+						order_by = self.connection.ops.force_no_ordering()
+					result.append('GROUP BY %s' % ', '.join(grouping))
+
+				if having:
+					result.append('HAVING %s' % having)
+					params.extend(h_params)
+
+				if order_by:
+					ordering = []
+					for _, (o_sql, o_params, _) in order_by:
+						ordering.append(o_sql)
+						params.extend(o_params)
+					result.append('ORDER BY %s' % ', '.join(ordering))
+
+				if with_limits:
+					if self.query.high_mark is not None:
+						result.append('LIMIT %d' % (self.query.high_mark - self.query.low_mark))
+					if self.query.low_mark:
+						if self.query.high_mark is None:
+							val = self.connection.ops.no_limit_value()
+							if val:
+								result.append('LIMIT %d' % val)
+						result.append('OFFSET %d' % self.query.low_mark)
+
+				if self.query.select_for_update and self.connection.features.has_select_for_update:
+					if self.connection.get_autocommit():
+						raise TransactionManagementError(
+							"select_for_update cannot be used outside of a transaction."
+						)
+
+					# If we've been asked for a NOWAIT query but the backend does
+					# not support it, raise a DatabaseError otherwise we could get
+					# an unexpected deadlock.
+					nowait = self.query.select_for_update_nowait
+					if nowait and not self.connection.features.has_select_for_update_nowait:
+						raise DatabaseError('NOWAIT is not supported on this database backend.')
+					result.append(self.connection.ops.for_update_sql(nowait=nowait))
+
+				return ' '.join(result), tuple(params)
+			finally:
+				# Finally do cleanup - get rid of the joins we created above.
+				self.query.reset_refcounts(refcounts_before)
+
 
 class SalesforceWhereNode(where.WhereNode):
 	overridden_types = ['isnull']
@@ -129,7 +247,7 @@ class SalesforceWhereNode(where.WhereNode):
 	#	Don't attempt to quote column names.
 	#	"""
 	#	table_alias, name, db_type = data
-	#	if DJANGO_16:
+	#	if DJANGO_16_PLUS:
 	#		return connection.ops.field_cast_sql(db_type, internal_type) % name
 	#	else:
 	#		return connection.ops.field_cast_sql(db_type) % name
@@ -159,7 +277,7 @@ class SalesforceWhereNode(where.WhereNode):
 		else:
 			return result
 
-	DJANGO_14_EXACT = not DJANGO_15
+	DJANGO_14_EXACT = not DJANGO_15_PLUS
 	if DJANGO_14_EXACT:
 		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.4
 		def as_sql(self, qn, connection):
@@ -222,7 +340,7 @@ class SalesforceWhereNode(where.WhereNode):
 					sql_string = '(%s)' % sql_string
 			return sql_string, result_params
 	else:
-		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.74
+		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.7
 		def as_sql(self, qn, connection):
 			"""
 			Returns the SQL version of the where clause and the value to be
@@ -236,6 +354,26 @@ class SalesforceWhereNode(where.WhereNode):
 			# A match-everything node is different than empty node (which also
 			# technically matches everything) for backwards compatibility reasons.
 			# Refs #5261.
+
+			if DJANGO_17_EXACT:
+				# "rev" is a mapping from the table alias to the path in query
+				# structure tree, recursively reverse to join_map.
+				rev = {}
+				for k, v in qn.query.join_map.items():
+					if k[0] is None:
+						rev[k[1]] = k[1]
+				assert len(rev) == 1
+				xi = 0
+				#print('####', qn.query.join_map)
+				while len(rev) < len(qn.query.join_map) and xi < len(qn.query.join_map):
+					for k, v in qn.query.join_map.items():
+						if k[0] in rev:
+							rev[v[0]] = '.'.join((rev[k[0]], re.sub('\Id$', '', re.sub('__c$', '__r', k[2][0][0]))))
+					xi += 1
+				#print(rev, xi)
+				# Verify that the catch against infinite loop "xi" has not been reached.
+				assert xi < len(qn.query.join_map)
+
 			result = []
 			result_params = []
 			everything_childs, nothing_childs = 0, 0
@@ -257,6 +395,12 @@ class SalesforceWhereNode(where.WhereNode):
 					nothing_childs += 1
 				else:
 					if sql:
+						if DJANGO_17_EXACT:
+							x_match = re.match(r'(\w+)\.(.*)', sql)
+							if x_match:
+								x_table, x_field = x_match.groups()
+								sql = '%s.%s' % (rev[x_table], x_field)
+								#print('sql params:', sql, params)
 						result.append(sql)
 						result_params.extend(params)
 					else:
@@ -312,6 +456,13 @@ class SalesforceWhereNode(where.WhereNode):
 		as_salesforce = as_sql
 		del as_sql
 
+#	def as_salesforce(self, qn, connection):
+#		import pprint
+#		print('join_map:')
+#		pprint.PrettyPrinter(width=80).pprint(qn.query.join_map)
+#		import pdb; pdb.set_trace()
+#		return self.as_sql(qn, connection)
+
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
 	def execute_sql(self, return_id=False):
@@ -335,8 +486,9 @@ class SQLUpdateCompiler(compiler.SQLUpdateCompiler, SQLCompiler):
 class SQLAggregateCompiler(compiler.SQLAggregateCompiler, SQLCompiler):
 	pass
 
-class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
-	pass
+if not DJANGO_18_PLUS:
+	class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
+		pass
 
 
 # Lookups
@@ -353,3 +505,18 @@ if DJANGO_17_PLUS:
 				return super(IsNull, self).as_sql(qn, connection)
 
 	models.Field.register_lookup(IsNull)
+
+if DJANGO_18_PLUS:
+	from django.db.models.aggregates import Count
+	def count_as_salesforce(self, *args, **kwargs):
+		if (len(self.source_expressions) == 1 and
+				isinstance(self.source_expressions[0], models.expressions.Value) and
+				self.source_expressions[0].value == '*'):
+			return 'COUNT(Id)', []
+		else:
+			#tmp = Count('pk')
+			#args[0].query.add_annotation(Count('pk'), alias='__count', is_summary=True)
+			#obj.add_annotation(Count('*'), alias='__count', is_summary=True
+			#self.source_expressions[0] = models.expressions.Col('__count', args[0].query.model._meta.fields[0])  #'Id'
+			return self.as_sql(*args, **kwargs)
+	setattr(Count, 'as_salesforce', count_as_salesforce)

@@ -12,37 +12,18 @@ Allows access to all Salesforce objects accessible via the SOQL API.
 """
 import logging
 import ssl
+import warnings
 
 import django
-# The names DJANGO_1* are deprecated as less clear in the code
-DJANGO_15_PLUS = DJANGO_15 = django.VERSION[:2] >= (1, 5)
-DJANGO_16_PLUS = DJANGO_16 = django.VERSION[:2] >= (1, 6)
+DJANGO_15_PLUS = django.VERSION[:2] >= (1, 5)
+DJANGO_16_PLUS = django.VERSION[:2] >= (1, 6)
 DJANGO_17_PLUS = django.VERSION[:2] >= (1, 7)
+DJANGO_18_PLUS = django.VERSION[:2] >= (1, 8)
 if not django.VERSION[:2] >= (1, 4):
 	raise ImportError("Django 1.4 or higher is required for django-salesforce.")
+if django.VERSION[:2] >= (1, 8):
+	warnings.warn("The support for Django 1.8 is currently INCOMPLETE in django-salesforce. "
+				"Use Django 1.7 or read the details in README and test your app "
+				"carefully with Django 1.8")
 
 log = logging.getLogger(__name__)
-
-#TODO: Examine security: Compare the default SSL/TSL settings of urllib3 and SF.
-#      SSL protocol can be controlled according this docs:
-# http://docs.python-requests.org/en/latest/user/advanced/#example-specific-ssl-version
-#      Requests use 'urllib3', but the previous solution has been based on 'httplib2'.
-
-
-#import httplib2
-#
-#def ssl_wrap_socket(sock, key_file, cert_file, disable_validation, ca_certs):
-#	if disable_validation:
-#		cert_reqs = ssl.CERT_NONE
-#	else:
-#		cert_reqs = ssl.CERT_REQUIRED
-#	try:
-#		sock = ssl.wrap_socket(sock, keyfile=key_file, certfile=cert_file,
-#                               cert_reqs=cert_reqs, ca_certs=ca_certs, ssl_version=ssl.PROTOCOL_SSLv3)
-#	except ssl.SSLError:
-#		log.warning("SSL doesn't support PROTOCOL_SSLv3, trying PROTOCOL_SSLv23")
-#		sock = ssl.wrap_socket(sock, keyfile=key_file, certfile=cert_file,
-#                               cert_reqs=cert_reqs, ca_certs=ca_certs, ssl_version=ssl.PROTOCOL_SSLv23)
-#	return sock
-#
-#httplib2._ssl_wrap_socket = ssl_wrap_socket

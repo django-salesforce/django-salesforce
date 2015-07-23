@@ -15,8 +15,9 @@ from django.conf import settings
 from django.core.serializers import python
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
-from django.db.models import query
+from django.db.models import query, Count
 from django.db.models.sql import Query, RawQuery, constants, subqueries
+from django.db.models.query_utils import deferred_class_factory
 from django.utils.encoding import force_text
 from django.utils.six import PY3
 
@@ -25,9 +26,9 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_16, DJANGO_17_PLUS
+from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
 from salesforce.backend import compiler, sf_alias
-from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
+from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 
 try:
 	from urllib.parse import urlencode
@@ -40,12 +41,14 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v29.0'
+API_STUB = '/services/data/v32.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
+
+request_count = 0
 
 def quoted_string_literal(s, d):
 	"""
@@ -81,22 +84,20 @@ def process_json_args(args):
 		return conv.get(type(item), conv[str])(item, conv)
 	return tuple([_escape(x, json_conversions) for x in args])
 
-def reauthenticate(db_alias):
-	auth.expire_token(db_alias)
-	oauth = auth.authenticate(db_alias=db_alias)
-	return oauth['access_token']
-
 def handle_api_exceptions(url, f, *args, **kwargs):
 	"""Call REST API and handle exceptions
 	Params:
 		f:  requests.get or requests.post...
 		_cursor: sharing the debug information in cursor
 	"""
+	global request_count 
 	from salesforce.backend import base
-	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3)}
+	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
+				 'verify': True}
 	kwargs_in.update(kwargs)
 	_cursor = kwargs_in.pop('_cursor', None)
 	log.debug('Request API URL: %s' % url)
+	request_count += 1
 	try:
 		response = f(url, *args, **kwargs_in)
 	# TODO some timeouts can be rarely raised as "SSLError: The read operation timed out"
@@ -106,7 +107,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		# Unauthorized (expired or invalid session ID or OAuth)
 		data = response.json()[0]
 		if(data['errorCode'] == 'INVALID_SESSION_ID'):
-			token = reauthenticate(db_alias=f.__self__.auth.db_alias)
+			token = auth.reauthenticate(db_alias=f.__self__.auth.db_alias)
 			if('headers' in kwargs):
 				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
 			try:
@@ -147,7 +148,13 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	else:
 		raise base.SalesforceError('%s' % data, data, response, verbose)
 
-def prep_for_deserialize(model, record, using):
+def prep_for_deserialize(model, record, using, init_list=None):
+	"""
+	Convert a record from SFDC (decoded JSON) to dict(model string, pk, fields)
+	If fixes fields of some types. If names of required fields `init_list `are
+	specified, then only these fields are processed.
+	"""
+	from salesforce.backend import base
 	# TODO the parameter 'using' is not currently important.
 	attribs = record.pop('attributes')
 
@@ -161,7 +168,7 @@ def prep_for_deserialize(model, record, using):
 
 	fields = dict()
 	for x in model._meta.fields:
-		if not x.primary_key:
+		if not x.primary_key and (not init_list or x.name in init_list):
 			if x.column.endswith('.Type'):
 				# Type of generic foreign key
 				simple_column, _ = x.column.split('.')
@@ -182,7 +189,8 @@ def prep_for_deserialize(model, record, using):
 						fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT[:-6])
 				else:
 					fields[x.name] = field_val
-
+	if init_list and set(init_list).difference(fields).difference([SF_PK]):
+		raise base.DatabaseError("Not found some expected fields")
 
 	return dict(
 		model	= '.'.join([app_label, model.__name__]),
@@ -211,9 +219,13 @@ def extract_values(query):
 						"Match name can miss only with an 'update_fields' argument."
 				continue
 		else:  # insert
-			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce backend."
+			# TODO bulk insert
+			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce REST API"
 			value = getattr(query.objs[0], field.attname)
-			if isinstance(field, models.ForeignKey) and value == 'DEFAULT':
+			# The 'DEFAULT' is a backward compatibility name.
+			if isinstance(field, models.ForeignKey) and value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
+				continue
+			if isinstance(value, models.DefaultedOnCreate):
 				continue
 		[arg] = process_json_args([value])
 		d[field.column] = arg
@@ -240,7 +252,44 @@ class SalesforceQuerySet(query.QuerySet):
 		cursor.execute(sql, params)
 
 		pfd = prep_for_deserialize
-		for res in python.Deserializer(pfd(self.model, r, self.db) for r in cursor.results):
+
+		only_load = self.query.get_loaded_field_names()
+		load_fields = []
+		# If only/defer clauses have been specified,
+		# build the list of fields that are to be loaded.
+		if not only_load:
+			model_cls = self.model
+			init_list = None
+		else:
+			if DJANGO_16_PLUS:
+				fields = self.model._meta.concrete_fields
+				fields_with_model = self.model._meta.get_concrete_fields_with_model()
+			else:
+				fields = self.model._meta.fields
+				fields_with_model = self.model._meta.get_fields_with_model()
+			for field, model in fields_with_model:
+				if model is None:
+					model = self.model
+				try:
+					if field.name in only_load[model]:
+						# Add a field that has been explicitly included
+						load_fields.append(field.name)
+				except KeyError:
+					# Model wasn't explicitly listed in the only_load table
+					# Therefore, we need to load all fields from this model
+					load_fields.append(field.name)
+
+			init_list = []
+			skip = set()
+			for field in fields:
+				if field.name not in load_fields:
+					skip.add(field.attname)
+				else:
+					init_list.append(field.name)
+			model_cls = deferred_class_factory(self.model, skip)
+
+		field_names = self.query.get_loaded_field_names()
+		for res in python.Deserializer(pfd(model_cls, r, self.db, init_list) for r in cursor.results):
 			# Store the source database of the object
 			res.object._state.db = self.db
 			# This object came from the database; it's not being added.
@@ -274,7 +323,7 @@ class SalesforceRawQuery(RawQuery):
 		self.cursor.execute(self.sql, self.params)
 
 	def __repr__(self):
-		return "<SalesforceRawQuery: %r>" % (self.sql % tuple(self.params))
+		return "<SalesforceRawQuery: %s; %r>" % (self.sql, tuple(self.params))
 
 class SalesforceQuery(Query):
 	"""
@@ -290,6 +339,7 @@ class SalesforceQuery(Query):
 		super(SalesforceQuery, self).__init__(*args, **kwargs)
 		self.is_query_all = False
 		self.first_chunk_len = None
+		self.max_depth = 1
 
 	def clone(self, klass=None, memo=None, **kwargs):
 		query = Query.clone(self, klass, memo, **kwargs)
@@ -303,6 +353,19 @@ class SalesforceQuery(Query):
 
 	def set_query_all(self):
 		self.is_query_all = True
+
+	if DJANGO_18_PLUS:
+		def get_count(self, using):
+			"""
+			Performs a COUNT() query using the current filter constraints.
+			"""
+			obj = self.clone()
+			obj.add_annotation(Count('pk'), alias='x_sf_count', is_summary=True)
+			number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']
+			if number is None:
+				number = 0
+			return number
+
 
 class CursorWrapper(object):
 	"""
@@ -351,7 +414,7 @@ class CursorWrapper(object):
 		elif isinstance(self.query, subqueries.DeleteQuery):
 			response = self.execute_delete(self.query)
 		else:
-			raise base.DatabaseError("Unsupported query: %s" % self.query)
+			raise base.DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
 
 		# the encoding is detected automatically, e.g. from headers
 		if(response and response.text):
@@ -372,7 +435,6 @@ class CursorWrapper(object):
 				raise base.DatabaseError(data)
 
 			if q.upper().startswith('SELECT COUNT() FROM'):
-				# TODO what about raw query COUNT()
 				# COUNT() queries in SOQL are a special case, as they don't actually return rows
 				self.results = iter([[self.rowcount]])
 			else:
@@ -387,19 +449,19 @@ class CursorWrapper(object):
 		processed_sql = str(q) % process_args(args)
 		cmd = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
 		url = u'{base}{api}/{cmd}?{query_str}'.format(
-				base=self.oauth['instance_url'], api=API_STUB, cmd=cmd,
+				base=self.session.auth.instance_url, api=API_STUB, cmd=cmd,
 				query_str=urlencode(dict(q=processed_sql)),
 		)
 		log.debug(processed_sql)
 		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def query_more(self, nextRecordsUrl):
-		url = u'%s%s' % (self.oauth['instance_url'], nextRecordsUrl)
+		url = u'%s%s' % (self.session.auth.instance_url, nextRecordsUrl)
 		return handle_api_exceptions(url, self.session.get, _cursor=self)
 
 	def execute_insert(self, query):
 		table = query.model._meta.db_table
-		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/' % table)
+		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/' % table)
 		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
 
@@ -411,12 +473,12 @@ class CursorWrapper(object):
 		# this will break in multi-row updates
 		if DJANGO_17_PLUS:
 			pk = query.where.children[0].rhs
-		elif DJANGO_16:
+		elif DJANGO_16_PLUS:
 			pk = query.where.children[0][3]
 		else:
 			pk = query.where.children[0].children[0][-1]
 		assert pk
-		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = {'Content-Type': 'application/json'}
 		post_data = extract_values(query)
 		log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
@@ -439,7 +501,7 @@ class CursorWrapper(object):
 				return pk
 		pk = recurse_for_pk(self.query.where.children)
 		assert pk
-		url = self.oauth['instance_url'] + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 
 		log.debug('DELETE %s(%s)' % (table, pk))
 		return handle_api_exceptions(url, self.session.delete, _cursor=self)
@@ -447,7 +509,7 @@ class CursorWrapper(object):
 	def query_results(self, results):
 		while True:
 			for rec in results['records']:
-				if rec['attributes']['type'] == 'AggregateResult':
+				if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, 'aggregate_select'):
 					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
 					# The 'attributes' info is unexpected for Django within fields.
 					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]

@@ -5,10 +5,13 @@
 # See LICENSE.md for details
 #
 
-from salesforce import models
+from __future__ import unicode_literals
+from salesforce import models, DJANGO_15_PLUS
 from salesforce.models import SalesforceModel as SalesforceModelParent
 
+import django
 from django.conf import settings
+from django.utils.encoding import python_2_unicode_compatible
 
 SALUTATIONS = [
 	'Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Prof.'
@@ -39,6 +42,7 @@ class User(SalesforceModel):
 	IsActive = models.BooleanField(default=False)
 
 
+@python_2_unicode_compatible
 class AbstractAccount(SalesforceModel):
 	"""
 	Default Salesforce Account model.
@@ -49,7 +53,7 @@ class AbstractAccount(SalesforceModel):
 	]
 
 	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-			default=lambda:User(Id='DEFAULT'),
+			default=models.DEFAULTED_ON_CREATE,
 			db_column='OwnerId')
 	Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
 							null=True)
@@ -79,7 +83,7 @@ class AbstractAccount(SalesforceModel):
 	class Meta(SalesforceModel.Meta):
 		abstract = True
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
@@ -104,7 +108,7 @@ class PersonAccount(AbstractAccount):
 		abstract = True
 
 
-if settings.PERSON_ACCOUNT_ACTIVATED:
+if getattr(settings, 'PERSON_ACCOUNT_ACTIVATED', False):
 	class Account(PersonAccount):
 		pass
 else:
@@ -112,25 +116,30 @@ else:
 		pass
 
 
+@python_2_unicode_compatible
 class Contact(SalesforceModel):
-	Account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
-			db_column='AccountId', blank=True, null=True)
-	LastName = models.CharField(max_length=80)
-	FirstName = models.CharField(max_length=40, blank=True)
-	Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
+	# Example that db_column is not necessary for most of fields even with
+	# lower case names and for ForeignKey
+	account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
+			blank=True, null=True)  # db_column: 'OwnerId'
+	last_name = models.CharField(max_length=80)
+	first_name = models.CharField(max_length=40, blank=True)
+	name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
 			verbose_name='Full Name')
-	Email = models.EmailField(blank=True, null=True)
-	EmailBouncedDate = models.DateTimeField(blank=True, null=True)
-	# tested example that db_column is not necessary for a normal ForeignKey
-	Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-			default=lambda:User(Id='DEFAULT'),
+	email = models.EmailField(blank=True, null=True)
+	email_bounced_date = models.DateTimeField(blank=True, null=True)
+	# The `default=` with lambda function is easy readable, but can be
+	# problematic with migrations in the future because it is not serializable.
+	# It can be replaced by normal function.
+	owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=models.DEFAULTED_ON_CREATE,
 			related_name='contact_owner_set')
 
+	def __str__(self):
+		return self.name
 
-	def __unicode__(self):
-		return self.Name
 
-
+@python_2_unicode_compatible
 class Lead(SalesforceModel):
 	"""
 	Default Salesforce Lead model.
@@ -180,142 +189,63 @@ class Lead(SalesforceModel):
 											sf_read_only=models.NOT_CREATEABLE)
 	# Deleted object can be found only in querysets with "query_all" SF method.
 	IsDeleted = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
+	owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			default=models.DEFAULTED_ON_CREATE,
+			related_name='lead_owner_set')
+	last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+			sf_read_only=models.READ_ONLY,
+			related_name='lead_lastmodifiedby_set')
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
+@python_2_unicode_compatible
 class Product(SalesforceModel):
-	Name = models.CharField(max_length=255, db_column='Name')
+	Name = models.CharField(max_length=255)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'Product2'
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
+@python_2_unicode_compatible
 class Pricebook(SalesforceModel):
-	Name = models.CharField(max_length=255, db_column='Name')
+	Name = models.CharField(max_length=255)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'Pricebook2'
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
+@python_2_unicode_compatible
 class PricebookEntry(SalesforceModel):
 	Name = models.CharField(max_length=255, db_column='Name', sf_read_only=models.READ_ONLY)
-	Pricebook2Id = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING,
-			db_column='Pricebook2Id')
-	Product2Id = models.ForeignKey('Product', on_delete=models.DO_NOTHING,
-			db_column='Product2Id')
-	UseStandardPrice = models.BooleanField(default=False, db_column='UseStandardPrice')
-	UnitPrice = models.DecimalField(decimal_places=2, max_digits=18, db_column='UnitPrice')
+	Pricebook2 = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING)
+	Product2 = models.ForeignKey('Product', on_delete=models.DO_NOTHING)
+	UseStandardPrice = models.BooleanField(default=False)
+	UnitPrice = models.DecimalField(decimal_places=2, max_digits=18)
 
 	class Meta(SalesforceModel.Meta):
 		db_table = 'PricebookEntry'
 		verbose_name_plural = "PricebookEntries"
 
-	def __unicode__(self):
+	def __str__(self):
 		return self.Name
 
 
 class ChargentOrder(SalesforceModel):
 	class Meta(SalesforceModel.Meta):
 		db_table = 'ChargentOrders__ChargentOrder__c'
+		custom = True
 
-	OwnerId = models.CharField(max_length=255, db_column='OwnerId')
-	IsDeleted = models.CharField(max_length=255, db_column='IsDeleted')
 	Name = models.CharField(max_length=255, db_column='Name')
-	CreatedDate = models.CharField(max_length=255, db_column='CreatedDate')
-	CreatedById = models.CharField(max_length=255, db_column='CreatedById')
-	LastModifiedDate = models.CharField(max_length=255,
-										db_column='LastModifiedDate', null=True)
-	LastModifiedById = models.CharField(max_length=255,
-										db_column='LastModifiedById')
-	SystemModstamp = models.CharField(max_length=255, db_column='SystemModstamp')
-	LastActivityDate = models.CharField(max_length=255,
-										db_column='LastActivityDate')
-	Balance_Due = models.CharField(max_length=255,
-									db_column='ChargentOrders__Balance_Due__c')
-	Bank_Account_Name = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Name__c')
-	Bank_Account_Number = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Number__c')
-	Bank_Account_Type = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Account_Type__c')
-	Bank_Name = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Name__c')
-	Bank_Routing_Number = models.CharField(max_length=255, db_column='ChargentOrders__Bank_Routing_Number__c')
-	Billing_Address = models.CharField(max_length=255, db_column='ChargentOrders__Billing_Address__c')
-	Billing_City = models.CharField(max_length=255, db_column='ChargentOrders__Billing_City__c')
-	Billing_Company = models.CharField(max_length=255, db_column='ChargentOrders__Billing_Company__c')
-	Billing_Country = models.CharField(max_length=255, db_column='ChargentOrders__Billing_Country__c')
-	Billing_Email = models.CharField(max_length=255, db_column='ChargentOrders__Billing_Email__c')
-	Billing_Fax = models.CharField(max_length=255, db_column='ChargentOrders__Billing_Fax__c')
-	Billing_First_Name = models.CharField(max_length=255, db_column='ChargentOrders__Billing_First_Name__c')
-	Billing_Last_Name = models.CharField(max_length=255, db_column='ChargentOrders__Billing_Last_Name__c')
-	Billing_Phone = models.CharField(max_length=255, db_column='ChargentOrders__Billing_Phone__c')
-	Billing_State_Province = models.CharField(max_length=255, db_column='ChargentOrders__Billing_State_Province__c')
-	Billing_State = models.CharField(max_length=255, db_column='ChargentOrders__Billing_State__c')
-	Billing_Zip_Postal = models.CharField(max_length=255, db_column='ChargentOrders__Billing_Zip_Postal__c')
-	Birthdate = models.CharField(max_length=255, db_column='ChargentOrders__Birthdate__c')
-	Card_Expiration_Month = models.CharField(max_length=255, db_column='ChargentOrders__Card_Expiration_Month__c')
-	Card_Expiration_Year = models.CharField(max_length=255, db_column='ChargentOrders__Card_Expiration_Year__c')
-	Card_Number = models.CharField(max_length=255, db_column='ChargentOrders__Card_Number__c')
-	Card_Security_Code = models.CharField(max_length=255, db_column='ChargentOrders__Card_Security_Code__c')
-	Card_Type = models.CharField(max_length=255, db_column='ChargentOrders__Card_Type__c')
-	Charge_Amount = models.CharField(max_length=255, db_column='ChargentOrders__Charge_Amount__c')
-	Check_Number = models.CharField(max_length=255, db_column='ChargentOrders__Check_Number__c')
-	Credit_Card_Name = models.CharField(max_length=255, db_column='ChargentOrders__Credit_Card_Name__c')
-	Currency = models.CharField(max_length=255, db_column='ChargentOrders__Currency__c')
-	Date = models.CharField(max_length=255, db_column='ChargentOrders__Date__c')
-	Description = models.CharField(max_length=255, db_column='ChargentOrders__Description__c')
-	Gateway = models.CharField(max_length=255, db_column='ChargentOrders__Gateway__c')
-	Manual_Charge = models.CharField(max_length=255, db_column='ChargentOrders__Manual_Charge__c')
-	Mercury_ID = models.CharField(max_length=255, db_column='ChargentOrders__Mercury_ID__c')
-	No_Tax = models.CharField(max_length=255, db_column='ChargentOrders__No_Tax__c')
-	OrderNumber = models.CharField(max_length=255, db_column='ChargentOrders__OrderNumber__c')
-	Order_Note = models.CharField(max_length=255, db_column='ChargentOrders__Order_Note__c')
-	PO_Number = models.CharField(max_length=255, db_column='ChargentOrders__PO_Number__c')
-	Payment_Count = models.CharField(max_length=255, db_column='ChargentOrders__Payment_Count__c')
-	Payment_End_Date = models.CharField(max_length=255, db_column='ChargentOrders__Payment_End_Date__c')
-	Payment_Frequency = models.CharField(max_length=255, db_column='ChargentOrders__Payment_Frequency__c')
-	Payment_Method = models.CharField(max_length=255, db_column='ChargentOrders__Payment_Method__c')
-	Payment_Received = models.CharField(max_length=255, db_column='ChargentOrders__Payment_Received__c')
-	Payment_Start_Date = models.CharField(max_length=255, db_column='ChargentOrders__Payment_Start_Date__c')
-	Payment_Status = models.CharField(max_length=255, db_column='ChargentOrders__Payment_Status__c')
-	Payment_Stop = models.CharField(max_length=255, db_column='ChargentOrders__Payment_Stop__c')
-	Shipping_Address = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_Address__c')
-	Shipping_City = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_City__c')
-	Shipping_Company = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_Company__c')
-	Shipping_Country = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_Country__c')
-	Shipping_Duty = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_Duty__c')
-	Shipping_First_Name = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_First_Name__c')
-	Shipping_Instructions = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_Instructions__c')
-	Shipping_Name = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_Name__c')
-	Shipping_Phone = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_Phone__c')
-	Shipping_State = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_State__c')
-	Shipping_Zip_Postal = models.CharField(max_length=255, db_column='ChargentOrders__Shipping_Zip_Postal__c')
-	Shipping = models.CharField(max_length=255, db_column='ChargentOrders__Shipping__c')
-	Status = models.CharField(max_length=255, db_column='ChargentOrders__Status__c')
-	Subtotal = models.CharField(max_length=255, db_column='ChargentOrders__Subtotal__c')
-	Tax_Exempt = models.CharField(max_length=255, db_column='ChargentOrders__Tax_Exempt__c')
-	Tax = models.CharField(max_length=255, db_column='ChargentOrders__Tax__c')
-	Total = models.CharField(max_length=255, db_column='ChargentOrders__Total__c')
-	Tracking_Number = models.CharField(max_length=255, db_column='ChargentOrders__Tracking_Number__c')
-	Transaction_Count_Recurring = models.CharField(max_length=255, db_column='ChargentOrders__Transaction_Count_Recurring__c')
-	Transaction_Count = models.CharField(max_length=255, db_column='ChargentOrders__Transaction_Count__c')
-	Transaction_Total = models.CharField(max_length=255, db_column='ChargentOrders__Transaction_Total__c')
-	AccountID = models.CharField(max_length=255, db_column='AccountID__c')
-	Campaign = models.CharField(max_length=255, db_column='Campaign__c')
-	Contribution_Date = models.CharField(max_length=255, db_column='Contribution_Date__c')
-	Contribution_Type = models.CharField(max_length=255, db_column='Contribution_Type__c')
-	Corporate_Flag = models.CharField(max_length=255, db_column='Corporate_Flag__c')
-	Follow_up_Complete = models.CharField(max_length=255, db_column='Follow_up_Complete__c')
-	Member_Flag = models.CharField(max_length=255, db_column='Member_Flag__c')
-	Opportunity = models.CharField(max_length=255, db_column='Opportunity__c')
-	Order_Name = models.CharField(max_length=255, db_column='Order_Name__c')
-	PAC_Fund = models.CharField(max_length=255, db_column='PAC_Fund__c')
-	Event_Flag = models.CharField(max_length=255, db_column='Event_Flag__c')
+	# example of automatically recognized name  db_column='ChargentOrders__Balance_Due__c'
+	Balance_Due = models.CharField(max_length=255)
 
 
 class CronTrigger(SalesforceModel):
@@ -325,7 +255,7 @@ class CronTrigger(SalesforceModel):
 
 
 class BusinessHours(SalesforceModel):
-	Name = models.CharField(db_column='Name', max_length=80)
+	Name = models.CharField(max_length=80)
 	# The default record is automatically created by Salesforce.
 	IsDefault = models.BooleanField(default=False, verbose_name='Default Business Hours')
 	# ... much more fields, but we use only this one TimeFiled for test
@@ -337,6 +267,20 @@ class BusinessHours(SalesforceModel):
 
 test_custom_db_table, test_custom_db_column = getattr(settings,
 		'TEST_CUSTOM_FIELD', 'ChargentOrders__ChargentOrder__c.Name').split('.')
+
+class SalesforceParentModel(SalesforceModel):
+	"""
+	Example of standard fields present in all custom models.
+	"""
+	# This is not a custom field because is not defined in a custom model.
+	# The API name is therefore 'Name'.
+	name = models.CharField(max_length=80)
+	last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+	# This model is not custom because it has not an explicit attribute
+	# `custom = True` in Meta and also has not a `db_table` that ends with
+	# '__c'.
+	class Meta:
+		abstract = True
 
 
 class GeneralCustomModel(SalesforceModel):
@@ -355,8 +299,75 @@ class GeneralCustomModel(SalesforceModel):
 	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)
 
 
-class Note(SalesforceModel):
-	title = models.CharField(max_length=80, db_column='Title')
-	body = models.TextField(null=True, db_column='Body')
-	parent_id = models.CharField(max_length=18, db_column='ParentId')
-	parent_type =  models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
+class Note(models.Model):
+	title = models.CharField(max_length=80)
+	body = models.TextField(null=True)
+	parent_id = models.CharField(max_length=18)
+	parent_type = models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
+
+
+class Opportunity(models.Model):
+	name = models.CharField(max_length=255)
+	contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole', related_name='opportunities')
+	close_date = models.DateField()
+	stage = models.CharField(max_length=255, db_column='StageName') # e.g. "Prospecting"
+
+
+class OpportunityContactRole(models.Model):
+	opportunity = models.ForeignKey(Opportunity, on_delete=models.DO_NOTHING, related_name='contact_roles')
+	contact = models.ForeignKey(Contact, on_delete=models.DO_NOTHING, related_name='opportunity_roles')
+	role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
+
+
+class Organization(models.Model):
+    name = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE)
+    division = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE, blank=True)
+    organization_type = models.CharField(max_length=40, verbose_name='Edition',
+    		sf_read_only=models.READ_ONLY) # e.g 'Developer Edition', Enteprise, Unlimited...
+    instance_name = models.CharField(max_length=5, sf_read_only=models.READ_ONLY, blank=True)
+    is_sandbox = models.BooleanField(sf_read_only=models.READ_ONLY)
+
+
+# Skipping the model if a custom table isn't installed in your Salesforce
+# is important an old Django, even with "on_delete=DO_NOTHING",
+# due to how "delete" was implemented in Django 1.4
+if DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False):
+
+	class Test(SalesforceParentModel):
+		"""
+		Simple custom model with one custom and more standard fields.
+
+		Salesforce object for this model can be created:
+		A) automatically from the branch hynekcer/tooling-api-and-metadata
+		   by commands:
+			$ python manage.py shell
+				>> from salesforce.backend import tooling
+				>> tooling.install_metadata_service()
+				>> tooling.create_demo_test_object()
+		or
+		B) manually can create the same object with `API Name`: `django_Test__c`
+			`Data Type` of the Record Name: `Text`
+		
+		   Create three fields:
+		   Type            | API Name | Label
+		   ----------------+----------+----------
+		   Text            | TestText | Test Text
+		   Checkbox        | TestBool | Test Bool
+		   Lookup(Contact) | Contact  | Contact
+
+		   Set it accessible by you. (`Set Field-Leved Security`)
+		"""
+		# This is a custom field because it is defined in the custom model.
+		# The API name is therefore 'TestField__c'
+		test_text = models.CharField(max_length=40)
+		test_bool = models.BooleanField(default=False)
+		contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING)
+		class Meta:
+			custom = True
+			db_table = 'django_Test__c'
+
+
+	class NoteAttachment(models.Model):
+		# A standard SFDC object that can have a relationship to any custom object
+		parent = models.ForeignKey(Test, sf_read_only=models.NOT_UPDATEABLE, on_delete=models.DO_NOTHING)
+		title = models.CharField(max_length=80)
