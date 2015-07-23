@@ -49,6 +49,7 @@ Quick Start
      connect to your Salesforce account. Instructions for how get these are in
      the Salesforce REST API Documentation. Key and secret can be created on
      web by:
+
      - Salesforce web > Setup > App Setup > Create > Apps > Connected apps >
        New.
      - Click "Enable OAuth Settings" in API, then select "Access and manage
@@ -229,7 +230,7 @@ can see in the output of ``inspectdb`` in the most complete form.
    "last_modified_date" or fields defined by a formula like "name" of contact,
    given by "first_name" and "last_name". Example::
 
-   last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+     last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
 
 -  **Defaulted on create** - Some fields have a dynamic default value unknown
    by Django and assigned by Salesforce if the field is omitted when a new object
