@@ -283,30 +283,6 @@ class SalesforceParentModel(SalesforceModel):
 		abstract = True
 
 
-class TestCustomExample(SalesforceParentModel):
-	"""
-	Simple custom model with one custom and more standard fields.
-
-	Salesforce object for this model can be created from the branch
-	  hynekcer/tooling-api-and-metadata  by commands
-	$ python manage.py shell
-		>> from salesforce.tooling import *
-		>> install_metadata_service()
-		>> create_demo_test_object()
-	
-	or create an object with `API Name`: `django_Test__c`
-	`Data Type` of the Record Name: `Text`
-	with a text field `API Name`: `TestField__c`.
-	and set it accessible by you. (`Set Field-Leved Security`)
-	"""
-	# This is a custom field because it is defined in the custom model.
-	# The API name is therefore 'TestField__c'
-	test_field = models.CharField(max_length=42)
-	class Meta:
-		db_table = 'django_Test__c'
-		custom = True
-
-
 class GeneralCustomModel(SalesforceModel):
 	"""
 	This model is used for tests on a field of type CharField on a custom model
@@ -357,7 +333,32 @@ class Organization(models.Model):
 # due to how "delete" was implemented in Django 1.4
 if DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False):
 
-	class Test(models.Model):
+	class Test(SalesforceParentModel):
+		"""
+		Simple custom model with one custom and more standard fields.
+
+		Salesforce object for this model can be created:
+		A) automatically from the branch hynekcer/tooling-api-and-metadata
+		   by commands:
+			$ python manage.py shell
+				>> from salesforce.backend import tooling
+				>> tooling.install_metadata_service()
+				>> tooling.create_demo_test_object()
+		or
+		B) manually can create the same object with `API Name`: `django_Test__c`
+			`Data Type` of the Record Name: `Text`
+		
+		   Create three fields:
+		   Type            | API Name | Label
+		   ----------------+----------+----------
+		   Text            | TestText | Test Text
+		   Checkbox        | TestBool | Test Bool
+		   Lookup(Contact) | Contact  | Contact
+
+		   Set it accessible by you. (`Set Field-Leved Security`)
+		"""
+		# This is a custom field because it is defined in the custom model.
+		# The API name is therefore 'TestField__c'
 		test_text = models.CharField(max_length=40)
 		test_bool = models.BooleanField(default=False)
 		contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING)
