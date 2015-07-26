@@ -292,8 +292,8 @@ can see in the output of ``inspectdb`` in the most complete form.
 
 SSL/TLS settings
 ----------------
-The package `requests <http://python-requests.org>`__ doesn't allow easily to set
-the minimal required SSL/TLS version together with usage of the highest
+The package `requests <http://python-requests.org>`__ doesn't provide an easy way
+to set the minimum required SSL/TLS version while ensuring use of the highest
 version that is available on both sides.
 (`requests issue 2118 <https://github.com/kennethreitz/requests/issues/2118>`__)
 The required version can be set in settings.py to one of reasonable values ::
@@ -301,30 +301,30 @@ The required version can be set in settings.py to one of reasonable values ::
          import ssl	
          SF_SSL = {'ssl_version': ssl.PROTOCOL_SSLv23}
 
--  `ssl.PROTOCOL_SSLv23` = use the highest available protocol, including TLS.
-   The security depends on the lowest protocol supported by your SSL (Python
-   version + requests version + pyOpenSSL installed yes/no + age of distro)
+-  `ssl.PROTOCOL_SSLv23` - use the highest available protocol, including TLS.
+   The security depends on the lowest protocol supported by your the installed
+   versions of Python, requests, pyOpenSSL, and installed versions of OpenSSL/libssl.
 
--  `ssl.PROTOCOL_TLSv1` = This will pin the communication protocol to exactly
-   TLS 1.0. (This must be changed to PROTOCOL_SSLv23 before SFDC disables
-   the protocol TLS 1.0)
+-  `ssl.PROTOCOL_TLSv1` - This will pin the communication protocol to TLS 1.0.
+   This must be changed to `PROTOCOL_SSLv23` once SFDC disables TLS 1.0.
 
-If you have Python 2.7.9 and newer or Python 3.4.0 and newer, without pyOpenSSL
-than old insecure protocols including SSL v3 are disabled, and it is better to
-use the setting PROTOCOL_SSLv23 to use new protocols, but it is not sure that
-anything newer than TLS 1.0 can be found in old distributions of binary packages.
+The default for django-salesforce is currently `PROTOCOL_TLSv1` in hopes of reducing
+compatibility issues. If you have Python 2.7.9 and newer or Python 3.4.0 and newer,
+the old insecure protocols including SSL v3 are disabled unless you've installed
+PyOpenSSL. In this case it's recommended you update your settings to use `PROTOCOL_SSLv23`.
 
-If you have an old Python, you improve it a little (SNI, validation of
+If you have an old Python, you can improve security a little (SNI, validation of
 certificates, fixed InsecurePlatformWarning) by additional packages:
-Binary package `libffi` (`libffi-dev` on `.deb` based distros or `libffi-devel` on `.rpm`)
-installed before the following packages ::
 
      pip install pyopenssl ndg-httpsclient pyasn1
 
-A big disadvantage is that pyOpenSSL enables SSLv3 again, even with a new Python.
-Therefore it is more secure to use ssl.PROTOCOL_TLSv1 than to use the newest
-protocols TLS 1.1 and 1.2 but became open to downgrade attack to an old SSL, if you
-would use setting PROTOCOL_SSLv23 with pyOpenSSL.
+These have dependencies on the libffi development libararies. Install `libffi-dev` on
+Debian/Ubuntu or `libffi-devel` on RedHat derivatives.
+
+One disadvantage is that installing pyOpenSSL enables SSLv3 again, even on a newer
+Python. Therefore it is more secure to use ssl.PROTOCOL_TLSv1 than to use TLS 1.1
+or 1.2, as even if you set PROTOCOL_SSLv23 you are open to a downgrade attack
+to an older SSL protocl.
 
 Caveats
 -------
