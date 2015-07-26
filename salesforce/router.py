@@ -31,7 +31,7 @@ class ModelRouter(object):
 	"""
 	Database router for Salesforce models.
 	"""
-	sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
+	sf_alias = lambda self: getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 	
 	def db_for_read(self, model, **hints):
 		"""
@@ -44,7 +44,7 @@ class ModelRouter(object):
 			if db:
 				return db
 		if getattr(model, '_salesforce_object', False):
-			return self.sf_alias
+			return self.sf_alias()
 
 	def db_for_write(self, model, **hints):
 		"""
@@ -57,7 +57,7 @@ class ModelRouter(object):
 			if db:
 				return db
 		if getattr(model, '_salesforce_object', False):
-			return self.sf_alias
+			return self.sf_alias()
 
 	def allow_migrate(self, db, model):
 		"""
@@ -65,7 +65,7 @@ class ModelRouter(object):
 		"""
 		if hasattr(model, '_salesforce_object'):
 			# If SALESFORCE_DB_ALIAS is e.g. a sqlite3 database, than it can migrate SF models
-			if not (is_sf_database(db) or db == self.sf_alias):
+			if not (is_sf_database(db) or db == self.sf_alias()):
 				return False
 		else:
 			if is_sf_database(db):
