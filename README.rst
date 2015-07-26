@@ -311,7 +311,8 @@ The required version can be set in settings.py to one of reasonable values ::
 The default for django-salesforce is currently `PROTOCOL_TLSv1` in hopes of reducing
 compatibility issues. If you have Python 2.7.9 and newer or Python 3.4.0 and newer,
 the old insecure protocols including SSL v3 are disabled unless you've installed
-PyOpenSSL. In this case it's recommended you update your settings to use `PROTOCOL_SSLv23`.
+PyOpenSSL. As long as you have *not* installed PyOpenSSL, it's recommended you
+update your settings to use `PROTOCOL_SSLv23`.
 
 If you have an old Python, you can improve security a little (SNI, validation of
 certificates, fixed InsecurePlatformWarning) by additional packages:
@@ -321,10 +322,13 @@ certificates, fixed InsecurePlatformWarning) by additional packages:
 These have dependencies on the libffi development libararies. Install `libffi-dev` on
 Debian/Ubuntu or `libffi-devel` on RedHat derivatives.
 
-One disadvantage is that installing pyOpenSSL enables SSLv3 again, even on a newer
-Python. Therefore it is more secure to use ssl.PROTOCOL_TLSv1 than to use TLS 1.1
-or 1.2, as even if you set PROTOCOL_SSLv23 you are open to a downgrade attack
-to an older SSL protocol.
+Hoever, once you're using Python 2.7.9 and newer or Python 3.4.0 and newer, installing
+pyOpenSSL enables SSLv3 again. If you *must* install PyOpenSSL on these Python versions,
+it is more secure to use ssl.PROTOCOL_TLSv1 than other protocols, as even if you
+set PROTOCOL_SSLv23 you are open to a downgrade attack to an older SSL protocol.
+
+Ultimately this will become moot for users of django-salesforce, as SFDC will soon require
+the updated setting.
 
 Caveats
 -------
