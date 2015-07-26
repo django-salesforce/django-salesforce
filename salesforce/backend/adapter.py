@@ -13,6 +13,7 @@ class SslHttpAdapter(HTTPAdapter):
 	"""Transport adapter with hardened SSL version."""
 
 	def init_poolmanager(self, connections, maxsize, block=DEFAULT_POOLBLOCK):
+		# TODO Change the default value to ssl.PROTOCOL_SSLv23 in the autumn release v0.7.
 		default_ssl_version = ssl.PROTOCOL_TLSv1
 		ssl_version = getattr(settings, 'SF_SSL', {}).get('ssl_version', default_ssl_version)
 		self._pool_connections = connections
