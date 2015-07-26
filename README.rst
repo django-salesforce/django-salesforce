@@ -324,7 +324,7 @@ Debian/Ubuntu or `libffi-devel` on RedHat derivatives.
 One disadvantage is that installing pyOpenSSL enables SSLv3 again, even on a newer
 Python. Therefore it is more secure to use ssl.PROTOCOL_TLSv1 than to use TLS 1.1
 or 1.2, as even if you set PROTOCOL_SSLv23 you are open to a downgrade attack
-to an older SSL protocl.
+to an older SSL protocol.
 
 Caveats
 -------
