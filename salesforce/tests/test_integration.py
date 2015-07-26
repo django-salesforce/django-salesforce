@@ -18,8 +18,7 @@ from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
-		Product, Pricebook, PricebookEntry,
-		GeneralCustomModel, Note, test_custom_db_table, test_custom_db_column)
+		Product, Pricebook, PricebookEntry, Note)
 from salesforce.testrunner.example.models import Test as TestCustomExample
 from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS
 from salesforce.backend import sf_alias
@@ -365,23 +364,7 @@ class BasicSOQLTest(TestCase):
 		try:
 			results = TestCustomExample.objects.all()[0:1]
 			self.assertEqual(len(results), 1)
-			self.assertEqual(results[0].test_field, 'sf_test')
-		finally:
-			obj.delete()
-
-	@skipUnless(test_custom_db_table in sf_tables,
-			"Not found the expected custom object '%s'" % test_custom_db_table)
-	def test_custom_object_general(self):
-		"""
-		Create, read and delete any general custom object.
-		Object name and field name are user configurable by TEST_CUSTOM_FIELD.
-		"""
-		obj = GeneralCustomModel(GeneralCustomField='sf_test')
-		obj.save()
-		try:
-			results = GeneralCustomModel.objects.all()[0:1]
-			self.assertEqual(len(results), 1)
-			self.assertEqual(results[0].GeneralCustomField, 'sf_test')
+			self.assertEqual(results[0].test_text, 'sf_test')
 		finally:
 			obj.delete()
 

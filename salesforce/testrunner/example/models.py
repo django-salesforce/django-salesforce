@@ -283,22 +283,6 @@ class SalesforceParentModel(SalesforceModel):
 		abstract = True
 
 
-class GeneralCustomModel(SalesforceModel):
-	"""
-	This model is used for tests on a field of type CharField on a custom model
-	specified in local_settings.py:
-	Example:
-		TEST_CUSTOM_FIELD = 'TIMBASURVEYS__SurveyQuestion__c.TIMBASURVEYS__Question__c'
-	Other fields shouldn't be required for saving that object.
-	"""
-	# The line "managed = False" or Meta inherited from SalesforceModel.Meta
-	# is especially important if the model shares a table with other model.
-	class Meta:
-		db_table = test_custom_db_table
-
-	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)
-
-
 class Note(models.Model):
 	title = models.CharField(max_length=80)
 	body = models.TextField(null=True)
