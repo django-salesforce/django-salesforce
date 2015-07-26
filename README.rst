@@ -217,6 +217,14 @@ Advanced usage
 -  **Meta class options** - If an inner ``Meta`` class is used, it must be a
    descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
 
+-  **Query deleted objects** - Deleted objects that are in trash bin are
+   not selected by a normal queryset, but if a special method `query_all`
+   is used then also deleted objects are searched.
+   If a trash bin is supported by the model then a boolean field `IsDeleted`
+   can be in the model and it is possible to select only deleted objects ::
+
+     deleted_list = list(Lead.objects.filter(IsDeleted=True).query_all())
+
 Introspection and special attributes of fields
 ----------------------------------------------
 Some Salesforce fields can not be fully used without special attributes. You
