@@ -271,7 +271,8 @@ class SalesforceQuerySet(query.QuerySet):
 				if model is None:
 					model = self.model
 				try:
-					if field.name in only_load[model]:
+					selected_name = field.attname if DJANGO_18_PLUS else field.name
+					if selected_name in only_load[model]:
 						# Add a field that has been explicitly included
 						load_fields.append(field.name)
 				except KeyError:
