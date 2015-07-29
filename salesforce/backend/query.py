@@ -317,7 +317,7 @@ class SalesforceRawQuery(RawQuery):
 		converter = connections[self.using].introspection.table_name_converter
 		if self.cursor.rowcount > 0:
 			return [converter(col) for col in self.cursor.first_row.keys() if col != 'attributes']
-		return ['Id']
+		return [SF_PK]
 
 	def _execute_query(self):
 		self.cursor = CursorWrapper(connections[self.using], self)
