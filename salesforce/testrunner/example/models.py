@@ -121,7 +121,7 @@ class Contact(SalesforceModel):
 	# Example that db_column is not necessary for most of fields even with
 	# lower case names and for ForeignKey
 	account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
-			blank=True, null=True)  # db_column: 'OwnerId'
+			blank=True, null=True)  # db_column: 'AccountId'
 	last_name = models.CharField(max_length=80)
 	first_name = models.CharField(max_length=40, blank=True)
 	name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
