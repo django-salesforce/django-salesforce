@@ -344,15 +344,6 @@ class BasicSOQLTest(TestCase):
 			retrieved_pricebook_entry.delete()
 			product.delete()
 
-	@skipUnless('ChargentOrders__ChargentOrder__c' in sf_tables,
-			'Not found custom tables ChargentOrders__*')
-	def test_custom_objects(self):
-		"""
-		Make sure custom objects work.
-		"""
-		orders = ChargentOrder.objects.all()[0:5]
-		self.assertEqual(len(orders), 5)
-
 	@skipUnless('django_Test__c' in sf_tables, "Not found custom object 'django_Test__c'")
 	def test_simple_custom_object(self):
 		"""
