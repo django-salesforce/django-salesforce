@@ -626,7 +626,9 @@ class BasicSOQLTest(TestCase):
 		values = Contact.objects.values('pk', 'first_name', 'last_name')[:2]
 		self.assertEqual(len(values), 2)
 		self.assertIn('first_name', values[0])
+		self.assertNotIn('attributes', values[0])
 		self.assertEqual(len(values[0]), 3)
+		self.assertTrue(values[0]['pk'].startswith('003'))
 
 		values_list = Contact.objects.values_list('pk', 'first_name', 'last_name')[:2]
 		self.assertEqual(len(values_list), 2)
