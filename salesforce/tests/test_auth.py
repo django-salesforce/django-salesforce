@@ -12,11 +12,7 @@ from salesforce import auth
 from salesforce.backend import sf_alias
 from salesforce.testrunner.example import models
 from salesforce.tests.test_integration import default_is_sf
-try:
-	from unittest import skip, skipUnless
-except ImportError:
-	# old Python 2.6 (Django 1.4 - 1.6 simulated unittest2)
-	from django.utils.unittest import skip, skipUnless
+from .utils import skip, skipUnless
 
 import logging
 log = logging.getLogger(__name__)
