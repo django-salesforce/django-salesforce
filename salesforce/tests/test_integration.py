@@ -624,7 +624,7 @@ class BasicSOQLTest(TestCase):
 		self.assertIn('first_name', values[0])
 		self.assertNotIn('attributes', values[0])
 		self.assertEqual(len(values[0]), 3)
-		self.assertTrue(values[0]['pk'].startswith('003'))
+		self.assertRegexpMatches(values[0]['pk'], '^003')
 
 		values_list = Contact.objects.values_list('pk', 'first_name', 'last_name')[:2]
 		self.assertEqual(len(values_list), 2)
@@ -755,8 +755,8 @@ class BasicSOQLTest(TestCase):
 			if not DJANGO_17_PLUS:
 				self.skipTest("Skipped filters with nontrivial relations")
 			# Verify expected filters in SOQL compiled by new Django
-			self.assertTrue('Lead.Owner.Username = %s' in sql)
-			self.assertTrue('Lead.LastModifiedBy.Username = %s' in sql)
+			self.assertIn('Lead.Owner.Username = %s', sql)
+			self.assertIn('Lead.LastModifiedBy.Username = %s', sql)
 			# verify validity for SFDC, verify results
 			refreshed_lead = qs.get()
 			self.assertEqual(refreshed_lead.id, test_lead.id)
