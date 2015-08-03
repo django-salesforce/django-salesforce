@@ -355,7 +355,27 @@ class SalesforceWhereNode(where.WhereNode):
 			# technically matches everything) for backwards compatibility reasons.
 			# Refs #5261.
 
-			if DJANGO_17_EXACT:
+			if DJANGO_18_PLUS:
+				# "rev" is a mapping from the table alias to the path in query
+				# structure tree, recursively reverse to alias_map.
+				rev = {}
+				for k, v in qn.query.alias_map.items():
+					assert v.table_alias == k
+					if v.join_type is None:
+						rev[v.table_alias] = v.table_name
+				assert len(rev) == 1
+				xi = 0
+				while len(rev) < len(qn.query.alias_map) and xi < len(qn.query.alias_map):
+					for k, v in qn.query.alias_map.items():
+						if v.parent_alias in rev:
+							lhs_field =  re.sub('\Id$', '', re.sub('__c$', '__r', v.join_cols[0][0]))
+							rev[v.table_alias] = '.'.join((rev[v.parent_alias], lhs_field))
+							assert len(v.join_cols) == 1 and v.join_cols[0][1] == 'Id'
+					xi += 1
+				#print(rev, xi)
+				# Verify that the catch against infinite loop "xi" has not been reached.
+				assert xi < len(qn.query.alias_map)
+			elif DJANGO_17_EXACT:
 				# "rev" is a mapping from the table alias to the path in query
 				# structure tree, recursively reverse to join_map.
 				rev = {}
@@ -395,7 +415,7 @@ class SalesforceWhereNode(where.WhereNode):
 					nothing_childs += 1
 				else:
 					if sql:
-						if DJANGO_17_EXACT:
+						if DJANGO_17_PLUS:
 							x_match = re.match(r'(\w+)\.(.*)', sql)
 							if x_match:
 								x_table, x_field = x_match.groups()
