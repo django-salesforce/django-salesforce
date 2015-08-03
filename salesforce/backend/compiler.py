@@ -370,7 +370,7 @@ class SalesforceWhereNode(where.WhereNode):
 						if v.parent_alias in rev:
 							lhs_field =  re.sub('\Id$', '', re.sub('__c$', '__r', v.join_cols[0][0]))
 							rev[v.table_alias] = '.'.join((rev[v.parent_alias], lhs_field))
-							assert len(v.join_cols) == 1 and v.join_cols[0][1] == 'Id'
+							assert len(v.join_cols) == 1 and len(v.join_cols[0]) == 2 and v.join_cols[0][1] == 'Id'
 					xi += 1
 				#print(rev, xi)
 				# Verify that the catch against infinite loop "xi" has not been reached.
