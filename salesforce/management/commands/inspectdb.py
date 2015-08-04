@@ -132,7 +132,7 @@ class Command(InspectDBCommand):
 			if reconstructed != col_name or self.verbosity >= 2:
 				field_params['db_column'] = col_name
 			else:
-				field_params.pop('db_column', None)
+				field_params.pop('db_column')
 			if is_relation:
 				if col_name in sf_introspection.last_with_important_related_name:
 					field_params['related_name'] = '%s_%s_set' % (

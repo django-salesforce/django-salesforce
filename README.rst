@@ -7,7 +7,7 @@ django-salesforce
 This library allows you to load and edit the objects in any Salesforce instance
 using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
-the objects in your SFDC instance as if they were in a traditional database.
+the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
 Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7, partly Django 1.8.
 The best supported version is currently Django 1.7, including relative
