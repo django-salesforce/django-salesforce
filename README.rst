@@ -225,6 +225,17 @@ Advanced usage
 
      deleted_list = list(Lead.objects.filter(IsDeleted=True).query_all())
 
+-  **Migrations** - Migrations can be used for an alternate test database
+   with SalesforceModel. Then all tables must have Meta `managed = True` and
+   attributes db_table and db_column are required. (Migrations in SFDC
+   will be probably never supported, though it was experimantally tested
+   creation of a new simple table in sandbox if a development patch is
+   applied and permissions increased. If anything would be implemented after
+   all, a new attribute will be added to SalesforceModel for safe forward
+   compatibility. Consequently, the setting `managed = True` can be considered
+   safe as it is related only to the alternate non SFDC database configured
+   by `SF_ALIAS`.)
+
 Introspection and special attributes of fields
 ----------------------------------------------
 Some Salesforce fields can not be fully used without special attributes. You
@@ -267,6 +278,12 @@ can see in the output of ``inspectdb`` in the most complete form.
    In this example, inspectdb will only export models for tables with exact
    name ``Contact`` and all tables that are prefixed with ``Account``. This
    filter works with all supported database types.
+
+-  **Verbosity** - This package can set correct column names for Salesforce
+   without explicit attribute ``db_column`` for many objects automatically.
+   These attributes are not exported if a default verbosity is used. This is
+   intended for use only with SFDC. If an alternate non SFDC test database
+   is also expected and migrations of any SalesforceModel will 
 
 -  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
    be implemented using the generic relational database abstraction and the REST API.
