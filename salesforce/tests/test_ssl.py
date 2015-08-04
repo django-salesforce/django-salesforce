@@ -14,6 +14,7 @@ import sys
 # some tests will be run only if they are selected explicitely on the command
 # line "test salesforce.tests.test_ssl.SSLTest..."
 explicitely_selected = 'SslTest' in str(sys.argv)
+skiptest_tls_11 = getattr(settings, 'SF_SSL', {}).get('skiptest_tls_11', False)
 
 class SslTest(TestCase):
 	"""
@@ -35,6 +36,7 @@ class SslTest(TestCase):
 		except requests.exceptions.SSLError as e:
 			return True
 
+	@skipUnless(not skiptest_tls_11, "Skipped due to skiptest_tls_11")
 	def test_to_server_without_tls_10(self):
 		"""
 		Verify that connection is possible to SFDC servers that disabled TLS 1.0
