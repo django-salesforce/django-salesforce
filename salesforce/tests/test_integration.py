@@ -67,8 +67,8 @@ class BasicSOQLTest(TestCase):
 		self.objs = []
 		self.test_lead.save()
 		if not default_is_sf:
-			add_obj(Contact(LastName='Test contact 1'))
-			add_obj(Contact(LastName='Test contact 2'))
+			add_obj(Contact(last_name='Test contact 1'))
+			add_obj(Contact(last_name='Test contact 2'))
 			add_obj(User(Username=current_user))
 	
 	def tearDown(self):
@@ -624,7 +624,8 @@ class BasicSOQLTest(TestCase):
 		self.assertIn('first_name', values[0])
 		self.assertNotIn('attributes', values[0])
 		self.assertEqual(len(values[0]), 3)
-		self.assertRegexpMatches(values[0]['pk'], '^003')
+		if default_is_sf:
+			self.assertRegexpMatches(values[0]['pk'], '^003')
 
 		values_list = Contact.objects.values_list('pk', 'first_name', 'last_name')[:2]
 		self.assertEqual(len(values_list), 2)
@@ -707,6 +708,7 @@ class BasicSOQLTest(TestCase):
 	#	# raises "TypeError: list indices must be integers, not str" in resolve_columns
 	#	list(Contact.objects.raw("select Count() from Contact"))
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_only_fields(self):
 		"""Verify that access to "only" fields doesn't require a request, but others do."""
 		request_count_0 = salesforce.backend.query.request_count
@@ -724,6 +726,7 @@ class BasicSOQLTest(TestCase):
 		_ = xx.last_name                                                        # req 5
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 5)
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_defer_fields(self):
 		"""Verify that access to a deferred field requires a new request, but others don't."""
 		request_count_0 = salesforce.backend.query.request_count
@@ -737,6 +740,7 @@ class BasicSOQLTest(TestCase):
 	def test_incomplete_raw(self):
 		Contact.objects.raw("select id from Contact")[0].last_name
 
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_filter_by_more_fk_to_the_same_model(self):
 		"""
 		Test that aliases are correctly decoded if more relations to

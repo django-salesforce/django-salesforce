@@ -192,7 +192,7 @@ class Lead(SalesforceModel):
 	owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
 			default=models.DEFAULTED_ON_CREATE,
 			related_name='lead_owner_set')
-	last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+	last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, null=True,
 			sf_read_only=models.READ_ONLY,
 			related_name='lead_lastmodifiedby_set')
 
@@ -290,14 +290,14 @@ class Note(models.Model):
 	parent_type = models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
 
 
-class Opportunity(models.Model):
+class Opportunity(SalesforceModel):
 	name = models.CharField(max_length=255)
 	contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole', related_name='opportunities')
 	close_date = models.DateField()
 	stage = models.CharField(max_length=255, db_column='StageName') # e.g. "Prospecting"
 
 
-class OpportunityContactRole(models.Model):
+class OpportunityContactRole(SalesforceModel):
 	opportunity = models.ForeignKey(Opportunity, on_delete=models.DO_NOTHING, related_name='contact_roles')
 	contact = models.ForeignKey(Contact, on_delete=models.DO_NOTHING, related_name='opportunity_roles')
 	role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
