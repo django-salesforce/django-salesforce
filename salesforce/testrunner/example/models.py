@@ -352,7 +352,11 @@ if DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False):
 			db_table = 'django_Test__c'
 
 
-	class NoteAttachment(models.Model):
+	# example of relationship from builtin object to custom object
+
+	class Attachment(models.Model):
 		# A standard SFDC object that can have a relationship to any custom object
+		name = models.CharField(max_length=80)
 		parent = models.ForeignKey(Test, sf_read_only=models.NOT_UPDATEABLE, on_delete=models.DO_NOTHING)
-		title = models.CharField(max_length=80)
+		# The "body" of Attachment can't be queried for more rows togehter.
+		body = models.TextField()

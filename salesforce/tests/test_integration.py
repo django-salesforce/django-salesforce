@@ -18,7 +18,7 @@ from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
-		Product, Pricebook, PricebookEntry, Note)
+		Product, Pricebook, PricebookEntry, Note, Attachment)
 from salesforce.testrunner.example.models import Test as TestCustomExample
 from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS
 from salesforce.backend import sf_alias
@@ -348,11 +348,14 @@ class BasicSOQLTest(TestCase):
 		results = TestCustomExample.objects.all()[0:1]
 		obj = TestCustomExample(test_text='sf_test')
 		obj.save()
+		attachment = Attachment(name='test attachment', parent=obj)
+		attachment.save()
 		try:
 			results = TestCustomExample.objects.all()[0:1]
 			self.assertEqual(len(results), 1)
 			self.assertEqual(results[0].test_text, 'sf_test')
 		finally:
+			attachment.delete()
 			obj.delete()
 
 	def test_namespaces_auto(self):
