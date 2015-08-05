@@ -1,32 +1,19 @@
 sudo: false
 language: python
-python:
-  # - "2.6"
-  - "2.7"
-  # - "3.3"
 env:
   global:
     - secure: "Z6wS6a/YcyT8w5l+2HfMItbn2mbv+f1W43WixoqB4QkgiocjBWvmAQD6PN1sEgWVmZlRvWCABK8FcGG+Y6RPFeNdCE0U1h9hEgOiAnhUpWWH/AhOYDZ0PnFwA3/iRrHS2VFPmhdkjw1BUEfqXaJfDYtlZLgpMMfRvEjIJ8Uqq6M="
     - secure: "JJGGbExBKyXkAltrc4rRLG56ks20/GfGcfugI9mqjeHgQ7IcDvhnouqAIjfbNlhgclyAkWHwJRs7taaM0T9a9AcEQujs2B0JJYOLQSBGnWJSCbsDspWAdlT92U+PzhnZrDm7apg1iBk/c8KtofBo6DqsTveBocFnYXTjeqbSVuY="
     - secure: "TrsYtntXQWgjrXPFaL3aUPoyPtR7pBVqsRx5dIj0yhrPuZR0L2bFi0MOA8cXflaYucx+xa+PEyrPO6FfLl+ri8I2WiXeDLbXlUC614UW6Od1kCklZ7/gk5wor7RwfEtIAtxh5erljUw2N2O9utkRFBDCuASRaQCqBzMItgcUOhA="
     - secure: "IIcUd3p7k0RFZJW9b+t5NRATvoS3kERIWBTQoE2LkFRaMFbwAJ/CMFxnGzF7whwEGqgWDtDiILYj9KHchiUMw85A+qEXDlwk60hVJyVJzqm5jyPewV19WK4JRo/21BrwNErvJm6echWHtfboHEWxHousVH7uyrujrK4ULDWZRnc="
-  matrix:
-    # - DJANGO_VERSION=1.4.10
-    # - DJANGO_VERSION=1.5.5
-    - DJANGO_VERSION=1.7.7
-matrix:
-  exclude:
-    - python: "3.3"
-      env: DJANGO_VERSION=1.4.10
 before_install:
  - "pip install setuptools_git"
 install:
-  - "pip install Django==$DJANGO_VERSION"
+  - "pip install -U pip"
+  - "pip install tox"
   - "pip install -r requirements.txt"
   - "pip install ."
 script:
   - echo -e "import ssl\nSF_SSL = dict(ssl_version=ssl.PROTOCOL_SSLv23)" > salesforce/testrunner/local_settings.py
   - python manage.py syncdb --noinput
-  - bash tests/inspectdb/test.sh
-  - bash tests/tests.sh
-  - python manage.py test salesforce
+  - tox
