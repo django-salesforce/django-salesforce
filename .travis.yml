@@ -6,9 +6,11 @@ env:
     - secure: "JJGGbExBKyXkAltrc4rRLG56ks20/GfGcfugI9mqjeHgQ7IcDvhnouqAIjfbNlhgclyAkWHwJRs7taaM0T9a9AcEQujs2B0JJYOLQSBGnWJSCbsDspWAdlT92U+PzhnZrDm7apg1iBk/c8KtofBo6DqsTveBocFnYXTjeqbSVuY="
     - secure: "TrsYtntXQWgjrXPFaL3aUPoyPtR7pBVqsRx5dIj0yhrPuZR0L2bFi0MOA8cXflaYucx+xa+PEyrPO6FfLl+ri8I2WiXeDLbXlUC614UW6Od1kCklZ7/gk5wor7RwfEtIAtxh5erljUw2N2O9utkRFBDCuASRaQCqBzMItgcUOhA="
     - secure: "IIcUd3p7k0RFZJW9b+t5NRATvoS3kERIWBTQoE2LkFRaMFbwAJ/CMFxnGzF7whwEGqgWDtDiILYj9KHchiUMw85A+qEXDlwk60hVJyVJzqm5jyPewV19WK4JRo/21BrwNErvJm6echWHtfboHEWxHousVH7uyrujrK4ULDWZRnc="
-before_install:
- - "pip install setuptools_git"
+    - PYENV_ROOT="$HOME/.pyenv"
+    - PATH="$PYENV_ROOT/bin:$PATH"
 install:
+  - "git clone https://github.com/yyuu/pyenv.git ~/.pyenv"
+  - "eval \"$(pyenv init -)\""
   - "pyenv install 2.6"
   - "pyenv install 2.7"
   - "pyenv install 3.3"
