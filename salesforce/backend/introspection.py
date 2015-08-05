@@ -13,6 +13,7 @@ import logging
 import re
 
 from salesforce import models, DJANGO_15_PLUS, DJANGO_18_PLUS
+from salesforce.fields import SF_PK
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -114,6 +115,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			del self._table_description_cache[table]['fields'][0]
 		return self._table_description_cache[table]
 	
+	def table_name_converter(self, name):
+		return name if name.lower() != 'id' else SF_PK
+
 	def get_table_list(self, cursor):
 		"Returns a list of table names in the current database."
 		result = [SfProtectName(x['name'])

@@ -82,6 +82,7 @@ class Command(InspectDBCommand):
 	def handle_noargs(self, **options):
 		if isinstance(options['table_name_filter'], str):
 			options['table_name_filter'] = re.compile(options['table_name_filter']).match
+		self.verbosity = int(options['verbosity'])
 		self.connection = connections[options['database']]
 		if self.connection.vendor == 'salesforce':
 			if not six.PY3:
@@ -128,10 +129,10 @@ class Command(InspectDBCommand):
 				reconstructed += 'Id'
 			# TODO: Discuss: Maybe 'db_column' can be compared case insensitive,
 			#       but exact compare is safer.
-			if reconstructed != col_name:
+			if reconstructed != col_name or self.verbosity >= 2:
 				field_params['db_column'] = col_name
 			else:
-				field_params.pop('db_column', None)
+				field_params.pop('db_column')
 			if is_relation:
 				if col_name in sf_introspection.last_with_important_related_name:
 					field_params['related_name'] = '%s_%s_set' % (

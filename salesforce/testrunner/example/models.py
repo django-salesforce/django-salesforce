@@ -121,7 +121,7 @@ class Contact(SalesforceModel):
 	# Example that db_column is not necessary for most of fields even with
 	# lower case names and for ForeignKey
 	account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
-			blank=True, null=True)  # db_column: 'OwnerId'
+			blank=True, null=True)  # db_column: 'AccountId'
 	last_name = models.CharField(max_length=80)
 	first_name = models.CharField(max_length=40, blank=True)
 	name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
@@ -192,7 +192,7 @@ class Lead(SalesforceModel):
 	owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
 			default=models.DEFAULTED_ON_CREATE,
 			related_name='lead_owner_set')
-	last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+	last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, null=True,
 			sf_read_only=models.READ_ONLY,
 			related_name='lead_lastmodifiedby_set')
 
@@ -283,22 +283,6 @@ class SalesforceParentModel(SalesforceModel):
 		abstract = True
 
 
-class GeneralCustomModel(SalesforceModel):
-	"""
-	This model is used for tests on a field of type CharField on a custom model
-	specified in local_settings.py:
-	Example:
-		TEST_CUSTOM_FIELD = 'TIMBASURVEYS__SurveyQuestion__c.TIMBASURVEYS__Question__c'
-	Other fields shouldn't be required for saving that object.
-	"""
-	# The line "managed = False" or Meta inherited from SalesforceModel.Meta
-	# is especially important if the model shares a table with other model.
-	class Meta:
-		db_table = test_custom_db_table
-
-	GeneralCustomField = models.CharField(max_length=255, db_column=test_custom_db_column)
-
-
 class Note(models.Model):
 	title = models.CharField(max_length=80)
 	body = models.TextField(null=True)
@@ -306,26 +290,26 @@ class Note(models.Model):
 	parent_type = models.CharField(max_length=50, db_column='Parent.Type', sf_read_only=models.READ_ONLY)
 
 
-class Opportunity(models.Model):
+class Opportunity(SalesforceModel):
 	name = models.CharField(max_length=255)
 	contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole', related_name='opportunities')
 	close_date = models.DateField()
 	stage = models.CharField(max_length=255, db_column='StageName') # e.g. "Prospecting"
 
 
-class OpportunityContactRole(models.Model):
+class OpportunityContactRole(SalesforceModel):
 	opportunity = models.ForeignKey(Opportunity, on_delete=models.DO_NOTHING, related_name='contact_roles')
 	contact = models.ForeignKey(Contact, on_delete=models.DO_NOTHING, related_name='opportunity_roles')
 	role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
 
 
 class Organization(models.Model):
-    name = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE)
-    division = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE, blank=True)
-    organization_type = models.CharField(max_length=40, verbose_name='Edition',
-    		sf_read_only=models.READ_ONLY) # e.g 'Developer Edition', Enteprise, Unlimited...
-    instance_name = models.CharField(max_length=5, sf_read_only=models.READ_ONLY, blank=True)
-    is_sandbox = models.BooleanField(sf_read_only=models.READ_ONLY)
+	name = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE)
+	division = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE, blank=True)
+	organization_type = models.CharField(max_length=40, verbose_name='Edition',
+			sf_read_only=models.READ_ONLY) # e.g 'Developer Edition', Enteprise, Unlimited...
+	instance_name = models.CharField(max_length=5, sf_read_only=models.READ_ONLY, blank=True)
+	is_sandbox = models.BooleanField(sf_read_only=models.READ_ONLY)
 
 
 # Skipping the model if a custom table isn't installed in your Salesforce
@@ -362,12 +346,17 @@ if DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False):
 		test_text = models.CharField(max_length=40)
 		test_bool = models.BooleanField(default=False)
 		contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING)
+
 		class Meta:
 			custom = True
 			db_table = 'django_Test__c'
 
 
-	class NoteAttachment(models.Model):
+	# example of relationship from builtin object to custom object
+
+	class Attachment(models.Model):
 		# A standard SFDC object that can have a relationship to any custom object
+		name = models.CharField(max_length=80)
 		parent = models.ForeignKey(Test, sf_read_only=models.NOT_UPDATEABLE, on_delete=models.DO_NOTHING)
-		title = models.CharField(max_length=80)
+		# The "body" of Attachment can't be queried for more rows togehter.
+		body = models.TextField()

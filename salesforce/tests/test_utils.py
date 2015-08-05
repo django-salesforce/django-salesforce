@@ -5,12 +5,7 @@ import unittest
 
 from salesforce.testrunner.example.models import Account, Contact, Lead, Opportunity
 from salesforce.utils import convert_lead
-
-try:
-	from unittest import skip, skipUnless
-except ImportError:
-	# old Python 2.6 (Django 1.4 - 1.6 simulated unittest2)
-	from django.utils.unittest import skip, skipUnless
+from .utils import skip, skipUnless
 try:
     import beatbox
 except ImportError:

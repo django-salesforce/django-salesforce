@@ -7,7 +7,7 @@ django-salesforce
 This library allows you to load and edit the objects in any Salesforce instance
 using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
-the objects in your SFDC instance as if they were in a traditional database.
+the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
 Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7, partly Django 1.8.
 The best supported version is currently Django 1.7, including relative
@@ -217,6 +217,25 @@ Advanced usage
 -  **Meta class options** - If an inner ``Meta`` class is used, it must be a
    descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
 
+-  **Query deleted objects** - Deleted objects that are in trash bin are
+   not selected by a normal queryset, but if a special method `query_all`
+   is used then also deleted objects are searched.
+   If a trash bin is supported by the model then a boolean field `IsDeleted`
+   can be in the model and it is possible to select only deleted objects ::
+
+     deleted_list = list(Lead.objects.filter(IsDeleted=True).query_all())
+
+-  **Migrations** - Migrations can be used for an alternate test database
+   with SalesforceModel. Then all tables must have Meta `managed = True` and
+   attributes db_table and db_column are required. (Migrations in SFDC
+   will be probably never supported, though it was experimantally tested
+   creation of a new simple table in sandbox if a development patch is
+   applied and permissions increased. If anything would be implemented after
+   all, a new attribute will be added to SalesforceModel for safe forward
+   compatibility. Consequently, the setting `managed = True` can be considered
+   safe as it is related only to the alternate non SFDC database configured
+   by `SF_ALIAS`.)
+
 Introspection and special attributes of fields
 ----------------------------------------------
 Some Salesforce fields can not be fully used without special attributes. You
@@ -259,6 +278,12 @@ can see in the output of ``inspectdb`` in the most complete form.
    In this example, inspectdb will only export models for tables with exact
    name ``Contact`` and all tables that are prefixed with ``Account``. This
    filter works with all supported database types.
+
+-  **Verbosity** - This package can set correct column names for Salesforce
+   without explicit attribute ``db_column`` for many objects automatically.
+   These attributes are not exported if a default verbosity is used. This is
+   intended for use only with SFDC. If an alternate non SFDC test database
+   is also expected and migrations of any SalesforceModel will 
 
 -  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
    be implemented using the generic relational database abstraction and the REST API.
@@ -314,6 +339,17 @@ the old insecure protocols including SSL v3 are disabled unless you've installed
 PyOpenSSL. As long as you have *not* installed PyOpenSSL, it's recommended you
 update your settings to use `PROTOCOL_SSLv23`.
 
+The test of readiness for TLS better than 1.0 and a test of disabled SSL 3
+are run by all tests. These tests give also some suggestions for the tested machine.
+More tests for SSL/TLS client security by popular SSL evaluation sites can be
+run by the command ::
+
+   python manage.py test salesforce.tests.test_ssl.SslTest
+
+Additional tests are skipped without the word `SslTest` on the command line,
+because some vulnerabilities are hopefully not (so?) important for connections
+to SFDC.
+
 If you have an old Python, you can improve security a little (SNI, validation of
 certificates, fixed InsecurePlatformWarning) by additional packages:
 
@@ -322,10 +358,9 @@ certificates, fixed InsecurePlatformWarning) by additional packages:
 These have dependencies on the libffi development libararies. Install `libffi-dev` on
 Debian/Ubuntu or `libffi-devel` on RedHat derivatives.
 
-Hoever, once you're using Python 2.7.9 and newer or Python 3.4.0 and newer, installing
-pyOpenSSL enables SSLv3 again. If you *must* install PyOpenSSL on these Python versions,
-it is more secure to use ssl.PROTOCOL_TLSv1 than other protocols, as even if you
-set PROTOCOL_SSLv23 you are open to a downgrade attack to an older SSL protocol.
+However, once you're using Python 2.7.9 and newer or Python 3.4.0 and newer, installing
+pyOpenSSL can enable SSLv3 again. If you *must* install PyOpenSSL on these Python versions,
+it is more secure to use ssl.PROTOCOL_TLSv1 than other protocols.
 
 Ultimately this will become moot for users of django-salesforce, as SFDC will soon require
 the updated setting.

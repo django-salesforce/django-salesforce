@@ -41,7 +41,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v32.0'
+API_STUB = '/services/data/v34.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
@@ -271,7 +271,8 @@ class SalesforceQuerySet(query.QuerySet):
 				if model is None:
 					model = self.model
 				try:
-					if field.name in only_load[model]:
+					selected_name = field.attname if DJANGO_18_PLUS else field.name
+					if selected_name in only_load[model]:
 						# Add a field that has been explicitly included
 						load_fields.append(field.name)
 				except KeyError:
@@ -316,7 +317,7 @@ class SalesforceRawQuery(RawQuery):
 		converter = connections[self.using].introspection.table_name_converter
 		if self.cursor.rowcount > 0:
 			return [converter(col) for col in self.cursor.first_row.keys() if col != 'attributes']
-		return ['Id']
+		return [SF_PK]
 
 	def _execute_query(self):
 		self.cursor = CursorWrapper(connections[self.using], self)
