@@ -1,9 +1,5 @@
 sudo: false
 language: python
-python:
-  # - "2.6"
-  - "2.7"
-  # - "3.3"
 env:
   global:
     - secure: "Z6wS6a/YcyT8w5l+2HfMItbn2mbv+f1W43WixoqB4QkgiocjBWvmAQD6PN1sEgWVmZlRvWCABK8FcGG+Y6RPFeNdCE0U1h9hEgOiAnhUpWWH/AhOYDZ0PnFwA3/iRrHS2VFPmhdkjw1BUEfqXaJfDYtlZLgpMMfRvEjIJ8Uqq6M="
@@ -13,11 +9,11 @@ env:
 before_install:
  - "pip install setuptools_git"
 install:
-  - "pip install -U pip"
+  - "pyenv install 2.6"
+  - "pyenv install 2.7"
+  - "pyenv install 3.3"
+  - "pyenv rehash"
   - "pip install tox"
-  - "pip install -r requirements.txt"
-  - "pip install ."
 script:
   - echo -e "import ssl\nSF_SSL = dict(ssl_version=ssl.PROTOCOL_SSLv23)" > salesforce/testrunner/local_settings.py
-  - python manage.py syncdb --noinput
-  - tox py27dj17
+  - tox
