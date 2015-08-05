@@ -18,6 +18,7 @@ from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
+		Opportunity, OpportunityContactRole,
 		Product, Pricebook, PricebookEntry, Note, Attachment)
 from salesforce.testrunner.example.models import Test as TestCustomExample
 from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS
@@ -736,6 +737,27 @@ class BasicSOQLTest(TestCase):
 			self.assertEqual(refreshed_lead.id, test_lead.id)
 		finally:
 			test_lead.delete()
+
+	def test_many2many_relationship(self):
+		"""Verify that the related set of Many2Many relationship works
+		"""
+		contact = Contact.objects.all()[0]
+		oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
+		oppo.save()
+		oc = OpportunityContactRole(opportunity=oppo, contact=contact, role='rolicka')
+		oc.save()
+		oc2 = OpportunityContactRole(opportunity=oppo, contact=contact, role='rolicka')
+		oc2.save()
+		try:
+			qs = contact.opportunities.all()
+			sql, params = qs.query.get_compiler('salesforce').as_sql()
+			self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Opportunity\.StageName.* '
+					'FROM OpportunityContactRole WHERE OpportunityContactRole.ContactId =')
+			self.assertEqual([x.id for x in qs], 2 * [oppo.id])
+		finally:
+			oc2.delete()
+			oc.delete()
+			oppo.delete()
 
 	def test_none_method_queryset(self):
 		"""Test that none() method in the queryset returns [], not error"""
