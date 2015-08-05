@@ -8,6 +8,9 @@ ADMINS = (
 	# ('Your Name', 'your_email@example.com'),
 )
 
+import ssl
+SF_SSL = {'ssl_version': ssl.PROTOCOL_SSLv23}
+
 PERSON_ACCOUNT_ACTIVATED = False
 
 DATABASES = {
