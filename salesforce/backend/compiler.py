@@ -263,11 +263,13 @@ class SQLCompiler(compiler.SQLCompiler):
 		for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
 			alias_type[rhs] = table
 		assert len(alias_type) >= len(self.query.join_map) - 1
+		import pprint; pprint.pprint(list(self.query.join_map.items()))
 		for (lhs, table, join_cols), (rhs,) in list(self.query.join_map.items()):
 			if join_cols is not None:
 				assert len(join_cols) == 1 and len(join_cols[0]) == 2
 				# swap left-right if necessary. The left should be the top.
 				if join_cols[0][0] == 'Id':
+					import pdb; pdb.set_trace()
 					del self.query.join_map[lhs, table, join_cols]
 					lhs, rhs = rhs, lhs
 					join_cols = ((join_cols[0][1], join_cols[0][0]),)
@@ -285,12 +287,15 @@ class SQLCompiler(compiler.SQLCompiler):
 		assert len(side_l.union(side_r)) == len(self.query.join_map)
 		(top_lhs,) = set(side_l).difference(side_r)
 		# translation rules into SOQL
-		soql_trans = {top_lhs: top_lhs}
+		soql_trans = {}
+		for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
+			if join_cols is None and rhs in top_lhs:
+				soql_trans[rhs] = table
 		work_lhses = set([top_lhs])
 		while work_lhses:
 			new_work = set()
 			for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
-				if lhs in work_lhses:
+				if lhs in work_lhses and join_cols:
 					assert not rhs in soql_trans
 					if rhs.endswith('__c'):
 						fkey = re.sub('__c$', '__r', join_cols[0][0])
@@ -301,6 +306,7 @@ class SQLCompiler(compiler.SQLCompiler):
 			work_lhses = new_work
 		assert len(soql_trans) == len(self.query.join_map)
 		self.soql_trans = soql_trans
+		print(soql_trans)
 		return self.soql_trans
 
 

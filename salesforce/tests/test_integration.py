@@ -759,6 +759,16 @@ class BasicSOQLTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
+	def test_subquery_condition(self):
+		qs = OpportunityContactRole.objects.filter(role='abc',
+				opportunity__in=Opportunity.objects.filter(stage='Prospecting'))
+		sql, params = qs.query.get_compiler('salesforce').as_sql()
+		self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Role.* '
+					'FROM OpportunityContactRole WHERE \(OpportunityContactRole.Role = %s AND '
+						 'OpportunityContactRole.OpportunityId IN '
+					'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s\)\)'
+					)
+
 	def test_none_method_queryset(self):
 		"""Test that none() method in the queryset returns [], not error"""
 		request_count_0 = salesforce.backend.query.request_count
