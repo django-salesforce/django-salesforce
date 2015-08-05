@@ -20,6 +20,8 @@ class SQLCompiler(compiler.SQLCompiler):
 	"""
 	A subclass of the default SQL compiler for the SOQL dialect.
 	"""
+	soql_trans = None
+
 	def resolve_columns(self, row, fields):
 		# This method (conversion from row dict to list) is necessary only for
 		# SF raw query, but if it exists then it is used by all SOQL queries.
@@ -30,7 +32,14 @@ class SQLCompiler(compiler.SQLCompiler):
 		Remove table names and strip quotes from column names.
 		"""
 		if DJANGO_16_PLUS:
+			soql_trans = self.reorder_query()
 			cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
+			out = []
+			for col in cols:
+				if re.match(r'^\w+\.\w+$', col):
+					tab_name, col_name = col.split('.')
+					out.append('%s.%s' % (soql_trans[tab_name], col_name))
+			cols = out
 		else:
 			cols = compiler.SQLCompiler.get_columns(self, with_aliases)
 		result = [x.replace(' AS ', ' ') for x in cols]
@@ -50,6 +59,10 @@ class SQLCompiler(compiler.SQLCompiler):
 		It should be only the name of base object, even in parent-to-child and
 		child-to-parent relationships queries.
 		"""
+		if DJANGO_17_PLUS:
+			for k, v in self.reorder_query().items():
+				if k == v:
+					return [k], []
 		for alias in self.query.tables:
 			if self.query.alias_refcount[alias]:
 				try:
@@ -236,6 +249,60 @@ class SQLCompiler(compiler.SQLCompiler):
 				# Finally do cleanup - get rid of the joins we created above.
 				self.query.reset_refcounts(refcounts_before)
 
+	def reorder_query(self):
+		# SOQL for SFDC requires:
+		# - multiple (N-1) relations between (N) tables are possible
+		# - exactly one top controlling table
+		# - every relation is a join from exactly one foreign key to
+		#   one primary key named "Id".
+		#
+		# Reorder relations to be from the left to the right
+		if self.soql_trans:
+			return self.soql_trans
+		alias_type = {}
+		for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
+			alias_type[rhs] = table
+		assert len(alias_type) >= len(self.query.join_map) - 1
+		for (lhs, table, join_cols), (rhs,) in list(self.query.join_map.items()):
+			if join_cols is not None:
+				assert len(join_cols) == 1 and len(join_cols[0]) == 2
+				# swap left-right if necessary. The left should be the top.
+				if join_cols[0][0] == 'Id':
+					del self.query.join_map[lhs, table, join_cols]
+					lhs, rhs = rhs, lhs
+					join_cols = ((join_cols[0][1], join_cols[0][0]),)
+					alias_type[rhs] = alias_type[lhs]
+					self.query.join_map[lhs, table, join_cols] = (rhs,)
+				assert join_cols[0][0] != 'Id' and join_cols[0][1] == 'Id'
+		# Recognize the top table
+		side_l, side_r = set(), set()
+		for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
+			if join_cols is not None:
+				side_l.add(lhs)
+				side_r.add(rhs)
+			else:
+				side_l.add(rhs)
+		assert len(side_l.union(side_r)) == len(self.query.join_map)
+		(top_lhs,) = set(side_l).difference(side_r)
+		# translation rules into SOQL
+		soql_trans = {top_lhs: top_lhs}
+		work_lhses = set([top_lhs])
+		while work_lhses:
+			new_work = set()
+			for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
+				if lhs in work_lhses:
+					assert not rhs in soql_trans
+					if rhs.endswith('__c'):
+						fkey = re.sub('__c$', '__r', join_cols[0][0])
+					else:
+						fkey = re.sub('Id$', '', join_cols[0][0])  # TODO
+					soql_trans[rhs] = '%s.%s' % (soql_trans[lhs], fkey)
+					new_work.add(rhs)
+			work_lhses = new_work
+		assert len(soql_trans) == len(self.query.join_map)
+		self.soql_trans = soql_trans
+		return self.soql_trans
+
 
 class SalesforceWhereNode(where.WhereNode):
 	overridden_types = ['isnull']
@@ -276,6 +343,7 @@ class SalesforceWhereNode(where.WhereNode):
 					(not value_annot and '!= ' or '= ')), ())
 		else:
 			return result
+
 
 	DJANGO_14_EXACT = not DJANGO_15_PLUS
 	if DJANGO_14_EXACT:
@@ -376,23 +444,7 @@ class SalesforceWhereNode(where.WhereNode):
 				# Verify that the catch against infinite loop "xi" has not been reached.
 				assert xi < len(qn.query.alias_map)
 			elif DJANGO_17_EXACT:
-				# "rev" is a mapping from the table alias to the path in query
-				# structure tree, recursively reverse to join_map.
-				rev = {}
-				for k, v in qn.query.join_map.items():
-					if k[0] is None:
-						rev[k[1]] = k[1]
-				assert len(rev) == 1
-				xi = 0
-				#print('####', qn.query.join_map)
-				while len(rev) < len(qn.query.join_map) and xi < len(qn.query.join_map):
-					for k, v in qn.query.join_map.items():
-						if k[0] in rev:
-							rev[v[0]] = '.'.join((rev[k[0]], re.sub('\Id$', '', re.sub('__c$', '__r', k[2][0][0]))))
-					xi += 1
-				#print(rev, xi)
-				# Verify that the catch against infinite loop "xi" has not been reached.
-				assert xi < len(qn.query.join_map)
+				soql_trans = qn.reorder_query()
 
 			result = []
 			result_params = []
@@ -419,7 +471,7 @@ class SalesforceWhereNode(where.WhereNode):
 							x_match = re.match(r'(\w+)\.(.*)', sql)
 							if x_match:
 								x_table, x_field = x_match.groups()
-								sql = '%s.%s' % (rev[x_table], x_field)
+								sql = '%s.%s' % (soql_trans[x_table], x_field)
 								#print('sql params:', sql, params)
 						result.append(sql)
 						result_params.extend(params)

@@ -167,6 +167,10 @@ def prep_for_deserialize(model, record, using, init_list=None):
 	else:
 		raise ImproperlyConfigured("Can't discover the app_label for %s, you must specify it via model meta options.")
 
+	if len(record.keys()) == 1 and model._meta.db_table in record:
+		while len(record) == 1:
+			record = record.values()[0]
+
 	fields = dict()
 	for x in model._meta.fields:
 		if not x.primary_key and (not init_list or x.name in init_list):
