@@ -13,9 +13,12 @@ install:
   - "eval \"$(pyenv init -)\""
   - "pyenv install 2.6.9"
   - "pyenv install 2.7.9"
-  - "pyenv install 3.3"
+  - "pyenv install 3.3.6"
   - "pyenv rehash"
   - "pip install tox"
+cache:
+  directories:
+  - $HOME/.pyenv
 script:
   - echo -e "import ssl\nSF_SSL = dict(ssl_version=ssl.PROTOCOL_SSLv23)" > salesforce/testrunner/local_settings.py
   - tox
