@@ -11,8 +11,8 @@ env:
 install:
   - "git clone https://github.com/yyuu/pyenv.git ~/.pyenv"
   - "eval \"$(pyenv init -)\""
-  - "pyenv install 2.6"
-  - "pyenv install 2.7"
+  - "pyenv install 2.6.9"
+  - "pyenv install 2.7.9"
   - "pyenv install 3.3"
   - "pyenv rehash"
   - "pip install tox"
