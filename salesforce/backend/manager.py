@@ -64,3 +64,6 @@ class SalesforceManager(manager.Manager):
 			return self.get_queryset().query_all()
 		else:
 			return self.get_queryset()
+
+	def none(self):
+		return super(SalesforceManager, self).get_queryset().none()
