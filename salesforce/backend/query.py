@@ -169,7 +169,7 @@ def prep_for_deserialize(model, record, using, init_list=None):
 
 	if len(record.keys()) == 1 and model._meta.db_table in record:
 		while len(record) == 1:
-			record = record.values()[0]
+			record = list(record.values())[0]
 
 	fields = dict()
 	for x in model._meta.fields:
