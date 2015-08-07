@@ -21,7 +21,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		Opportunity, OpportunityContactRole,
 		Product, Pricebook, PricebookEntry, Note, Attachment)
 from salesforce.testrunner.example.models import Test as TestCustomExample
-from salesforce import router, DJANGO_15_PLUS, DJANGO_16_PLUS
+from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
 from .utils import skip, skipUnless
@@ -640,7 +640,6 @@ class BasicSOQLRoTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
-	#@skipUnless(DJANGO_16_PLUS, "Subqueries on Salesforce require Django 1.6+ for compiler")
 	def test_subquery_condition(self):
 		"""Regression test with a filter based on subquery.
 

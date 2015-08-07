@@ -12,6 +12,7 @@ import re
 from django.db import models
 from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
+from . import subselect
 
 from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
 DJANGO_14_15_16 = not DJANGO_17_PLUS
@@ -316,15 +317,21 @@ class SQLCompiler(compiler.SQLCompiler):
 
 	def late_fix(self, sql):
 		"""Fix the WHERE condition in old Django 1.6"""
+		assert not re.search(r'[\\"\']', sql)
 		replacements = self.query_topology()
-		assert not '\\' in sql and not "'" in sql and not '"' in sql
-		import pdb; pdb.set_trace()
-		for old, new in replacements.items():
-			if new == old:
-				continue
-			assert '.' not in old and ('.' in new or len(replacements) == 1)
-			sql = re.sub(r'(?<=[^.\w])' + old +r'\.(\w+)(?=[^.\w])', new + r'.\1', sql)
-		return sql
+		# the replaced string is a alphanumeric word, including underscore
+		assert all(re.match(r'^\w+$', x) for x in replacements.keys())
+		pattern_replaced = re.compile(r'(?<=[^.\w])(%s)(?=\.\w+[^.\w])' % '|'.join(replacements.keys())) 
+		def func(sql):
+			start = 0
+			out = []
+			for match in pattern_replaced.finditer(sql):
+				out.append(sql[start:match.start()])
+				out.append(replacements[match.group(1)])
+				start = match.end()
+			out.append(sql[start:len(sql)])
+			return ''.join(out)
+		return subselect.transform_except_subselect(sql, func)
 
 
 class SalesforceWhereNode(where.WhereNode):
