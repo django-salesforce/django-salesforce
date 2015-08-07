@@ -14,7 +14,9 @@ from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 
 from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
+DJANGO_14_15_16 = not DJANGO_17_PLUS
 DJANGO_17_EXACT = DJANGO_17_PLUS and not DJANGO_18_PLUS
+
 
 class SQLCompiler(compiler.SQLCompiler):
 	"""
@@ -31,25 +33,20 @@ class SQLCompiler(compiler.SQLCompiler):
 		"""
 		Remove table names and strip quotes from column names.
 		"""
+		soql_trans = self.query_topology()
 		if DJANGO_16_PLUS:
-			soql_trans = self.reorder_query()
 			cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
-			out = []
-			for col in cols:
-				if re.match(r'^\w+\.\w+$', col):
-					tab_name, col_name = col.split('.')
-					out.append('%s.%s' % (soql_trans[tab_name], col_name))
-			cols = out
 		else:
 			cols = compiler.SQLCompiler.get_columns(self, with_aliases)
+		out = []
+		for col in cols:
+			if soql_trans and re.match(r'^\w+\.\w+$', col):
+				tab_name, col_name = col.split('.')
+				out.append('%s.%s' % (soql_trans[tab_name], col_name))
+			else:
+				out.append(col)
+		cols = out
 		result = [x.replace(' AS ', ' ') for x in cols]
-		#result = []
-		#for col in cols:
-		#	if('.' in col):
-		#		name = col.split('.')[1]
-		#	else:
-		#		name = col
-		#	result.append(name.strip('"'))
 		return (result, col_params) if DJANGO_16_PLUS else result
 
 	def get_from_clause(self):
@@ -59,24 +56,9 @@ class SQLCompiler(compiler.SQLCompiler):
 		It should be only the name of base object, even in parent-to-child and
 		child-to-parent relationships queries.
 		"""
-		if DJANGO_17_PLUS:
-			for k, v in self.reorder_query().items():
-				if k == v:
-					return [k], []
-		for alias in self.query.tables:
-			if self.query.alias_refcount[alias]:
-				try:
-					alias_map_info = self.query.alias_map[alias]
-				except KeyError:
-					# Extra tables can end up in self.tables, but not in the
-					# alias_map if they aren't in a join. That's OK. We skip them.
-					continue
-				if DJANGO_17_PLUS:
-					name = alias_map_info.table_name
-				else:
-					name, alias, join_type, lhs, lhs_col, col, nullable = alias_map_info
-				return [name], []
-		raise AssertionError("At least one table should be referenced in the query.")
+		self.query_topology()
+		root_table = self.soql_trans[self.root_alias]
+		return [root_table], []
 
 	def quote_name_unless_alias(self, name):
 		"""
@@ -157,6 +139,7 @@ class SQLCompiler(compiler.SQLCompiler):
 			# another run of it.
 			self.subquery = subquery
 			refcounts_before = self.query.alias_refcount.copy()
+			soql_trans = self.query_topology()
 			try:
 				extra_select, order_by, group_by = self.pre_sql_setup()
 				if with_limits and self.query.low_mark == self.query.high_mark:
@@ -184,6 +167,9 @@ class SQLCompiler(compiler.SQLCompiler):
 					elif with_col_aliases:
 						s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
 						col_idx += 1
+					if soql_trans and re.match(r'^\w+\.\w+$', s_sql):
+						tab_name, col_name = s_sql.split('.')
+						s_sql = '%s.%s' % (soql_trans[tab_name], col_name)
 					params.extend(s_params)
 					out_cols.append(s_sql)
 
@@ -249,7 +235,14 @@ class SQLCompiler(compiler.SQLCompiler):
 				# Finally do cleanup - get rid of the joins we created above.
 				self.query.reset_refcounts(refcounts_before)
 
-	def reorder_query(self):
+	# nothing special needed for Django 1.7
+	elif DJANGO_14_15_16:
+		def as_sql(self, *args, **kwargs):
+			sql, params = super(SQLCompiler, self).as_sql(*args, **kwargs)
+			sql = self.late_fix(sql)
+			return sql, params
+
+	def query_topology(self):
 		# SOQL for SFDC requires:
 		# - multiple (N-1) relations between (N) tables are possible
 		# - exactly one top controlling table
@@ -257,57 +250,81 @@ class SQLCompiler(compiler.SQLCompiler):
 		#   one primary key named "Id".
 		#
 		# Reorder relations to be from the left to the right
-		if self.soql_trans:
+		if self.soql_trans is not None:
 			return self.soql_trans
+		if DJANGO_18_PLUS:
+			join_map_items = [((getattr(v, 'parent_alias', None), v.table_name, getattr(v, 'join_cols', None)),
+							   (v.table_alias,)) for k, v in self.query.alias_map.items()]
+		elif DJANGO_17_PLUS:
+			join_map_items = list(self.query.join_map.items())
+		elif DJANGO_16_PLUS:
+			join_map_items = [((v.lhs_alias, v.table_name, v.join_cols), (v.rhs_alias,))
+							   for k, v in self.query.alias_map.items()]
+		elif DJANGO_15_PLUS:
+			join_map_items = [((v.lhs_alias, v.table_name, ((v.lhs_join_col, v.rhs_join_col),)), (v.rhs_alias,))
+							   for k, v in self.query.alias_map.items()]
+		else:
+			join_map_items = [((lhs_alias, table_name, ((lhs_join_col, rhs_join_col),)), (rhs_alias,))
+							   for k, (table_name, rhs_alias, _, lhs_alias, lhs_join_col, rhs_join_col, _)
+							   in self.query.alias_map.items()]
+		if not join_map_items: # due to field expr in Django 1.8
+			return []
 		alias_type = {}
-		for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
-			alias_type[rhs] = table
-		assert len(alias_type) >= len(self.query.join_map) - 1
-		import pprint; pprint.pprint(list(self.query.join_map.items()))
-		for (lhs, table, join_cols), (rhs,) in list(self.query.join_map.items()):
-			if join_cols is not None:
-				assert len(join_cols) == 1 and len(join_cols[0]) == 2
-				# swap left-right if necessary. The left should be the top.
-				if join_cols[0][0] == 'Id':
-					import pdb; pdb.set_trace()
-					del self.query.join_map[lhs, table, join_cols]
-					lhs, rhs = rhs, lhs
-					join_cols = ((join_cols[0][1], join_cols[0][0]),)
-					alias_type[rhs] = alias_type[lhs]
-					self.query.join_map[lhs, table, join_cols] = (rhs,)
-				assert join_cols[0][0] != 'Id' and join_cols[0][1] == 'Id'
-		# Recognize the top table
 		side_l, side_r = set(), set()
-		for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
-			if join_cols is not None:
+		for (lhs, table, join_cols_), (rhs,) in join_map_items:
+			alias_type[rhs] = table
+			if lhs is not None:
+				(join_cols,) = join_cols_
+				assert len(join_cols) == 2
+				# swap left-right if necessary. The left should be the top.
+				if join_cols[0] == 'Id':
+					assert join_cols[1] != 'Id'
+					lhs, rhs = rhs, lhs
 				side_l.add(lhs)
 				side_r.add(rhs)
 			else:
 				side_l.add(rhs)
-		assert len(side_l.union(side_r)) == len(self.query.join_map)
+		assert len(alias_type) == len(join_map_items)
+		# Recognize the top table
+		assert len(side_l.union(side_r)) == len(join_map_items)
 		(top_lhs,) = set(side_l).difference(side_r)
+		self.root_alias = top_lhs
 		# translation rules into SOQL
-		soql_trans = {}
-		for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
-			if join_cols is None and rhs in top_lhs:
-				soql_trans[rhs] = table
+		soql_trans = {top_lhs: alias_type[top_lhs]}
 		work_lhses = set([top_lhs])
 		while work_lhses:
 			new_work = set()
-			for (lhs, table, join_cols), (rhs,) in self.query.join_map.items():
-				if lhs in work_lhses and join_cols:
-					assert not rhs in soql_trans
-					if rhs.endswith('__c'):
-						fkey = re.sub('__c$', '__r', join_cols[0][0])
-					else:
-						fkey = re.sub('Id$', '', join_cols[0][0])  # TODO
-					soql_trans[rhs] = '%s.%s' % (soql_trans[lhs], fkey)
-					new_work.add(rhs)
+			for (lhs, table, join_cols_), (rhs,) in join_map_items:
+				(join_cols,) = join_cols_ or (None,)
+				if lhs is not None:
+					swap = join_cols[0] == 'Id'
+					if swap:
+						lhs, rhs = rhs, lhs
+						join_cols = join_cols[1], join_cols[0]
+					if lhs in work_lhses:
+						assert not rhs in soql_trans
+						if rhs.endswith('__c'):
+							fkey = re.sub('__c$', '__r', join_cols[0])
+						else:
+							fkey = re.sub('Id$', '', join_cols[0])
+						soql_trans[rhs] = '%s.%s' % (soql_trans[lhs], fkey)
+						new_work.add(rhs)
 			work_lhses = new_work
-		assert len(soql_trans) == len(self.query.join_map)
+		assert len(soql_trans) == len(join_map_items)
 		self.soql_trans = soql_trans
-		print(soql_trans)
 		return self.soql_trans
+
+	def late_fix(self, sql):
+		"""Fix the WHERE condition in old Django 1.6"""
+		replacements = self.query_topology()
+		assert not '\\' in sql and not "'" in sql and not '"' in sql
+		import pdb; pdb.set_trace()
+		for old, new in replacements.items():
+			if new == old:
+				continue
+			assert '.' not in old and ('.' in new or len(replacements) == 1)
+			sql = re.sub(r'(?<=[^.\w])' + old +r'\.(\w+)(?=[^.\w])', new + r'.\1', sql)
+		return sql
 
 
 class SalesforceWhereNode(where.WhereNode):
@@ -429,29 +446,8 @@ class SalesforceWhereNode(where.WhereNode):
 			# technically matches everything) for backwards compatibility reasons.
 			# Refs #5261.
 
-			if DJANGO_18_PLUS:
-				# "rev" is a mapping from the table alias to the path in query
-				# structure tree, recursively reverse to alias_map.
-				rev = {}
-				for k, v in qn.query.alias_map.items():
-					assert v.table_alias == k
-					if v.join_type is None:
-						rev[v.table_alias] = v.table_name
-				assert len(rev) == 1
-				xi = 0
-				while len(rev) < len(qn.query.alias_map) and xi < len(qn.query.alias_map):
-					for k, v in qn.query.alias_map.items():
-						if v.parent_alias in rev:
-							lhs_field =  re.sub('\Id$', '', re.sub('__c$', '__r', v.join_cols[0][0]))
-							rev[v.table_alias] = '.'.join((rev[v.parent_alias], lhs_field))
-							assert len(v.join_cols) == 1 and len(v.join_cols[0]) == 2 and v.join_cols[0][1] == 'Id'
-					xi += 1
-				#print(rev, xi)
-				# Verify that the catch against infinite loop "xi" has not been reached.
-				assert xi < len(qn.query.alias_map)
-			elif DJANGO_17_EXACT:
-				soql_trans = qn.reorder_query()
-
+			if DJANGO_17_PLUS:
+				soql_trans = qn.query_topology()
 			result = []
 			result_params = []
 			everything_childs, nothing_childs = 0, 0

@@ -21,7 +21,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		Opportunity, OpportunityContactRole,
 		Product, Pricebook, PricebookEntry, Note, Attachment)
 from salesforce.testrunner.example.models import Test as TestCustomExample
-from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS
+from salesforce import router, DJANGO_15_PLUS, DJANGO_16_PLUS
 from salesforce.backend import sf_alias
 import salesforce
 from .utils import skip, skipUnless
@@ -608,8 +608,6 @@ class BasicSOQLRoTest(TestCase):
 			# so that the query can be at least somehow simply compiled to SOQL
 			# without exceptions, in order to prevent regressions.
 			sql, params = qs.query.get_compiler('salesforce').as_sql()
-			if not DJANGO_17_PLUS:
-				self.skipTest("Skipped filters with nontrivial relations")
 			# Verify expected filters in SOQL compiled by new Django
 			self.assertIn('Lead.Owner.Username = %s', sql)
 			self.assertIn('Lead.LastModifiedBy.Username = %s', sql)
@@ -621,6 +619,8 @@ class BasicSOQLRoTest(TestCase):
 
 	def test_many2many_relationship(self):
 		"""Verify that the related set of Many2Many relationship works
+
+		Test for issue #55
 		"""
 		contact = Contact.objects.all()[0]
 		oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
@@ -640,15 +640,22 @@ class BasicSOQLRoTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
+	#@skipUnless(DJANGO_16_PLUS, "Subqueries on Salesforce require Django 1.6+ for compiler")
 	def test_subquery_condition(self):
+		"""Regression test with a filter based on subquery.
+
+		Django 1.7 had a problem while 1.6 was OK. The example is very similar to PR #103.
+		"""
 		qs = OpportunityContactRole.objects.filter(role='abc',
 				opportunity__in=Opportunity.objects.filter(stage='Prospecting'))
 		sql, params = qs.query.get_compiler('salesforce').as_sql()
+		self.assertRegexpMatches(sql, "WHERE Opportunity.StageName =",
+					"Probably because aliases are invalid for SFDC, e.g. 'U0.StageName'")
 		self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Role.* '
-					'FROM OpportunityContactRole WHERE \(OpportunityContactRole.Role = %s AND '
-						 'OpportunityContactRole.OpportunityId IN '
-					'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s\)\)'
-					)
+										'FROM OpportunityContactRole WHERE \(.* AND .*\)')
+		self.assertRegexpMatches(sql, 'OpportunityContactRole.OpportunityId IN '
+					'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
+		self.assertRegexpMatches(sql, 'OpportunityContactRole.Role = %s')
 
 	def test_none_method_queryset(self):
 		"""Test that none() method in the queryset returns [], not error"""
