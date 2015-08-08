@@ -658,7 +658,6 @@ class BasicSOQLRoTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
-	@expectedFailure
 	def test_filter_custom(self):
 		"""Verify that relations between custom and builtin objects
 		

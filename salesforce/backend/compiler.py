@@ -310,7 +310,7 @@ class SQLCompiler(compiler.SQLCompiler):
 						join_cols = join_cols[1], join_cols[0]
 					if lhs in work_lhses:
 						assert not rhs in soql_trans
-						if rhs.endswith('__c'):
+						if join_cols[0].endswith('__c'):
 							fkey = re.sub('__c$', '__r', join_cols[0])
 						else:
 							fkey = re.sub('Id$', '', join_cols[0])
