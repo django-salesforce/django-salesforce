@@ -24,7 +24,7 @@ from salesforce.testrunner.example.models import Test as TestCustomExample
 from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
-from .utils import skip, skipUnless
+from .utils import skip, skipUnless, expectedFailure
 
 import logging
 log = logging.getLogger(__name__)
@@ -657,7 +657,7 @@ class BasicSOQLRoTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
-	@skip("Waiting for bug fix")
+	@expectedFailure
 	def test_filter_custom(self):
 		"""Verify that relations between custom and builtin objects
 		
@@ -798,5 +798,3 @@ class BasicLeadSOQLTest(TestCase):
 			note_1.delete()
 			note_2.delete()
 			test_contact.delete()
-
-	#@skip("Waiting for bug fix")
