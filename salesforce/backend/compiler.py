@@ -258,7 +258,10 @@ class SQLCompiler(compiler.SQLCompiler):
 			join_map_items = [((getattr(v, 'parent_alias', None), v.table_name, getattr(v, 'join_cols', None)),
 							   (v.table_alias,)) for k, v in query.alias_map.items()]
 		elif DJANGO_17_PLUS:
-			join_map_items = list(query.join_map.items())
+			# TODO rewrite it to use also alias_map, because join_map is obsoleted, removed in Django 1.8
+			#      Django 1.7 has the same structure JoinInfo as Django 1.6
+			join_map_items = [((v.lhs_alias, v.table_name, v.join_cols), (v.rhs_alias,))
+							   for k, v in query.alias_map.items()]
 		elif DJANGO_16_PLUS:
 			join_map_items = [((v.lhs_alias, v.table_name, v.join_cols), (v.rhs_alias,))
 							   for k, v in query.alias_map.items()]
