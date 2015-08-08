@@ -276,10 +276,10 @@ class SQLCompiler(compiler.SQLCompiler):
 							   for (table_name, rhs_alias, _, lhs_alias, lhs_join_col, rhs_join_col, _)
 							   in query.alias_map.values()]
 		# Analyze
-		alias_type = {}
+		alias2table = {}
 		side_l, side_r = set(), set()
 		for (lhs, table, join_cols_, rhs) in alias_map_items:
-			alias_type[rhs] = table
+			alias2table[rhs] = table
 			if lhs is not None:
 				(join_cols,) = join_cols_
 				assert len(join_cols) == 2
@@ -287,25 +287,27 @@ class SQLCompiler(compiler.SQLCompiler):
 				if join_cols[0] == 'Id':
 					assert join_cols[1] != 'Id'
 					lhs, rhs = rhs, lhs
+					join_cols = join_cols[1], join_cols[0]
+				assert join_cols[1] == 'Id'
 				side_l.add(lhs)
 				side_r.add(rhs)
 			else:
 				side_l.add(rhs)
-		assert len(alias_type) == len(alias_map_items)
+		assert len(alias2table) == len(alias_map_items)
 		# Recognize the top table
 		assert len(side_l.union(side_r)) == len(alias_map_items)
 		(top_lhs,) = set(side_l).difference(side_r)
 		self.root_alias = top_lhs
 		# translation rules into SOQL
-		soql_trans = {top_lhs: alias_type[top_lhs]}
+		soql_trans = {top_lhs: alias2table[top_lhs]}
 		work_lhses = set([top_lhs])
 		while work_lhses:
 			new_work = set()
 			for (lhs, table, join_cols_, rhs) in alias_map_items:
-				(join_cols,) = join_cols_ or (None,)
 				if lhs is not None:
-					swap = join_cols[0] == 'Id'
-					if swap:
+					(join_cols,) = join_cols_
+					if join_cols[0] == 'Id':
+						# swap lhs rhs
 						lhs, rhs = rhs, lhs
 						join_cols = join_cols[1], join_cols[0]
 					if lhs in work_lhses:
@@ -313,6 +315,7 @@ class SQLCompiler(compiler.SQLCompiler):
 						if join_cols[0].endswith('__c'):
 							fkey = re.sub('__c$', '__r', join_cols[0])
 						else:
+							assert join_cols[0].endswith('Id')
 							fkey = re.sub('Id$', '', join_cols[0])
 						soql_trans[rhs] = '%s.%s' % (soql_trans[lhs], fkey)
 						new_work.add(rhs)
