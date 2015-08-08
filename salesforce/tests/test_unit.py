@@ -5,8 +5,8 @@ Tests that do not need to connect servers
 from django.test import TestCase
 from django.db.models import DO_NOTHING
 from salesforce import fields, models
-from salesforce.testrunner.example.models import (Contact, Opportunity,
-		OpportunityContactRole, ChargentOrder)
+from salesforce.testrunner.example.models import (Attachment, Contact, Opportunity,
+		OpportunityContactRole, ChargentOrder, Test)
 
 from salesforce.backend.subselect import TestSubSelectSearch
 import salesforce
@@ -93,3 +93,44 @@ class TestQueryCompiler(TestCase):
 		self.assertEqual(repr(Contact.objects.none()), '[]')
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0,
 				"Do database requests should be done with .none() method")
+
+
+class TestTopologyCompiler(TestCase):
+	def assertTopo(self, alias_map_items, expected):
+		compiler = Contact.objects.none().query.get_compiler('salesforce')
+		ret = compiler.query_topology(alias_map_items)
+		self.assertEqual(ret, expected)
+
+	def test_topology_compiler(self):
+		# Contact.objects.all()
+		# SELECT Contact.Id FROM Contact
+		self.assertTopo([(None, 'Contact', None, 'Contact')],     {'Contact': 'Contact'})
+		# Custom.objects.all()
+		# SELECT Custom__c.Id FROM Custom__c
+		self.assertTopo([(None, 'Custom__c', None, 'Custom__c')], {'Custom__c': 'Custom__c'})
+		# C (Id, PId) - child, P (Id) - parent 
+		# C.objects.filter(p__namen='xy')
+		# SELECT C.Id, C.PId FROM C WHERE C.P.Name='abc'
+		self.assertTopo([(None, 'C', None, 'C'), ('C', 'P', (('PId', 'Id'),), 'P')], {'C': 'C', 'P': 'C.P'})
+
+	def test_normal2custom(self):
+		#qs = Attachment.objects.filter(parent__name='abc')
+		#self.assertTopo()
+		# "SELECT Attachment.Id FROM Attachment WHERE Attachment.Parent.Name = 'abc'"
+		self.assertTopo([('C', 'P__c', (('PId', 'Id'),), 'P__c'), (None, 'C', ((None, None),), 'C')],
+						 {'P__c': 'C.P', 'C': 'C'})
+
+	def test_custom2normal(self):
+		#qs = Test.objects.filter(contact__last_name='Johnson')
+		#ret = qs.query.get_compiler('salesforce').query_topology()
+		# "SELECT ... FROM django_Test__c WHERE django_Test__c.Contact__r.LastName = 'Johnson'")
+		self.assertTopo([(None, 'C__c', None, 'C__c'), ('C__c', 'P', (('P__c', 'Id'),), 'P')],
+						{'C__c': 'C__c', 'P': 'C__c.P__r'})
+
+	def test_many2many(self):
+		# C (Id, AId, BId) - child,  A (Id) - first parent, B (Id) - second parent
+		alias_map_items = [
+				(None, 'A', None, 'A'),
+				('A', 'C', (('Id', 'AId'),), 'C'),
+				('C', 'B', (('BId', 'Id'),), 'B')]
+		self.assertTopo(alias_map_items, {'C': 'C', 'A': 'C.A', 'B': 'C.B'})
