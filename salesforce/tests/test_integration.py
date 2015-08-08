@@ -770,7 +770,8 @@ class BasicLeadSOQLTest(TestCase):
 		"""
 		self.test_lead.delete()
 		# TODO optimize counting because this can load thousands of records
-		count_deleted = Lead.objects.db_manager(sf_alias).query_all().filter(IsDeleted=True, LastName="Unittest General").count()
+		count_deleted = Lead.objects.db_manager(sf_alias).query_all(
+				).filter(IsDeleted=True, LastName="Unittest General").count()
 		if not default_is_sf:
 			self.skipTest("Default database should be any Salesforce.")
 		self.assertGreaterEqual(count_deleted, 1)
