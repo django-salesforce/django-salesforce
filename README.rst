@@ -171,8 +171,8 @@ Advanced usage
    
    One way to speed this up is to change the SALESFORCE_DB_ALIAS to point to
    another DB connection (preferably SQLite) during testing using the
-   ``TEST_*`` settings variables. The only outbound connections will then be to
-   the authentication servers.
+   ``TEST_*`` settings variables. Django unit tests without SalesforceModel
+   are fast everytimes.
    
 -  **Multiple SFDC connections** - In most cases, a single connection is all
    that most apps require, so the default DB connection to use for Salesforce

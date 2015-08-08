@@ -195,6 +195,8 @@ class Lead(SalesforceModel):
 	last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, null=True,
 			sf_read_only=models.READ_ONLY,
 			related_name='lead_lastmodifiedby_set')
+	is_converted = models.BooleanField(verbose_name='Converted',
+			sf_read_only=models.NOT_UPDATEABLE, default=models.DEFAULTED_ON_CREATE)
 
 	def __str__(self):
 		return self.Name
@@ -360,3 +362,8 @@ if DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False):
 		parent = models.ForeignKey(Test, sf_read_only=models.NOT_UPDATEABLE, on_delete=models.DO_NOTHING)
 		# The "body" of Attachment can't be queried for more rows togehter.
 		body = models.TextField()
+
+
+	class Task(models.Model):
+		who = models.ForeignKey(Lead, on_delete=models.DO_NOTHING, blank=True, null=True)  # Reference to tables [Contact, Lead]
+		what = models.ForeignKey(Account, related_name='task_what_set', on_delete=models.DO_NOTHING, blank=True, null=True)  # Refer

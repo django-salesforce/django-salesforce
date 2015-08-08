@@ -78,6 +78,8 @@ def run():
 					'Folder',
 					# Records with some values of UserShare.RowCause can not be updated.
 					'UserShare',
+					# Cannot directly insert FeedItem with type TrackedChange
+					'FeedItem',
 					):
 				stdout.write('(write) ')
 				try:

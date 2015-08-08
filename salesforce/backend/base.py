@@ -11,6 +11,7 @@ Salesforce database backend for Django.
 
 import logging
 import requests
+import sys
 import threading
 
 from salesforce import DJANGO_16_PLUS, DJANGO_18_PLUS
@@ -122,7 +123,9 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
 		self._sf_session = None
-		if not getattr(settings, 'SF_LAZY_CONNECT', False):
+		# The SFDC database is connected as late as possible if only tests
+		# are running. Some tests don't require a connection.
+		if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):
 			self.make_session()
 
 	def make_session(self):
