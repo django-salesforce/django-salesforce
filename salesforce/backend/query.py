@@ -228,7 +228,7 @@ def extract_values(query):
 			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce REST API"
 			value = getattr(query.objs[0], field.attname)
 			# The 'DEFAULT' is a backward compatibility name.
-			if isinstance(field, models.ForeignKey) and value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
+			if isinstance(field, (models.ForeignKey, models.BooleanField)) and value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
 				continue
 			if isinstance(value, models.DefaultedOnCreate):
 				continue

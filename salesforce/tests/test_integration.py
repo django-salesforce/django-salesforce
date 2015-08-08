@@ -19,7 +19,7 @@ from django.utils import timezone
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Opportunity, OpportunityContactRole,
-		Product, Pricebook, PricebookEntry, Note, Attachment)
+		Product, Pricebook, PricebookEntry, Note, Attachment, Task, Test)
 from salesforce.testrunner.example.models import Test as TestCustomExample
 from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
@@ -617,6 +617,29 @@ class BasicSOQLRoTest(TestCase):
 		finally:
 			test_lead.delete()
 
+	def test_filter_by_more_fk_to_the_same_model_subquery(self):
+		"""Test a filter with more relations to the same model.
+		
+		Verify that aliases are correctly decoded in the query compiler.
+		"""
+		test_lead = Lead(Company='sf_test lead', LastName='name')
+		test_lead.save()
+		test_task = Task(who=test_lead)
+		test_task.save()
+		try:
+			qs = Task.objects.filter(who__in=Lead.objects.filter(pk=test_lead.pk,
+					owner__Username=current_user,
+					last_modified_by__Username=current_user))
+			sql, params = qs.query.get_compiler('salesforce').as_sql()
+			self.assertRegexpMatches(sql, 'SELECT Task.Id, .* FROM Task WHERE Task.WhoId IN \(SELECT ')
+			self.assertIn('Lead.Owner.Username = %s', sql)
+			self.assertIn('Lead.LastModifiedBy.Username = %s', sql)
+			refreshed_lead = qs[:1]
+			self.assertEqual(len(refreshed_lead), 1)
+		finally:
+			test_task.delete()
+			test_lead.delete()
+
 	def test_many2many_relationship(self):
 		"""Verify that the related set of Many2Many relationship works
 
@@ -639,6 +662,21 @@ class BasicSOQLRoTest(TestCase):
 			oc2.delete()
 			oc.delete()
 			oppo.delete()
+
+	@skip("Waiting for bug fix")
+	def test_filter_custom(self):
+		"""Verify that relations between custom and builtin objects
+		
+		are correctly compiled. (__r, __c etc.)
+		"""
+		qs = Attachment.objects.filter(parent__name='abc')
+		# "SELECT Attachment.Id FROM Attachment WHERE Attachment.Parent.Name = 'abc'"
+		list(qs)
+		qs = Test.objects.filter(contact__last_name='Johnson')
+		# "SELECT ... FROM django_Test__c WHERE django_Test__c.Contact__r.LastName = 'Johnson'")
+		list(qs)
+		qs = Attachment.objects.filter(parent__in=Test.objects.filter(contact__last_name='Johnson'))
+		list(qs)
 
 	def test_subquery_condition(self):
 		"""Regression test with a filter based on subquery.
