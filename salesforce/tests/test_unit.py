@@ -5,6 +5,11 @@ Tests that do not need to connect servers
 from django.test import TestCase
 from django.db.models import DO_NOTHING
 from salesforce import fields, models
+from salesforce.testrunner.example.models import (Contact, Opportunity,
+		OpportunityContactRole, ChargentOrder)
+
+from salesforce.backend.subselect import TestSubSelectSearch
+import salesforce
 
 class EasyCharField(models.CharField):
 	def __init__(self, max_length=255, null=True, default='', **kwargs):
@@ -51,3 +56,40 @@ class TestField(TestCase):
 		test(EasyForeignKey(Aa, name='campaign_member'), 'campaign_member_id', 'CampaignMemberId')
 		test(EasyForeignKey(Aa, name='MyCustomForeignField', custom=True), 'MyCustomForeignFieldId', 'MyCustomForeignField__c')
 		test(EasyForeignKey(Aa, name='my_custom_foreign_field', custom=True), 'my_custom_foreign_field_id', 'MyCustomForeignField__c')
+
+
+class TestQueryCompiler(TestCase):
+	def test_namespaces_auto(self):
+		"""Verify that the database column name can be correctly autodetected
+
+		from model Meta for managed packages with a namespace prefix.
+		(The package need not be installed for this unit test.)
+		"""
+		tested_field = ChargentOrder._meta.get_field('Balance_Due')
+		self.assertEqual(tested_field.sf_custom, True)
+		self.assertEqual(tested_field.column, 'ChargentOrders__Balance_Due__c')
+
+	def test_subquery_condition(self):
+		"""Regression test with a filter based on subquery.
+
+		This test is very similar to the required example in PR #103.
+		"""
+		qs = OpportunityContactRole.objects.filter(role='abc',
+				opportunity__in=Opportunity.objects.filter(stage='Prospecting'))
+		sql, params = qs.query.get_compiler('salesforce').as_sql()
+		self.assertRegexpMatches(sql, "WHERE Opportunity.StageName =",
+					"Probably because aliases are invalid for SFDC, e.g. 'U0.StageName'")
+		self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Role.* '
+										'FROM OpportunityContactRole WHERE \(.* AND .*\)')
+		self.assertRegexpMatches(sql, 'OpportunityContactRole.OpportunityId IN '
+					'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
+		self.assertRegexpMatches(sql, 'OpportunityContactRole.Role = %s')
+
+	def test_none_method_queryset(self):
+		"""Test that none() method in the queryset returns [], not error"""
+		request_count_0 = salesforce.backend.query.request_count
+		self.assertEqual(tuple(Contact.objects.none()), ())
+		self.assertEqual(tuple(Contact.objects.all().none().all()), ())
+		self.assertEqual(repr(Contact.objects.none()), '[]')
+		self.assertEqual(salesforce.backend.query.request_count, request_count_0,
+				"Do database requests should be done with .none() method")
