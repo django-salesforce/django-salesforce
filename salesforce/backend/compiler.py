@@ -243,7 +243,7 @@ class SQLCompiler(compiler.SQLCompiler):
 			sql = self.late_fix(sql)
 			return sql, params
 
-	def query_topology(self):
+	def query_topology(self, _query=None):
 		# SOQL for SFDC requires:
 		# - multiple (N-1) relations between (N) tables are possible
 		# - exactly one top controlling table
@@ -251,23 +251,24 @@ class SQLCompiler(compiler.SQLCompiler):
 		#   one primary key named "Id".
 		#
 		# Reorder relations to be from the left to the right
+		query = _query or self.query
 		if self.soql_trans is not None:
 			return self.soql_trans
 		if DJANGO_18_PLUS:
 			join_map_items = [((getattr(v, 'parent_alias', None), v.table_name, getattr(v, 'join_cols', None)),
-							   (v.table_alias,)) for k, v in self.query.alias_map.items()]
+							   (v.table_alias,)) for k, v in query.alias_map.items()]
 		elif DJANGO_17_PLUS:
-			join_map_items = list(self.query.join_map.items())
+			join_map_items = list(query.join_map.items())
 		elif DJANGO_16_PLUS:
 			join_map_items = [((v.lhs_alias, v.table_name, v.join_cols), (v.rhs_alias,))
-							   for k, v in self.query.alias_map.items()]
+							   for k, v in query.alias_map.items()]
 		elif DJANGO_15_PLUS:
 			join_map_items = [((v.lhs_alias, v.table_name, ((v.lhs_join_col, v.rhs_join_col),)), (v.rhs_alias,))
-							   for k, v in self.query.alias_map.items()]
+							   for k, v in query.alias_map.items()]
 		else:
 			join_map_items = [((lhs_alias, table_name, ((lhs_join_col, rhs_join_col),)), (rhs_alias,))
 							   for k, (table_name, rhs_alias, _, lhs_alias, lhs_join_col, rhs_join_col, _)
-							   in self.query.alias_map.items()]
+							   in query.alias_map.items()]
 		if not join_map_items: # due to field expr in Django 1.8
 			return []
 		alias_type = {}
