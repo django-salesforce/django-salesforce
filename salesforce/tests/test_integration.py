@@ -24,7 +24,8 @@ from salesforce.testrunner.example.models import Test as TestCustomExample
 from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
-from .utils import skip, skipUnless
+from .utils import skip, skipUnless, expectedFailure # test decorators
+from .utils import uid
 
 import logging
 log = logging.getLogger(__name__)
@@ -261,7 +262,7 @@ class BasicSOQLRoTest(TestCase):
 		"""Create, read and delete a simple custom object `django_Test__c`.
 		"""
 		if not 'django_Test__c' in sf_tables():
-			skip("Not found custom object 'django_Test__c'")
+			self.skipTest("Not found custom object 'django_Test__c'")
 		results = TestCustomExample.objects.all()[0:1]
 		obj = TestCustomExample(test_text='sf_test')
 		obj.save()
@@ -274,16 +275,6 @@ class BasicSOQLRoTest(TestCase):
 		finally:
 			attachment.delete()
 			obj.delete()
-
-	def test_namespaces_auto(self):
-		"""Verify that the database column name can be correctly autodetected
-
-		from model Meta for managed packages with a namespace prefix.
-		(The package need not be installed for this unit test.)
-		"""
-		tested_field = ChargentOrder._meta.get_field('Balance_Due')
-		self.assertEqual(tested_field.sf_custom, True)
-		self.assertEqual(tested_field.column, 'ChargentOrders__Balance_Due__c')
 
 	def test_datetime_miliseconds(self):
 		"""Verify that a field with milisecond resolution is readable.
@@ -667,7 +658,6 @@ class BasicSOQLRoTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
-	@skip("Waiting for bug fix")
 	def test_filter_custom(self):
 		"""Verify that relations between custom and builtin objects
 		
@@ -682,30 +672,6 @@ class BasicSOQLRoTest(TestCase):
 		qs = Attachment.objects.filter(parent__in=Test.objects.filter(contact__last_name='Johnson'))
 		list(qs)
 
-	def test_subquery_condition(self):
-		"""Regression test with a filter based on subquery.
-
-		This test is very similar to the required example in PR #103.
-		"""
-		qs = OpportunityContactRole.objects.filter(role='abc',
-				opportunity__in=Opportunity.objects.filter(stage='Prospecting'))
-		sql, params = qs.query.get_compiler('salesforce').as_sql()
-		self.assertRegexpMatches(sql, "WHERE Opportunity.StageName =",
-					"Probably because aliases are invalid for SFDC, e.g. 'U0.StageName'")
-		self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Role.* '
-										'FROM OpportunityContactRole WHERE \(.* AND .*\)')
-		self.assertRegexpMatches(sql, 'OpportunityContactRole.OpportunityId IN '
-					'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
-		self.assertRegexpMatches(sql, 'OpportunityContactRole.Role = %s')
-
-	def test_none_method_queryset(self):
-		"""Test that none() method in the queryset returns [], not error"""
-		request_count_0 = salesforce.backend.query.request_count
-		self.assertEqual(tuple(Contact.objects.none()), ())
-		self.assertEqual(tuple(Contact.objects.all().none().all()), ())
-		self.assertEqual(repr(Contact.objects.none()), '[]')
-		self.assertEqual(salesforce.backend.query.request_count, request_count_0,
-				"Do database requests should be done with .none() method")
 
 # ============= Tests that need setUp Lead ==================
 
@@ -721,7 +687,7 @@ class BasicLeadSOQLTest(TestCase):
 			self.objs.append(obj)
 		#
 		self.test_lead = Lead(
-			FirstName	= "User",
+			FirstName	= "User" + uid,
 			LastName	= "Unittest General",
 			Email		= test_email,
 			Status		= 'Open',
@@ -748,36 +714,38 @@ class BasicLeadSOQLTest(TestCase):
 	def test_exclude_query_construction(self):
 		"""Test that exclude query construction returns valid SOQL.
 		"""
-		contacts = Contact.objects.filter(first_name__isnull=False).exclude(email="steve@apple.com", last_name="Wozniak").exclude(last_name="smith")
+		contacts = Contact.objects.filter(first_name__isnull=False
+				).exclude(email="steve@apple.com", last_name="Wozniak").exclude(last_name="smith")
 		number_of_contacts = contacts.count()
 		self.assertIsInstance(number_of_contacts, int)
 		# the default self.test_lead shouldn't be excluded by only one nondition
-		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General").filter(FirstName="User", LastName="Unittest General")
+		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General"
+				).filter(FirstName="User" + uid, LastName="Unittest General")
 		self.assertEqual(leads.count(), 1)
 
 	def test_get(self):
 		"""Get the test lead record.
 		"""
 		lead = Lead.objects.get(Email=test_email)
-		self.assertEqual(lead.FirstName, 'User')
+		self.assertEqual(lead.FirstName, 'User' + uid)
 		self.assertEqual(lead.LastName, 'Unittest General')
 		if not default_is_sf:
 			self.skipTest("Default database should be any Salesforce.")
 		# test a read only field (formula of full name)
-		self.assertEqual(lead.Name, 'User Unittest General')
+		self.assertEqual(lead.Name, 'User%s Unittest General' % uid)
 	
 	def test_not_null(self):
 		"""Get the test lead record by isnull condition.
 		"""
-		lead = Lead.objects.get(Email__isnull=False, FirstName='User')
-		self.assertEqual(lead.FirstName, 'User')
+		lead = Lead.objects.get(Email__isnull=False, FirstName='User' + uid)
+		self.assertEqual(lead.FirstName, 'User' + uid)
 		self.assertEqual(lead.LastName, 'Unittest General')
 	
 	def test_update(self):
 		"""Update the test lead record.
 		"""
 		test_lead = Lead.objects.get(Email=test_email)
-		self.assertEqual(test_lead.FirstName, 'User')
+		self.assertEqual(test_lead.FirstName, 'User' + uid)
 		test_lead.FirstName = 'Tested'
 		test_lead.save()
 		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
@@ -801,7 +769,8 @@ class BasicLeadSOQLTest(TestCase):
 		"""
 		self.test_lead.delete()
 		# TODO optimize counting because this can load thousands of records
-		count_deleted = Lead.objects.db_manager(sf_alias).query_all().filter(IsDeleted=True, LastName="Unittest General").count()
+		count_deleted = Lead.objects.db_manager(sf_alias).query_all(
+				).filter(IsDeleted=True, LastName="Unittest General").count()
 		if not default_is_sf:
 			self.skipTest("Default database should be any Salesforce.")
 		self.assertGreaterEqual(count_deleted, 1)
@@ -832,5 +801,3 @@ class BasicLeadSOQLTest(TestCase):
 			note_1.delete()
 			note_2.delete()
 			test_contact.delete()
-
-	#@skip("Waiting for bug fix")

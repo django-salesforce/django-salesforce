@@ -243,7 +243,7 @@ class SQLCompiler(compiler.SQLCompiler):
 			sql = self.late_fix(sql)
 			return sql, params
 
-	def query_topology(self):
+	def query_topology(self, _alias_map_items=None):
 		# SOQL for SFDC requires:
 		# - multiple (N-1) relations between (N) tables are possible
 		# - exactly one top controlling table
@@ -253,27 +253,33 @@ class SQLCompiler(compiler.SQLCompiler):
 		# Reorder relations to be from the left to the right
 		if self.soql_trans is not None:
 			return self.soql_trans
-		if DJANGO_18_PLUS:
-			join_map_items = [((getattr(v, 'parent_alias', None), v.table_name, getattr(v, 'join_cols', None)),
-							   (v.table_alias,)) for k, v in self.query.alias_map.items()]
-		elif DJANGO_17_PLUS:
-			join_map_items = list(self.query.join_map.items())
-		elif DJANGO_16_PLUS:
-			join_map_items = [((v.lhs_alias, v.table_name, v.join_cols), (v.rhs_alias,))
-							   for k, v in self.query.alias_map.items()]
-		elif DJANGO_15_PLUS:
-			join_map_items = [((v.lhs_alias, v.table_name, ((v.lhs_join_col, v.rhs_join_col),)), (v.rhs_alias,))
-							   for k, v in self.query.alias_map.items()]
-		else:
-			join_map_items = [((lhs_alias, table_name, ((lhs_join_col, rhs_join_col),)), (rhs_alias,))
-							   for k, (table_name, rhs_alias, _, lhs_alias, lhs_join_col, rhs_join_col, _)
-							   in self.query.alias_map.items()]
-		if not join_map_items: # due to field expr in Django 1.8
+		if not _alias_map_items and not self.query.alias_map:
+			assert DJANGO_18_PLUS, "empty alias_map is possible due to field expr in Django 1.8"
 			return []
-		alias_type = {}
+		# Unified interface:
+		#   alias_map_items = [(lhs, table, join_cols_, rhs),...]
+		query = self.query
+		if _alias_map_items:
+			alias_map_items = _alias_map_items
+		elif DJANGO_18_PLUS:
+			alias_map_items = [(getattr(v, 'parent_alias', None), v.table_name,
+							   getattr(v, 'join_cols', None), v.table_alias
+							  ) for v in query.alias_map.values()]
+		elif DJANGO_16_PLUS or DJANGO_17_PLUS:
+			alias_map_items = [(v.lhs_alias, v.table_name, v.join_cols, v.rhs_alias)
+							   for v in query.alias_map.values()]
+		elif DJANGO_15_PLUS:
+			alias_map_items = [(v.lhs_alias, v.table_name, ((v.lhs_join_col, v.rhs_join_col),), v.rhs_alias)
+							   for v in query.alias_map.values()]
+		else: # DJANGO_14_PLUS
+			alias_map_items = [(lhs_alias, table_name, ((lhs_join_col, rhs_join_col),), rhs_alias)
+							   for (table_name, rhs_alias, _, lhs_alias, lhs_join_col, rhs_join_col, _)
+							   in query.alias_map.values()]
+		# Analyze
+		alias2table = {}
 		side_l, side_r = set(), set()
-		for (lhs, table, join_cols_), (rhs,) in join_map_items:
-			alias_type[rhs] = table
+		for (lhs, table, join_cols_, rhs) in alias_map_items:
+			alias2table[rhs] = table
 			if lhs is not None:
 				(join_cols,) = join_cols_
 				assert len(join_cols) == 2
@@ -281,37 +287,40 @@ class SQLCompiler(compiler.SQLCompiler):
 				if join_cols[0] == 'Id':
 					assert join_cols[1] != 'Id'
 					lhs, rhs = rhs, lhs
+					join_cols = join_cols[1], join_cols[0]
+				assert join_cols[1] == 'Id'
 				side_l.add(lhs)
 				side_r.add(rhs)
 			else:
 				side_l.add(rhs)
-		assert len(alias_type) == len(join_map_items)
+		assert len(alias2table) == len(alias_map_items)
 		# Recognize the top table
-		assert len(side_l.union(side_r)) == len(join_map_items)
+		assert len(side_l.union(side_r)) == len(alias_map_items)
 		(top_lhs,) = set(side_l).difference(side_r)
 		self.root_alias = top_lhs
 		# translation rules into SOQL
-		soql_trans = {top_lhs: alias_type[top_lhs]}
+		soql_trans = {top_lhs: alias2table[top_lhs]}
 		work_lhses = set([top_lhs])
 		while work_lhses:
 			new_work = set()
-			for (lhs, table, join_cols_), (rhs,) in join_map_items:
-				(join_cols,) = join_cols_ or (None,)
+			for (lhs, table, join_cols_, rhs) in alias_map_items:
 				if lhs is not None:
-					swap = join_cols[0] == 'Id'
-					if swap:
+					(join_cols,) = join_cols_
+					if join_cols[0] == 'Id':
+						# swap lhs rhs
 						lhs, rhs = rhs, lhs
 						join_cols = join_cols[1], join_cols[0]
 					if lhs in work_lhses:
 						assert not rhs in soql_trans
-						if rhs.endswith('__c'):
+						if join_cols[0].endswith('__c'):
 							fkey = re.sub('__c$', '__r', join_cols[0])
 						else:
+							assert join_cols[0].endswith('Id')
 							fkey = re.sub('Id$', '', join_cols[0])
 						soql_trans[rhs] = '%s.%s' % (soql_trans[lhs], fkey)
 						new_work.add(rhs)
 			work_lhses = new_work
-		assert len(soql_trans) == len(join_map_items)
+		assert len(soql_trans) == len(alias_map_items)
 		self.soql_trans = soql_trans
 		return self.soql_trans
 

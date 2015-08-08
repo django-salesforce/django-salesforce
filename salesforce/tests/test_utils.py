@@ -7,8 +7,6 @@ from salesforce.testrunner.example.models import Account, Contact, Lead, Opportu
 from salesforce.utils import convert_lead
 from .utils import skip, skipUnless
 
-from salesforce.backend.subselect import TestSubSelectSearch
-
 try:
     import beatbox
 except ImportError:
