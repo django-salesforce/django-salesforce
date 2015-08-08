@@ -35,8 +35,9 @@ def authenticate(db_alias=None, settings_dict=None):
 	
 		Params:
 			db_alias:  The database alias e.g. the default SF alias 'salesforce'.
-			settings_dict: Should be obtained from django.conf.DATABASES['salesforce'].
-				   It is only important for the first connection.
+			settings_dict: It is only important for the first connection.
+					Should be taken from django.conf.DATABASES['salesforce'],
+					because it is not known in connection.settings_dict initially.
 
 	This function can be called multiple times, but will only make
 	an external request once per the lifetime of the auth token. Subsequent

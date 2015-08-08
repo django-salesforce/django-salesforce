@@ -31,7 +31,8 @@ MAX_RETRIES = getattr(settings, 'REQUESTS_MAX_RETRIES', 1)
 
 
 def getaddrinfo_wrapper(host, port, family=socket.AF_INET, socktype=0, proto=0, flags=0):
-	    return orig_getaddrinfo(host, port, family, socktype, proto, flags)
+	"""Patched 'getaddrinfo' with default family IPv4 (enabled by settings IPV4_ONLY=True)"""
+	return orig_getaddrinfo(host, port, family, socktype, proto, flags)
 
 # patch to IPv4 if required and not patched by anything other yet
 if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('socket', '_socket'):

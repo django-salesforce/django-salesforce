@@ -7,8 +7,8 @@ from requests.exceptions import ConnectionError
 class LazyTest(TestCase):
 	def test_lazy_connection(self):
 		"""
-		Verify that the plain access to SF connection object does not raises
-		exceptions vith SF_LAZY_CONNECT if SF is not accessible.
+		Verify that the plain access to SF connection object does not raise
+		exceptions with SF_LAZY_CONNECT if SF is not accessible.
 		"""
 		# verify that access to a broken connection does not raise exception
 		sf_conn = connections['salesforce']

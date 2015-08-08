@@ -18,9 +18,10 @@ from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
-		Product, Pricebook, PricebookEntry, Note, Attachment)
+		Opportunity, OpportunityContactRole,
+		Product, Pricebook, PricebookEntry, Note, Attachment, Task, Test)
 from salesforce.testrunner.example.models import Test as TestCustomExample
-from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS
+from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
 from .utils import skip, skipUnless
@@ -32,50 +33,25 @@ random_slug = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowerc
 sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 current_user = settings.DATABASES[sf_alias]['USER']
 test_email = 'test-djsf-unittests-%s@example.com' % random_slug
-sf_tables = []
-if router.is_sf_database(sf_alias):
-	sf_tables = [x['name'] for x in
-			connections[sf_alias].introspection.table_list_cache['sobjects']]
 sf_databases = [db for db in connections if router.is_sf_database(db)]
 default_is_sf = router.is_sf_database(sf_alias)
-manual_test = False  # skipped by automated tests
+
+_sf_tables = []
+def sf_tables():
+	if not _sf_tables and router.is_sf_database(sf_alias):
+		for x in connections[sf_alias].introspection.table_list_cache['sobjects']:
+			_sf_tables.append(x['name'])
+	return _sf_tables
 
 def refresh(obj):
-	"""Get the same object refreshed from the same db."""
+	"""Get the same object refreshed from the same db.
+	"""
 	db = obj._state.db
 	return type(obj).objects.using(db).get(pk=obj.pk)
 	
 
-class BasicSOQLTest(TestCase):
-	def setUp(self):
-		"""Create our test lead record."""
-		def add_obj(obj):
-			obj.save()
-			self.objs.append(obj)
-		#
-		self.test_lead = Lead(
-			FirstName	= "User",
-			LastName	= "Unittest General",
-			Email		= test_email,
-			Status		= 'Open',
-			Company = "Some company, Ltd.",
-		)
-		self.objs = []
-		self.test_lead.save()
-		if not default_is_sf:
-			add_obj(Contact(last_name='Test contact 1'))
-			add_obj(Contact(last_name='Test contact 2'))
-			add_obj(User(Username=current_user))
-	
-	def tearDown(self):
-		"""Clean up our test records."""
-		if self.test_lead.pk is not None:
-			self.test_lead.delete()
-		for obj in self.objs:
-			if obj.pk is not None:
-				obj.delete()
-		self.objs = []
-
+class BasicSOQLRoTest(TestCase):
+	"""Tests that need no setUp/tearDown"""
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_raw(self):
@@ -93,7 +69,8 @@ class BasicSOQLTest(TestCase):
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_raw_foreignkey_id(self):
-		"""Get the first two contacts by raw query with a ForeignKey id field."""
+		"""Get the first two contacts by raw query with a ForeignKey id field.
+		"""
 		contacts = Contact.objects.raw(
 				"SELECT Id, LastName, FirstName, OwnerId FROM Contact "
 				"LIMIT 2")
@@ -102,22 +79,15 @@ class BasicSOQLTest(TestCase):
 		self.assertIn('@', contacts[0].owner.Email)
 
 	def test_select_all(self):
-		"""Get the first two contact records."""
+		"""Get the first two contact records.
+		"""
 		contacts = Contact.objects.all()[0:2]
 		self.assertEqual(len(contacts), 2)
 
-	def test_exclude_query_construction(self):
-		"""Test that exclude query construction returns valid SOQL."""
-		contacts = Contact.objects.filter(first_name__isnull=False).exclude(email="steve@apple.com", last_name="Wozniak").exclude(last_name="smith")
-		number_of_contacts = contacts.count()
-		self.assertIsInstance(number_of_contacts, int)
-		# the default self.test_lead shouldn't be excluded by only one nondition
-		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General").filter(FirstName="User", LastName="Unittest General")
-		self.assertEqual(leads.count(), 1)
-
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_foreign_key(self):
-		"""Verify that the owner of an Contact is the currently logged admin."""
+		"""Verify that the owner of an Contact is the currently logged admin.
+		"""
 		current_sf_user = User.objects.get(Username=current_user)
 		test_contact = Contact(first_name = 'sf_test', last_name='my')
 		test_contact.save()
@@ -130,7 +100,8 @@ class BasicSOQLTest(TestCase):
 			test_contact.delete()
 
 	def test_foreign_key_column(self):
-		"""Verify filtering by a column of related parent object."""
+		"""Verify filtering by a column of related parent object.
+		"""
 		test_account = Account(Name = 'sf_test account')
 		test_account.save()
 		test_contact = Contact(first_name = 'sf_test', last_name='my', account=test_account)
@@ -143,7 +114,8 @@ class BasicSOQLTest(TestCase):
 			test_account.delete()
 
 	def test_update_date(self):
-		"""Test updating a date."""
+		"""Test updating a date.
+		"""
 		now = timezone.now().replace(microsecond=0)
 		contact = Contact(first_name = 'sf_test', last_name='my')
 		contact.save()
@@ -156,7 +128,8 @@ class BasicSOQLTest(TestCase):
 			contact.delete()
 	
 	def test_insert_date(self):
-		"""Test inserting a date."""
+		"""Test inserting a date.
+		"""
 		now = timezone.now().replace(microsecond=0)
 		contact = Contact(
 				first_name = 'Joe',
@@ -194,22 +167,6 @@ class BasicSOQLTest(TestCase):
 		finally:
 			contact.delete()
 	
-	def test_get(self):
-		"""Get the test lead record."""
-		lead = Lead.objects.get(Email=test_email)
-		self.assertEqual(lead.FirstName, 'User')
-		self.assertEqual(lead.LastName, 'Unittest General')
-		if not default_is_sf:
-			self.skipTest("Default database should be any Salesforce.")
-		# test a read only field (formula of full name)
-		self.assertEqual(lead.Name, 'User Unittest General')
-	
-	def test_not_null(self):
-		"""Get the test lead record by isnull condition."""
-		lead = Lead.objects.get(Email__isnull=False, FirstName='User')
-		self.assertEqual(lead.FirstName, 'User')
-		self.assertEqual(lead.LastName, 'Unittest General')
-	
 	def test_not_null_related(self):
 		"""Verify conditions `isnull` for foreign keys: filter(Account=None)
 
@@ -226,7 +183,8 @@ class BasicSOQLTest(TestCase):
 			test_contact.delete()
 	
 	def test_unicode(self):
-		"""Make sure weird unicode breaks properly."""
+		"""Make sure weird unicode breaks properly.
+		"""
 		test_lead = Lead(FirstName=u'\u2603', LastName="Unittest Unicode",
 				Email='test-djsf-unicode-email@example.com',
 				Company="Some company")
@@ -237,7 +195,8 @@ class BasicSOQLTest(TestCase):
 			test_lead.delete()
 	
 	def test_date_comparison(self):
-		"""Test that date comparisons work properly."""
+		"""Test that date comparisons work properly.
+		"""
 		today = datetime.datetime(2013, 8, 27)
 		if settings.USE_TZ:
 			today = timezone.make_aware(today, pytz.utc)
@@ -256,7 +215,8 @@ class BasicSOQLTest(TestCase):
 	
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_insert(self):
-		"""Create a lead record, and make sure it ends up with a valid Salesforce ID."""
+		"""Create a lead record, and make sure it ends up with a valid Salesforce ID.
+		"""
 		test_lead = Lead(FirstName="User", LastName="Unittest Inserts",
 				Email='test-djsf-inserts-email@example.com',
 				Company="Some company")
@@ -267,7 +227,8 @@ class BasicSOQLTest(TestCase):
 			test_lead.delete()
 	
 	def test_delete(self):
-		"""Create a lead record, then delete it, and make sure it's gone."""
+		"""Create a lead record, then delete it, and make sure it's gone.
+		"""
 		test_lead = Lead(FirstName="User", LastName="Unittest Deletes",
 				Email='test-djsf-delete-email@example.com',
 				Company="Some company")
@@ -276,17 +237,10 @@ class BasicSOQLTest(TestCase):
 		
 		self.assertRaises(Lead.DoesNotExist, Lead.objects.get, Email='test-djsf-delete-email@example.com')
 	
-	def test_update(self):
-		"""Update the test lead record."""
-		test_lead = Lead.objects.get(Email=test_email)
-		self.assertEqual(test_lead.FirstName, 'User')
-		test_lead.FirstName = 'Tested'
-		test_lead.save()
-		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
-
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_decimal_precision(self):
-		"""Verify the same precision of saved and retrived DecimalField"""
+		"""Verify the same precision of saved and retrived DecimalField
+		"""
 		product = Product(Name="Test Product")
 		product.save()
 
@@ -303,9 +257,11 @@ class BasicSOQLTest(TestCase):
 			retrieved_pricebook_entry.delete()
 			product.delete()
 
-	@skipUnless('django_Test__c' in sf_tables, "Not found custom object 'django_Test__c'")
 	def test_simple_custom_object(self):
-		"""Create, read and delete a simple custom object `django_Test__c`."""
+		"""Create, read and delete a simple custom object `django_Test__c`.
+		"""
+		if not 'django_Test__c' in sf_tables():
+			skip("Not found custom object 'django_Test__c'")
 		results = TestCustomExample.objects.all()[0:1]
 		obj = TestCustomExample(test_text='sf_test')
 		obj.save()
@@ -330,7 +286,8 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(tested_field.column, 'ChargentOrders__Balance_Due__c')
 
 	def test_datetime_miliseconds(self):
-		"""Verify that a field with milisecond resolution is readable."""
+		"""Verify that a field with milisecond resolution is readable.
+		"""
 		triggers = CronTrigger.objects.all()
 		if not triggers:
 			self.skipTest("No object with milisecond resolution found.")
@@ -340,7 +297,8 @@ class BasicSOQLTest(TestCase):
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_time_field(self):
-		"""Test a TimeField (read, modify, verify)."""
+		"""Test a TimeField (read, modify, verify).
+		"""
 		obj_orig = BusinessHours.objects.all()[0]
 		obj = refresh(obj_orig)
 		self.assertTrue(isinstance(obj.MondayStartTime, datetime.time))
@@ -353,7 +311,8 @@ class BasicSOQLTest(TestCase):
 			obj_orig.save()
 
 	def test_account_insert_delete(self):
-		"""Test insert and delete an account (normal or personal SF config)"""
+		"""Test insert and delete an account (normal or personal SF config)
+		"""
 		if settings.PERSON_ACCOUNT_ACTIVATED:
 			test_account = Account(FirstName='IntegrationTest',
 					LastName='Account')
@@ -367,7 +326,8 @@ class BasicSOQLTest(TestCase):
 			test_account.delete()
 
 	def test_similarity_filter_operators(self):
-		"""Test filter operators that use LIKE 'something%' and similar."""
+		"""Test filter operators that use LIKE 'something%' and similar.
+		"""
 		User.objects.get(Username__exact=current_user)
 		User.objects.get(Username__iexact=current_user.upper())
 		User.objects.get(Username__contains=current_user[1:-1])
@@ -380,7 +340,8 @@ class BasicSOQLTest(TestCase):
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_unsupported_bulk_create(self):
-		"""Unsupported bulk_create: "Errors should never pass silently." """
+		"""Unsupported bulk_create: "Errors should never pass silently."
+		"""
 		objects = [Contact(last_name='sf_test a'), Contact(last_name='sf_test b')]
 		self.assertRaises(AssertionError, Contact.objects.bulk_create, objects)
 
@@ -399,7 +360,8 @@ class BasicSOQLTest(TestCase):
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_escape_single_quote_in_raw_query(self):
-		"""Test that manual escaping within a raw query is not double escaped."""
+		"""Test that manual escaping within a raw query is not double escaped.
+		"""
 		account_name = '''Dr. Evil's Giant\\' "Laser", LLC'''
 		account = Account(Name=account_name)
 		account.save()
@@ -415,8 +377,9 @@ class BasicSOQLTest(TestCase):
 	def test_raw_query_empty(self):
 		"""Test that the raw query works even for queries with empty results.
 
-		This improvement over normal Django can compensate some unimplemented
-		features of django-salesforce.
+		Raw queries with supported empty results are an improvement over normal
+		Django.	It is useful if some unimplemented features
+		of django-salesforce are solved by writing a raw query.
 		"""
 		len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
 
@@ -450,33 +413,6 @@ class BasicSOQLTest(TestCase):
 			# dependent PricebookEntries are just deleted automatically by SF
 			test_product.delete()
 			test_product2.delete()
-
-	@skipUnless(DJANGO_15_PLUS, "the parameter 'update_fields' requires Django 1.5+")
-	def test_save_update_fields(self):
-		"""Test the save method with parameter `update_fields`
-
-		that updates only required fields.
-		"""
-		company_orig = self.test_lead.Company
-		self.test_lead.Company = 'nonsense'
-		self.test_lead.FirstName = 'John'
-		self.test_lead.save(update_fields=['FirstName'])
-		test_lead = refresh(self.test_lead)
-		self.assertEqual(test_lead.FirstName, 'John')
-		self.assertEqual(test_lead.Company, company_orig)
-
-	def test_query_all_deleted(self):
-		"""Test query for deleted objects (queryAll resource).
-		"""
-		self.test_lead.delete()
-		# TODO optimize counting because this can load thousands of records
-		count_deleted = Lead.objects.db_manager(sf_alias).query_all().filter(IsDeleted=True, LastName="Unittest General").count()
-		if not default_is_sf:
-			self.skipTest("Default database should be any Salesforce.")
-		self.assertGreaterEqual(count_deleted, 1)
-		count_deleted2 = Lead.objects.filter(IsDeleted=True, LastName="Unittest General").query_all().count()
-		self.assertGreaterEqual(count_deleted2, count_deleted)
-		self.test_lead.save()  # save anything again to be cleaned finally
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_z_big_query(self):
@@ -528,31 +464,6 @@ class BasicSOQLTest(TestCase):
 		bad_queryset = Lead.objects.raw("select XYZ from Lead")
 		bad_queryset.query.debug_silent = True
 		self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
-
-	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
-	def test_generic_type_field(self):
-		"""Test that a generic foreign key can be filtered by type name and
-		the type name can be referenced.
-		"""
-		test_contact = Contact(first_name = 'sf_test', last_name='my')
-		test_contact.save()
-		note_1 = Note(title='note for Lead', parent_id=self.test_lead.pk)
-		note_2 = Note(title='note for Contact', parent_id=test_contact.pk)
-		note_1.save()
-		note_2.save()
-		try:
-			self.assertEqual(Note.objects.filter(parent_type='Contact')[0].parent_type, 'Contact')
-			self.assertEqual(Note.objects.filter(parent_type='Lead')[0].parent_type, 'Lead')
-
-			note = Note.objects.filter(parent_type='Contact')[0]
-			parent_model = getattr(salesforce.testrunner.example.models, note.parent_type)
-			parent_object = parent_model.objects.get(pk=note.parent_id)
-			self.assertEqual(parent_object.pk, note.parent_id)
-		finally:
-			note_1.delete()
-			note_2.delete()
-			test_contact.delete()
-
 
 	def test_queryset_values(self):
 		"""Test list of dict qs.values() and list of tuples qs.values_list()
@@ -653,7 +564,8 @@ class BasicSOQLTest(TestCase):
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_only_fields(self):
-		"""Verify that access to "only" fields doesn't require a request, but others do."""
+		"""Verify that access to "only" fields doesn't require a request, but others do.
+		"""
 		request_count_0 = salesforce.backend.query.request_count
 		sql = User.objects.only('Username').query.get_compiler('salesforce').as_sql()[0]
 		self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
@@ -671,7 +583,8 @@ class BasicSOQLTest(TestCase):
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_defer_fields(self):
-		"""Verify that access to a deferred field requires a new request, but others don't."""
+		"""Verify that access to a deferred field requires a new request, but others don't.
+		"""
 		request_count_0 = salesforce.backend.query.request_count
 		contact = Contact.objects.defer('email')[0]
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 1)
@@ -685,8 +598,9 @@ class BasicSOQLTest(TestCase):
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	def test_filter_by_more_fk_to_the_same_model(self):
-		"""Test that aliases are correctly decoded if more relations to
-		the same model are present in the filter.
+		"""Test a filter with more relations to the same model.
+		
+		Verify that aliases are correctly decoded in the query compiler.
 		"""
 		test_lead = Lead(Company='sf_test lead', LastName='name')
 		test_lead.save()
@@ -698,8 +612,6 @@ class BasicSOQLTest(TestCase):
 			# so that the query can be at least somehow simply compiled to SOQL
 			# without exceptions, in order to prevent regressions.
 			sql, params = qs.query.get_compiler('salesforce').as_sql()
-			if not DJANGO_17_PLUS:
-				self.skipTest("Skipped filters with nontrivial relations")
 			# Verify expected filters in SOQL compiled by new Django
 			self.assertIn('Lead.Owner.Username = %s', sql)
 			self.assertIn('Lead.LastModifiedBy.Username = %s', sql)
@@ -709,6 +621,83 @@ class BasicSOQLTest(TestCase):
 		finally:
 			test_lead.delete()
 
+	def test_filter_by_more_fk_to_the_same_model_subquery(self):
+		"""Test a filter with more relations to the same model.
+		
+		Verify that aliases are correctly decoded in the query compiler.
+		"""
+		test_lead = Lead(Company='sf_test lead', LastName='name')
+		test_lead.save()
+		test_task = Task(who=test_lead)
+		test_task.save()
+		try:
+			qs = Task.objects.filter(who__in=Lead.objects.filter(pk=test_lead.pk,
+					owner__Username=current_user,
+					last_modified_by__Username=current_user))
+			sql, params = qs.query.get_compiler('salesforce').as_sql()
+			self.assertRegexpMatches(sql, 'SELECT Task.Id, .* FROM Task WHERE Task.WhoId IN \(SELECT ')
+			self.assertIn('Lead.Owner.Username = %s', sql)
+			self.assertIn('Lead.LastModifiedBy.Username = %s', sql)
+			refreshed_lead = qs[:1]
+			self.assertEqual(len(refreshed_lead), 1)
+		finally:
+			test_task.delete()
+			test_lead.delete()
+
+	def test_many2many_relationship(self):
+		"""Verify that the related set of Many2Many relationship works
+
+		Test for issue #55
+		"""
+		contact = Contact.objects.all()[0]
+		oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
+		oppo.save()
+		oc = OpportunityContactRole(opportunity=oppo, contact=contact, role='rolicka')
+		oc.save()
+		oc2 = OpportunityContactRole(opportunity=oppo, contact=contact, role='rolicka')
+		oc2.save()
+		try:
+			qs = contact.opportunities.all()
+			sql, params = qs.query.get_compiler('salesforce').as_sql()
+			self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Opportunity\.StageName.* '
+					'FROM OpportunityContactRole WHERE OpportunityContactRole.ContactId =')
+			self.assertEqual([x.id for x in qs], 2 * [oppo.id])
+		finally:
+			oc2.delete()
+			oc.delete()
+			oppo.delete()
+
+	@skip("Waiting for bug fix")
+	def test_filter_custom(self):
+		"""Verify that relations between custom and builtin objects
+		
+		are correctly compiled. (__r, __c etc.)
+		"""
+		qs = Attachment.objects.filter(parent__name='abc')
+		# "SELECT Attachment.Id FROM Attachment WHERE Attachment.Parent.Name = 'abc'"
+		list(qs)
+		qs = Test.objects.filter(contact__last_name='Johnson')
+		# "SELECT ... FROM django_Test__c WHERE django_Test__c.Contact__r.LastName = 'Johnson'")
+		list(qs)
+		qs = Attachment.objects.filter(parent__in=Test.objects.filter(contact__last_name='Johnson'))
+		list(qs)
+
+	def test_subquery_condition(self):
+		"""Regression test with a filter based on subquery.
+
+		This test is very similar to the required example in PR #103.
+		"""
+		qs = OpportunityContactRole.objects.filter(role='abc',
+				opportunity__in=Opportunity.objects.filter(stage='Prospecting'))
+		sql, params = qs.query.get_compiler('salesforce').as_sql()
+		self.assertRegexpMatches(sql, "WHERE Opportunity.StageName =",
+					"Probably because aliases are invalid for SFDC, e.g. 'U0.StageName'")
+		self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Role.* '
+										'FROM OpportunityContactRole WHERE \(.* AND .*\)')
+		self.assertRegexpMatches(sql, 'OpportunityContactRole.OpportunityId IN '
+					'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
+		self.assertRegexpMatches(sql, 'OpportunityContactRole.Role = %s')
+
 	def test_none_method_queryset(self):
 		"""Test that none() method in the queryset returns [], not error"""
 		request_count_0 = salesforce.backend.query.request_count
@@ -717,5 +706,131 @@ class BasicSOQLTest(TestCase):
 		self.assertEqual(repr(Contact.objects.none()), '[]')
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0,
 				"Do database requests should be done with .none() method")
+
+# ============= Tests that need setUp Lead ==================
+
+
+class BasicLeadSOQLTest(TestCase):
+	"""Tests that use a test Lead"""
+
+	def setUp(self):
+		"""Create our test lead record.
+		"""
+		def add_obj(obj):
+			obj.save()
+			self.objs.append(obj)
+		#
+		self.test_lead = Lead(
+			FirstName	= "User",
+			LastName	= "Unittest General",
+			Email		= test_email,
+			Status		= 'Open',
+			Company = "Some company, Ltd.",
+		)
+		self.objs = []
+		self.test_lead.save()
+		if not default_is_sf:
+			add_obj(Contact(last_name='Test contact 1'))
+			add_obj(Contact(last_name='Test contact 2'))
+			add_obj(User(Username=current_user))
+	
+	def tearDown(self):
+		"""Clean up our test records.
+		"""
+		if self.test_lead.pk is not None:
+			self.test_lead.delete()
+		for obj in self.objs:
+			if obj.pk is not None:
+				obj.delete()
+		self.objs = []
+
+
+	def test_exclude_query_construction(self):
+		"""Test that exclude query construction returns valid SOQL.
+		"""
+		contacts = Contact.objects.filter(first_name__isnull=False).exclude(email="steve@apple.com", last_name="Wozniak").exclude(last_name="smith")
+		number_of_contacts = contacts.count()
+		self.assertIsInstance(number_of_contacts, int)
+		# the default self.test_lead shouldn't be excluded by only one nondition
+		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General").filter(FirstName="User", LastName="Unittest General")
+		self.assertEqual(leads.count(), 1)
+
+	def test_get(self):
+		"""Get the test lead record.
+		"""
+		lead = Lead.objects.get(Email=test_email)
+		self.assertEqual(lead.FirstName, 'User')
+		self.assertEqual(lead.LastName, 'Unittest General')
+		if not default_is_sf:
+			self.skipTest("Default database should be any Salesforce.")
+		# test a read only field (formula of full name)
+		self.assertEqual(lead.Name, 'User Unittest General')
+	
+	def test_not_null(self):
+		"""Get the test lead record by isnull condition.
+		"""
+		lead = Lead.objects.get(Email__isnull=False, FirstName='User')
+		self.assertEqual(lead.FirstName, 'User')
+		self.assertEqual(lead.LastName, 'Unittest General')
+	
+	def test_update(self):
+		"""Update the test lead record.
+		"""
+		test_lead = Lead.objects.get(Email=test_email)
+		self.assertEqual(test_lead.FirstName, 'User')
+		test_lead.FirstName = 'Tested'
+		test_lead.save()
+		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
+
+	@skipUnless(DJANGO_15_PLUS, "the parameter 'update_fields' requires Django 1.5+")
+	def test_save_update_fields(self):
+		"""Test the save method with parameter `update_fields`
+
+		that updates only required fields.
+		"""
+		company_orig = self.test_lead.Company
+		self.test_lead.Company = 'nonsense'
+		self.test_lead.FirstName = 'John'
+		self.test_lead.save(update_fields=['FirstName'])
+		test_lead = refresh(self.test_lead)
+		self.assertEqual(test_lead.FirstName, 'John')
+		self.assertEqual(test_lead.Company, company_orig)
+
+	def test_query_all_deleted(self):
+		"""Test query for deleted objects (queryAll resource).
+		"""
+		self.test_lead.delete()
+		# TODO optimize counting because this can load thousands of records
+		count_deleted = Lead.objects.db_manager(sf_alias).query_all().filter(IsDeleted=True, LastName="Unittest General").count()
+		if not default_is_sf:
+			self.skipTest("Default database should be any Salesforce.")
+		self.assertGreaterEqual(count_deleted, 1)
+		count_deleted2 = Lead.objects.filter(IsDeleted=True, LastName="Unittest General").query_all().count()
+		self.assertGreaterEqual(count_deleted2, count_deleted)
+		self.test_lead.save()  # save anything again to be cleaned finally
+
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	def test_generic_type_field(self):
+		"""Test that a generic foreign key can be filtered by type name and
+		the type name can be referenced.
+		"""
+		test_contact = Contact(first_name = 'sf_test', last_name='my')
+		test_contact.save()
+		note_1 = Note(title='note for Lead', parent_id=self.test_lead.pk)
+		note_2 = Note(title='note for Contact', parent_id=test_contact.pk)
+		note_1.save()
+		note_2.save()
+		try:
+			self.assertEqual(Note.objects.filter(parent_type='Contact')[0].parent_type, 'Contact')
+			self.assertEqual(Note.objects.filter(parent_type='Lead')[0].parent_type, 'Lead')
+
+			note = Note.objects.filter(parent_type='Contact')[0]
+			parent_model = getattr(salesforce.testrunner.example.models, note.parent_type)
+			parent_object = parent_model.objects.get(pk=note.parent_id)
+			self.assertEqual(parent_object.pk, note.parent_id)
+		finally:
+			note_1.delete()
+			note_2.delete()
+			test_contact.delete()
 
 	#@skip("Waiting for bug fix")
