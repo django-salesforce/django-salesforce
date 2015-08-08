@@ -377,8 +377,9 @@ class BasicSOQLRoTest(TestCase):
 	def test_raw_query_empty(self):
 		"""Test that the raw query works even for queries with empty results.
 
-		This improvement over normal Django can compensate some unimplemented
-		features of django-salesforce.
+		Raw queries with supported empty results are an improvement over normal
+		Django.	It is useful if some unimplemented features
+		of django-salesforce are solved by writing a raw query.
 		"""
 		len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
 
@@ -684,7 +685,7 @@ class BasicSOQLRoTest(TestCase):
 	def test_subquery_condition(self):
 		"""Regression test with a filter based on subquery.
 
-		Django 1.7 had a problem while 1.6 was OK. The example is very similar to PR #103.
+		This test is very similar to the required example in PR #103.
 		"""
 		qs = OpportunityContactRole.objects.filter(role='abc',
 				opportunity__in=Opportunity.objects.filter(stage='Prospecting'))
