@@ -262,7 +262,7 @@ class BasicSOQLRoTest(TestCase):
 		"""Create, read and delete a simple custom object `django_Test__c`.
 		"""
 		if not 'django_Test__c' in sf_tables():
-			skip("Not found custom object 'django_Test__c'")
+			self.skipTest("Not found custom object 'django_Test__c'")
 		results = TestCustomExample.objects.all()[0:1]
 		obj = TestCustomExample(test_text='sf_test')
 		obj.save()
