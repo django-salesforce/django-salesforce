@@ -24,7 +24,8 @@ from salesforce.testrunner.example.models import Test as TestCustomExample
 from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
-from .utils import skip, skipUnless, expectedFailure
+from .utils import skip, skipUnless, expectedFailure # test decorators
+from .utils import uid
 
 import logging
 log = logging.getLogger(__name__)
@@ -687,7 +688,7 @@ class BasicLeadSOQLTest(TestCase):
 			self.objs.append(obj)
 		#
 		self.test_lead = Lead(
-			FirstName	= "User",
+			FirstName	= "User" + uid,
 			LastName	= "Unittest General",
 			Email		= test_email,
 			Status		= 'Open',
@@ -714,36 +715,38 @@ class BasicLeadSOQLTest(TestCase):
 	def test_exclude_query_construction(self):
 		"""Test that exclude query construction returns valid SOQL.
 		"""
-		contacts = Contact.objects.filter(first_name__isnull=False).exclude(email="steve@apple.com", last_name="Wozniak").exclude(last_name="smith")
+		contacts = Contact.objects.filter(first_name__isnull=False
+				).exclude(email="steve@apple.com", last_name="Wozniak").exclude(last_name="smith")
 		number_of_contacts = contacts.count()
 		self.assertIsInstance(number_of_contacts, int)
 		# the default self.test_lead shouldn't be excluded by only one nondition
-		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General").filter(FirstName="User", LastName="Unittest General")
+		leads = Lead.objects.exclude(Email="steve@apple.com", LastName="Unittest General"
+				).filter(FirstName="User" + uid, LastName="Unittest General")
 		self.assertEqual(leads.count(), 1)
 
 	def test_get(self):
 		"""Get the test lead record.
 		"""
 		lead = Lead.objects.get(Email=test_email)
-		self.assertEqual(lead.FirstName, 'User')
+		self.assertEqual(lead.FirstName, 'User' + uid)
 		self.assertEqual(lead.LastName, 'Unittest General')
 		if not default_is_sf:
 			self.skipTest("Default database should be any Salesforce.")
 		# test a read only field (formula of full name)
-		self.assertEqual(lead.Name, 'User Unittest General')
+		self.assertEqual(lead.Name, 'User%s Unittest General' % uid)
 	
 	def test_not_null(self):
 		"""Get the test lead record by isnull condition.
 		"""
-		lead = Lead.objects.get(Email__isnull=False, FirstName='User')
-		self.assertEqual(lead.FirstName, 'User')
+		lead = Lead.objects.get(Email__isnull=False, FirstName='User' + uid)
+		self.assertEqual(lead.FirstName, 'User' + uid)
 		self.assertEqual(lead.LastName, 'Unittest General')
 	
 	def test_update(self):
 		"""Update the test lead record.
 		"""
 		test_lead = Lead.objects.get(Email=test_email)
-		self.assertEqual(test_lead.FirstName, 'User')
+		self.assertEqual(test_lead.FirstName, 'User' + uid)
 		test_lead.FirstName = 'Tested'
 		test_lead.save()
 		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
