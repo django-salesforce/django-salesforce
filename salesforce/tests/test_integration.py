@@ -33,13 +33,15 @@ random_slug = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowerc
 sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 current_user = settings.DATABASES[sf_alias]['USER']
 test_email = 'test-djsf-unittests-%s@example.com' % random_slug
-sf_tables = []
-if router.is_sf_database(sf_alias):
-	sf_tables = [x['name'] for x in
-			connections[sf_alias].introspection.table_list_cache['sobjects']]
 sf_databases = [db for db in connections if router.is_sf_database(db)]
 default_is_sf = router.is_sf_database(sf_alias)
-manual_test = False  # skipped by automated tests
+
+_sf_tables = []
+def sf_tables():
+	if not _sf_tables and router.is_sf_database(sf_alias):
+		for x in connections[sf_alias].introspection.table_list_cache['sobjects']:
+			_sf_tables.append(x['name'])
+	return _sf_tables
 
 def refresh(obj):
 	"""Get the same object refreshed from the same db.
@@ -255,10 +257,11 @@ class BasicSOQLRoTest(TestCase):
 			retrieved_pricebook_entry.delete()
 			product.delete()
 
-	@skipUnless('django_Test__c' in sf_tables, "Not found custom object 'django_Test__c'")
 	def test_simple_custom_object(self):
 		"""Create, read and delete a simple custom object `django_Test__c`.
 		"""
+		if not 'django_Test__c' in sf_tables():
+			skip("Not found custom object 'django_Test__c'")
 		results = TestCustomExample.objects.all()[0:1]
 		obj = TestCustomExample(test_text='sf_test')
 		obj.save()
