@@ -17,6 +17,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.models import query, Count
 from django.db.models.sql import Query, RawQuery, constants, subqueries
+from django.db.models.sql.datastructures import EmptyResultSet
 from django.db.models.query_utils import deferred_class_factory
 from django.utils.encoding import force_text
 from django.utils.six import PY3
@@ -247,7 +248,10 @@ class SalesforceQuerySet(query.QuerySet):
 		An iterator over the results from applying this QuerySet to the
 		remote web service.
 		"""
-		sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
+		try:
+			sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
+		except EmptyResultSet:
+			raise StopIteration
 		cursor = CursorWrapper(connections[self.db], self.query)
 		cursor.execute(sql, params)
 
