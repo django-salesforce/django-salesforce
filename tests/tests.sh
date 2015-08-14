@@ -7,4 +7,4 @@ for x in tests/test_*; do
         $x/test.sh || RET=$?
     fi
 done
-test $RET -eq 0
+test $RET eq 0
