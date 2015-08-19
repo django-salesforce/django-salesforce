@@ -19,8 +19,7 @@ from django.utils import timezone
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Opportunity, OpportunityContactRole,
-		Product, Pricebook, PricebookEntry, Note, Attachment, Task, Test)
-from salesforce.testrunner.example.models import Test as TestCustomExample
+		Product, Pricebook, PricebookEntry, Note, Task, WITH_CONDITIONAL_MODELS)
 from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
@@ -258,18 +257,20 @@ class BasicSOQLRoTest(TestCase):
 			retrieved_pricebook_entry.delete()
 			product.delete()
 
+	@skipUnless(WITH_CONDITIONAL_MODELS, "Requires conditional models")
 	def test_simple_custom_object(self):
 		"""Create, read and delete a simple custom object `django_Test__c`.
 		"""
+		from salesforce.testrunner.example.models import Attachment, Test
 		if not 'django_Test__c' in sf_tables():
 			self.skipTest("Not found custom object 'django_Test__c'")
-		results = TestCustomExample.objects.all()[0:1]
-		obj = TestCustomExample(test_text='sf_test')
+		results = Test.objects.all()[0:1]
+		obj = Test(test_text='sf_test')
 		obj.save()
 		attachment = Attachment(name='test attachment', parent=obj)
 		attachment.save()
 		try:
-			results = TestCustomExample.objects.all()[0:1]
+			results = Test.objects.all()[0:1]
 			self.assertEqual(len(results), 1)
 			self.assertEqual(results[0].test_text, 'sf_test')
 		finally:
@@ -658,11 +659,13 @@ class BasicSOQLRoTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
+	@skipUnless(WITH_CONDITIONAL_MODELS and 'django_Test__c' in sf_tables(), "Requires conditional models")
 	def test_filter_custom(self):
 		"""Verify that relations between custom and builtin objects
 		
 		are correctly compiled. (__r, __c etc.)
 		"""
+		from salesforce.testrunner.example.models import Attachment, Test
 		qs = Attachment.objects.filter(parent__name='abc')
 		# "SELECT Attachment.Id FROM Attachment WHERE Attachment.Parent.Name = 'abc'"
 		list(qs)

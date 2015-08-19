@@ -317,7 +317,8 @@ class Organization(models.Model):
 # Skipping the model if a custom table isn't installed in your Salesforce
 # is important an old Django, even with "on_delete=DO_NOTHING",
 # due to how "delete" was implemented in Django 1.4
-if DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False):
+WITH_CONDITIONAL_MODELS = DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False)
+if WITH_CONDITIONAL_MODELS:
 
 	class Test(SalesforceParentModel):
 		"""
@@ -364,6 +365,6 @@ if DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False):
 		body = models.TextField()
 
 
-	class Task(models.Model):
-		who = models.ForeignKey(Lead, on_delete=models.DO_NOTHING, blank=True, null=True)  # Reference to tables [Contact, Lead]
-		what = models.ForeignKey(Account, related_name='task_what_set', on_delete=models.DO_NOTHING, blank=True, null=True)  # Refer
+class Task(models.Model):
+	who = models.ForeignKey(Lead, on_delete=models.DO_NOTHING, blank=True, null=True)  # Reference to tables [Contact, Lead]
+	what = models.ForeignKey(Account, related_name='task_what_set', on_delete=models.DO_NOTHING, blank=True, null=True)  # Refer

@@ -5,8 +5,8 @@ Tests that do not need to connect servers
 from django.test import TestCase
 from django.db.models import DO_NOTHING
 from salesforce import fields, models
-from salesforce.testrunner.example.models import (Attachment, Contact, Opportunity,
-		OpportunityContactRole, ChargentOrder, Test)
+from salesforce.testrunner.example.models import (Contact, Opportunity,
+		OpportunityContactRole, ChargentOrder)
 
 from salesforce.backend.subselect import TestSubSelectSearch
 import salesforce
