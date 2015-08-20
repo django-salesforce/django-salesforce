@@ -82,7 +82,7 @@ def reauthenticate(db_alias):
 	if connections['salesforce'].sf_session.auth.dynamic_token is None:
 		expire_token(db_alias)
 		oauth = authenticate(db_alias=db_alias)
-		return oauth['access_token']
+		return str(oauth['access_token'])
 	else:
 		# It is expected that with dynamic authentication we get a token that
 		# is valid at least for a few future seconds, because we don't get
@@ -105,7 +105,7 @@ class SalesforceAuth(AuthBase):
 		if self.dynamic_token:
 			access_token = self.dynamic_token
 		else:
-			access_token = authenticate(db_alias=self.db_alias)['access_token']
+			access_token = str(authenticate(db_alias=self.db_alias)['access_token'])
 		r.headers['Authorization'] = 'OAuth %s' % access_token
 		return r
 
