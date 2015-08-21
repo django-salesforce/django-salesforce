@@ -3,8 +3,7 @@ from django.conf import settings
 from django.test import TestCase
 from salesforce.backend import sf_alias
 from tests.test_mixin.models import Account, Contact, User, ProxyContact, Proxy2Contact
-import uuid
-uid = '-' + str(uuid.uuid4())[:7]
+from salesforce.backend.test_helpers import uid
 
 current_user = settings.DATABASES[sf_alias]['USER']
 

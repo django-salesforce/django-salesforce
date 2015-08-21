@@ -4,8 +4,7 @@ from django.conf import settings
 from django.test import TestCase
 from salesforce.backend import sf_alias
 from tests.test_compatibility.models import Lead, User
-import uuid
-uid = '-' + str(uuid.uuid4())[:7]
+from salesforce.backend.test_helpers import uid
 
 current_user = settings.DATABASES[sf_alias]['USER']
 
@@ -32,4 +31,3 @@ class DjangoCompatibility(TestCase):
 		self.assertEqual(primary_key.auto_created, True)
 		self.assertEqual(primary_key.get_internal_type(), 'AutoField')
 		self.assertIn(primary_key.name, ('id', 'Id'))
-
