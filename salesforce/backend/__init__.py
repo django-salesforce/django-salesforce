@@ -14,6 +14,9 @@ SalesforceModel. All code for SF models that can be used with non SF databases
 should be located directly in the 'salesforce' directory in files 'models.py',
 'fields.py', 'manager.py', 'router.py', 'admin.py'.
 
+All code here in salesforce.backend is private without public API. (It can be
+changed anytime between versions.)
+
 Incorrectly located files: (It is better not to change it now.)
 	backend/manager.py   => manager.py
 	auth.py              => backend/auth.py

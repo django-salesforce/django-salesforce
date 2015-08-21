@@ -1,3 +1,6 @@
+"""
+Tests for `salesforce.utils`
+"""
 from django.test import TestCase
 from django.db import connections
 import unittest

@@ -11,7 +11,6 @@ A database backend for the Django ORM.
 Allows access to all Salesforce objects accessible via the SOQL API.
 """
 import logging
-import ssl
 import warnings
 
 import django

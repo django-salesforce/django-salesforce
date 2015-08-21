@@ -108,7 +108,7 @@ class TestTopologyCompiler(TestCase):
 		# Custom.objects.all()
 		# SELECT Custom__c.Id FROM Custom__c
 		self.assertTopo([(None, 'Custom__c', None, 'Custom__c')], {'Custom__c': 'Custom__c'})
-		# C (Id, PId) - child, P (Id) - parent 
+		# C (Id, PId) - child, P (Id) - parent
 		# C.objects.filter(p__namen='xy')
 		# SELECT C.Id, C.PId FROM C WHERE C.P.Name='abc'
 		self.assertTopo([(None, 'C', None, 'C'), ('C', 'P', (('PId', 'Id'),), 'P')], {'C': 'C', 'P': 'C.P'})
