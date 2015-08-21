@@ -5,7 +5,7 @@ import unittest
 
 from salesforce.testrunner.example.models import Account, Contact, Lead, Opportunity
 from salesforce.utils import convert_lead
-from .utils import skip, skipUnless
+from ..backend.test_helpers import skip, skipUnless
 
 try:
     import beatbox

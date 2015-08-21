@@ -12,7 +12,7 @@ from salesforce import auth
 from salesforce.backend import sf_alias
 from salesforce.testrunner.example import models
 from salesforce.tests.test_integration import default_is_sf
-from .utils import skip, skipUnless
+from ..backend.test_helpers import skip, skipUnless
 
 import logging
 log = logging.getLogger(__name__)

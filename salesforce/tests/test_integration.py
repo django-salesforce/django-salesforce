@@ -23,8 +23,8 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 from salesforce import router, DJANGO_15_PLUS
 from salesforce.backend import sf_alias
 import salesforce
-from .utils import skip, skipUnless, expectedFailure # test decorators
-from .utils import uid
+from ..backend.test_helpers import skip, skipUnless, expectedFailure # test decorators
+from ..backend.test_helpers import uid
 
 import logging
 log = logging.getLogger(__name__)

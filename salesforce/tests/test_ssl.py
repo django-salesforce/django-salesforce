@@ -6,7 +6,7 @@ without need to monkey patch long parts of requests code or to repeat hacks like
 from django.conf import settings
 from django.test import TestCase
 from salesforce.backend.adapter import SslHttpAdapter
-from .utils import skip, skipUnless
+from ..backend.test_helpers import skip, skipUnless
 import requests
 import ssl
 import sys
