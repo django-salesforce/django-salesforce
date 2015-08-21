@@ -31,7 +31,9 @@ class ModelRouter(object):
 	"""
 	Database router for Salesforce models.
 	"""
-	sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
+	@property
+	def sf_alias(self):
+		return getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 	
 	def db_for_read(self, model, **hints):
 		"""

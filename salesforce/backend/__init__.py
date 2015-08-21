@@ -27,8 +27,6 @@ from django.conf import settings
 import logging
 log = logging.getLogger(__name__)
 
-sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
-
 # The maximal number of retries for requests to SF API.
 MAX_RETRIES = getattr(settings, 'REQUESTS_MAX_RETRIES', 1)
 
