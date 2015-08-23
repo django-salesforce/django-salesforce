@@ -12,6 +12,7 @@ Database router for SalesforceModel objects.
 import logging
 
 from django.conf import settings
+from salesforce import DJANGO_18_PLUS
 
 log = logging.getLogger(__name__)
 
@@ -60,6 +61,10 @@ class ModelRouter(object):
 				return db
 		if getattr(model, '_salesforce_object', False):
 			return self.sf_alias
+
+	# TODO hy: implement the new signature for Django 1.8 (necessary for
+	# RunPython)
+	#     def allow_migrate(self, db, app_label, model_name=None, **hints)
 
 	def allow_migrate(self, db, model):
 		"""
