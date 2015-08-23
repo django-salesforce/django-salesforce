@@ -202,13 +202,13 @@ class BasicSOQLRoTest(TestCase):
 			today = timezone.make_aware(today, pytz.utc)
 		yesterday = today - datetime.timedelta(days=1)
 		tomorrow = today + datetime.timedelta(days=1)
-		contact = Contact(first_name='sf_test', last_name='date',
+		contact = Contact(first_name='sf_test' + uid, last_name='date',
 				email_bounced_date=today)
 		contact.save()
 		try:
-			contacts1 = Contact.objects.filter(email_bounced_date__gt=yesterday)
+			contacts1 = Contact.objects.filter(email_bounced_date__gt=yesterday, first_name='sf_test' + uid)
 			self.assertEqual(len(contacts1), 1)
-			contacts2 = Contact.objects.filter(email_bounced_date__gt=tomorrow)
+			contacts2 = Contact.objects.filter(email_bounced_date__gt=tomorrow, first_name='sf_test' + uid)
 			self.assertEqual(len(contacts2), 0)
 		finally:
 			contact.delete()
@@ -427,6 +427,7 @@ class BasicSOQLRoTest(TestCase):
 	def test_cursor_execute_fetch(self):
 		"""Get results by cursor.execute(...); fetchone(), fetchmany(), fetchall()
 		"""
+		# TODO hy: fix for concurrency
 		sql = "SELECT Id, LastName, FirstName, OwnerId FROM Contact LIMIT 2"
 		cursor = connections[sf_alias].cursor()
 		cursor.execute(sql)
