@@ -16,8 +16,6 @@ from salesforce import models, DJANGO_15_PLUS, DJANGO_18_PLUS
 from salesforce.fields import SF_PK
 
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.utils.encoding import force_text
 if DJANGO_18_PLUS:
 	from django.db.backends.base.introspection import BaseDatabaseIntrospection
 else:

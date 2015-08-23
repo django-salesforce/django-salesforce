@@ -241,6 +241,7 @@ class PricebookEntry(SalesforceModel):
 
 
 class ChargentOrder(SalesforceModel):
+	# the class is used only by unit tests, it is not necessary to be installed
 	class Meta(SalesforceModel.Meta):
 		db_table = 'ChargentOrders__ChargentOrder__c'
 		custom = True
@@ -266,9 +267,6 @@ class BusinessHours(SalesforceModel):
 	class Meta:
 		verbose_name_plural = "BusinessHours"
 
-
-test_custom_db_table, test_custom_db_column = getattr(settings,
-		'TEST_CUSTOM_FIELD', 'ChargentOrders__ChargentOrder__c.Name').split('.')
 
 class SalesforceParentModel(SalesforceModel):
 	"""
