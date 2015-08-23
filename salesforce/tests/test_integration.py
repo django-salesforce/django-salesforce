@@ -613,7 +613,7 @@ class BasicSOQLRoTest(TestCase):
 			self.assertIn('Lead.LastModifiedBy.Username = %s', sql)
 			# verify validity for SFDC, verify results
 			refreshed_lead = qs.get()
-			self.assertEqual(refreshed_lead.id, test_lead.id)
+			self.assertEqual(refreshed_lead.pk, test_lead.pk)
 		finally:
 			test_lead.delete()
 
@@ -657,7 +657,7 @@ class BasicSOQLRoTest(TestCase):
 			sql, params = qs.query.get_compiler('salesforce').as_sql()
 			self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Opportunity\.StageName.* '
 					'FROM OpportunityContactRole WHERE OpportunityContactRole.ContactId =')
-			self.assertEqual([x.id for x in qs], 2 * [oppo.id])
+			self.assertEqual([x.pk for x in qs], 2 * [oppo.pk])
 		finally:
 			oc2.delete()
 			oc.delete()
