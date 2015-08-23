@@ -5,7 +5,9 @@
 # See LICENSE.md for details
 #
 from decimal import Decimal
+from distutils.util import strtobool
 import datetime
+import os
 import pytz
 import random
 import string
@@ -20,14 +22,15 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Opportunity, OpportunityContactRole,
 		Product, Pricebook, PricebookEntry, Note, Task, WITH_CONDITIONAL_MODELS)
-from salesforce import router, DJANGO_15_PLUS
+from salesforce import router, DJANGO_15_PLUS, DJANGO_18_PLUS
 import salesforce
-from ..backend.test_helpers import skip, skipUnless, expectedFailure # test decorators
+from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid
 
 import logging
 log = logging.getLogger(__name__)
 
+QUIET_DJANGO_18 = DJANGO_18_PLUS and strtobool(os.getenv('QUIET_DJANGO_18', 'false'))
 test_email = 'test-djsf-unittests%s@example.com' % uid
 sf_databases = [db for db in connections if router.is_sf_database(db)]
 
@@ -49,6 +52,7 @@ class BasicSOQLRoTest(TestCase):
 	"""Tests that need no setUp/tearDown"""
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	@expectedFailureIf(QUIET_DJANGO_18)
 	def test_raw(self):
 		"""Get the first two contact records.
 
@@ -63,6 +67,7 @@ class BasicSOQLRoTest(TestCase):
 		'%s' % contacts[0].__dict__  # Check that all fields are accessible
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	@expectedFailureIf(QUIET_DJANGO_18)
 	def test_raw_foreignkey_id(self):
 		"""Get the first two contacts by raw query with a ForeignKey id field.
 		"""
@@ -346,6 +351,7 @@ class BasicSOQLRoTest(TestCase):
 			account.delete()
 
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	@expectedFailureIf(QUIET_DJANGO_18)
 	def test_escape_single_quote_in_raw_query(self):
 		"""Test that manual escaping within a raw query is not double escaped.
 		"""
@@ -452,6 +458,7 @@ class BasicSOQLRoTest(TestCase):
 		bad_queryset.query.debug_silent = True
 		self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
 
+	@expectedFailureIf(QUIET_DJANGO_18)
 	def test_queryset_values(self):
 		"""Test list of dict qs.values() and list of tuples qs.values_list()
 		"""
@@ -580,6 +587,7 @@ class BasicSOQLRoTest(TestCase):
 		_ = contact.email
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 2)
 
+	@expectedFailureIf(QUIET_DJANGO_18)
 	def test_incomplete_raw(self):
 		Contact.objects.raw("select id from Contact")[0].last_name
 
