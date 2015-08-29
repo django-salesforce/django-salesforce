@@ -28,7 +28,7 @@ import requests
 import pytz
 
 from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
-from salesforce.backend import compiler, sf_alias
+from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 
 try:
@@ -91,7 +91,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		f:  requests.get or requests.post...
 		_cursor: sharing the debug information in cursor
 	"""
-	global request_count 
+	global request_count
 	from salesforce.backend import base
 	# The 'verify' option is about verifying SSL certificates
 	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
@@ -254,7 +254,7 @@ class SalesforceQuerySet(query.QuerySet):
 		remote web service.
 		"""
 		try:
-			sql, params = compiler.SQLCompiler(self.query, connections[self.db], None).as_sql()
+			sql, params = SQLCompiler(self.query, connections[self.db], None).as_sql()
 		except EmptyResultSet:
 			raise StopIteration
 		cursor = CursorWrapper(connections[self.db], self.query)
