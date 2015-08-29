@@ -19,7 +19,6 @@ from django.db.models import query, Count
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.db.models.query_utils import deferred_class_factory
-from django.utils.encoding import force_text
 from django.utils.six import PY3
 
 from itertools import islice
@@ -28,6 +27,7 @@ import requests
 import pytz
 
 from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
+from salesforce import DJANGO_184_PLUS
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 
@@ -93,7 +93,6 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	"""
 	global request_count
 	from salesforce.backend import base
-	# The 'verify' option is about verifying SSL certificates
 	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
 				 'verify': True}
 	kwargs_in.update(kwargs)
@@ -326,7 +325,10 @@ class SalesforceRawQuery(RawQuery):
 		converter = connections[self.using].introspection.table_name_converter
 		if self.cursor.rowcount > 0:
 			return [converter(col) for col in self.cursor.first_row.keys() if col != 'attributes']
-		return [SF_PK]
+		# TODO hy: A more general fix is desirable with rewriting more code.
+		#   This is changed due to Django 1.8.4+  https://github.com/django/django/pull/5036
+		#   related to https://code.djangoproject.com/ticket/12768
+		return ['Id'] if DJANGO_184_PLUS else [SF_PK]
 
 	def _execute_query(self):
 		self.cursor = CursorWrapper(connections[self.using], self)
