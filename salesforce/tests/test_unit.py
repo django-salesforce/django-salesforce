@@ -25,6 +25,16 @@ class TestField(TestCase):
 	"""
 	Unit tests for salesforce.fields that don't need to connect Salesforce.
 	"""
+	def test_primary_key(self):
+		"""
+		Verify the expected attributes of primary key
+		"""
+		class Ab(models.SalesforceModel):
+			pass
+		self.assertTrue(isinstance(fields.SF_PK, str))
+		self.assertTrue(hasattr(Ab(), 'pk'))
+		self.assertTrue(hasattr(Ab(), fields.SF_PK))
+
 	def test_auto_db_column(self):
 		"""
 		Verify that db_column is not important in most cases, but it has
