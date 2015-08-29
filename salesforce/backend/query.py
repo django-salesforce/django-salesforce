@@ -93,6 +93,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 	"""
 	global request_count
 	from salesforce.backend import base
+	# The 'verify' option is about verifying SSL certificates
 	kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
 				 'verify': True}
 	kwargs_in.update(kwargs)
