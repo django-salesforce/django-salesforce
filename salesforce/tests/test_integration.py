@@ -663,13 +663,15 @@ class BasicSOQLRoTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
-	@skipUnless(WITH_CONDITIONAL_MODELS and 'django_Test__c' in sf_tables(), "Requires conditional models")
+	@skipUnless(WITH_CONDITIONAL_MODELS, "Requires conditional models")
 	def test_filter_custom(self):
 		"""Verify that relations between custom and builtin objects
 		
 		are correctly compiled. (__r, __c etc.)
 		"""
 		from salesforce.testrunner.example.models import Attachment, Test
+		if not 'django_Test__c' in sf_tables():
+			self.skipTest("Not found custom object 'django_Test__c'")
 		qs = Attachment.objects.filter(parent__name='abc')
 		# "SELECT Attachment.Id FROM Attachment WHERE Attachment.Parent.Name = 'abc'"
 		list(qs)
