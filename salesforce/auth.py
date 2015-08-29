@@ -13,7 +13,7 @@ import logging
 import requests
 import threading
 from django.db import connections
-from salesforce.backend import sf_alias, MAX_RETRIES
+from salesforce.backend import MAX_RETRIES
 from salesforce.backend.driver import DatabaseError
 from salesforce.backend.adapter import SslHttpAdapter
 from requests.auth import AuthBase
@@ -25,11 +25,11 @@ log = logging.getLogger(__name__)
 oauth_lock = threading.Lock()
 oauth_data = {}
 
-def expire_token(db_alias=None):
+def expire_token(db_alias):
 	with oauth_lock:
-		del oauth_data[db_alias or sf_alias]
+		del oauth_data[db_alias]
 
-def authenticate(db_alias=None, settings_dict=None):
+def authenticate(db_alias, settings_dict=None):
 	"""
 	Authenticate to the Salesforce API with the provided credentials.
 	
@@ -47,7 +47,6 @@ def authenticate(db_alias=None, settings_dict=None):
 	"""
 	# if another thread is in this method, wait for it to finish.
 	# always release the lock no matter what happens in the block
-	db_alias = db_alias or sf_alias
 	if not db_alias in connections:
 		raise KeyError("authenticate function signature has been changed. "
 				"The db_alias parameter more important than settings_dict")

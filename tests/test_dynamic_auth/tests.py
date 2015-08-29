@@ -1,5 +1,4 @@
 from django.test import TestCase
-from django.conf import settings
 from django.db import connections
 from salesforce.testrunner.example.models import User
 from requests.exceptions import ConnectionError

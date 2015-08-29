@@ -21,24 +21,19 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		Opportunity, OpportunityContactRole,
 		Product, Pricebook, PricebookEntry, Note, Task, WITH_CONDITIONAL_MODELS)
 from salesforce import router, DJANGO_15_PLUS
-from salesforce.backend import sf_alias
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure # test decorators
-from ..backend.test_helpers import uid
+from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid
 
 import logging
 log = logging.getLogger(__name__)
 
-random_slug = ''.join(random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for x in range(32))
-sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
-current_user = settings.DATABASES[sf_alias]['USER']
-test_email = 'test-djsf-unittests-%s@example.com' % random_slug
+test_email = 'test-djsf-unittests%s@example.com' % uid
 sf_databases = [db for db in connections if router.is_sf_database(db)]
-default_is_sf = router.is_sf_database(sf_alias)
 
 _sf_tables = []
 def sf_tables():
-	if not _sf_tables and router.is_sf_database(sf_alias):
+	if not _sf_tables and default_is_sf:
 		for x in connections[sf_alias].introspection.table_list_cache['sobjects']:
 			_sf_tables.append(x['name'])
 	return _sf_tables

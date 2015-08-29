@@ -10,8 +10,7 @@ from django.conf import settings
 
 from salesforce import auth
 from salesforce.backend import sf_alias
-from salesforce.tests.test_integration import default_is_sf
-from ..backend.test_helpers import skip, skipUnless
+from ..backend.test_helpers import default_is_sf, skip, skipUnless
 
 import logging
 log = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ class OAuthTest(TestCase):
 		old_data = auth.oauth_data
 		
 		self.assertIn(sf_alias, auth.oauth_data)
-		auth.expire_token()
+		auth.expire_token(sf_alias)
 		self.assertNotIn(sf_alias, auth.oauth_data)
 		
 		auth.authenticate(sf_alias, settings_dict=settings.DATABASES[sf_alias])
