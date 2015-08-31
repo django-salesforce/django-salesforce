@@ -33,7 +33,7 @@ from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError
 from salesforce.backend import driver as Database
-from salesforce.backend import sf_alias, MAX_RETRIES
+from salesforce.backend import MAX_RETRIES
 from salesforce.backend.adapter import SslHttpAdapter
 try:
 	from urllib.parse import urlparse
@@ -111,7 +111,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 	Database = Database
 
 	def __init__(self, settings_dict, alias=None):
-		alias = alias or sf_alias
+		if alias is None:
+			alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 		super(DatabaseWrapper, self).__init__(settings_dict, alias)
 
 		self.validate_settings(settings_dict)

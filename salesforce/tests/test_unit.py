@@ -5,8 +5,8 @@ Tests that do not need to connect servers
 from django.test import TestCase
 from django.db.models import DO_NOTHING
 from salesforce import fields, models
-from salesforce.testrunner.example.models import (Attachment, Contact, Opportunity,
-		OpportunityContactRole, ChargentOrder, Test)
+from salesforce.testrunner.example.models import (Contact, Opportunity,
+		OpportunityContactRole, ChargentOrder)
 
 from salesforce.backend.subselect import TestSubSelectSearch
 import salesforce
@@ -25,6 +25,16 @@ class TestField(TestCase):
 	"""
 	Unit tests for salesforce.fields that don't need to connect Salesforce.
 	"""
+	def test_primary_key(self):
+		"""
+		Verify the expected attributes of primary key
+		"""
+		class Ab(models.SalesforceModel):
+			pass
+		self.assertTrue(isinstance(fields.SF_PK, str))
+		self.assertTrue(hasattr(Ab(), 'pk'))
+		self.assertTrue(hasattr(Ab(), fields.SF_PK))
+
 	def test_auto_db_column(self):
 		"""
 		Verify that db_column is not important in most cases, but it has
@@ -108,7 +118,7 @@ class TestTopologyCompiler(TestCase):
 		# Custom.objects.all()
 		# SELECT Custom__c.Id FROM Custom__c
 		self.assertTopo([(None, 'Custom__c', None, 'Custom__c')], {'Custom__c': 'Custom__c'})
-		# C (Id, PId) - child, P (Id) - parent 
+		# C (Id, PId) - child, P (Id) - parent
 		# C.objects.filter(p__namen='xy')
 		# SELECT C.Id, C.PId FROM C WHERE C.P.Name='abc'
 		self.assertTopo([(None, 'C', None, 'C'), ('C', 'P', (('PId', 'Id'),), 'P')], {'C': 'C', 'P': 'C.P'})

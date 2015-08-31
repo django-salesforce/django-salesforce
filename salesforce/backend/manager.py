@@ -18,7 +18,6 @@ from django.db.models.query import RawQuerySet
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from salesforce import router, DJANGO_16_PLUS
-from salesforce.backend import sf_alias
 
 class SalesforceManager(manager.Manager):
 	use_for_related_fields = True
@@ -43,7 +42,7 @@ class SalesforceManager(manager.Manager):
 	def using(self, alias):
 		if alias is None:
 			if getattr(self.model, '_salesforce_object', False):
-				alias = sf_alias
+				alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 			else:
 				alias = DEFAULT_DB_ALIAS
 		if router.is_sf_database(alias, self.model):
