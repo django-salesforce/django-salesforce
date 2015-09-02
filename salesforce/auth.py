@@ -9,6 +9,9 @@
 oauth login support for the Salesforce API
 """
 
+import base64
+import hashlib
+import hmac
 import logging
 import requests
 import threading
@@ -70,8 +73,16 @@ def authenticate(db_alias, settings_dict=None):
 					password		= settings_dict['PASSWORD'],
 				))
 				if response.status_code == 200:
-					log.info("successfully authenticated %s" % settings_dict['USER'])
-					oauth_data[db_alias] = response.json()
+					response_data = response.json()
+					calc_signature = (base64.b64encode(hmac.new(
+							key=settings_dict['CONSUMER_SECRET'].encode('ascii'),
+							msg=(response_data['id'] + response_data['issued_at']).encode('ascii'),
+							digestmod=hashlib.sha256).digest())).decode('ascii')
+					if calc_signature == response_data['signature']:
+						log.info("successfully authenticated %s" % settings_dict['USER'])
+						oauth_data[db_alias] = response_data
+					else:
+						raise RuntimeError('Invalid auth signature received')
 				else:
 					raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
 		
