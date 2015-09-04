@@ -381,10 +381,6 @@ class SalesforceWhereNode(where.WhereNode):
 				return ('%s %snull' % (field_sql,
 					(not value_annot and '!= ' or '= ')), ())
 
-			if lookup_type == 'range':
-				return ('%s >= %s AND %s <= %s' % (field_sql,
-												   value_annot[0], field_sql,
-												   value_annot[1]), ())
 		else:
 			return result
 
