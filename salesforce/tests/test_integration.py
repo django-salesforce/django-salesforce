@@ -704,10 +704,18 @@ class BasicLeadSOQLTest(TestCase):
 		)
 		self.objs = []
 		self.test_lead.save()
+		self.test_opportunity = Opportunity(
+			name	= "Example Opportunity",
+			close_date	= datetime.date(year=2015, month=7, day=30),
+			stage	= "Prospecting"
+		)
+		self.test_opportunity.save()
 		if not default_is_sf:
 			add_obj(Contact(last_name='Test contact 1'))
 			add_obj(Contact(last_name='Test contact 2'))
 			add_obj(User(Username=current_user))
+			add_obj(Opportunity(Name='Example Opportunity',
+								close_date=datetime.date(year=2015, month=7, day=30, stage="Prospecting")))
 	
 	def tearDown(self):
 		"""Clean up our test records.
@@ -749,6 +757,15 @@ class BasicLeadSOQLTest(TestCase):
 		lead = Lead.objects.get(Email__isnull=False, FirstName='User' + uid)
 		self.assertEqual(lead.FirstName, 'User' + uid)
 		self.assertEqual(lead.LastName, 'Unittest General')
+
+	def test_range_lookup(self):
+		"""Get the test opportunity record by range condition.
+		"""
+		start_date = datetime.date(year=2015, month=7, day=29)
+		end_date = datetime.date(year=2015, month=8, day=01)
+		oppy = Opportunity.objects.filter(close_date__range=(start_date, end_date))[0]
+		self.assertEqual(oppy.name, 'Example Opportunity')
+		self.assertEqual(oppy.stage, 'Prospecting')
 	
 	def test_update(self):
 		"""Update the test lead record.
