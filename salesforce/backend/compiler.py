@@ -601,8 +601,8 @@ if DJANGO_17_PLUS:
 
 	models.Field.register_lookup(IsNull)
 
-
-	class Range(models.Field.get_lookup(models.Field(), 'range')):
+        BaseRange = models.Field.get_lookup(models.Field(), 'range')
+	class Range(BaseRange):
 		# The expected result base class above is `models.lookups.Range`.
 		lookup_name = 'range'
 
