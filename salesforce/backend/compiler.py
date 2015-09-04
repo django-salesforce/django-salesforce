@@ -345,7 +345,7 @@ class SQLCompiler(compiler.SQLCompiler):
 
 
 class SalesforceWhereNode(where.WhereNode):
-	overridden_types = ['isnull', 'range']
+	overridden_types = ['isnull']
 
 	# Simple related fields work only without this, but for more complicated
 	# cases this must be fixed and re-enabled.
@@ -601,8 +601,8 @@ if DJANGO_17_PLUS:
 
 	models.Field.register_lookup(IsNull)
 
-        BaseRange = models.Field.get_lookup(models.Field(), 'range')
-	class Range(BaseRange):
+
+	class Range(models.lookups.Range):
 		# The expected result base class above is `models.lookups.Range`.
 		lookup_name = 'range'
 

@@ -767,7 +767,7 @@ class BasicLeadSOQLTest(TestCase):
 
 		# Test date objects
 		start_date = datetime.date(year=2015, month=7, day=29)
-		end_date = datetime.date(year=2015, month=8, day=01)
+		end_date = datetime.date(year=2015, month=8, day=1)
 		oppy = Opportunity.objects.filter(close_date__range=(start_date, end_date))[0]
 		self.assertEqual(oppy.name, 'Example Opportunity')
 		self.assertEqual(oppy.stage, 'Prospecting')
