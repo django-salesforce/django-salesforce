@@ -9,6 +9,7 @@
 Generate queries using the SOQL dialect.
 """
 import re
+import datetime
 from django.db import models
 from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
@@ -380,6 +381,7 @@ class SalesforceWhereNode(where.WhereNode):
 			if lookup_type == 'isnull':
 				return ('%s %snull' % (field_sql,
 					(not value_annot and '!= ' or '= ')), ())
+
 		else:
 			return result
 
@@ -541,6 +543,9 @@ class SalesforceWhereNode(where.WhereNode):
 			if cond:
 				# "lhs" and "rhs" means Left and Right Hand Side of an condition
 				data = IsNull(data.lhs, data.rhs)
+			range_cond = isinstance(data, models.lookups.Range) and not isinstance(data, Range)
+			if range_cond:
+				data = Range(data.lhs, data.rhs)
 			return super(SalesforceWhereNode, self).add(data, conn_type, **kwargs)
 
 		as_salesforce = as_sql
@@ -595,6 +600,28 @@ if DJANGO_17_PLUS:
 				return super(IsNull, self).as_sql(qn, connection)
 
 	models.Field.register_lookup(IsNull)
+
+
+	class Range(models.lookups.Range):
+		# The expected result base class above is `models.lookups.Range`.
+		lookup_name = 'range'
+
+		def as_sql(self, qn, connection):
+			if connection.vendor == 'salesforce':
+				lhs, lhs_params = qn.compile(self.lhs)
+				rhs, rhs_params = self.process_rhs(qn, connection)
+
+				if type(rhs_params[0]) is str and type(rhs_params[1]) is str:
+					return "%s >= '%s' AND %s <= '%s'" % (lhs, rhs_params[0], lhs, rhs_params[1]), lhs_params
+				elif type(rhs_params[0]) is datetime.datetime and type(rhs_params[1]) is datetime.datetime:
+					return "%s >= %s AND %s <= %s" % (lhs, rhs_params[0].strftime("%Y-%m-%dT%H:%M:%S.%fZ"), lhs,
+													  rhs_params[1].strftime("%Y-%m-%dT%H:%M:%S.%fZ")), lhs_params
+				else:
+					return "%s >= %s AND %s <= %s" % (lhs, rhs_params[0], lhs, rhs_params[1]), lhs_params
+			else:
+				return super(Range, self).as_sql(qn, connection)
+
+	models.Field.register_lookup(Range)
 
 if DJANGO_18_PLUS:
 	from django.db.models.aggregates import Count
