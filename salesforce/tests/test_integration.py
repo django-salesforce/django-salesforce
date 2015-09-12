@@ -704,6 +704,9 @@ class BasicLeadSOQLTest(TestCase):
 		)
 		self.objs = []
 		self.test_lead.save()
+		# This is only for demonstration that some test can be run even with
+		# non SFDC database SALESFORCE_DB_ALIAS, even if the test expects some
+		# contacts and the current user, but most of tests can pass only on SFDC.
 		if not default_is_sf:
 			add_obj(Contact(last_name='Test contact 1'))
 			add_obj(Contact(last_name='Test contact 2'))
