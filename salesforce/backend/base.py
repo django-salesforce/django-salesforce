@@ -25,7 +25,7 @@ if DJANGO_18_PLUS:
 else:
 	from django.db.backends import BaseDatabaseWrapper, BaseDatabaseFeatures
 
-from salesforce.auth import SalesforceAuth, authenticate
+from salesforce.auth import SalesforceAuth
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
@@ -133,12 +133,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		"""Authenticate and get the name of assigned SFDC data server"""
 		with connect_lock:
 			if self._sf_session is None:
+				sf_session = requests.Session()
+				sf_session.auth = SalesforceAuth(db_alias=self.alias, settings_dict=self.settings_dict)
 				if self.settings_dict['USER'] == 'dynamic auth':
 					sf_instance_url = self._sf_session or self.settings_dict['HOST']
 				else:
-					sf_instance_url = authenticate(self.alias, settings_dict=self.settings_dict)['instance_url']
-				sf_session = requests.Session()
-				sf_session.auth = SalesforceAuth(db_alias=self.alias)
+					sf_instance_url = sf_session.auth.authenticate()['instance_url']
 				sf_requests_adapter = SslHttpAdapter(max_retries=MAX_RETRIES)
 				sf_session.mount(sf_instance_url, sf_requests_adapter)
 				# Additional header works, but the improvement unmeasurable for me.

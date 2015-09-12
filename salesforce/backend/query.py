@@ -109,7 +109,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
 		# Unauthorized (expired or invalid session ID or OAuth)
 		data = response.json()[0]
 		if(data['errorCode'] == 'INVALID_SESSION_ID'):
-			token = auth.reauthenticate(db_alias=f.__self__.auth.db_alias)
+			token = db_alias=f.__self__.auth.reauthenticate()
 			if('headers' in kwargs):
 				kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
 			try:
@@ -407,7 +407,7 @@ class CursorWrapper(object):
 
 	@property
 	def oauth(self):
-		return auth.authenticate(db_alias=self.db.alias)
+		return self.session.auth.authenticate()
 
 	def execute(self, q, args=()):
 		"""
