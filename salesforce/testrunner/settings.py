@@ -177,6 +177,19 @@ IPV4_ONLY = True
 # version "django-salesforce < 0.5".
 #SF_PK = 'Id'
 
+# This is a conditional temporary setting for tests, while Python older
+# than 2.7.9 should work but upgrade is strongly recommended.
+# The protocol TLS 1.1 or 1.2 will be indispensably in 2016.
+import ssl
+import sys
+import datetime
+if sys.version_info >= (2, 7, 9) or datetime.date.today().year >= 2016:
+	# use the best possible TLS or SSL
+	SF_SSL = {'ssl_version': ssl.PROTOCOL_SSLv23, 'skiptest_tls_11': False}
+else:
+	# use exactly TLS 1.0 on old systems
+	SF_SSL = {'ssl_version': ssl.PROTOCOL_TLSv1, 'skiptest_tls_11': True}
+
 try:
 	from salesforce.testrunner.local_settings import *
 except ImportError:
