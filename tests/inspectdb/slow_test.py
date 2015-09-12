@@ -39,6 +39,10 @@ def run():
 				'CollaborationGroupRecord', 'ContentFolderMember',
 				'ContentDocumentLink', 'Idea', 'IdeaComment', 'UserProfileFeed',
 				'Vote', #'OpportunityPartner', 'Product2Feed',
+				# TODO The "RecordType" is a very important object, but it can fail
+				# on philchristensen's Salesforce with Travis. It should be more
+				# investigated to which SObject is the RecordType related.
+				'RecordType',
 				# UNKNOWN_EXCEPTION:
 				'TenantUsageEntitlement',
 				):
