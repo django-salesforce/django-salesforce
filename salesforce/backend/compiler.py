@@ -596,6 +596,27 @@ if DJANGO_17_PLUS:
 
 	models.Field.register_lookup(IsNull)
 
+
+	class Range(models.lookups.Range):
+		# The expected result base class above is `models.lookups.Range`.
+		lookup_name = 'range'
+
+		def as_sql(self, qn, connection):
+			if connection.vendor == 'salesforce':
+				lhs, lhs_params = self.process_lhs(qn, connection)
+				rhs, rhs_params = self.process_rhs(qn, connection)
+				if DJANGO_17_EXACT:
+					rhs = [rhs, rhs]
+				assert rhs == ['%s', '%s']
+				params = lhs_params + rhs_params[:1] + lhs_params + rhs_params[1:2]
+				# The symbolic parameters %s are again substituted by %s. The real
+				# parameters will be passed finally directly to CursorWrapper.execute
+				return '(%s >= %s AND %s <= %s)' % (lhs, rhs[0], lhs, rhs[1]), params
+			else:
+				return super(Range, self).as_sql(qn, connection)
+
+	models.Field.register_lookup(Range)
+
 if DJANGO_18_PLUS:
 	from django.db.models.aggregates import Count
 	def count_as_salesforce(self, *args, **kwargs):
