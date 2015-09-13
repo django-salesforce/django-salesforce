@@ -172,7 +172,9 @@ Advanced usage
    One way to speed this up is to change the SALESFORCE_DB_ALIAS to point to
    another DB connection (preferably SQLite) during testing using the
    ``TEST_*`` settings variables. Django unit tests without SalesforceModel
-   are fast everytimes.
+   are fast everytimes. Special read only fields that are updated only by SFDC
+   e.g. `last_modified_date` need more parameters to be possible to save them
+   into an alternate database, e.g. by `auto_now=True`.
    
 -  **Multiple SFDC connections** - In most cases, a single connection is all
    that most apps require, so the default DB connection to use for Salesforce
