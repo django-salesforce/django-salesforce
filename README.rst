@@ -446,8 +446,11 @@ Experimental Features
 Backwards-incompatible changes
 ------------------------------
 
--  The name of primary key is currently `id`. The backward compatible behaviour
-   can be reached by settings `SF_PK='Id'`.
+-  v0.6.1: This is the last code that supports old Django 1.4, 1.5, 1.6 and it
+   will be removed immediately.
+
+-  v0.5: The name of primary key is currently `id`. The backward compatible
+   behaviour for code created before v0.5 can be reached by settings `SF_PK='Id'`.
 
 News since version 0.5
 ----------------------
