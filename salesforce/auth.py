@@ -21,18 +21,22 @@ from salesforce.backend.driver import DatabaseError
 from salesforce.backend.adapter import SslHttpAdapter
 from requests.auth import AuthBase
 
-# TODO more advanced methods with ouathlib can be implemented, but the simple doesn't require a spec package
+# TODO hy: more advanced methods with ouathlib can be implemented, but
+#      the simple doesn't require a special package.
 
 log = logging.getLogger(__name__)
 
 oauth_lock = threading.Lock()
+# The static "oauth_data" is useful for efficient static authentication with
+# multithread server, whereas the thread local data in connection.sf_session.auth
+# are necessary if dynamic auth is used.
 oauth_data = {}
 
 def expire_token(db_alias):
 	with oauth_lock:
 		del oauth_data[db_alias]
 
-def authenticate(db_alias, settings_dict=None):
+def authenticate(db_alias, settings_dict=None, _session=None):
 	"""
 	Authenticate to the Salesforce API with the provided credentials.
 	
@@ -41,6 +45,7 @@ def authenticate(db_alias, settings_dict=None):
 			settings_dict: It is only important for the first connection.
 					Should be taken from django.conf.DATABASES['salesforce'],
 					because it is not known in connection.settings_dict initially.
+			_session: only for tests
 
 	This function can be called multiple times, but will only make
 	an external request once per the lifetime of the auth token. Subsequent
@@ -52,7 +57,7 @@ def authenticate(db_alias, settings_dict=None):
 	# always release the lock no matter what happens in the block
 	if not db_alias in connections:
 		raise KeyError("authenticate function signature has been changed. "
-				"The db_alias parameter more important than settings_dict")
+				"The db_alias parameter is more important than settings_dict")
 	with oauth_lock:
 		if not db_alias in oauth_data:
 			settings_dict = settings_dict or connections[db_alias].settings_dict
@@ -63,7 +68,7 @@ def authenticate(db_alias, settings_dict=None):
 				url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
 				
 				log.info("attempting authentication to %s" % settings_dict['HOST'])
-				session = requests.Session()
+				session = _session if _session is not None else requests.Session()
 				session.mount(settings_dict['HOST'], SslHttpAdapter(max_retries=MAX_RETRIES))
 				response = session.post(url, data=dict(
 					grant_type		= 'password',
@@ -119,12 +124,17 @@ class SalesforceAuth(AuthBase):
 		r.headers['Authorization'] = 'OAuth %s' % access_token
 		return r
 
+	def reauthenticate(self):
+		reauthenticate(self.db_alias)
+
 	@property
 	def instance_url(self):
 		if self._instance_url:
 			return self._instance_url
 		else:
-			return authenticate(db_alias=self.db_alias)['instance_url']
+			# TODO self._session
+			_session = None
+			return authenticate(db_alias=self.db_alias, _session=_session)['instance_url']
 
 	def dynamic_start(self, access_token, instance_url=None):
 		"""
