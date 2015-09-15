@@ -1,5 +1,5 @@
 [run]
-omit = salesforce/tooling.py
+omit = salesforce/backend/tooling.py,salesforce/backend/fake/base.py,salesforce/test.py
 
 [report]
 ignore_errors = True
