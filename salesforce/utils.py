@@ -12,6 +12,7 @@ conversion).
 """
 
 from django.conf import settings
+from django.db import connections
 
 try:
     import beatbox
@@ -19,7 +20,7 @@ except ImportError:
     beatbox = None
 
 
-def convert_lead(lead, converted_status="Qualified - converted"):
+def convert_lead(lead, converted_status=None):
     """
     Convert `lead` using the `convertLead()` endpoint exposed
     by the SOAP API.
@@ -46,6 +47,9 @@ def convert_lead(lead, converted_status="Qualified - converted"):
     if not beatbox:
         raise RuntimeError("To use convert_lead, you'll need to install the Beatbox library.")
 
+    if converted_status is None:
+        db_alias = lead._state.db
+        converted_status = connections[db_alias].introspection.converted_lead_status
     soap_client = beatbox.PythonClient()
     settings_dict = settings.DATABASES['salesforce']
 
