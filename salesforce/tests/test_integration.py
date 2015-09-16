@@ -22,7 +22,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Opportunity, OpportunityContactRole,
 		Product, Pricebook, PricebookEntry, Note, Task, WITH_CONDITIONAL_MODELS)
-from salesforce import router, DJANGO_15_PLUS, DJANGO_18_PLUS
+from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid
@@ -116,6 +116,7 @@ class BasicSOQLRoTest(TestCase):
 	def test_update_date(self):
 		"""Test updating a date.
 		"""
+		# removed microseconds only for easy compare in the test, no problem
 		now = timezone.now().replace(microsecond=0)
 		contact = Contact(first_name = 'sf_test', last_name='my')
 		contact.save()
@@ -375,6 +376,62 @@ class BasicSOQLRoTest(TestCase):
 		of django-salesforce are solved by writing a raw query.
 		"""
 		len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
+
+	@expectedFailureIf(not DJANGO_17_PLUS)
+	def test_range_simple(self):
+		"""Test simple range filters".
+		"""
+		qs = Contact.objects.filter(Q(name__range=('c', 'e')))
+		soql = qs.query.get_compiler('salesforce').as_sql()[0]
+		self.assertIn(u"(Contact.Name >= %s AND Contact.Name <= %s)", soql)
+		len(qs)
+
+	@expectedFailureIf(not DJANGO_17_PLUS)
+	def test_range_combined(self):
+		"""Test combined filters "a OR b AND c".
+		"""
+		qs = Contact.objects.filter(Q(name='a') | Q(name__range=('c', 'e')))
+		soql = qs.query.get_compiler('salesforce').as_sql()[0]
+		self.assertIn(u"Contact.Name = %s OR (Contact.Name >= %s AND Contact.Name <= %s)", soql)
+		len(qs)
+
+	@expectedFailureIf(not DJANGO_17_PLUS)
+	def test_range_lookup(self):
+		"""Get the test opportunity record by range condition.
+		"""
+		test_opportunity = Opportunity(
+						name="Example Opportunity",
+						close_date=datetime.date(year=2015, month=7, day=30),
+						stage="Prospecting",
+						amount=130000.00
+		)
+		test_opportunity.save()
+		try:
+			# Test date objects
+			start_date = datetime.date(year=2015, month=7, day=29)
+			end_date = datetime.date(year=2015, month=8, day=1)
+			oppy = Opportunity.objects.filter(close_date__range=(start_date, end_date))[0]
+			self.assertEqual(oppy.name, 'Example Opportunity')
+			self.assertEqual(oppy.stage, 'Prospecting')
+
+			# Test datetime objects (now +- 10 minutes for clock inaccuracy)
+			start_time = timezone.now() - datetime.timedelta(seconds=600)
+			end_time = timezone.now() + datetime.timedelta(seconds=600)
+			oppy = Opportunity.objects.filter(created_date__range=(start_time, end_time))[0]
+			self.assertEqual(oppy.name, 'Example Opportunity')
+			self.assertEqual(oppy.stage, 'Prospecting')
+
+			# Test DecimalField
+			low_amount, high_amount  = 100000.00, 140000.00
+			oppy = Opportunity.objects.filter(amount__range=(low_amount, high_amount))[0]
+			self.assertEqual(oppy.amount, 130000.00)
+
+			# Test CharField
+			low_letter, high_letter = 'E', 'G'
+			oppy = Opportunity.objects.filter(name__range=(low_letter, high_letter))[0]
+			self.assertEqual(oppy.name, 'Example Opportunity')
+		finally:
+			test_opportunity.delete()
 
 	def test_combined_international(self):
 		"""Test combined filters with international characters.

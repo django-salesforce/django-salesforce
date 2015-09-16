@@ -291,6 +291,8 @@ class Opportunity(SalesforceModel):
 	contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole', related_name='opportunities')
 	close_date = models.DateField()
 	stage = models.CharField(max_length=255, db_column='StageName') # e.g. "Prospecting"
+	created_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+	amount = models.DecimalField(max_digits=18, decimal_places=2, blank=True, null=True)
 
 
 class OpportunityContactRole(SalesforceModel):
