@@ -68,7 +68,6 @@ class AbstractAccount(SalesforceModel):
 	ShippingPostalCode = models.CharField(max_length=20)
 	ShippingCountry = models.CharField(max_length=40)
 	Phone = models.CharField(max_length=255)
-	Fax = models.CharField(max_length=255)
 	Website = models.CharField(max_length=255)
 	Industry = models.CharField(max_length=100,
 								choices=[(x, x) for x in INDUSTRIES])
@@ -174,14 +173,11 @@ class Lead(SalesforceModel):
 	Country = models.CharField(max_length=40)
 	Phone = models.CharField(max_length=255)
 	Email = models.CharField(max_length=100)
-	Website = models.CharField(max_length=100)
-	Description = models.TextField()
 	LeadSource = models.CharField(max_length=100,
 								  choices=[(x, x) for x in SOURCES])
 	Status = models.CharField(max_length=100, choices=[(x, x) for x in STATUSES])
 	Industry = models.CharField(max_length=100,
 								  choices=[(x, x) for x in INDUSTRIES])
-	Rating = models.CharField(max_length=100, choices=[(x, x) for x in RATINGS])
 	# Added an example of special DateTime field in Salesforce that can
 	# not be inserted, but can be updated
 	# TODO write test for it
