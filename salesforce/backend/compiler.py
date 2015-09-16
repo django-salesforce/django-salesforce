@@ -537,6 +537,9 @@ class SalesforceWhereNode(where.WhereNode):
 
 	if DJANGO_17_PLUS:
 		def add(self, data, conn_type, **kwargs):
+			# The filter lookup `isnull` is very special and can not be
+			# replaced only by `models.Field.register_lookup`. Otherwise the
+			# register_lookup is preferred.
 			cond = isinstance(data, models.lookups.IsNull) and not isinstance(data, IsNull)
 			if cond:
 				# "lhs" and "rhs" means Left and Right Hand Side of an condition
@@ -583,7 +586,7 @@ if not DJANGO_18_PLUS:
 
 # Lookups
 if DJANGO_17_PLUS:
-	class IsNull(models.Field.get_lookup(models.Field(), 'isnull')):
+	class IsNull(models.lookups.IsNull):
 		# The expected result base class above is `models.lookups.IsNull`.
 		lookup_name = 'isnull'
 
