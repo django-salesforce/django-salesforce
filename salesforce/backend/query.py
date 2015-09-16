@@ -6,8 +6,12 @@
 #
 
 """
-Salesforce object query customizations.
+Salesforce object query and queryset customizations.
 """
+# TODO hynekcer: class CursorWrapper and function handle_api_exceptions should
+#      be moved to salesforce.backend.driver at the next big refactoring
+#      (Evenso some low level internals of salesforce.auth should be moved to
+#      salesforce.backend.driver.Connection)
 
 import logging, types, datetime, decimal
 
