@@ -507,9 +507,7 @@ class BasicSOQLRoTest(TestCase):
 	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
 	@skipUnless(len(sf_databases) > 1, "Only one SF database found.")
 	def test_multiple_sf_databases(self):
-		"""Test a connection to two sf databases with the same user.
-
-		(with sandboxes of the same organization)
+		"""Test a connection to two sf sandboxes of the same organization.
 		"""
 		other_db = [db for db in sf_databases if db != sf_alias][0]
 		c1 = Contact(last_name='sf_test 1')
@@ -521,10 +519,12 @@ class BasicSOQLRoTest(TestCase):
 			user2 = refresh(c2).owner
 			username1 = user1.Username
 			username2 = user2.Username
-			# Verify different, but similar usernames like usual in sandboxes
+			# Verify different usernames, like it is usual in sandboxes
 			self.assertNotEqual(user1._state.db, user2._state.db)
 			self.assertNotEqual(username1, username2)
-			self.assertEqual(username1.split('@')[0], username2.split('@')[0])
+			expected_user2 = connections[other_db].settings_dict['USER']
+			self.assertEqual(username1, current_user)
+			self.assertEqual(username2, expected_user2)
 		finally:
 			c1.delete()
 			c2.delete()
