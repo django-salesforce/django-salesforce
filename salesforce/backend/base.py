@@ -124,6 +124,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
 		self._sf_session = None
+		self._is_sandbox = None
 		# The SFDC database is connected as late as possible if only tests
 		# are running. Some tests don't require a connection.
 		if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):
@@ -199,3 +200,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		Do not quote column and table names in the SOQL dialect.
 		"""
 		return name
+
+	@property
+	def is_sandbox(self):
+		if self._is_sandbox is None:
+			cur = self.cursor()
+			cur.execute("SELECT IsSandbox FROM Organization")
+			self._is_sandbox = cur.fetchone()['IsSandbox']
+		return self._is_sandbox
