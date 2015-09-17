@@ -51,12 +51,12 @@ class ExportedModelTest(unittest.TestCase):
 		"""Test the typical nice class name 'Test'."""
 		self.assertTrue('AccountContactRole' in classes_texts.keys())
 		for name, text in classes_texts.items():
-			if re.search(r"        db_table = 'Test__c'", text):
+			if re.search(r"        db_table = 'django_Test__c'", text):
 				# test the class name
-				self.assertEqual(name, 'Test')
+				self.assertEqual(name, 'DjangoTest')
 				# test the field name without db_column
 				(matched_line,) = [line for line in text.split('\n')
-						if re.match(r'    test_field = ', line)]
+						if re.match(r'    test_text = ', line)]
 				self.assertNotIn('db_column', matched_line)
 				break
 		else:
