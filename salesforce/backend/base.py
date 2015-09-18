@@ -25,7 +25,7 @@ if DJANGO_18_PLUS:
 else:
 	from django.db.backends import BaseDatabaseWrapper, BaseDatabaseFeatures
 
-from salesforce.auth import SalesforceAuth, authenticate
+from salesforce.auth import SalesforceAuth
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
@@ -124,6 +124,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		self.introspection = DatabaseIntrospection(self)
 		self.validation = DatabaseValidation(self)
 		self._sf_session = None
+		self._is_sandbox = None
 		# The SFDC database is connected as late as possible if only tests
 		# are running. Some tests don't require a connection.
 		if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):
@@ -133,12 +134,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		"""Authenticate and get the name of assigned SFDC data server"""
 		with connect_lock:
 			if self._sf_session is None:
+				sf_session = requests.Session()
+				sf_session.auth = SalesforceAuth(db_alias=self.alias, settings_dict=self.settings_dict)
 				if self.settings_dict['USER'] == 'dynamic auth':
 					sf_instance_url = self._sf_session or self.settings_dict['HOST']
 				else:
-					sf_instance_url = authenticate(self.alias, settings_dict=self.settings_dict)['instance_url']
-				sf_session = requests.Session()
-				sf_session.auth = SalesforceAuth(db_alias=self.alias)
+					sf_instance_url = sf_session.auth.authenticate()['instance_url']
 				sf_requests_adapter = SslHttpAdapter(max_retries=MAX_RETRIES)
 				sf_session.mount(sf_instance_url, sf_requests_adapter)
 				# Additional header works, but the improvement unmeasurable for me.
@@ -199,3 +200,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 		Do not quote column and table names in the SOQL dialect.
 		"""
 		return name
+
+	@property
+	def is_sandbox(self):
+		if self._is_sandbox is None:
+			cur = self.cursor()
+			cur.execute("SELECT IsSandbox FROM Organization")
+			self._is_sandbox = cur.fetchone()['IsSandbox']
+		return self._is_sandbox

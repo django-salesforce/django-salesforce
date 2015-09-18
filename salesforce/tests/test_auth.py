@@ -30,15 +30,22 @@ class OAuthTest(TestCase):
 				self.fail("Empty value for %s key in returned oauth data." % key)
 	
 	def test_token_renewal(self):
-		auth.authenticate(sf_alias, settings_dict=settings.DATABASES[sf_alias])
+		#import salesforce
+		#_session=salesforce.backend.fake.base.FakeAuthSession()
+		#_session.bind('default')
+		import requests
+		_session = requests.Session()
+
+		auth_obj = auth.SalesforceAuth(sf_alias, settings_dict=settings.DATABASES[sf_alias], _session=_session)
+		auth_obj.authenticate()
 		self.validate_oauth(auth.oauth_data[sf_alias])
 		old_data = auth.oauth_data
 		
 		self.assertIn(sf_alias, auth.oauth_data)
-		auth.expire_token(sf_alias)
+		auth_obj.expire_token()
 		self.assertNotIn(sf_alias, auth.oauth_data)
 		
-		auth.authenticate(sf_alias, settings_dict=settings.DATABASES[sf_alias])
+		auth_obj.authenticate()
 		self.validate_oauth(auth.oauth_data[sf_alias])
 		
 		self.assertEqual(old_data[sf_alias]['access_token'], auth.oauth_data[sf_alias]['access_token'])

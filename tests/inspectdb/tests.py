@@ -36,28 +36,39 @@ def get_classes_texts():
 
 
 class ExportedModelTest(unittest.TestCase):
+
+	def match_line(self, pattern, text):
+		"""requires the pattern and finds the line"""
+		self.assertRegexpMatches(text, pattern)
+		(ret,) = [line for line in text.split('\n') if re.match(pattern, line)]
+		return ret
+
 	def test_nice_fields_names(self):
 		"""Test the typical nice field name 'last_modified_date'."""
 		for text in classes_texts.values():
 			if re.search(r' last_modified_date = ', text):
-				(matched_line,) = [line for line in text.split('\n')
-						if re.match(r'    last_modified_date = ', line)]
-				self.assertNotIn('db_column', matched_line)
+				line = self.match_line(r'    last_modified_date = ', text)
+				self.assertNotIn('db_column', line)
 			else:
 				self.assertNotIn('lastmodifieddate', text)
 				self.assertNotIn('LastModifiedDate', text)
 
+	def test_nice_standard_class_name(self):
+		self.assertTrue('AccountContactRole' in classes_texts.keys())
+
 	def test_custom_test_class(self):
 		"""Test the typical nice class name 'Test'."""
-		self.assertTrue('AccountContactRole' in classes_texts.keys())
 		for name, text in classes_texts.items():
-			if re.search(r"        db_table = 'Test__c'", text):
+			if re.search(r"        db_table = 'django_Test__c'", text):
 				# test the class name
-				self.assertEqual(name, 'Test')
+				self.assertEqual(name, 'DjangoTest')
 				# test the field name without db_column
-				(matched_line,) = [line for line in text.split('\n')
-						if re.match(r'    test_field = ', line)]
-				self.assertNotIn('db_column', matched_line)
+				self.assertNotIn('db_column', self.match_line(r'    test_text = ', text))
+				# test foreign kea
+				line = self.match_line(r'    contact = ', text)
+				self.assertIn('custom=True',  line)
+				self.assertIn('ForeignKey(Contact',  line)
+				self.assertIn('on_delete=models.DO_NOTHING',  line)
 				break
 		else:
 			self.skipTest("The model for the table Test__c not exported.")

@@ -83,12 +83,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		BaseDatabaseIntrospection.__init__(self, conn)
 		self._table_list_cache = None
 		self._table_description_cache = {}
-		self._oauth = None
+		self._converted_lead_status = None
 	
 	@property
 	def oauth(self):
-		from salesforce import auth
-		return auth.authenticate(db_alias=self.connection.alias)
+		return self.connection.sf_session.auth.authenticate()
 	
 	@property
 	def table_list_cache(self):
@@ -221,6 +220,15 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			"# keyPrefix = '%s'" % item['keyPrefix'],
 
 		]
+
+	@property
+	def converted_lead_status(self):
+		if self._converted_lead_status is None:
+			cur = self.connection.cursor()
+			cur.execute("SELECT MasterLabel FROM LeadStatus "
+						"WHERE IsConverted = True ORDER BY SortOrder LIMIT 1")
+			self._converted_lead_status = cur.fetchone()['MasterLabel']
+		return self._converted_lead_status
 
 
 class SymbolicModelsName(object):

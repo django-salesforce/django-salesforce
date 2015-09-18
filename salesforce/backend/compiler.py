@@ -537,6 +537,9 @@ class SalesforceWhereNode(where.WhereNode):
 
 	if DJANGO_17_PLUS:
 		def add(self, data, conn_type, **kwargs):
+			# The filter lookup `isnull` is very special and can not be
+			# replaced only by `models.Field.register_lookup`. Otherwise the
+			# register_lookup is preferred.
 			cond = isinstance(data, models.lookups.IsNull) and not isinstance(data, IsNull)
 			if cond:
 				# "lhs" and "rhs" means Left and Right Hand Side of an condition
@@ -583,7 +586,7 @@ if not DJANGO_18_PLUS:
 
 # Lookups
 if DJANGO_17_PLUS:
-	class IsNull(models.Field.get_lookup(models.Field(), 'isnull')):
+	class IsNull(models.lookups.IsNull):
 		# The expected result base class above is `models.lookups.IsNull`.
 		lookup_name = 'isnull'
 
@@ -595,6 +598,27 @@ if DJANGO_17_PLUS:
 				return super(IsNull, self).as_sql(qn, connection)
 
 	models.Field.register_lookup(IsNull)
+
+
+	class Range(models.lookups.Range):
+		# The expected result base class above is `models.lookups.Range`.
+		lookup_name = 'range'
+
+		def as_sql(self, qn, connection):
+			if connection.vendor == 'salesforce':
+				lhs, lhs_params = self.process_lhs(qn, connection)
+				rhs, rhs_params = self.process_rhs(qn, connection)
+				if DJANGO_17_EXACT:
+					rhs = [rhs, rhs]
+				assert rhs == ['%s', '%s']
+				params = lhs_params + rhs_params[:1] + lhs_params + rhs_params[1:2]
+				# The symbolic parameters %s are again substituted by %s. The real
+				# parameters will be passed finally directly to CursorWrapper.execute
+				return '(%s >= %s AND %s <= %s)' % (lhs, rhs[0], lhs, rhs[1]), params
+			else:
+				return super(Range, self).as_sql(qn, connection)
+
+	models.Field.register_lookup(Range)
 
 if DJANGO_18_PLUS:
 	from django.db.models.aggregates import Count

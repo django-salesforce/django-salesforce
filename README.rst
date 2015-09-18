@@ -172,7 +172,9 @@ Advanced usage
    One way to speed this up is to change the SALESFORCE_DB_ALIAS to point to
    another DB connection (preferably SQLite) during testing using the
    ``TEST_*`` settings variables. Django unit tests without SalesforceModel
-   are fast everytimes.
+   are fast everytimes. Special read only fields that are updated only by SFDC
+   e.g. `last_modified_date` need more parameters to be possible to save them
+   into an alternate database, e.g. by `auto_now=True`.
    
 -  **Multiple SFDC connections** - In most cases, a single connection is all
    that most apps require, so the default DB connection to use for Salesforce
@@ -291,7 +293,7 @@ can see in the output of ``inspectdb`` in the most complete form.
    (SOAP) that can be accessed using our utility module. In order to use that module,
    you will need to install an additional dependency ::
 
-     pip install beatbox
+     pip install beatbox    # depends on Python 2.7
 
    Here is an example of usage with ``Lead`` conversion ::
 
@@ -300,18 +302,16 @@ can see in the output of ``inspectdb`` in the most complete form.
      lead = Lead.objects.all()[0]
      response = convert_lead(lead)
 
-   For the particular case of ``Lead`` conversion, beware that having
-   some *custom* and *required* fields in either ``Contact``,
-   ``Account`` or ``Opportunity`` is not supported. This arises from
-   the fact that the conversion mechanism on the Salesforce side is only
-   meant to deal with standard Salesforce fields, so it does not really
-   care about populating custom fields at insert time.
+   All usual
+   `additional parameters <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm>`__
+   are supported in the original letter case. It allows e.g. merging a Lead
+   with an existing Account or Contact and to control much more.
 
-   One workaround is to map a custom required field in
-   your `Lead` object a custom required field in target objects
-   (i.e., `Contact`, `Opportunity` or `Account`) or to garantee that
-   a suitable value is set by your application to the source Lead field,
-   at least just before the conversion. Follow the
+   For the particular case of ``Lead`` conversion, beware that having
+   some *custom* and *required* fields in either ``Contact``, ``Account`` or
+   ``Opportunity`` can be more complicated. A mapping from custom fields in your
+   ``Lead`` to these fields must be defined in the system and these Lead fields
+   should not be empty at the time of conversion. Follow the
    `instructions <http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`__
    for more details.
 
@@ -444,8 +444,11 @@ Experimental Features
 Backwards-incompatible changes
 ------------------------------
 
--  The name of primary key is currently `id`. The backward compatible behaviour
-   can be reached by settings `SF_PK='Id'`.
+-  v0.6.1: This is the last code that supports old Django 1.4, 1.5, 1.6 and it
+   will be removed immediately.
+
+-  v0.5: The name of primary key is currently `id`. The backward compatible
+   behaviour for code created before v0.5 can be reached by settings `SF_PK='Id'`.
 
 News since version 0.5
 ----------------------

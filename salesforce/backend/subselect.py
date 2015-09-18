@@ -1,6 +1,38 @@
 import re
 from unittest import TestCase
 
+def mark_quoted_strings(sql):
+	"""Mark all quoted strings in the SOQL by '@' and get them as params,
+	with respect to all escaped backslashes and quotes.
+	"""
+	pm_pattern = re.compile(r"'[^\\']*(?:\\[\\'][^\\']*)*'")
+	bs_pattern = re.compile(r"\\([\\'])")
+	out_pattern = re.compile("^[-!()*+,.:<=>\w\s]*$")
+	start = 0
+	out = []
+	params = []
+	for match in pm_pattern.finditer(sql):
+		out.append(sql[start:match.start()])
+		assert out_pattern.match(sql[start:match.start()])
+		params.append(bs_pattern.sub('\\1', sql[match.start() + 1:match.end() -1]))
+		start = match.end()
+	out.append(sql[start:])
+	assert out_pattern.match(sql[start:])
+	return '@'.join(out), params
+
+def subst_quoted_strings(sql, params):
+	"""Reverse operation to mark_quoted_strings - substitutes '@' by params.
+	"""
+	parts = sql.split('@')
+	assert len(parts) == len(params) + 1
+	out = []
+	for i, param in enumerate(params):
+		out.append(parts[i])
+		out.append("'%s'" % param.replace('\\', '\\\\').replace("\'", "\\\'"))
+	out.append(parts[-1])
+	return ''.join(out)
+
+
 def find_closing_parenthesis(sql, startpos):
 	"""Find the pair of opening and closing parentheses.
 
@@ -57,3 +89,17 @@ class TestSubSelectSearch(TestCase):
 		func = lambda x: '*transfomed*'
 		expected =  "*transfomed*(SELECT x, (SELECT p FROM q) FROM y)*transfomed*"
 		self.assertEqual(transform_except_subselect(sql, func), expected)
+
+class ReplaceQuotedStringsTest(TestCase):
+
+	def test_subst_quoted_strings(self):
+		def inner(sql, expected):
+			result = mark_quoted_strings(sql)
+			self.assertEqual(result, expected)
+			self.assertEqual(subst_quoted_strings(*result), sql)
+		inner("where x=''", ("where x=@", ['']))
+		inner("a'bc'd", ("a@d", ['bc']))
+		inner(r"a'bc\\'d", ("a@d", ['bc\\']))
+		inner(r"a'\'\\'b''''", ("a@b@@", ['\'\\', '', '']))
+		self.assertRaises(AssertionError, mark_quoted_strings, r"a'bc'\\d")
+		self.assertRaises(AssertionError, mark_quoted_strings, "a'bc''d")
