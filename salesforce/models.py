@@ -26,7 +26,7 @@ from django.db.models import PROTECT, DO_NOTHING
 
 from salesforce.backend import manager
 from salesforce.fields import *  # modified django.db.models.CharField etc.
-from salesforce import fields, DJANGO_17_PLUS
+from salesforce import fields, DJANGO_17_PLUS, DJANGO_18_PLUS
 if DJANGO_17_PLUS:
 	from django.utils.deconstruct import deconstructible
 else:
@@ -44,6 +44,8 @@ class SalesforceModelBase(ModelBase):
 	"""
 	def __new__(cls, name, bases, attrs):
 		attr_meta = attrs.get('Meta', None)
+		if not DJANGO_18_PLUS and len(getattr(attr_meta, 'verbose_name', '')) > 39:
+			attr_meta.verbose_name = attr_meta.verbose_name[:39]
 		supplied_db_table = getattr(attr_meta, 'db_table', None)
 		result = super(SalesforceModelBase, cls).__new__(cls, name, bases, attrs)
 		if models.Model not in bases and supplied_db_table is None:
