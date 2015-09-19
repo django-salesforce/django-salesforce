@@ -175,7 +175,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
 			if field['type'] == 'reference' and field['referenceTo']:
 				reference_to_name = SfProtectName(field['referenceTo'][0])
-				last_refs[field['name']] = field['referenceTo']
+				last_refs[field['name']] = (field['referenceTo'], field['relationshipOrder'])
 				if DJANGO_18_PLUS:
 					result[field['name']] = ('Id', reference_to_name)
 				else:

@@ -158,8 +158,10 @@ class Command(InspectDBCommand):
 				if col_name in sf_introspection.last_read_only:
 					field_params['sf_read_only'] = sf_introspection.last_read_only[col_name]
 				field_params['on_delete'] = sf_introspection.SymbolicModelsName('DO_NOTHING')
-				if len(sf_introspection.last_refs[col_name]) > 1:
-					field_notes.append('Reference to tables [%s]' % (', '.join(sf_introspection.last_refs[col_name])))
+				if len(sf_introspection.last_refs[col_name][0]) > 1:
+					field_notes.append('Reference to tables [%s]' % (', '.join(sf_introspection.last_refs[col_name][0])))
+				if sf_introspection.last_refs[col_name][1] is not None:
+					field_notes.append('Master Detail Relationship %d' % sf_introspection.last_refs[col_name][1])
 		else:
 			new_name, field_params, field_notes = super(Command, self
 					).normalize_col_name(col_name, used_column_names, is_relation)
