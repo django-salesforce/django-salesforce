@@ -9,12 +9,10 @@ using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
-Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7, partly Django 1.8.
-The best supported version is currently Django 1.7, including relative
-complicated subqueries. Django 1.8 is only very rudimentally supported, without
-raw queries and without values_list() and values() methods. The usual support
+Python 2.7, 3.3 - 3.5 or pypy; Django 1.7, or with small restrictions Django 1.8.
+Django 1.8 is currently supported without raw queries and without values_list()
+and values() methods. The usual support
 can be expected in the next django-salesforce version.
-Note that Django 1.4.x is not compatible with Python 3.
 
 Quick Start
 -----------
@@ -108,33 +106,23 @@ primary key ``id`` by configuring ``SF_PK='id'`` in your project settings. The p
 capitalization of ``Id`` is only for old projects, but it will stay as the default
 variant until ``django-salesforce>=0.5``.
 
-Foreign Key Support
--------------------
+Foreign Keys
+------------
 
-**Foreign key filters** are currently possible only from child to parent with some
-restrictions:
+**Foreign key filters** are possible from child to parent without any known restriction,
+   in many levels, including foreign keys between custom models or mixed builtin
+   and custom models, also filters where the same model is used multiple times,
+   e.g. filter Account objects by a field of their parent Account.
 
-They are fully supported with Django 1.7+ without other restrictions. **New**
-
-With Django 1.6 and older, ForeignKey filters are  possible only for the first level of
-relationship and only for fields whose name equals the name of object.
-Foreign keys of an object can be normally accessed by dot notation without any
-restriction.  
 Example::
 
-    contacts = Contact.objects.filter(Account__Name='FOO Company')
-    print(contacts[0].Account.Owner.LastName)
-
-But the relationship ``Owner__Name`` is not currently possible because the
-type of ``Owner`` is a different name (``User``).
-
-Along similar lines, it's not currently possible to filter by ``ForeignKey``
-relationships based on a custom field. This is because related objects
-(Lookup field or Master-Detail Relationship) use two different names in
-`SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
-relation is by ID the columns are named ``FieldName__c``, whereas if the relation
-is stored by object the column is named ``FieldName__r``. More details about
-this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+    # example models demostrate that models with older TitleCase identifiers
+    # and new lowercase can also be combined, but not nice
+    contacts = Contact.objects.filter(account__Name='FOO Company')
+    print(contacts[0].account.Owner.LastName)
+    contacts = Contact.objects.filter(account__Owner__Username='me@example.com',
+                                      owner__Username='other@example.com')
+    print(contacts[0].account_id)
 
 In case of a ForeignKey you can specify the field name suffixed with ``_id``,
 as it is automatically allowed by Django. For example: ``account_id`` instead
@@ -142,11 +130,27 @@ of ``account.id``, or ``AccountId`` instead of ``Account.Id``. It is faster,
 if you need not to access to the related ``Account`` object.
 
 Querysets can be easily inspected whether they are correctly compiled to SOQL.
-You can compare the meaning with the same compiled to SQL::
+You can compare the the query compiled to SOQL and to SQL::
 
     my_qs = Contact.objects.filter(my__little_more__complicated='queryset')
-    print my_qs.query.get_compiler('salesforce').as_sql()    # SOQL
-    print my_qs.query.get_compiler('default').as_sql()       # SQL
+    print(my_qs.query.get_compiler('salesforce').as_sql())   # SOQL
+    print(my_qs.query.get_compiler('default').as_sql())      # SQL
+
+::  comment until the end of identation
+    Related objects (Lookup field or Master-Detail Relationship) use two different names in
+    `SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
+    relation is by ID the columns are named ``FieldName__c``, whereas if the relation
+    is stored by object the column is named ``FieldName__r``. More details about
+    this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+
+Also Many2many relationships are possible in simple cases, like in the example models::
+
+    class Opportunity(SalesforceModel):
+        name = models.CharField(max_length=255)
+        contacts = django.db.models.ManyToManyField(
+            Contact, through='example.OpportunityContactRole',
+            related_name='opportunities')
+
 
 **Generic foreign keys** are frequently used in SF for fields that relate to
 objects of different types, e.g. the Parent of Note or Attachment can be almost
@@ -465,10 +469,6 @@ Backwards-incompatible changes
 -  v0.5: The name of primary key is currently ``'id'``. The backward compatible
    behaviour for code created before v0.5 can be reached by settings ``SF_PK='Id'``.
 
-News since version 0.5
-----------------------
+Big news since version 0.5
+--------------------------
 
--  All child to parent filters are still correctly supported for Django 1.7 in
-   many levels, including foreign keys between custom models or mixed builtin
-   and custom models, also filters where the same model is used multiple times,
-   e.g. filter Account objects by a field of their parent Account.
