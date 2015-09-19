@@ -91,7 +91,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	
 	@property
 	def table_list_cache(self):
-		if(self._table_list_cache is None):
+		if self._table_list_cache is None:
 			url = self.oauth['instance_url'] + query.API_STUB + '/sobjects/'
 			
 			log.debug('Request API URL: %s' % url)
@@ -101,7 +101,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		return self._table_list_cache
 	
 	def table_description_cache(self, table):
-		if(table not in self._table_description_cache):
+		if table not in self._table_description_cache:
 			url = self.oauth['instance_url'] + query.API_STUB + ('/sobjects/%s/describe/' % table)
 		
 			log.debug('Request API URL: %s' % url)
@@ -111,7 +111,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
 			del self._table_description_cache[table]['fields'][0]
 		return self._table_description_cache[table]
-	
+
 	def table_name_converter(self, name):
 		return name if name.lower() != 'id' else SF_PK
 
@@ -175,7 +175,17 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
 			if field['type'] == 'reference' and field['referenceTo']:
 				reference_to_name = SfProtectName(field['referenceTo'][0])
-				last_refs[field['name']] = (field['referenceTo'], field['relationshipOrder'])
+				relationship_order = field['relationshipOrder']
+				if relationship_order is None:
+					relationship_tmp = set()
+					for rel in field['referenceTo']:
+						for chld in self.table_description_cache(rel)['childRelationships']:
+							if chld['childSObject'] == table_name and chld['field'] == field['name']:
+								relationship_tmp.add(chld['cascadeDelete'])
+					assert len(relationship_tmp) <= 1
+					if True in relationship_tmp:
+						relationship_order = '*'
+				last_refs[field['name']] = (field['referenceTo'], relationship_order)
 				if DJANGO_18_PLUS:
 					result[field['name']] = ('Id', reference_to_name)
 				else:
