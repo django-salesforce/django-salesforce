@@ -6,7 +6,7 @@
 #
 
 from __future__ import unicode_literals
-from salesforce import models, DJANGO_15_PLUS
+from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
 
 import django
@@ -310,55 +310,49 @@ class Organization(models.Model):
 	is_sandbox = models.BooleanField(sf_read_only=models.READ_ONLY)
 
 
-# Skipping the model if a custom table isn't installed in your Salesforce
-# is important an old Django, even with "on_delete=DO_NOTHING",
-# due to how "delete" was implemented in Django 1.4
-WITH_CONDITIONAL_MODELS = DJANGO_15_PLUS or getattr(settings, 'SF_TEST_TABLE_INSTALLED', False)
-if WITH_CONDITIONAL_MODELS:
+class Test(SalesforceParentModel):
+	"""
+	Simple custom model with one custom and more standard fields.
 
-	class Test(SalesforceParentModel):
-		"""
-		Simple custom model with one custom and more standard fields.
+	Salesforce object for this model can be created:
+	A) automatically from the branch hynekcer/tooling-api-and-metadata
+	   by commands:
+		$ python manage.py shell
+			>> from salesforce.backend import tooling
+			>> tooling.install_metadata_service()
+			>> tooling.create_demo_test_object()
+	or
+	B) manually can create the same object with `API Name`: `django_Test__c`
+		`Data Type` of the Record Name: `Text`
 
-		Salesforce object for this model can be created:
-		A) automatically from the branch hynekcer/tooling-api-and-metadata
-		   by commands:
-			$ python manage.py shell
-				>> from salesforce.backend import tooling
-				>> tooling.install_metadata_service()
-				>> tooling.create_demo_test_object()
-		or
-		B) manually can create the same object with `API Name`: `django_Test__c`
-			`Data Type` of the Record Name: `Text`
-		
-		   Create three fields:
-		   Type            | API Name | Label
-		   ----------------+----------+----------
-		   Text            | TestText | Test Text
-		   Checkbox        | TestBool | Test Bool
-		   Lookup(Contact) | Contact  | Contact
+	   Create three fields:
+	   Type            | API Name | Label
+	   ----------------+----------+----------
+	   Text            | TestText | Test Text
+	   Checkbox        | TestBool | Test Bool
+	   Lookup(Contact) | Contact  | Contact
 
-		   Set it accessible by you. (`Set Field-Leved Security`)
-		"""
-		# This is a custom field because it is defined in the custom model.
-		# The API name is therefore 'TestField__c'
-		test_text = models.CharField(max_length=40)
-		test_bool = models.BooleanField(default=False)
-		contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING)
+	   Set it accessible by you. (`Set Field-Leved Security`)
+	"""
+	# This is a custom field because it is defined in the custom model.
+	# The API name is therefore 'TestField__c'
+	test_text = models.CharField(max_length=40)
+	test_bool = models.BooleanField(default=False)
+	contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING)
 
-		class Meta:
-			custom = True
-			db_table = 'django_Test__c'
+	class Meta:
+		custom = True
+		db_table = 'django_Test__c'
 
 
-	# example of relationship from builtin object to custom object
+# example of relationship from builtin object to custom object
 
-	class Attachment(models.Model):
-		# A standard SFDC object that can have a relationship to any custom object
-		name = models.CharField(max_length=80)
-		parent = models.ForeignKey(Test, sf_read_only=models.NOT_UPDATEABLE, on_delete=models.DO_NOTHING)
-		# The "body" of Attachment can't be queried for more rows togehter.
-		body = models.TextField()
+class Attachment(models.Model):
+	# A standard SFDC object that can have a relationship to any custom object
+	name = models.CharField(max_length=80)
+	parent = models.ForeignKey(Test, sf_read_only=models.NOT_UPDATEABLE, on_delete=models.DO_NOTHING)
+	# The "body" of Attachment can't be queried for more rows togehter.
+	body = models.TextField()
 
 
 class Task(models.Model):

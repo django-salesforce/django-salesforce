@@ -86,6 +86,3 @@ class ModelRouter(object):
 		# Nothing is said about non SF models with non SF databases, because
 		# it can be solved by other routers, otherwise is enabled if all
 		# routers say None.
-	
-	# alias for Django 1.6 and older. The new name is useful for query_all etc.
-	allow_syncdb = allow_migrate

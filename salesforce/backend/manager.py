@@ -18,7 +18,7 @@ from django.db.models import manager
 from django.db.models.query import RawQuerySet
 from django.db.utils import DEFAULT_DB_ALIAS
 
-from salesforce import router, DJANGO_16_PLUS
+from salesforce import router
 
 class SalesforceManager(manager.Manager):
 	use_for_related_fields = True
@@ -28,17 +28,11 @@ class SalesforceManager(manager.Manager):
 		Returns a QuerySet which access remote SF objects.
 		"""
 		if not router.is_sf_database(self.db):
-			if DJANGO_16_PLUS:
-				return super(SalesforceManager, self).get_queryset()
-			else:
-				return super(SalesforceManager, self).get_query_set()
+			return super(SalesforceManager, self).get_queryset()
 		else:
 			from salesforce.backend import query, compiler
 			q = query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
 			return query.SalesforceQuerySet(self.model, query=q, using=self.db)
-
-	#if not DJANGO_16_PLUS:  - keep back obsoleted qs is better than to get broken qs.
-	get_query_set = get_queryset
 
 	def using(self, alias):
 		if alias is None:

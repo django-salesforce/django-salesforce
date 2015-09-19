@@ -30,7 +30,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
+from salesforce import auth, models, DJANGO_18_PLUS
 from salesforce import DJANGO_184_PLUS
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
@@ -274,12 +274,8 @@ class SalesforceQuerySet(query.QuerySet):
 			model_cls = self.model
 			init_list = None
 		else:
-			if DJANGO_16_PLUS:
-				fields = self.model._meta.concrete_fields
-				fields_with_model = self.model._meta.get_concrete_fields_with_model()
-			else:
-				fields = self.model._meta.fields
-				fields_with_model = self.model._meta.get_fields_with_model()
+			fields = self.model._meta.concrete_fields
+			fields_with_model = self.model._meta.get_concrete_fields_with_model()
 			for field, model in fields_with_model:
 				if model is None:
 					model = self.model
@@ -488,12 +484,7 @@ class CursorWrapper(object):
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
-		if DJANGO_17_PLUS:
-			pk = query.where.children[0].rhs
-		elif DJANGO_16_PLUS:
-			pk = query.where.children[0][3]
-		else:
-			pk = query.where.children[0].children[0][-1]
+		pk = query.where.children[0].rhs
 		assert pk
 		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = {'Content-Type': 'application/json'}
@@ -509,7 +500,7 @@ class CursorWrapper(object):
 		def recurse_for_pk(children):
 			for node in children:
 				if hasattr(node, 'rhs'):
-					pk = node.rhs[0]  # for Django 1.7+
+					pk = node.rhs[0]
 				else:
 					try:
 						pk = node[-1][0]
@@ -566,7 +557,7 @@ class CursorWrapper(object):
 		"""
 		return list(self.results)
 
-	def close(self):  # for Django 1.7+
+	def close(self):
 		pass
 
 string_literal = quoted_string_literal

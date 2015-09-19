@@ -12,7 +12,7 @@ Salesforce introspection code.
 import logging
 import re
 
-from salesforce import models, DJANGO_15_PLUS, DJANGO_18_PLUS
+from salesforce import models, DJANGO_18_PLUS
 from salesforce.fields import SF_PK
 
 from django.conf import settings
@@ -26,16 +26,8 @@ from salesforce.backend import compiler, query
 # require "simplejson" to ensure that it is available to "requests" hook.
 import simplejson
 
-try:
-	from collections import OrderedDict
-except ImportError:
-	# Python 2.6-
-	from django.utils.datastructures import SortedDict as OrderedDict
-try:
-	from django.utils.text import camel_case_to_spaces
-except ImportError:
-	# Django 1.6 and older
-	from django.db.models.options import get_verbose_name as camel_case_to_spaces
+from collections import OrderedDict
+from django.utils.text import camel_case_to_spaces
 
 log = logging.getLogger(__name__)
 
@@ -274,9 +266,6 @@ class SfProtectName(str):
 	# though not perfect for names with more consecutive upper case characters,
 	# e.g 'MyURLTable__c' -> 'MyUrltable' is still better than 'MyurltableC'.
 	def title(self):
-		if not DJANGO_15_PLUS:
-			# the old behavior with old Django
-			return super(SfProtectName, self).title()
 		name = re.sub(r'__c$', '', self)   # fixed custom name
 		return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
 

@@ -1,7 +1,5 @@
 """
 Dummy Salesforce driver that simulates some parts of DB API 2
-
-used by the new Django >= 1.6b2
 """
 from django.utils.six import PY3
 
@@ -50,8 +48,7 @@ class NotSupportedError(DatabaseError):
 
 class Connection(object):
 	# close and commit can be safely ignored because everything is
-	# committed automatically and REST is stateles. They are
-	# unconditionally required by Django 1.6+.
+	# committed automatically and REST is stateles.
 	def close(self):
 		pass
 

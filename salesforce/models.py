@@ -23,14 +23,12 @@ from django.db.models.sql import compiler
 # Only these two `on_delete` options are currently supported
 from django.db.models import PROTECT, DO_NOTHING
 #from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
+from django.utils.six import with_metaclass
+from django.utils.deconstruct import deconstructible
 
 from salesforce.backend import manager
 from salesforce.fields import *  # modified django.db.models.CharField etc.
-from salesforce import fields, DJANGO_17_PLUS, DJANGO_18_PLUS
-if DJANGO_17_PLUS:
-	from django.utils.deconstruct import deconstructible
-else:
-	deconstructible = lambda x: x
+from salesforce import fields, DJANGO_18_PLUS
 
 log = logging.getLogger(__name__)
 
@@ -65,25 +63,6 @@ class SalesforceModelBase(ModelBase):
 				# TODO use args:  obj._constructor_args = (args, kwargs)
 				value = manager.SalesforceManager()
 			super(SalesforceModelBase, cls).add_to_class(name, value)
-
-
-# Backported for Django 1.4 from django.utils.six version 1.7
-def with_metaclass(meta, *bases):
-	"""Create a base class with a metaclass."""
-	# This requires a bit of explanation: the basic idea is to make a
-	# dummy metaclass for one level of class instantiation that replaces
-	# itself with the actual metaclass.  Because of internal type checks
-	# we also need to make sure that we downgrade the custom metaclass
-	# for one level to something closer to type (that's why __call__ and
-	# __init__ comes back from type etc.).
-	class metaclass(meta):
-		__call__ = type.__call__
-		__init__ = type.__init__
-		def __new__(cls, name, this_bases, d):
-			if this_bases is None:
-				return type.__new__(cls, name, (), d)
-			return meta(name, bases, d)
-	return metaclass(str('temporary_class'), None, {})
 
 
 class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
