@@ -42,5 +42,10 @@ class DatabaseOperations(BaseDatabaseOperations):
 		"""
 		return value
 	
+	def value_to_db_decimal(self, value, *args):
+		if str(value) == 'DEFAULTED_ON_CREATE':
+			return value
+		return super(DatabaseOperations, self).value_to_db_decimal(value, *args)
+
 	def last_insert_id(self, cursor, db_table, db_column):
 		return cursor.lastrowid

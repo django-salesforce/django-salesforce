@@ -221,6 +221,7 @@ def extract_values(query):
 				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
+			# update
 			value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
 			if value_or_empty:
 				[value] = value_or_empty
@@ -228,17 +229,20 @@ def extract_values(query):
 				assert len(query.values) < len(fields), \
 						"Match name can miss only with an 'update_fields' argument."
 				continue
-		else:  # insert
+		else:
+			# insert
 			# TODO bulk insert
 			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce REST API"
 			value = getattr(query.objs[0], field.attname)
-			# The 'DEFAULT' is a backward compatibility name.
-			if isinstance(field, (models.ForeignKey, models.BooleanField)) and value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
+		# The 'DEFAULT' is a backward compatibility name.
+		if isinstance(field, (models.ForeignKey, models.BooleanField, models.DecimalField)):
+			if value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
 				continue
-			if isinstance(value, models.DefaultedOnCreate):
-				continue
+		if isinstance(value, models.DefaultedOnCreate):
+			continue
 		[arg] = process_json_args([value])
 		d[field.column] = arg
+	#print("postdata : %s" % d)
 	return d
 
 class SalesforceRawQuerySet(query.RawQuerySet):
@@ -418,6 +422,7 @@ class CursorWrapper(object):
 		self.rowcount = None
 		if isinstance(self.query, SalesforceQuery) or self.query is None:
 			response = self.execute_select(q, args)
+			#print("response : %s" % response.text)
 		elif isinstance(self.query, SalesforceRawQuery):
 			response = self.execute_select(q, args)
 		elif isinstance(self.query, subqueries.InsertQuery):

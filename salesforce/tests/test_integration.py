@@ -227,6 +227,18 @@ class BasicSOQLRoTest(TestCase):
 		finally:
 			test_lead.delete()
 	
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	def test_double_save(self):
+		"""Double save without refresh of an object with a DEFAULTED_ON_CREATE
+		field should not cause a problem.
+		"""
+		oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
+		oppo.save()
+		try:
+			oppo.save()
+		finally:
+			oppo.delete()
+	
 	def test_delete(self):
 		"""Create a lead record, then delete it, and make sure it's gone.
 		"""

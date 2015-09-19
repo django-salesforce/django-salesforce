@@ -23,12 +23,14 @@ from django.db.models.sql import compiler
 # Only these two `on_delete` options are currently supported
 from django.db.models import PROTECT, DO_NOTHING
 #from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
-from django.utils.six import with_metaclass
 from django.utils.deconstruct import deconstructible
+from django.utils.six import with_metaclass
 
 from salesforce.backend import manager
-from salesforce.fields import *  # modified django.db.models.CharField etc.
-from salesforce import fields, DJANGO_18_PLUS
+from salesforce.fields import SalesforceAutoField, SF_PK
+from salesforce.fields import *  # imports for other modules
+
+from salesforce import DJANGO_18_PLUS
 
 log = logging.getLogger(__name__)
 
@@ -77,17 +79,18 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
 
 	# Name of primary key 'Id' can be easily changed to 'id'
 	# by "settings.SF_PK='id'".
-	id = fields.SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
-									verbose_name='ID', auto_created=True)
+	id = SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
+							 verbose_name='ID', auto_created=True)
 
 
 @deconstructible
 class DefaultedOnCreate(object):
 	"""
-	Default value for foreign keys that but will get a smart auto value from
-	SFDC on create if the field is omitted, but can not be assigned to null in
-	the API.
-	(builtin SFDC fields with attributes 'defaultedOnCreate: true, nillable: false')
+	Default value that means that it shoud be replaced by Salesforce, not
+	by Django, because SF does it or even no real ralue nor None is accepted.
+	(e.g. for some builtin foreign keys with SF attributes
+	'defaultedOnCreate: true, nillable: false')
+	SFDC will set the correct value only if the field is omitted as the REST API.
 
 	Example: `Owner` field is assigned to the current user if the field User is omitted.
 

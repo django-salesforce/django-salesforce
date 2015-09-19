@@ -159,7 +159,7 @@ class Lead(SalesforceModel):
 	]
 
 	LastName = models.CharField(max_length=80)
-	FirstName = models.CharField(max_length=40)
+	FirstName = models.CharField(max_length=40, blank=True, null=True)
 	Salutation = models.CharField(max_length=100, choices=[(x, x) for x in SALUTATIONS])
 	Salutation = models.CharField(max_length=100,
 								  choices=[(x, x) for x in SALUTATIONS])
@@ -293,6 +293,9 @@ class Opportunity(SalesforceModel):
 	stage = models.CharField(max_length=255, db_column='StageName') # e.g. "Prospecting"
 	created_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
 	amount = models.DecimalField(max_digits=18, decimal_places=2, blank=True, null=True)
+	probability = models.DecimalField(
+		max_digits=3, decimal_places=0, verbose_name='Probability (%)',
+		default=models.DEFAULTED_ON_CREATE, blank=True, null=True)
 
 
 class OpportunityContactRole(SalesforceModel):

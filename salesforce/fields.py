@@ -17,15 +17,6 @@ from django.db.models import fields
 from django.db import models
 from django.utils.encoding import smart_text
 from django.utils.six import string_types
-try:
-	## in south >= 0.6, we have to explicitly tell south about this
-	## custom field.  Even though it will be on an unmanaged model,
-	## south parses everything first and will crap out even though
-	## later it'd ignore this model anyway.
-	from south.modelsinspector import add_introspection_rules
-	add_introspection_rules([], [r"^salesforce\.fields\.SalesforceAutoField"])
-except ImportError:
-	pass
 
 # None of field types defined in this module need a "deconstruct" method,
 # in Django 1.7+, because their parameters only describe fixed nature of SF
@@ -173,7 +164,10 @@ class BooleanField(SfField, models.BooleanField):
 		super(BooleanField, self).__init__(default=default, **kwargs)
 class DecimalField(SfField, models.DecimalField):
 	"""DecimalField with sf_read_only attribute for Salesforce."""
-	pass
+	def to_python(self, value):
+		if str(value) == 'DEFAULTED_ON_CREATE':
+			return value
+		return super(DecimalField, self).to_python(value)
 
 
 class DateTimeField(SfField, models.DateTimeField):
