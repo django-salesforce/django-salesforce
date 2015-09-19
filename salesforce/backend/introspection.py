@@ -171,13 +171,16 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		reverse = {}
 		last_with_important_related_name = []
 		last_read_only = {}
-		INDEX_OF_PRIMARY_KEY = 0
 		last_refs = {}
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
 			if field['type'] == 'reference' and field['referenceTo']:
 				reference_to_name = SfProtectName(field['referenceTo'][0])
 				last_refs[field['name']] = field['referenceTo']
-				result[i] = (INDEX_OF_PRIMARY_KEY, reference_to_name)
+				if DJANGO_18_PLUS:
+					result[field['name']] = ('Id', reference_to_name)
+				else:
+					INDEX_OF_PRIMARY_KEY = 0
+					result[i] = (INDEX_OF_PRIMARY_KEY, reference_to_name)
 				reverse.setdefault(reference_to_name, []).append(field['name'])
 				if not field['updateable'] or not field['createable']:
 					sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
@@ -256,6 +259,7 @@ class SfProtectName(str):
 	'SomeStrange2TableName'
 	>>> assert SfProtectName('an_ODD2TableName__c') == 'an_ODD2TableName__c'
 	"""
+	type = 't'  # 't'=table, 'v'=view
 	# This better preserves the names. It is exact for all SF builtin tables,
 	# though not perfect for names with more consecutive upper case characters,
 	# e.g 'MyURLTable__c' -> 'MyUrltable' is still better than 'MyurltableC'.
@@ -265,6 +269,11 @@ class SfProtectName(str):
 			return super(SfProtectName, self).title()
 		name = re.sub(r'__c$', '', self)   # fixed custom name
 		return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
+
+	@property
+	def name(self):
+		return self
+
 
 reverse_models_names = dict((obj.value, obj) for obj in
 	[SymbolicModelsName(name) for name in ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')]
