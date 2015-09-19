@@ -73,6 +73,17 @@ class ExportedModelTest(unittest.TestCase):
 		else:
 			self.skipTest("The model for the table Test__c not exported.")
 
+	def test_master_detail_relationship(self):
+		"""
+		Verify that Contact is a master-detail relationship of Account,
+		but Opportunity is not.
+		"""
+		line = self.match_line('    account = ', classes_texts['Contact'])
+		self.assertRegexpMatches(line, r'#.* Master Detail Relationship \*')
+		line = self.match_line('    created_by = ', classes_texts['Opportunity'])
+		self.assertNotIn('Master Detail Relationship', line)
+
+
 classes_texts = get_classes_texts()
 
 if __name__ == '__main__':
