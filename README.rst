@@ -108,58 +108,6 @@ primary key `id` by configuring `SF_PK='id'` in your project settings. The previ
 capitalization of `Id` is only for old projects, but it will stay as the default
 variant until `django-salesforce>=0.5`.
 
-Foreign Key Support
--------------------
-
-**Foreign key filters** are currently possible only from child to parent with some
-restrictions:
-
-They are fully supported with Django 1.7+ without other restrictions. **New**
-
-With Django 1.6 and older, ForeignKey filters are  possible only for the first level of
-relationship and only for fields whose name equals the name of object.
-Foreign keys of an object can be normally accessed by dot notation without any
-restriction
-Example::
-
-    contacts = Contact.objects.filter(Account__Name='FOO Company')
-    print(contacts[0].Account.Owner.LastName)
-
-But the relationship ``Owner__Name`` is not currently possible because the
-type of ``Owner`` is a different name (``User``).
-
-Along similar lines, it's not currently possible to filter by `ForeignKey`
-relationships based on a custom field. This is because related objects
-(Lookup field or Master-Detail Relationship) use two different names in
-`SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
-relation is by ID the columns are named `FieldName__c`, whereas if the relation
-is stored by object the column is named `FieldName__r`. More details about
-this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
-
-In case of a ForeignKey you can specify the field name suffixed with ``_id``,
-as it is automatically allowed by Django. For example: ``account_id`` instead
-of ``account.id``, or ``AccountId`` instead of ``Account.Id``. It is faster,
-if you need not to access to the related ``Account`` object.
-
-Querysets can be easily inspected whether they are correctly compiled to SOQL.
-You can compare the meaning with the same compiled to SQL::
-
-    my_qs = Contact.objects.filter(my__little_more__complicated='queryset')
-    print my_qs.query.get_compiler('salesforce').as_sql()    # SOQL
-    print my_qs.query.get_compiler('default').as_sql()       # SQL
-
-**Generic foreign keys** are frequently used in SF for fields that relate to
-objects of different types, e.g. the Parent of Note or Attachment can be almost
-any type of ususal SF objects. Filters by `Parent.Type` and retrieving this
-type is supported::
-
-    note = Note.objects.filter(parent_type='Contact')[0]
-    parent_model = getattr(example.models, note.parent_type)
-    parent_object = parent_model.objects.get(pk=note.parent_id)
-    assert note.parent_type == 'Contact'
-
-Example of `Note` model is in `salesforce.testrunner.example.models.Note`.
-
 Advanced usage
 --------------
 -  **Multiple Inheritance from Abstract Models** - Many Salesforce models use
@@ -238,132 +186,24 @@ Advanced usage
    safe as it is related only to the alternate non SFDC database configured
    by `SF_ALIAS`.)
 
+Foreign Key Support
+-------------------
+Foreign key relationships should work as expected, but mapping
+Salesforce SOQL to a purely-relational mapper is a leaky abstraction. For the
+gory details, see `Foreign Key Support <https://github.com/django-salesforce/django-salesforce/wiki/Foreign-Key-Support>`__
+on the Django-Salesforce wiki.
+
 Introspection and special attributes of fields
 ----------------------------------------------
-Some Salesforce fields can not be fully used without special attributes. You
-can see in the output of ``inspectdb`` in the most complete form.
-
--  **sf_read_only** - Some fields require this special attributes to make the
-   model writable. Some fields are completely read only (``READ_ONLY``)
-   or insertable only but can not be later updated (``NOT_UPDATEABLE``) or
-   updateable only but can not be specified on insert (``NOT_CREATEABLE``).
-   Examples of such fields are automatically updated fields "last_modified_by" and
-   "last_modified_date" or fields defined by a formula like "name" of contact,
-   given by "first_name" and "last_name". Example::
-
-     last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
-
--  **Defaulted on create** - Some fields have a dynamic default value unknown
-   by Django and assigned by Salesforce if the field is omitted when a new object
-   is inserted. This rule will not be used if the value is ``None``.
-   Sometimes is ``None`` even not accepted by Salesforce, while the missing
-   value is ok. Django-salesforce supports it by a special default value
-   ``model.BooleanField(default=models.DEFAULTED_ON_CREATE)``. That means "let
-   it to Salesforce". This is useful for all fields marked by attribute
-   ``defaultedOnCreate`` in Salesforce. For example the current user of
-   Salesforce is assigned to ``owner`` field if no concrete user is  assigned,
-   but None would be rejected. All boolean fields have different default values
-   according to current ``Checked/Unchecked`` preferences.
-
--  **Comments # Reference to tables [...]**
-   Some builtin foreign keys are references to more tables. The class of first
-   table is used in the exported ``ForeignKey`` and all tables are listed in
-   the comment. Any of them can be used instead.::
-   models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
-   cl object  [SelfServiceUser, User]
-
--  **Partial Database Introspection with inspectdb** Tables that are exported into a
-   Python model can be restricted by regular expression::
-
-     python manage.py inspectdb --table-filter="Contact$|Account" --database=salesforce
-
-   In this example, inspectdb will only export models for tables with exact
-   name ``Contact`` and all tables that are prefixed with ``Account``. This
-   filter works with all supported database types.
-
--  **Verbosity** - This package can set correct column names for Salesforce
-   without explicit attribute ``db_column`` for many objects automatically.
-   These attributes are not exported if a default verbosity is used. This is
-   intended for use only with SFDC. If an alternate non SFDC test database
-   is also expected and migrations of any SalesforceModel will 
-
--  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
-   be implemented using the generic relational database abstraction and the REST API.
-   For some of these actions there is an available endpoint in the old Salesforce API
-   (SOAP) that can be accessed using our utility module. In order to use that module,
-   you will need to install an additional dependency ::
-
-     pip install beatbox    # depends on Python 2.7
-
-   Here is an example of usage with ``Lead`` conversion ::
-
-     from salesforce.utils import convert_lead
-
-     lead = Lead.objects.all()[0]
-     response = convert_lead(lead)
-
-   All usual
-   `additional parameters <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm>`__
-   are supported in the original letter case. It allows e.g. merging a Lead
-   with an existing Account or Contact and to control much more.
-
-   For the particular case of ``Lead`` conversion, beware that having
-   some *custom* and *required* fields in either ``Contact``, ``Account`` or
-   ``Opportunity`` can be more complicated. A mapping from custom fields in your
-   ``Lead`` to these fields must be defined in the system and these Lead fields
-   should not be empty at the time of conversion. Follow the
-   `instructions <http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`__
-   for more details.
+Some Salesforce fields can not be fully used without special attributes, namely
+read-only and default value fields. Further details can be found in
+`Introspection and Special Attributes of Fields <https://github.com/django-salesforce/django-salesforce/wiki/Introspection-and-Special-Attributes-of-Fields>`__
 
 SSL/TLS settings
 ----------------
-The package `requests <http://python-requests.org>`__ doesn't provide an easy way
-to set the minimum required SSL/TLS version while ensuring use of the highest
-version that is available on both sides.
-(`requests issue 2118 <https://github.com/kennethreitz/requests/issues/2118>`__)
-The required version can be set in settings.py to one of reasonable values ::
-
-         import ssl	
-         SF_SSL = {'ssl_version': ssl.PROTOCOL_SSLv23}
-
--  `ssl.PROTOCOL_SSLv23` - use the highest available protocol, including TLS.
-   The security depends on the lowest protocol supported by your the installed
-   versions of Python, requests, pyOpenSSL, and installed versions of OpenSSL/libssl.
-
--  `ssl.PROTOCOL_TLSv1` - This will pin the communication protocol to TLS 1.0.
-   This must be changed to `PROTOCOL_SSLv23` once SFDC disables TLS 1.0.
-
-The default for django-salesforce is currently `PROTOCOL_TLSv1` in hopes of reducing
-compatibility issues. If you have Python 2.7.9 and newer or Python 3.4.0 and newer,
-the old insecure protocols including SSL v3 are disabled unless you've installed
-PyOpenSSL. As long as you have *not* installed PyOpenSSL, it's recommended you
-update your settings to use `PROTOCOL_SSLv23`.
-
-The test of readiness for TLS better than 1.0 and a test of disabled SSL 3
-are run by all tests. These tests give also some suggestions for the tested machine.
-More tests for SSL/TLS client security by popular SSL evaluation sites can be
-run by the command ::
-
-   python manage.py test salesforce.tests.test_ssl.SslTest
-
-Additional tests are skipped without the word `SslTest` on the command line,
-because some vulnerabilities are hopefully not (so?) important for connections
-to SFDC.
-
-If you have an old Python, you can improve security a little (SNI, validation of
-certificates, fixed InsecurePlatformWarning) by additional packages:
-
-     pip install pyopenssl ndg-httpsclient pyasn1
-
-These have dependencies on the libffi development libararies. Install `libffi-dev` on
-Debian/Ubuntu or `libffi-devel` on RedHat derivatives.
-
-However, once you're using Python 2.7.9 and newer or Python 3.4.0 and newer, installing
-pyOpenSSL can enable SSLv3 again. If you *must* install PyOpenSSL on these Python versions,
-it is more secure to use ssl.PROTOCOL_TLSv1 than other protocols.
-
-Ultimately this will become moot for users of django-salesforce, as SFDC will soon require
-the updated setting.
+For more details on SSL support in Django-Salesforce, particularly relating to
+the 2016 deprecation of TLS 1.0 on Salesforce.com, visit the wiki article,
+`SSL/TLS and Salesforce.com <https://github.com/django-salesforce/django-salesforce/wiki/SSL-TLS-settings-and-Saleforce.com>`__
 
 Caveats
 -------
@@ -390,56 +230,6 @@ here are the potential pitfalls and unimplemented operations:
    databases (useful for unit tests); SFDC classes are assumed to already
    exist with the appropriate permissions.
 
-Experimental Features
----------------------
-
--  If you use multiple Salesforce databases or multiple instances of AdminSite, you'll
-   probably want to extend ``salesforce.admin.RoutedModelAdmin``" in your admin.py
-
--  **Dynamic authorization** - The original use-case for django-salesforce assumed
-   use of a single set of credentials with read-write access to all necessary objects.
-   It's now possible to write applications that use OAuth to interact with a Salesforce
-   instance's data on your end user's behalf. You simply need to know or request the 
-   `Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`
-   for the user in question. In this situation, it's not necessary to save any credentials
-   for SFDC in Django settings. The manner in which you request or transmit this token
-   (e.g., in the `Authorization:` header) is left up to the developer at this time.
-
-   Configure your ``DATABASES`` setting as follows::
-
-    'salesforce': {
-        'ENGINE': 'salesforce.backend',
-        'HOST': 'https://your-site.salesforce.com',
-        'CONSUMER_KEY': '.',
-        'CONSUMER_SECRET': '.',
-        'USER': 'dynamic auth',
-        'PASSWORD': '.',
-    }
-
-   A static SFDC connection can be specified with the data server URL in "HOST"
-   Note that in this case we're not using the URL of the login server — the data
-   server URL can be also used for login.
-   
-   Items with `'.'` value are ignored when using dynamic auth, but cannot be left
-   empty.
-
-   The last step is to enable the feature in your project in some way, probably by
-   creating a Django middleware component. Then at the beginning of each request::
-
-      from django.db import connections
-      # After you get the access token for the user in some way
-      # authenticate to SFDC with
-      connections['salesforce'].sf_session.auth.dynamic_start(access_token)
-      
-      # or to override the `instance_url` on a per-request basis
-      connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url)
-
-   Make sure to purge the access token at end of request::
-
-        connections['salesforce'].sf_session.auth.dynamic_end()
-
-   You can continue to supply static credentials in your project settings, but they will
-   only be used before calling dynamic_start() and/or after calling dynamic_end().
 
 Backwards-incompatible changes
 ------------------------------
