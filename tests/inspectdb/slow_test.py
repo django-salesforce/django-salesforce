@@ -33,7 +33,7 @@ def run():
 	for tab in sf.introspection.table_list_cache['sobjects']:
 		if tab['retrieveable'] and not tab['name'] in (
 				# These require specific filters (descried in their error messages)
-				'CollaborationGroupRecord', 'ContentFolderMember',
+				'CollaborationGroupRecord', 'ContentFolderMember', 'ContentFolderItem',
 				'ContentDocumentLink', 'Idea', 'IdeaComment', 'UserProfileFeed',
 				'Vote', #'OpportunityPartner', 'Product2Feed',
 				# TODO The "RecordType" is a very important object, but it can fail
