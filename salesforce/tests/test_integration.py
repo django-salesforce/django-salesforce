@@ -738,6 +738,9 @@ class BasicSOQLRoTest(TestCase):
 		qs = Attachment.objects.filter(parent__in=Test.objects.filter(contact__last_name='Johnson'))
 		list(qs)
 
+	def test_using_none(self):
+		alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
+		self.assertEqual(Contact.objects.using(None)._db, alias)
 
 # ============= Tests that need setUp Lead ==================
 

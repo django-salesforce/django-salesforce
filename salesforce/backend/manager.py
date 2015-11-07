@@ -13,6 +13,7 @@ Use a custom QuerySet to generate SOQL queries and results.
 
 import warnings
 from django.db import connections
+from django.conf import settings
 from django.db.models import manager
 from django.db.models.query import RawQuerySet
 from django.db.utils import DEFAULT_DB_ALIAS
