@@ -425,7 +425,9 @@ class BasicSOQLRoTest(TestCase):
 			# Test datetime objects (now +- 10 minutes for clock inaccuracy)
 			start_time = timezone.now() - datetime.timedelta(seconds=600)
 			end_time = timezone.now() + datetime.timedelta(seconds=600)
-			oppy = Opportunity.objects.filter(created_date__range=(start_time, end_time))[0]
+			opportunities = Opportunity.objects.filter(created_date__range=(start_time, end_time))[:1]
+			self.assertEqual(len(opportunities), 1, "Failed range filter or maybe incorrectly set clock")
+			oppy = opportunities[0]
 			self.assertEqual(oppy.name, 'Example Opportunity')
 			self.assertEqual(oppy.stage, 'Prospecting')
 
