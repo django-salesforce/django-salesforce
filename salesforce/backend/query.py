@@ -30,7 +30,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_18_PLUS
+from salesforce import auth, models, DJANGO_18_PLUS, DJANGO_19_PLUS
 from salesforce import DJANGO_184_PLUS
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
@@ -517,7 +517,9 @@ class CursorWrapper(object):
 		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 
 		log.debug('DELETE %s(%s)' % (table, pk))
-		return handle_api_exceptions(url, self.session.delete, _cursor=self)
+		ret = handle_api_exceptions(url, self.session.delete, _cursor=self)
+		self.rowcount = 1 if (ret and ret.status_code == 204) else 0
+		return ret
 
 	def query_results(self, results):
 		while True:

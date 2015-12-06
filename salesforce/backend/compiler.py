@@ -14,7 +14,7 @@ from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 from . import subselect
 
-from salesforce import DJANGO_18_PLUS
+from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
 DJANGO_17_EXACT = not DJANGO_18_PLUS
 
 
@@ -118,7 +118,7 @@ class SQLCompiler(compiler.SQLCompiler):
 			return list(result)
 		return result
 
-	if DJANGO_18_PLUS:
+	if DJANGO_18_PLUS:  # or Django 1.9
 		def as_sql(self, with_limits=True, with_col_aliases=False, subquery=False):
 			"""
 			Creates the SQL for this query. Returns the SQL string and list of
@@ -132,6 +132,9 @@ class SQLCompiler(compiler.SQLCompiler):
 			# However we do not want to get rid of stuff done in pre_sql_setup(),
 			# as the pre_sql_setup will modify query state in a way that forbids
 			# another run of it.
+			if DJANGO_19_PLUS:
+				if with_limits and self.query.low_mark == self.query.high_mark:
+					return '', ()
 			self.subquery = subquery
 			refcounts_before = self.query.alias_refcount.copy()
 			soql_trans = self.query_topology()
@@ -145,8 +148,12 @@ class SQLCompiler(compiler.SQLCompiler):
 				# docstring of get_from_clause() for details.
 				from_, f_params = self.get_from_clause()
 
-				where, w_params = self.compile(self.query.where)
-				having, h_params = self.compile(self.query.having)
+				if DJANGO_19_PLUS:
+					where, w_params = self.compile(self.where) if self.where is not None else ("", [])
+					having, h_params = self.compile(self.having) if self.having is not None else ("", [])
+				else:
+					where, w_params = self.compile(self.query.where)
+					having, h_params = self.compile(self.query.having)
 				params = []
 				result = ['SELECT']
 
