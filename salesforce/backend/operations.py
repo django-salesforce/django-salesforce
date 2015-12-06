@@ -49,3 +49,12 @@ class DatabaseOperations(BaseDatabaseOperations):
 
 	def last_insert_id(self, cursor, db_table, db_column):
 		return cursor.lastrowid
+
+	def adapt_datefield_value(self, value):
+		return value
+
+	def adapt_datetimefield_value(self, value):
+		return value
+
+	def adapt_timefield_value(self, value):
+		return value
