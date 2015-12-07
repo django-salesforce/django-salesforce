@@ -8,8 +8,13 @@
 """
 Aggregates like COUNT(), MAX(), MIN() are customized here.
 """
+from salesforce import DJANGO_18_PLUS
 
-from django.db.models.sql.aggregates import *
+if DJANGO_18_PLUS:
+	from django.db.models.aggregates import *
+else:
+	from django.db.models.sql.aggregates import *
+
 
 class Count(Aggregate):
 	"""

@@ -6,8 +6,9 @@
 #
 
 from django.conf.urls import patterns, url, include
+from . import views
 
-urlpatterns = patterns('salesforce.testrunner.example.views',
-	url(r'^$', 'list_accounts', name='list_accounts'),
-	url(r'^search/$', 'search_accounts', name='search_accounts'),
-)
+urlpatterns = [
+	url(r'^$', views.list_accounts, name='list_accounts'),
+	url(r'^search/$', views.search_accounts, name='search_accounts'),
+]

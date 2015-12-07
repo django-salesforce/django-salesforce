@@ -279,8 +279,8 @@ class SalesforceQuerySet(query.QuerySet):
 			init_list = None
 		else:
 			fields = self.model._meta.concrete_fields
-			fields_with_model = self.model._meta.get_concrete_fields_with_model()
-			for field, model in fields_with_model:
+			for field in fields:
+				model = field.model._meta.concrete_model
 				if model is None:
 					model = self.model
 				try:
@@ -524,10 +524,12 @@ class CursorWrapper(object):
 	def query_results(self, results):
 		while True:
 			for rec in results['records']:
-				if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, 'aggregate_select'):
-					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
+				ANNOTATION_SELECT_NAME = 'annotation_select' if DJANGO_18_PLUS else 'aggregate_select'
+				if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, ANNOTATION_SELECT_NAME):
+					annotation_select = getattr(self.query, ANNOTATION_SELECT_NAME)
+					assert len(rec) -1 == len(list(annotation_select.items()))
 					# The 'attributes' info is unexpected for Django within fields.
-					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]
+					rec = [rec[k] for k, _ in annotation_select.items()]
 				yield rec
 
 			if results['done']:

@@ -20,7 +20,7 @@ def list_accounts(request):
 	return shortcuts.render_to_response('list-accounts.html', dict(
 		title           = "List First 5 Accounts",
 		accounts        = accounts,
-	), context_instance=template.RequestContext(request))
+	))
 
 def search_accounts(request):
 	accounts = []
@@ -35,4 +35,4 @@ def search_accounts(request):
 		title           = "Search Accounts by Email",
 		accounts        = accounts,
 		form            = form,
-	), context_instance=template.RequestContext(request))
+	))
