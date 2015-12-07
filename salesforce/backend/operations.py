@@ -7,7 +7,10 @@
 
 import re
 
+import django.db.backends.utils
+
 from salesforce import DJANGO_18_PLUS
+from salesforce.models import DefaultedOnCreate
 
 if DJANGO_18_PLUS:
 	from django.db.backends.base.operations import BaseDatabaseOperations
@@ -58,3 +61,8 @@ class DatabaseOperations(BaseDatabaseOperations):
 
 	def adapt_timefield_value(self, value):
 		return value
+
+	def adapt_decimalfield_value(self, value, max_digits, decimal_places):
+		if isinstance(value, DefaultedOnCreate):
+			return value
+		return django.db.backends.utils.format_number(value, max_digits, decimal_places)
