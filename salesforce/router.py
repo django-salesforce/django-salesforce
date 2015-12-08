@@ -71,8 +71,7 @@ class ModelRouter(object):
 		"""
 		Don't attempt to sync SF models to non SF databases and vice versa.
 		"""
-		#import pdb; pdb.set_trace()
-		model = hints.get('model', apps.get_model(app_label, model_name))
+		model = hints['model'] if 'model' in hints else apps.get_model(app_label, model_name)
 		if hasattr(model, '_salesforce_object'):
 			# If SALESFORCE_DB_ALIAS is e.g. a sqlite3 database, than it can migrate SF models
 			if not (is_sf_database(db) or db == self.sf_alias):

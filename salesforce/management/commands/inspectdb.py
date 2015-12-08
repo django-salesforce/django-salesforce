@@ -5,7 +5,7 @@ from django.core.management.commands.inspectdb import Command as InspectDBComman
 from django.db import connections, DEFAULT_DB_ALIAS
 from django.utils import six
 from salesforce.backend import introspection as sf_introspection
-from salesforce import DJANGO_18_PLUS
+from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
 import django
 import salesforce
 
@@ -144,7 +144,8 @@ class Command(InspectDBCommand):
 							)
 				if col_name in sf_introspection.last_read_only:
 					field_params['sf_read_only'] = sf_introspection.last_read_only[col_name]
-				field_params['on_delete'] = sf_introspection.SymbolicModelsName('DO_NOTHING')
+				if not DJANGO_19_PLUS:
+					field_params['on_delete'] = sf_introspection.SymbolicModelsName('DO_NOTHING')
 				reference_to, relationship_order = sf_introspection.last_refs[col_name]
 				if len(reference_to) > 1:
 					field_notes.append('Reference to tables [%s]' % (', '.join(reference_to)))
@@ -156,17 +157,16 @@ class Command(InspectDBCommand):
 					).normalize_col_name(col_name, used_column_names, is_relation)
 		return new_name, fix_field_params_repr(field_params), field_notes
 
-	def get_meta(self, table_name, constraints=None):
+	def get_meta(self, table_name, constraints, column_to_field_name=None):
 		"""
 		Return a sequence comprising the lines of code necessary
 		to construct the inner Meta class for the model corresponding
 		to the given database table name.
 		"""
-		ret =  ["    class Meta(models.Model.Meta):",
-			"        db_table = '%s'" % table_name,
-			]
+		meta =  ["    class Meta(models.Model.Meta):",
+				"        db_table = '%s'" % table_name]
 		if self.connection.vendor == 'salesforce':
 			for line in self.connection.introspection.get_additional_meta(table_name):
-				ret.append("        " + line)
-		ret.append("")
-		return ret
+				meta.append("        " + line)
+		meta.append("")
+		return meta
