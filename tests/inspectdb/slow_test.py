@@ -7,7 +7,7 @@ on permissions.
 
 Usage:
 $ python manage.py inspectdb --database=salesforce >tests/inspectdb/models.py
-$ python manage.py validate
+$ python manage.py check
 $ python tests/inspectdb/slow_test.py
 """
 
@@ -20,12 +20,13 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.inspectdb.settings'
 
 import django
 from django.db import connections
+# The same "django.setup()" is used by manage.py subcommands in Django
+django.setup()
+
 from salesforce.backend.base import SalesforceError
 from tests.inspectdb import models as mdl
 
 sf = connections['salesforce']
-# The same "django.setup()" is used by manage.py subcommands in Django
-django.setup()
 
 def run():
 	start_name = sys.argv[1] if sys.argv[1:] else ''

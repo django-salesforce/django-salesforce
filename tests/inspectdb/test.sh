@@ -4,8 +4,8 @@ if python manage.py inspectdb --database=salesforce --traceback >tests/inspectdb
 	# Run both tests even if the first test fails. With old Django versions can
 	# the read/write test pass (useful information) though validation failed.
 
-	echo "*** validate"
-	python manage.py validate --settings=tests.inspectdb.settings --traceback
+	echo "*** check"
+	python manage.py check --settings=tests.inspectdb.settings --traceback
 	RESULT_1=$?
 
 	echo "*** slow_test"
