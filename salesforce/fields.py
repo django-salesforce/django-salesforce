@@ -17,15 +17,8 @@ from django.db.models import fields
 from django.db import models
 from django.utils.encoding import smart_text
 from django.utils.six import string_types
-try:
-	## in south >= 0.6, we have to explicitly tell south about this
-	## custom field.  Even though it will be on an unmanaged model,
-	## south parses everything first and will crap out even though
-	## later it'd ignore this model anyway.
-	from south.modelsinspector import add_introspection_rules
-	add_introspection_rules([], [r"^salesforce\.fields\.SalesforceAutoField"])
-except ImportError:
-	pass
+
+from salesforce import DJANGO_19_PLUS
 
 # None of field types defined in this module need a "deconstruct" method,
 # in Django 1.7+, because their parameters only describe fixed nature of SF
@@ -115,10 +108,6 @@ class SfField(models.Field):
 		#                appended.
 		#   * column:    The database column for this field. This is the same as
 		#                "attname", except if db_column is specified.
-		if isinstance(self, ForeignKey):
-			#print(self.name)
-			pass
-			#import pdb; pdb.set_trace()
 		attname = self.get_attname()
 		if self.db_column is not None:
 			# explicit name
@@ -173,7 +162,10 @@ class BooleanField(SfField, models.BooleanField):
 		super(BooleanField, self).__init__(default=default, **kwargs)
 class DecimalField(SfField, models.DecimalField):
 	"""DecimalField with sf_read_only attribute for Salesforce."""
-	pass
+	def to_python(self, value):
+		if str(value) == 'DEFAULTED_ON_CREATE':
+			return value
+		return super(DecimalField, self).to_python(value)
 
 
 class DateTimeField(SfField, models.DateTimeField):
@@ -191,7 +183,10 @@ class ForeignKey(SfField, models.ForeignKey):
 	"""ForeignKey with sf_read_only attribute for Salesforce."""
 	def __init__(self, *args, **kwargs):
 		# Checks parameters before call to ancestor.
-		on_delete = kwargs.get('on_delete', models.CASCADE).__name__
+		if DJANGO_19_PLUS and args[1:2]:
+			on_delete = args[1].__name__
+		else:
+			on_delete = kwargs.get('on_delete', models.CASCADE).__name__
 		if not on_delete in ('PROTECT', 'DO_NOTHING'):
 			# The option CASCADE (currently fails) would be unsafe after a fix
 			# of on_delete because Cascade delete is not usually enabled in SF

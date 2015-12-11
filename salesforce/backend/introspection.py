@@ -12,7 +12,7 @@ Salesforce introspection code.
 import logging
 import re
 
-from salesforce import models, DJANGO_15_PLUS, DJANGO_18_PLUS
+from salesforce import models, DJANGO_18_PLUS
 from salesforce.fields import SF_PK
 
 from django.conf import settings
@@ -26,16 +26,8 @@ from salesforce.backend import compiler, query
 # require "simplejson" to ensure that it is available to "requests" hook.
 import simplejson
 
-try:
-	from collections import OrderedDict
-except ImportError:
-	# Python 2.6-
-	from django.utils.datastructures import SortedDict as OrderedDict
-try:
-	from django.utils.text import camel_case_to_spaces
-except ImportError:
-	# Django 1.6 and older
-	from django.db.models.options import get_verbose_name as camel_case_to_spaces
+from collections import OrderedDict
+from django.utils.text import camel_case_to_spaces
 
 log = logging.getLogger(__name__)
 
@@ -91,7 +83,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 	
 	@property
 	def table_list_cache(self):
-		if(self._table_list_cache is None):
+		if self._table_list_cache is None:
 			url = self.oauth['instance_url'] + query.API_STUB + '/sobjects/'
 			
 			log.debug('Request API URL: %s' % url)
@@ -101,7 +93,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		return self._table_list_cache
 	
 	def table_description_cache(self, table):
-		if(table not in self._table_description_cache):
+		if table not in self._table_description_cache:
 			url = self.oauth['instance_url'] + query.API_STUB + ('/sobjects/%s/describe/' % table)
 		
 			log.debug('Request API URL: %s' % url)
@@ -111,7 +103,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 			assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
 			del self._table_description_cache[table]['fields'][0]
 		return self._table_description_cache[table]
-	
+
 	def table_name_converter(self, name):
 		return name if name.lower() != 'id' else SF_PK
 
@@ -171,13 +163,26 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 		reverse = {}
 		last_with_important_related_name = []
 		last_read_only = {}
-		INDEX_OF_PRIMARY_KEY = 0
 		last_refs = {}
 		for i, field in enumerate(self.table_description_cache(table_name)['fields']):
 			if field['type'] == 'reference' and field['referenceTo']:
 				reference_to_name = SfProtectName(field['referenceTo'][0])
-				last_refs[field['name']] = field['referenceTo']
-				result[i] = (INDEX_OF_PRIMARY_KEY, reference_to_name)
+				relationship_order = field['relationshipOrder']
+				if relationship_order is None:
+					relationship_tmp = set()
+					for rel in field['referenceTo']:
+						for chld in self.table_description_cache(rel)['childRelationships']:
+							if chld['childSObject'] == table_name and chld['field'] == field['name']:
+								relationship_tmp.add(chld['cascadeDelete'])
+					assert len(relationship_tmp) <= 1
+					if True in relationship_tmp:
+						relationship_order = '*'
+				last_refs[field['name']] = (field['referenceTo'], relationship_order)
+				if DJANGO_18_PLUS:
+					result[field['name']] = ('Id', reference_to_name)
+				else:
+					INDEX_OF_PRIMARY_KEY = 0
+					result[i] = (INDEX_OF_PRIMARY_KEY, reference_to_name)
 				reverse.setdefault(reference_to_name, []).append(field['name'])
 				if not field['updateable'] or not field['createable']:
 					sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
@@ -256,15 +261,18 @@ class SfProtectName(str):
 	'SomeStrange2TableName'
 	>>> assert SfProtectName('an_ODD2TableName__c') == 'an_ODD2TableName__c'
 	"""
+	type = 't'  # 't'=table, 'v'=view
 	# This better preserves the names. It is exact for all SF builtin tables,
 	# though not perfect for names with more consecutive upper case characters,
 	# e.g 'MyURLTable__c' -> 'MyUrltable' is still better than 'MyurltableC'.
 	def title(self):
-		if not DJANGO_15_PLUS:
-			# the old behavior with old Django
-			return super(SfProtectName, self).title()
 		name = re.sub(r'__c$', '', self)   # fixed custom name
 		return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
+
+	@property
+	def name(self):
+		return self
+
 
 reverse_models_names = dict((obj.value, obj) for obj in
 	[SymbolicModelsName(name) for name in ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')]

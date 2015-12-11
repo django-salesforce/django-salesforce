@@ -9,12 +9,12 @@ using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
-Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7, partly Django 1.8.
-The best supported version is currently Django 1.7, including relative
-complicated subqueries. Django 1.8 is only very rudimentally supported, without
-raw queries and without values_list() and values() methods. The usual support
-can be expected in the next django-salesforce version.
-Note that Django 1.4.x is not compatible with Python 3.
+Python 2.7, 3.3 - 3.5 or pypy; Django 1.7 - 1.9, but the Django 1.7 is still the best supported.
+Django 1.8 and 1.9 is currently supported without raw queries and without values_list()
+and values() methods. (The usual support can be expected in the next major
+django-salesforce release because it requires to rewrite very much code
+and it is not common to do it in a minor release or to postpone a general Django 1.9
+support.)
 
 Quick Start
 -----------
@@ -104,37 +104,27 @@ Primary Key
 -----------
 Salesforce doesn't allow you to define custom primary keys, so django-salesforce
 will add them automatically in all cases. You can override capitalization and use
-primary key `id` by configuring `SF_PK='id'` in your project settings. The previous
-capitalization of `Id` is only for old projects, but it will stay as the default
-variant until `django-salesforce>=0.5`.
+primary key ``id`` by configuring ``SF_PK='id'`` in your project settings. The previous
+capitalization of ``Id`` is only for old projects, but it will stay as the default
+variant until ``django-salesforce>=0.5``.
 
-Foreign Key Support
--------------------
+Foreign Keys
+------------
 
-**Foreign key filters** are currently possible only from child to parent with some
-restrictions:
+**Foreign key filters** are possible from child to parent without any known restriction,
+   in many levels, including foreign keys between custom models or mixed builtin
+   and custom models, also filters where the same model is used multiple times,
+   e.g. filter Account objects by a field of their parent Account.
 
-They are fully supported with Django 1.7+ without other restrictions. **New**
-
-With Django 1.6 and older, ForeignKey filters are  possible only for the first level of
-relationship and only for fields whose name equals the name of object.
-Foreign keys of an object can be normally accessed by dot notation without any
-restriction
 Example::
 
-    contacts = Contact.objects.filter(Account__Name='FOO Company')
-    print(contacts[0].Account.Owner.LastName)
-
-But the relationship ``Owner__Name`` is not currently possible because the
-type of ``Owner`` is a different name (``User``).
-
-Along similar lines, it's not currently possible to filter by `ForeignKey`
-relationships based on a custom field. This is because related objects
-(Lookup field or Master-Detail Relationship) use two different names in
-`SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
-relation is by ID the columns are named `FieldName__c`, whereas if the relation
-is stored by object the column is named `FieldName__r`. More details about
-this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+    # example models demostrate that models with older TitleCase identifiers
+    # and new lowercase can also be combined, but not nice
+    contacts = Contact.objects.filter(account__Name='FOO Company')
+    print(contacts[0].account.Owner.LastName)
+    contacts = Contact.objects.filter(account__Owner__Username='me@example.com',
+                                      owner__Username='other@example.com')
+    print(contacts[0].account_id)
 
 In case of a ForeignKey you can specify the field name suffixed with ``_id``,
 as it is automatically allowed by Django. For example: ``account_id`` instead
@@ -142,15 +132,31 @@ of ``account.id``, or ``AccountId`` instead of ``Account.Id``. It is faster,
 if you need not to access to the related ``Account`` object.
 
 Querysets can be easily inspected whether they are correctly compiled to SOQL.
-You can compare the meaning with the same compiled to SQL::
+You can compare the the query compiled to SOQL and to SQL::
 
     my_qs = Contact.objects.filter(my__little_more__complicated='queryset')
-    print my_qs.query.get_compiler('salesforce').as_sql()    # SOQL
-    print my_qs.query.get_compiler('default').as_sql()       # SQL
+    print(my_qs.query.get_compiler('salesforce').as_sql())   # SOQL
+    print(my_qs.query.get_compiler('default').as_sql())      # SQL
+
+::  comment until the end of identation
+    Related objects (Lookup field or Master-Detail Relationship) use two different names in
+    `SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
+    relation is by ID the columns are named ``FieldName__c``, whereas if the relation
+    is stored by object the column is named ``FieldName__r``. More details about
+    this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+
+Also Many2many relationships are possible in simple cases, like in the example models::
+
+    class Opportunity(SalesforceModel):
+        name = models.CharField(max_length=255)
+        contacts = django.db.models.ManyToManyField(
+            Contact, through='example.OpportunityContactRole',
+            related_name='opportunities')
+
 
 **Generic foreign keys** are frequently used in SF for fields that relate to
 objects of different types, e.g. the Parent of Note or Attachment can be almost
-any type of ususal SF objects. Filters by `Parent.Type` and retrieving this
+any type of ususal SF objects. Filters by ``Parent.Type`` and retrieving this
 type is supported::
 
     note = Note.objects.filter(parent_type='Contact')[0]
@@ -158,7 +164,7 @@ type is supported::
     parent_object = parent_model.objects.get(pk=note.parent_id)
     assert note.parent_type == 'Contact'
 
-Example of `Note` model is in `salesforce.testrunner.example.models.Note`.
+Example of ``Note`` model is in ``salesforce.testrunner.example.models.Note``.
 
 Advanced usage
 --------------
@@ -173,8 +179,9 @@ Advanced usage
    another DB connection (preferably SQLite) during testing using the
    ``TEST_*`` settings variables. Django unit tests without SalesforceModel
    are fast everytimes. Special read only fields that are updated only by SFDC
-   e.g. `last_modified_date` need more parameters to be possible to save them
-   into an alternate database, e.g. by `auto_now=True`.
+   e.g. ``last_modified_date`` need more parameters to be possible to save them
+   into an alternate database, e.g. by ``auto_now=True`` or to play with
+   ``null=True`` or ``default=...``.
    
 -  **Multiple SFDC connections** - In most cases, a single connection is all
    that most apps require, so the default DB connection to use for Salesforce
@@ -198,7 +205,7 @@ Advanced usage
    deduced from Django field name, if no ``db_column`` is specified::
 
      last_name = models.CharField(max_length=80)     # db_column='LastName'
-     FirstName = models.CharField(max_length=80)    # db_column='FirstName'
+     FirstName = models.CharField(max_length=80)     # db_column='FirstName'
      custom_bool = models.BooleanField(custom=True)  # db_column='CustomBool__c'
    
    Fields named with an upper case character are never modified, except for the
@@ -220,57 +227,66 @@ Advanced usage
    descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
 
 -  **Query deleted objects** - Deleted objects that are in trash bin are
-   not selected by a normal queryset, but if a special method `query_all`
+   not selected by a normal queryset, but if a special method ``query_all``
    is used then also deleted objects are searched.
-   If a trash bin is supported by the model then a boolean field `IsDeleted`
+   If a trash bin is supported by the model then a boolean field ``IsDeleted``
    can be in the model and it is possible to select only deleted objects ::
 
      deleted_list = list(Lead.objects.filter(IsDeleted=True).query_all())
 
 -  **Migrations** - Migrations can be used for an alternate test database
-   with SalesforceModel. Then all tables must have Meta `managed = True` and
+   with SalesforceModel. Then all tables must have Meta ``managed = True`` and
    attributes db_table and db_column are required. (Migrations in SFDC
    will be probably never supported, though it was experimantally tested
    creation of a new simple table in sandbox if a development patch is
    applied and permissions increased. If anything would be implemented after
    all, a new attribute will be added to SalesforceModel for safe forward
-   compatibility. Consequently, the setting `managed = True` can be considered
+   compatibility. Consequently, the setting ``managed = True`` can be considered
    safe as it is related only to the alternate non SFDC database configured
-   by `SF_ALIAS`.)
+   by ``SF_ALIAS``.)
 
 Introspection and special attributes of fields
 ----------------------------------------------
 Some Salesforce fields can not be fully used without special attributes. You
-can see in the output of ``inspectdb`` in the most complete form.
+can see the most complete form in the output of ``inspectdb``.
 
 -  **sf_read_only** - Some fields require this special attributes to make the
    model writable. Some fields are completely read only (``READ_ONLY``)
    or insertable only but can not be later updated (``NOT_UPDATEABLE``) or
    updateable only but can not be specified on insert (``NOT_CREATEABLE``).
-   Examples of such fields are automatically updated fields "last_modified_by" and
+   Examples of such fields are: automatically updated fields "last_modified_by" and
    "last_modified_date" or fields defined by a formula like "name" of contact,
    given by "first_name" and "last_name". Example::
 
      last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
 
--  **Defaulted on create** - Some fields have a dynamic default value unknown
-   by Django and assigned by Salesforce if the field is omitted when a new object
-   is inserted. This rule will not be used if the value is ``None``.
-   Sometimes is ``None`` even not accepted by Salesforce, while the missing
+-  **Defaulted on create** - Some Salesforce fields have a dynamic default value
+   that is not exported by API and assigned by SF only if the field is
+   omitted when a new object is inserted. This mechanism is not used by SF
+   if the value is ``None``. It is even not accepted for not *nillable* fields
+   by Salesforce, while the missing
    value is ok. Django-salesforce supports it by a special default value
    ``model.BooleanField(default=models.DEFAULTED_ON_CREATE)``. That means "let
    it to Salesforce". This is useful for all fields marked by attribute
-   ``defaultedOnCreate`` in Salesforce. For example the current user of
+   *defaultedOnCreate* in Salesforce. For example the current user of
    Salesforce is assigned to ``owner`` field if no concrete user is  assigned,
-   but None would be rejected. All boolean fields have different default values
+   but ``None`` would be rejected. All boolean fields have different default values
    according to current ``Checked/Unchecked`` preferences.
 
--  **Comments # Reference to tables [...]**
-   Some builtin foreign keys are references to more tables. The class of first
-   table is used in the exported ``ForeignKey`` and all tables are listed in
-   the comment. Any of them can be used instead.::
-   models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
-   cl object  [SelfServiceUser, User]
+-  **Comments fo fields**
+   - **``# Reference to tables [...]``**
+     Some builtin foreign keys are references to more tables. The class of first
+     table is used in the exported ``ForeignKey`` and all tables are listed in
+     the comment. Any of them can be used instead.::
+
+       class AccountHistory(SalesforceModel):
+           created_by = models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
+   - **``# Master Detail Relationship *``** The asterisk denotes a master-detail
+	 relationship recognized only by cascade delete attribute as it is usual between bultin
+   	 SF objects. Relations from custom objects are marked explicitely as primary
+	 or secondary master-detail by ``'0'`` or ``'1'`` instead of ``'*'``.
+	 All cascade delete is done on the SFDC side, therefore they are exported with
+	 ``on_delete=models.DO_NOTHING``.
 
 -  **Partial Database Introspection with inspectdb** Tables that are exported into a
    Python model can be restricted by regular expression::
@@ -285,7 +301,10 @@ can see in the output of ``inspectdb`` in the most complete form.
    without explicit attribute ``db_column`` for many objects automatically.
    These attributes are not exported if a default verbosity is used. This is
    intended for use only with SFDC. If an alternate non SFDC test database
-   is also expected and migrations of any SalesforceModel will 
+   is also expected and migrations of any SalesforceModel will be created then
+   explicit names in the code are better: ``--verbosity=2``.
+
+---
 
 -  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
    be implemented using the generic relational database abstraction and the REST API.
@@ -304,8 +323,10 @@ can see in the output of ``inspectdb`` in the most complete form.
 
    All usual
    `additional parameters <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm>`__
-   are supported in the original letter case. It allows e.g. merging a Lead
-   with an existing Account or Contact and to control much more.
+   are supported in the original mixed letter case. It allows e.g. merging a Lead
+   with an existing Account or Contact and to control much more.::
+
+     response = convert_lead(lead, accountId=account_id)
 
    For the particular case of ``Lead`` conversion, beware that having
    some *custom* and *required* fields in either ``Contact``, ``Account`` or
@@ -346,7 +367,7 @@ run by the command ::
 
    python manage.py test salesforce.tests.test_ssl.SslTest
 
-Additional tests are skipped without the word `SslTest` on the command line,
+Additional tests are skipped without the word ``SslTest`` on the command line,
 because some vulnerabilities are hopefully not (so?) important for connections
 to SFDC.
 
@@ -355,8 +376,8 @@ certificates, fixed InsecurePlatformWarning) by additional packages:
 
      pip install pyopenssl ndg-httpsclient pyasn1
 
-These have dependencies on the libffi development libararies. Install `libffi-dev` on
-Debian/Ubuntu or `libffi-devel` on RedHat derivatives.
+These have dependencies on the libffi development libararies. Install ``libffi-dev`` on
+Debian/Ubuntu or ``libffi-devel`` on RedHat derivatives.
 
 However, once you're using Python 2.7.9 and newer or Python 3.4.0 and newer, installing
 pyOpenSSL can enable SSLv3 again. If you *must* install PyOpenSSL on these Python versions,
@@ -403,7 +424,7 @@ Experimental Features
    `Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`
    for the user in question. In this situation, it's not necessary to save any credentials
    for SFDC in Django settings. The manner in which you request or transmit this token
-   (e.g., in the `Authorization:` header) is left up to the developer at this time.
+   (e.g., in the ``Authorization:`` header) is left up to the developer at this time.
 
    Configure your ``DATABASES`` setting as follows::
 
@@ -420,7 +441,7 @@ Experimental Features
    Note that in this case we're not using the URL of the login server — the data
    server URL can be also used for login.
    
-   Items with `'.'` value are ignored when using dynamic auth, but cannot be left
+   Items with ``'.'`` value are ignored when using dynamic auth, but cannot be left
    empty.
 
    The last step is to enable the feature in your project in some way, probably by
@@ -447,13 +468,9 @@ Backwards-incompatible changes
 -  v0.6.1: This is the last code that supports old Django 1.4, 1.5, 1.6 and it
    will be removed immediately.
 
--  v0.5: The name of primary key is currently `id`. The backward compatible
-   behaviour for code created before v0.5 can be reached by settings `SF_PK='Id'`.
+-  v0.5: The name of primary key is currently ``'id'``. The backward compatible
+   behaviour for code created before v0.5 can be reached by settings ``SF_PK='Id'``.
 
-News since version 0.5
-----------------------
+Big news since version 0.5
+--------------------------
 
--  All child to parent filters are still correctly supported for Django 1.7 in
-   many levels, including foreign keys between custom models or mixed builtin
-   and custom models, also filters where the same model is used multiple times,
-   e.g. filter Account objects by a field of their parent Account.

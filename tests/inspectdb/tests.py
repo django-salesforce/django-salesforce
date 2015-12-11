@@ -3,6 +3,7 @@ import unittest
 import os
 import re
 
+from django.utils.six import assertRegex
 try:
 	from collections import OrderedDict
 except ImportError:
@@ -39,7 +40,7 @@ class ExportedModelTest(unittest.TestCase):
 
 	def match_line(self, pattern, text):
 		"""requires the pattern and finds the line"""
-		self.assertRegexpMatches(text, pattern)
+		assertRegex(self, text, pattern)
 		(ret,) = [line for line in text.split('\n') if re.match(pattern, line)]
 		return ret
 
@@ -72,6 +73,17 @@ class ExportedModelTest(unittest.TestCase):
 				break
 		else:
 			self.skipTest("The model for the table Test__c not exported.")
+
+	def test_master_detail_relationship(self):
+		"""
+		Verify that Contact is a master-detail relationship of Account,
+		but Opportunity is not.
+		"""
+		line = self.match_line('    account = ', classes_texts['Contact'])
+		assertRegex(self, line, r'#.* Master Detail Relationship \*')
+		line = self.match_line('    created_by = ', classes_texts['Opportunity'])
+		self.assertNotIn('Master Detail Relationship', line)
+
 
 classes_texts = get_classes_texts()
 

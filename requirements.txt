@@ -1,4 +1,4 @@
-django>=1.4.2
+django>=1.7
 simplejson>=2.5.0
 pytz>=2012c
 requests>=2.0.0

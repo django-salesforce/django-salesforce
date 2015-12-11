@@ -11,6 +11,7 @@ Database router for SalesforceModel objects.
 
 import logging
 
+from django.apps import apps
 from django.conf import settings
 from salesforce import DJANGO_18_PLUS
 
@@ -66,10 +67,11 @@ class ModelRouter(object):
 	# RunPython)
 	#     def allow_migrate(self, db, app_label, model_name=None, **hints)
 
-	def allow_migrate(self, db, model):
+	def allow_migrate(self, db, app_label, model_name=None, **hints):
 		"""
 		Don't attempt to sync SF models to non SF databases and vice versa.
 		"""
+		model = hints['model'] if 'model' in hints else apps.get_model(app_label, model_name)
 		if hasattr(model, '_salesforce_object'):
 			# If SALESFORCE_DB_ALIAS is e.g. a sqlite3 database, than it can migrate SF models
 			if not (is_sf_database(db) or db == self.sf_alias):
@@ -86,6 +88,9 @@ class ModelRouter(object):
 		# Nothing is said about non SF models with non SF databases, because
 		# it can be solved by other routers, otherwise is enabled if all
 		# routers say None.
-	
-	# alias for Django 1.6 and older. The new name is useful for query_all etc.
-	allow_syncdb = allow_migrate
+
+	if not DJANGO_18_PLUS:
+		_allow_migrate = allow_migrate
+
+		def allow_migrate(self, db, model):
+			return self._allow_migrate(db, model._meta.app_label, model._meta.model_name, model=model)

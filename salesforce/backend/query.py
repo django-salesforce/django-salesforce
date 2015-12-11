@@ -30,7 +30,7 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
+from salesforce import auth, models, DJANGO_18_PLUS, DJANGO_19_PLUS
 from salesforce import DJANGO_184_PLUS
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
@@ -46,7 +46,7 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v34.0'
+API_STUB = '/services/data/v35.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
@@ -221,6 +221,7 @@ def extract_values(query):
 				isinstance(query, subqueries.InsertQuery) and (getattr(field, 'sf_read_only', 0) & NOT_CREATEABLE) != 0):
 			continue
 		if(isinstance(query, subqueries.UpdateQuery)):
+			# update
 			value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
 			if value_or_empty:
 				[value] = value_or_empty
@@ -228,17 +229,20 @@ def extract_values(query):
 				assert len(query.values) < len(fields), \
 						"Match name can miss only with an 'update_fields' argument."
 				continue
-		else:  # insert
+		else:
+			# insert
 			# TODO bulk insert
 			assert len(query.objs) == 1, "bulk_create is not supported by Salesforce REST API"
 			value = getattr(query.objs[0], field.attname)
-			# The 'DEFAULT' is a backward compatibility name.
-			if isinstance(field, (models.ForeignKey, models.BooleanField)) and value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
+		# The 'DEFAULT' is a backward compatibility name.
+		if isinstance(field, (models.ForeignKey, models.BooleanField, models.DecimalField)):
+			if value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
 				continue
-			if isinstance(value, models.DefaultedOnCreate):
-				continue
+		if isinstance(value, models.DefaultedOnCreate):
+			continue
 		[arg] = process_json_args([value])
 		d[field.column] = arg
+	#print("postdata : %s" % d)
 	return d
 
 class SalesforceRawQuerySet(query.RawQuerySet):
@@ -274,13 +278,9 @@ class SalesforceQuerySet(query.QuerySet):
 			model_cls = self.model
 			init_list = None
 		else:
-			if DJANGO_16_PLUS:
-				fields = self.model._meta.concrete_fields
-				fields_with_model = self.model._meta.get_concrete_fields_with_model()
-			else:
-				fields = self.model._meta.fields
-				fields_with_model = self.model._meta.get_fields_with_model()
-			for field, model in fields_with_model:
+			fields = self.model._meta.concrete_fields
+			for field in fields:
+				model = field.model._meta.concrete_model
 				if model is None:
 					model = self.model
 				try:
@@ -422,6 +422,7 @@ class CursorWrapper(object):
 		self.rowcount = None
 		if isinstance(self.query, SalesforceQuery) or self.query is None:
 			response = self.execute_select(q, args)
+			#print("response : %s" % response.text)
 		elif isinstance(self.query, SalesforceRawQuery):
 			response = self.execute_select(q, args)
 		elif isinstance(self.query, subqueries.InsertQuery):
@@ -488,12 +489,7 @@ class CursorWrapper(object):
 	def execute_update(self, query):
 		table = query.model._meta.db_table
 		# this will break in multi-row updates
-		if DJANGO_17_PLUS:
-			pk = query.where.children[0].rhs
-		elif DJANGO_16_PLUS:
-			pk = query.where.children[0][3]
-		else:
-			pk = query.where.children[0].children[0][-1]
+		pk = query.where.children[0].rhs
 		assert pk
 		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 		headers = {'Content-Type': 'application/json'}
@@ -509,7 +505,7 @@ class CursorWrapper(object):
 		def recurse_for_pk(children):
 			for node in children:
 				if hasattr(node, 'rhs'):
-					pk = node.rhs[0]  # for Django 1.7+
+					pk = node.rhs[0]
 				else:
 					try:
 						pk = node[-1][0]
@@ -521,15 +517,19 @@ class CursorWrapper(object):
 		url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
 
 		log.debug('DELETE %s(%s)' % (table, pk))
-		return handle_api_exceptions(url, self.session.delete, _cursor=self)
+		ret = handle_api_exceptions(url, self.session.delete, _cursor=self)
+		self.rowcount = 1 if (ret and ret.status_code == 204) else 0
+		return ret
 
 	def query_results(self, results):
 		while True:
 			for rec in results['records']:
-				if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, 'aggregate_select'):
-					assert len(rec) -1 == len(list(self.query.aggregate_select.items()))
+				ANNOTATION_SELECT_NAME = 'annotation_select' if DJANGO_18_PLUS else 'aggregate_select'
+				if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, ANNOTATION_SELECT_NAME):
+					annotation_select = getattr(self.query, ANNOTATION_SELECT_NAME)
+					assert len(rec) -1 == len(list(annotation_select.items()))
 					# The 'attributes' info is unexpected for Django within fields.
-					rec = [rec[k] for k, _ in self.query.aggregate_select.items()]
+					rec = [rec[k] for k, _ in annotation_select.items()]
 				yield rec
 
 			if results['done']:
@@ -566,7 +566,7 @@ class CursorWrapper(object):
 		"""
 		return list(self.results)
 
-	def close(self):  # for Django 1.7+
+	def close(self):
 		pass
 
 string_literal = quoted_string_literal

@@ -23,14 +23,14 @@ from django.db.models.sql import compiler
 # Only these two `on_delete` options are currently supported
 from django.db.models import PROTECT, DO_NOTHING
 #from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
+from django.utils.deconstruct import deconstructible
+from django.utils.six import with_metaclass
 
 from salesforce.backend import manager
-from salesforce.fields import *  # modified django.db.models.CharField etc.
-from salesforce import fields, DJANGO_17_PLUS
-if DJANGO_17_PLUS:
-	from django.utils.deconstruct import deconstructible
-else:
-	deconstructible = lambda x: x
+from salesforce.fields import SalesforceAutoField, SF_PK
+from salesforce.fields import *  # imports for other modules
+
+from salesforce import DJANGO_18_PLUS
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +44,8 @@ class SalesforceModelBase(ModelBase):
 	"""
 	def __new__(cls, name, bases, attrs):
 		attr_meta = attrs.get('Meta', None)
+		if not DJANGO_18_PLUS and len(getattr(attr_meta, 'verbose_name', '')) > 39:
+			attr_meta.verbose_name = attr_meta.verbose_name[:39]
 		supplied_db_table = getattr(attr_meta, 'db_table', None)
 		result = super(SalesforceModelBase, cls).__new__(cls, name, bases, attrs)
 		if models.Model not in bases and supplied_db_table is None:
@@ -65,25 +67,6 @@ class SalesforceModelBase(ModelBase):
 			super(SalesforceModelBase, cls).add_to_class(name, value)
 
 
-# Backported for Django 1.4 from django.utils.six version 1.7
-def with_metaclass(meta, *bases):
-	"""Create a base class with a metaclass."""
-	# This requires a bit of explanation: the basic idea is to make a
-	# dummy metaclass for one level of class instantiation that replaces
-	# itself with the actual metaclass.  Because of internal type checks
-	# we also need to make sure that we downgrade the custom metaclass
-	# for one level to something closer to type (that's why __call__ and
-	# __init__ comes back from type etc.).
-	class metaclass(meta):
-		__call__ = type.__call__
-		__init__ = type.__init__
-		def __new__(cls, name, this_bases, d):
-			if this_bases is None:
-				return type.__new__(cls, name, (), d)
-			return meta(name, bases, d)
-	return metaclass(str('temporary_class'), None, {})
-
-
 class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
 	"""
 	Abstract model class for Salesforce objects.
@@ -96,17 +79,18 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
 
 	# Name of primary key 'Id' can be easily changed to 'id'
 	# by "settings.SF_PK='id'".
-	id = fields.SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
-									verbose_name='ID', auto_created=True)
+	id = SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
+							 verbose_name='ID', auto_created=True)
 
 
 @deconstructible
 class DefaultedOnCreate(object):
 	"""
-	Default value for foreign keys that but will get a smart auto value from
-	SFDC on create if the field is omitted, but can not be assigned to null in
-	the API.
-	(builtin SFDC fields with attributes 'defaultedOnCreate: true, nillable: false')
+	Default value that means that it shoud be replaced by Salesforce, not
+	by Django, because SF does it or even no real ralue nor None is accepted.
+	(e.g. for some builtin foreign keys with SF attributes
+	'defaultedOnCreate: true, nillable: false')
+	SFDC will set the correct value only if the field is omitted as the REST API.
 
 	Example: `Owner` field is assigned to the current user if the field User is omitted.
 

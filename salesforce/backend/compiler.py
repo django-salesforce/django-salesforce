@@ -14,9 +14,8 @@ from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 from . import subselect
 
-from salesforce import DJANGO_15_PLUS, DJANGO_16_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
-DJANGO_14_15_16 = not DJANGO_17_PLUS
-DJANGO_17_EXACT = DJANGO_17_PLUS and not DJANGO_18_PLUS
+from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
+DJANGO_17_EXACT = not DJANGO_18_PLUS
 
 
 class SQLCompiler(compiler.SQLCompiler):
@@ -35,10 +34,7 @@ class SQLCompiler(compiler.SQLCompiler):
 		Remove table names and strip quotes from column names.
 		"""
 		soql_trans = self.query_topology()
-		if DJANGO_16_PLUS:
-			cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
-		else:
-			cols = compiler.SQLCompiler.get_columns(self, with_aliases)
+		cols, col_params = compiler.SQLCompiler.get_columns(self, with_aliases)
 		out = []
 		for col in cols:
 			if soql_trans and re.match(r'^\w+\.\w+$', col):
@@ -48,7 +44,7 @@ class SQLCompiler(compiler.SQLCompiler):
 				out.append(col)
 		cols = out
 		result = [x.replace(' AS ', ' ') for x in cols]
-		return (result, col_params) if DJANGO_16_PLUS else result
+		return (result, col_params)
 
 	def get_from_clause(self):
 		"""
@@ -101,10 +97,8 @@ class SQLCompiler(compiler.SQLCompiler):
 
 		if DJANGO_18_PLUS:
 			ordering_aliases = None
-		elif DJANGO_16_PLUS:
-			ordering_aliases = self.ordering_aliases
 		else:
-			ordering_aliases = self.query.ordering_aliases
+			ordering_aliases = self.ordering_aliases
 		if result_type == constants.SINGLE:
 			if ordering_aliases:
 				return cursor.fetchone()[:-len(ordering_aliases)]
@@ -124,7 +118,7 @@ class SQLCompiler(compiler.SQLCompiler):
 			return list(result)
 		return result
 
-	if DJANGO_18_PLUS:
+	if DJANGO_18_PLUS:  # or Django 1.9
 		def as_sql(self, with_limits=True, with_col_aliases=False, subquery=False):
 			"""
 			Creates the SQL for this query. Returns the SQL string and list of
@@ -138,6 +132,9 @@ class SQLCompiler(compiler.SQLCompiler):
 			# However we do not want to get rid of stuff done in pre_sql_setup(),
 			# as the pre_sql_setup will modify query state in a way that forbids
 			# another run of it.
+			if DJANGO_19_PLUS:
+				if with_limits and self.query.low_mark == self.query.high_mark:
+					return '', ()
 			self.subquery = subquery
 			refcounts_before = self.query.alias_refcount.copy()
 			soql_trans = self.query_topology()
@@ -151,8 +148,12 @@ class SQLCompiler(compiler.SQLCompiler):
 				# docstring of get_from_clause() for details.
 				from_, f_params = self.get_from_clause()
 
-				where, w_params = self.compile(self.query.where)
-				having, h_params = self.compile(self.query.having)
+				if DJANGO_19_PLUS:
+					where, w_params = self.compile(self.where) if self.where is not None else ("", [])
+					having, h_params = self.compile(self.having) if self.having is not None else ("", [])
+				else:
+					where, w_params = self.compile(self.query.where)
+					having, h_params = self.compile(self.query.having)
 				params = []
 				result = ['SELECT']
 
@@ -236,12 +237,7 @@ class SQLCompiler(compiler.SQLCompiler):
 				# Finally do cleanup - get rid of the joins we created above.
 				self.query.reset_refcounts(refcounts_before)
 
-	# nothing special needed for Django 1.7
-	elif DJANGO_14_15_16:
-		def as_sql(self, *args, **kwargs):
-			sql, params = super(SQLCompiler, self).as_sql(*args, **kwargs)
-			sql = self.late_fix(sql)
-			return sql, params
+	# nothing special needed for as_sql in Django 1.7
 
 	def query_topology(self, _alias_map_items=None):
 		# SOQL for SFDC requires:
@@ -265,16 +261,9 @@ class SQLCompiler(compiler.SQLCompiler):
 			alias_map_items = [(getattr(v, 'parent_alias', None), v.table_name,
 							   getattr(v, 'join_cols', None), v.table_alias
 							  ) for v in query.alias_map.values()]
-		elif DJANGO_16_PLUS or DJANGO_17_PLUS:
+		else: # Django 1.7
 			alias_map_items = [(v.lhs_alias, v.table_name, v.join_cols, v.rhs_alias)
 							   for v in query.alias_map.values()]
-		elif DJANGO_15_PLUS:
-			alias_map_items = [(v.lhs_alias, v.table_name, ((v.lhs_join_col, v.rhs_join_col),), v.rhs_alias)
-							   for v in query.alias_map.values()]
-		else: # DJANGO_14_PLUS
-			alias_map_items = [(lhs_alias, table_name, ((lhs_join_col, rhs_join_col),), rhs_alias)
-							   for (table_name, rhs_alias, _, lhs_alias, lhs_join_col, rhs_join_col, _)
-							   in query.alias_map.values()]
 		# Analyze
 		alias2table = {}
 		side_l, side_r = set(), set()
@@ -346,18 +335,6 @@ class SQLCompiler(compiler.SQLCompiler):
 class SalesforceWhereNode(where.WhereNode):
 	overridden_types = ['isnull']
 
-	# Simple related fields work only without this, but for more complicated
-	# cases this must be fixed and re-enabled.
-	#def sql_for_columns(self, data, qn, connection, internal_type=None):  # Fixed for Django 1.6
-	#	"""
-	#	Don't attempt to quote column names.
-	#	"""
-	#	table_alias, name, db_type = data
-	#	if DJANGO_16_PLUS:
-	#		return connection.ops.field_cast_sql(db_type, internal_type) % name
-	#	else:
-	#		return connection.ops.field_cast_sql(db_type) % name
-
 	def make_atom(self, child, qn, connection):
 		# The make_atom() method is ignored in Django 1.7 unless explicitely required.
 		# Use Lookup class instead. The make_atom() method will be removed in Django 1.9.
@@ -384,170 +361,102 @@ class SalesforceWhereNode(where.WhereNode):
 			return result
 
 
-	DJANGO_14_EXACT = not DJANGO_15_PLUS
-	if DJANGO_14_EXACT:
-		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.4
-		def as_sql(self, qn, connection):
-			"""
-			Returns the SQL version of the where clause and the value to be
-			substituted in. Returns None, None if this node is empty.
+	# TODO compare, how much it is updated to 1.7
+	# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.7
+	def as_sql(self, qn, connection):
+		"""
+		Returns the SQL version of the where clause and the value to be
+		substituted in. Returns '', [] if this node matches everything,
+		None, [] if this node is empty, and raises EmptyResultSet if this
+		node can't match anything.
+		"""
+		# Note that the logic here is made slightly more complex than
+		# necessary because there are two kind of empty nodes: Nodes
+		# containing 0 children, and nodes that are known to match everything.
+		# A match-everything node is different than empty node (which also
+		# technically matches everything) for backwards compatibility reasons.
+		# Refs #5261.
 
-			If 'node' is provided, that is the root of the SQL generation
-			(generally not needed except by the internal implementation for
-			recursion).
-			"""
-			if not self.children:
-				return None, []
-			result = []
-			result_params = []
-			empty = True
-			for child in self.children:
-				try:
-					if hasattr(child, 'as_sql'):
-						sql, params = child.as_sql(qn=qn, connection=connection)
-					else:
-						# A leaf node in the tree.
-						sql, params = self.make_atom(child, qn, connection)
+		soql_trans = qn.query_topology()
+		result = []
+		result_params = []
+		everything_childs, nothing_childs = 0, 0
+		non_empty_childs = len(self.children)
 
-				except EmptyResultSet:
-					if self.connector == AND and not self.negated:
-						# We can bail out early in this particular case (only).
-						raise
-					elif self.negated:
-						empty = False
-					continue
-				except models.sql.datastructures.FullResultSet:
-					if self.connector == OR:
-						if self.negated:
-							empty = True
-							break
-						# We match everything. No need for any constraints.
-						return '', []
-					if self.negated:
-						empty = True
-					continue
-
-				empty = False
+		for child in self.children:
+			try:
+				if hasattr(child, 'as_sql'):
+					# patch begin (combined Django 1.7)
+					sql, params = qn.compile(child)
+					# patch end
+				else:
+					# A leaf node in the tree.
+					sql, params = self.make_atom(child, qn, connection)
+			except EmptyResultSet:
+				nothing_childs += 1
+			else:
 				if sql:
+					x_match = re.match(r'(\w+)\.(.*)', sql)
+					if x_match:
+						x_table, x_field = x_match.groups()
+						sql = '%s.%s' % (soql_trans[x_table], x_field)
+						#print('sql params:', sql, params)
 					result.append(sql)
 					result_params.extend(params)
-			if empty:
-				raise EmptyResultSet
-
-			conn = ' %s ' % self.connector
-			sql_string = conn.join(result)
-			if sql_string:
-				if self.negated:
-					# patch begin
-					# SOQL requires parentheses around "NOT" if combined with AND/OR
-					# sql_string = 'NOT (%s)' % sql_string
-					sql_string = '(NOT (%s))' % sql_string
-					# patch end
-				elif len(self.children) != 1:
-					sql_string = '(%s)' % sql_string
-			return sql_string, result_params
-	else:
-		# patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.7
-		def as_sql(self, qn, connection):
-			"""
-			Returns the SQL version of the where clause and the value to be
-			substituted in. Returns '', [] if this node matches everything,
-			None, [] if this node is empty, and raises EmptyResultSet if this
-			node can't match anything.
-			"""
-			# Note that the logic here is made slightly more complex than
-			# necessary because there are two kind of empty nodes: Nodes
-			# containing 0 children, and nodes that are known to match everything.
-			# A match-everything node is different than empty node (which also
-			# technically matches everything) for backwards compatibility reasons.
-			# Refs #5261.
-
-			if DJANGO_17_PLUS:
-				soql_trans = qn.query_topology()
-			result = []
-			result_params = []
-			everything_childs, nothing_childs = 0, 0
-			non_empty_childs = len(self.children)
-
-			for child in self.children:
-				try:
-					if hasattr(child, 'as_sql'):
-						# patch begin (combined Django 1,5, 1.6, 1.7)
-						if DJANGO_17_PLUS:
-							sql, params = qn.compile(child)
-						else:
-							sql, params = child.as_sql(qn=qn, connection=connection)
-						# patch end
-					else:
-						# A leaf node in the tree.
-						sql, params = self.make_atom(child, qn, connection)
-				except EmptyResultSet:
-					nothing_childs += 1
 				else:
-					if sql:
-						if DJANGO_17_PLUS:
-							x_match = re.match(r'(\w+)\.(.*)', sql)
-							if x_match:
-								x_table, x_field = x_match.groups()
-								sql = '%s.%s' % (soql_trans[x_table], x_field)
-								#print('sql params:', sql, params)
-						result.append(sql)
-						result_params.extend(params)
-					else:
-						if sql is None:
-							# Skip empty childs totally.
-							non_empty_childs -= 1
-							continue
-						everything_childs += 1
-				# Check if this node matches nothing or everything.
-				# First check the amount of full nodes and empty nodes
-				# to make this node empty/full.
-				if self.connector == AND:
-					full_needed, empty_needed = non_empty_childs, 1
-				else:
-					full_needed, empty_needed = 1, non_empty_childs
-				# Now, check if this node is full/empty using the
-				# counts.
-				if empty_needed - nothing_childs <= 0:
-					if self.negated:
-						return '', []
-					else:
-						raise EmptyResultSet
-				if full_needed - everything_childs <= 0:
-					if self.negated:
-						raise EmptyResultSet
-					else:
-						return '', []
-
-			if non_empty_childs == 0:
-				# All the child nodes were empty, so this one is empty, too.
-				return None, []
-			conn = ' %s ' % self.connector
-			sql_string = conn.join(result)
-			if sql_string:
+					if sql is None:
+						# Skip empty childs totally.
+						non_empty_childs -= 1
+						continue
+					everything_childs += 1
+			# Check if this node matches nothing or everything.
+			# First check the amount of full nodes and empty nodes
+			# to make this node empty/full.
+			if self.connector == AND:
+				full_needed, empty_needed = non_empty_childs, 1
+			else:
+				full_needed, empty_needed = 1, non_empty_childs
+			# Now, check if this node is full/empty using the
+			# counts.
+			if empty_needed - nothing_childs <= 0:
 				if self.negated:
-					# patch begin
-					# SOQL requires parentheses around "NOT" if combined with AND/OR
-					# sql_string = 'NOT (%s)' % sql_string
-					sql_string = '(NOT (%s))' % sql_string
-					# patch end
-				elif len(result) > 1:
-					sql_string = '(%s)' % sql_string
-			return sql_string, result_params
+					return '', []
+				else:
+					raise EmptyResultSet
+			if full_needed - everything_childs <= 0:
+				if self.negated:
+					raise EmptyResultSet
+				else:
+					return '', []
 
-	if DJANGO_17_PLUS:
-		def add(self, data, conn_type, **kwargs):
-			# The filter lookup `isnull` is very special and can not be
-			# replaced only by `models.Field.register_lookup`. Otherwise the
-			# register_lookup is preferred.
-			cond = isinstance(data, models.lookups.IsNull) and not isinstance(data, IsNull)
-			if cond:
-				# "lhs" and "rhs" means Left and Right Hand Side of an condition
-				data = IsNull(data.lhs, data.rhs)
-			return super(SalesforceWhereNode, self).add(data, conn_type, **kwargs)
+		if non_empty_childs == 0:
+			# All the child nodes were empty, so this one is empty, too.
+			return None, []
+		conn = ' %s ' % self.connector
+		sql_string = conn.join(result)
+		if sql_string:
+			if self.negated:
+				# patch begin
+				# SOQL requires parentheses around "NOT" if combined with AND/OR
+				# sql_string = 'NOT (%s)' % sql_string
+				sql_string = '(NOT (%s))' % sql_string
+				# patch end
+			elif len(result) > 1:
+				sql_string = '(%s)' % sql_string
+		return sql_string, result_params
 
-		as_salesforce = as_sql
-		del as_sql
+	def add(self, data, conn_type, **kwargs):
+		# The filter lookup `isnull` is very special and can not be
+		# replaced only by `models.Field.register_lookup`. Otherwise the
+		# register_lookup is preferred.
+		cond = isinstance(data, models.lookups.IsNull) and not isinstance(data, IsNull)
+		if cond:
+			# "lhs" and "rhs" means Left and Right Hand Side of an condition
+			data = IsNull(data.lhs, data.rhs)
+		return super(SalesforceWhereNode, self).add(data, conn_type, **kwargs)
+
+	as_salesforce = as_sql
+	del as_sql
 
 #	def as_salesforce(self, qn, connection):
 #		import pprint
@@ -579,46 +488,45 @@ class SQLUpdateCompiler(compiler.SQLUpdateCompiler, SQLCompiler):
 class SQLAggregateCompiler(compiler.SQLAggregateCompiler, SQLCompiler):
 	pass
 
-if not DJANGO_18_PLUS:
+if DJANGO_17_EXACT:
 	class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
 		pass
 
 
 # Lookups
-if DJANGO_17_PLUS:
-	class IsNull(models.lookups.IsNull):
-		# The expected result base class above is `models.lookups.IsNull`.
-		lookup_name = 'isnull'
+class IsNull(models.lookups.IsNull):
+	# The expected result base class above is `models.lookups.IsNull`.
+	lookup_name = 'isnull'
 
-		def as_sql(self, qn, connection):
-			if connection.vendor == 'salesforce':
-				sql, params = qn.compile(self.lhs)
-				return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
-			else:
-				return super(IsNull, self).as_sql(qn, connection)
+	def as_sql(self, qn, connection):
+		if connection.vendor == 'salesforce':
+			sql, params = qn.compile(self.lhs)
+			return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
+		else:
+			return super(IsNull, self).as_sql(qn, connection)
 
-	models.Field.register_lookup(IsNull)
+models.Field.register_lookup(IsNull)
 
 
-	class Range(models.lookups.Range):
-		# The expected result base class above is `models.lookups.Range`.
-		lookup_name = 'range'
+class Range(models.lookups.Range):
+	# The expected result base class above is `models.lookups.Range`.
+	lookup_name = 'range'
 
-		def as_sql(self, qn, connection):
-			if connection.vendor == 'salesforce':
-				lhs, lhs_params = self.process_lhs(qn, connection)
-				rhs, rhs_params = self.process_rhs(qn, connection)
-				if DJANGO_17_EXACT:
-					rhs = [rhs, rhs]
-				assert rhs == ['%s', '%s']
-				params = lhs_params + rhs_params[:1] + lhs_params + rhs_params[1:2]
-				# The symbolic parameters %s are again substituted by %s. The real
-				# parameters will be passed finally directly to CursorWrapper.execute
-				return '(%s >= %s AND %s <= %s)' % (lhs, rhs[0], lhs, rhs[1]), params
-			else:
-				return super(Range, self).as_sql(qn, connection)
+	def as_sql(self, qn, connection):
+		if connection.vendor == 'salesforce':
+			lhs, lhs_params = self.process_lhs(qn, connection)
+			rhs, rhs_params = self.process_rhs(qn, connection)
+			if DJANGO_17_EXACT:
+				rhs = [rhs, rhs]
+			assert rhs == ['%s', '%s']
+			params = lhs_params + rhs_params[:1] + lhs_params + rhs_params[1:2]
+			# The symbolic parameters %s are again substituted by %s. The real
+			# parameters will be passed finally directly to CursorWrapper.execute
+			return '(%s >= %s AND %s <= %s)' % (lhs, rhs[0], lhs, rhs[1]), params
+		else:
+			return super(Range, self).as_sql(qn, connection)
 
-	models.Field.register_lookup(Range)
+models.Field.register_lookup(Range)
 
 if DJANGO_18_PLUS:
 	from django.db.models.aggregates import Count

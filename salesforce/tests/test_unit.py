@@ -100,7 +100,7 @@ class TestQueryCompiler(TestCase):
 		request_count_0 = salesforce.backend.query.request_count
 		self.assertEqual(tuple(Contact.objects.none()), ())
 		self.assertEqual(tuple(Contact.objects.all().none().all()), ())
-		self.assertEqual(repr(Contact.objects.none()), '[]')
+		self.assertTrue('[]' in repr(Contact.objects.none()))
 		self.assertEqual(salesforce.backend.query.request_count, request_count_0,
 				"Do database requests should be done with .none() method")
 

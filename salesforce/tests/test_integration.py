@@ -21,8 +21,8 @@ from django.utils import timezone
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 		BusinessHours, ChargentOrder, CronTrigger,
 		Opportunity, OpportunityContactRole,
-		Product, Pricebook, PricebookEntry, Note, Task, WITH_CONDITIONAL_MODELS)
-from salesforce import router, DJANGO_15_PLUS, DJANGO_17_PLUS, DJANGO_18_PLUS
+		Product, Pricebook, PricebookEntry, Note, Task)
+from salesforce import router, DJANGO_18_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid
@@ -227,6 +227,18 @@ class BasicSOQLRoTest(TestCase):
 		finally:
 			test_lead.delete()
 	
+	@skipUnless(default_is_sf, "Default database should be any Salesforce.")
+	def test_double_save(self):
+		"""Double save without refresh of an object with a DEFAULTED_ON_CREATE
+		field should not cause a problem.
+		"""
+		oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
+		oppo.save()
+		try:
+			oppo.save()
+		finally:
+			oppo.delete()
+	
 	def test_delete(self):
 		"""Create a lead record, then delete it, and make sure it's gone.
 		"""
@@ -258,7 +270,6 @@ class BasicSOQLRoTest(TestCase):
 			retrieved_pricebook_entry.delete()
 			product.delete()
 
-	@skipUnless(WITH_CONDITIONAL_MODELS, "Requires conditional models")
 	def test_simple_custom_object(self):
 		"""Create, read and delete a simple custom object `django_Test__c`.
 		"""
@@ -377,7 +388,6 @@ class BasicSOQLRoTest(TestCase):
 		"""
 		len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
 
-	@expectedFailureIf(not DJANGO_17_PLUS)
 	def test_range_simple(self):
 		"""Test simple range filters".
 		"""
@@ -386,7 +396,6 @@ class BasicSOQLRoTest(TestCase):
 		self.assertIn(u"(Contact.Name >= %s AND Contact.Name <= %s)", soql)
 		len(qs)
 
-	@expectedFailureIf(not DJANGO_17_PLUS)
 	def test_range_combined(self):
 		"""Test combined filters "a OR b AND c".
 		"""
@@ -395,7 +404,6 @@ class BasicSOQLRoTest(TestCase):
 		self.assertIn(u"Contact.Name = %s OR (Contact.Name >= %s AND Contact.Name <= %s)", soql)
 		len(qs)
 
-	@expectedFailureIf(not DJANGO_17_PLUS)
 	def test_range_lookup(self):
 		"""Get the test opportunity record by range condition.
 		"""
@@ -417,7 +425,9 @@ class BasicSOQLRoTest(TestCase):
 			# Test datetime objects (now +- 10 minutes for clock inaccuracy)
 			start_time = timezone.now() - datetime.timedelta(seconds=600)
 			end_time = timezone.now() + datetime.timedelta(seconds=600)
-			oppy = Opportunity.objects.filter(created_date__range=(start_time, end_time))[0]
+			opportunities = Opportunity.objects.filter(created_date__range=(start_time, end_time))[:1]
+			self.assertEqual(len(opportunities), 1, "Failed range filter or maybe incorrectly set clock")
+			oppy = opportunities[0]
 			self.assertEqual(oppy.name, 'Example Opportunity')
 			self.assertEqual(oppy.stage, 'Prospecting')
 
@@ -720,7 +730,6 @@ class BasicSOQLRoTest(TestCase):
 			oc.delete()
 			oppo.delete()
 
-	@skipUnless(WITH_CONDITIONAL_MODELS, "Requires conditional models")
 	def test_filter_custom(self):
 		"""Verify that relations between custom and builtin objects
 		
@@ -822,7 +831,6 @@ class BasicLeadSOQLTest(TestCase):
 		test_lead.save()
 		self.assertEqual(refresh(test_lead).FirstName, 'Tested')
 
-	@skipUnless(DJANGO_15_PLUS, "the parameter 'update_fields' requires Django 1.5+")
 	def test_save_update_fields(self):
 		"""Test the save method with parameter `update_fields`
 

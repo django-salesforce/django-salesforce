@@ -4,11 +4,10 @@ It tries to find model and read one record from all retrieveable tables, except
 objects with extraordinal filter conditions (3%). Then it tries to write this
 record back if the table is updateable, except some tables (5%). This can fail
 on permissions.
-Requirements: Django 1.5+
 
 Usage:
 $ python manage.py inspectdb --database=salesforce >tests/inspectdb/models.py
-$ python manage.py validate
+$ python manage.py check
 $ python tests/inspectdb/slow_test.py
 """
 
@@ -21,14 +20,13 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.inspectdb.settings'
 
 import django
 from django.db import connections
-from salesforce import DJANGO_17_PLUS
+# The same "django.setup()" is used by manage.py subcommands in Django
+django.setup()
+
 from salesforce.backend.base import SalesforceError
 from tests.inspectdb import models as mdl
 
 sf = connections['salesforce']
-# The same "django.setup()" is used by manage.py subcommands in Django 1.7+.
-if DJANGO_17_PLUS:
-	django.setup()
 
 def run():
 	start_name = sys.argv[1] if sys.argv[1:] else ''
@@ -36,7 +34,7 @@ def run():
 	for tab in sf.introspection.table_list_cache['sobjects']:
 		if tab['retrieveable'] and not tab['name'] in (
 				# These require specific filters (descried in their error messages)
-				'CollaborationGroupRecord', 'ContentFolderMember',
+				'CollaborationGroupRecord', 'ContentFolderMember', 'ContentFolderItem',
 				'ContentDocumentLink', 'Idea', 'IdeaComment', 'UserProfileFeed',
 				'Vote', #'OpportunityPartner', 'Product2Feed',
 				# TODO The "RecordType" is a very important object, but it can fail
