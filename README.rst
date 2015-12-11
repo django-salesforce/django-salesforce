@@ -9,12 +9,10 @@ using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
-Python 2.7, 3.3 - 3.5 or pypy; Django 1.7 - 1.9, but the Django 1.7 is still the best supported.
-Django 1.8 and 1.9 is currently supported without raw queries and without values_list()
-and values() methods. (The usual support can be expected in the next major
-django-salesforce release because it requires to rewrite very much code
-and it is not common to do it in a minor release or to postpone a general Django 1.9
-support.)
+Python 2.7, 3.3 - 3.5 or pypy; Django 1.7 - 1.9,
+
+Due to major backend ORM changes, Django versions 1.8 and 1.9 currently lack
+support for raw queries, values_list(), and values() methods.
 
 Quick Start
 -----------
@@ -111,10 +109,10 @@ variant until ``django-salesforce>=0.5``.
 Foreign Keys
 ------------
 
-**Foreign key filters** are possible from child to parent without any known restriction,
-   in many levels, including foreign keys between custom models or mixed builtin
-   and custom models, also filters where the same model is used multiple times,
-   e.g. filter Account objects by a field of their parent Account.
+As of django-salesforce v0.6.2, **foreign key filters** are fully supported in most
+   scenarios, including between custom, builtin, or mixed models. Multiple relations
+   to the same model now work properly, e.g. filtering Account objects on a field of
+   their parent Account.
 
 Example::
 
@@ -143,7 +141,7 @@ You can compare the the query compiled to SOQL and to SQL::
     `SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
     relation is by ID the columns are named ``FieldName__c``, whereas if the relation
     is stored by object the column is named ``FieldName__r``. More details about
-    this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+    this can be found in the discussion about `#43 <https://github.com/django-salesforce/django-salesforce/issues/43>`__.
 
 Also Many2many relationships are possible in simple cases, like in the example models::
 
