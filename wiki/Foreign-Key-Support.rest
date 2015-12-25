@@ -49,4 +49,3 @@ type is supported::
     assert note.parent_type == 'Contact'
 
 Example of `Note` model is in `salesforce.testrunner.example.models.Note`.
-

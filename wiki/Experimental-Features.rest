@@ -1,47 +1,46 @@
-**Django-Admin Support** - If you use multiple Salesforce databases or multiple instances of AdminSite, you'll
-   probably want to extend ``salesforce.admin.RoutedModelAdmin``" in your admin.py
+**Django-Admin Support** - If you use multiple Salesforce databases or multiple instances of AdminSite, you'll probably want to extend ``salesforce.admin.RoutedModelAdmin``" in your admin.py
 
 **Dynamic authorization** - The original use-case for django-salesforce assumed
-   use of a single set of credentials with read-write access to all necessary objects.
-   It's now possible to write applications that use OAuth to interact with a Salesforce
-   instance's data on your end user's behalf. You simply need to know or request the 
-   `Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`
-   for the user in question. In this situation, it's not necessary to save any credentials
-   for SFDC in Django settings. The manner in which you request or transmit this token
-   (e.g., in the `Authorization:` header) is left up to the developer at this time.
+use of a single set of credentials with read-write access to all necessary objects.
+It's now possible to write applications that use OAuth to interact with a Salesforce
+instance's data on your end user's behalf. You simply need to know or request the 
+`Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`
+for the user in question. In this situation, it's not necessary to save any credentials
+for SFDC in Django settings. The manner in which you request or transmit this token
+(e.g., in the `Authorization:` header) is left up to the developer at this time.
 
-   Configure your ``DATABASES`` setting as follows::
+Configure your ``DATABASES`` setting as follows::
 
-    'salesforce': {
-        'ENGINE': 'salesforce.backend',
-        'HOST': 'https://your-site.salesforce.com',
-        'CONSUMER_KEY': '.',
-        'CONSUMER_SECRET': '.',
-        'USER': 'dynamic auth',
-        'PASSWORD': '.',
-    }
+ 'salesforce': {
+     'ENGINE': 'salesforce.backend',
+     'HOST': 'https://your-site.salesforce.com',
+     'CONSUMER_KEY': '.',
+     'CONSUMER_SECRET': '.',
+     'USER': 'dynamic auth',
+     'PASSWORD': '.',
+ }
 
-   A static SFDC connection can be specified with the data server URL in "HOST"
-   Note that in this case we're not using the URL of the login server — the data
-   server URL can be also used for login.
+A static SFDC connection can be specified with the data server URL in "HOST"
+Note that in this case we're not using the URL of the login server — the data
+server URL can be also used for login.
+
+Items with `'.'` value are ignored when using dynamic auth, but cannot be left
+empty.
+
+The last step is to enable the feature in your project in some way, probably by
+creating a Django middleware component. Then at the beginning of each request::
+
+   from django.db import connections
+   # After you get the access token for the user in some way
+   # authenticate to SFDC with
+   connections['salesforce'].sf_session.auth.dynamic_start(access_token)
    
-   Items with `'.'` value are ignored when using dynamic auth, but cannot be left
-   empty.
+   # or to override the `instance_url` on a per-request basis
+   connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url)
 
-   The last step is to enable the feature in your project in some way, probably by
-   creating a Django middleware component. Then at the beginning of each request::
+Make sure to purge the access token at end of request::
 
-      from django.db import connections
-      # After you get the access token for the user in some way
-      # authenticate to SFDC with
-      connections['salesforce'].sf_session.auth.dynamic_start(access_token)
-      
-      # or to override the `instance_url` on a per-request basis
-      connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url)
+     connections['salesforce'].sf_session.auth.dynamic_end()
 
-   Make sure to purge the access token at end of request::
-
-        connections['salesforce'].sf_session.auth.dynamic_end()
-
-   You can continue to supply static credentials in your project settings, but they will
-   only be used before calling dynamic_start() and/or after calling dynamic_end().
+You can continue to supply static credentials in your project settings, but they will
+only be used before calling dynamic_start() and/or after calling dynamic_end().
