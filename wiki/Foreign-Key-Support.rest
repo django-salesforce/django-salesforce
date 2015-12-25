@@ -4,7 +4,7 @@ Foreign Key Support
 **Foreign key filters** are currently possible only from child to parent with some
 restrictions:
 
-They are fully supported with Django 1.7+ without other restrictions. **New**
+They are fully supported with Django 1.7+ without other restrictions.
 
 With Django 1.6 and older, ForeignKey filters are  possible only for the first level of
 relationship and only for fields whose name equals the name of object.
