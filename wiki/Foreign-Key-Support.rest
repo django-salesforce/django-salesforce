@@ -1,0 +1,52 @@
+Foreign Key Support
+-------------------
+
+**Foreign key filters** are currently possible only from child to parent with some
+restrictions:
+
+They are fully supported with Django 1.7+ without other restrictions. **New**
+
+With Django 1.6 and older, ForeignKey filters are  possible only for the first level of
+relationship and only for fields whose name equals the name of object.
+Foreign keys of an object can be normally accessed by dot notation without any
+restriction
+Example::
+
+    contacts = Contact.objects.filter(Account__Name='FOO Company')
+    print(contacts[0].Account.Owner.LastName)
+
+But the relationship ``Owner__Name`` is not currently possible because the
+type of ``Owner`` is a different name (``User``).
+
+Along similar lines, it's not currently possible to filter by `ForeignKey`
+relationships based on a custom field. This is because related objects
+(Lookup field or Master-Detail Relationship) use two different names in
+`SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
+relation is by ID the columns are named `FieldName__c`, whereas if the relation
+is stored by object the column is named `FieldName__r`. More details about
+this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+
+In case of a ForeignKey you can specify the field name suffixed with ``_id``,
+as it is automatically allowed by Django. For example: ``account_id`` instead
+of ``account.id``, or ``AccountId`` instead of ``Account.Id``. It is faster,
+if you need not to access to the related ``Account`` object.
+
+Querysets can be easily inspected whether they are correctly compiled to SOQL.
+You can compare the meaning with the same compiled to SQL::
+
+    my_qs = Contact.objects.filter(my__little_more__complicated='queryset')
+    print my_qs.query.get_compiler('salesforce').as_sql()    # SOQL
+    print my_qs.query.get_compiler('default').as_sql()       # SQL
+
+**Generic foreign keys** are frequently used in SF for fields that relate to
+objects of different types, e.g. the Parent of Note or Attachment can be almost
+any type of ususal SF objects. Filters by `Parent.Type` and retrieving this
+type is supported::
+
+    note = Note.objects.filter(parent_type='Contact')[0]
+    parent_model = getattr(example.models, note.parent_type)
+    parent_object = parent_model.objects.get(pk=note.parent_id)
+    assert note.parent_type == 'Contact'
+
+Example of `Note` model is in `salesforce.testrunner.example.models.Note`.
+
