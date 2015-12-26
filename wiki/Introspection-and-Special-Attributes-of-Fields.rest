@@ -1,35 +1,43 @@
 Some Salesforce fields can not be fully used without special attributes. You
-can see in the output of ``inspectdb`` in the most complete form.
+can see the most complete form in the output of ``inspectdb``.
 
 -  **sf_read_only** - Some fields require this special attributes to make the
    model writable. Some fields are completely read only (``READ_ONLY``)
    or insertable only but can not be later updated (``NOT_UPDATEABLE``) or
    updateable only but can not be specified on insert (``NOT_CREATEABLE``).
-   Examples of such fields are automatically updated fields "last_modified_by" and
+   Examples of such fields are: automatically updated fields "last_modified_by" and
    "last_modified_date" or fields defined by a formula like "name" of contact,
    given by "first_name" and "last_name". Example::
 
      last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
 
--  **Defaulted on create** - Some fields have a dynamic default value unknown
-   by Django and assigned by Salesforce if the field is omitted when a new object
-   is inserted. This rule will not be used if the value is ``None``.
-   Sometimes is ``None`` even not accepted by Salesforce, while the missing
+-  **Defaulted on create** - Some Salesforce fields have a dynamic default value
+   that is not exported by API and assigned by SF only if the field is
+   omitted when a new object is inserted. This mechanism is not used by SF
+   if the value is ``None``. It is even not accepted for not *nillable* fields
+   by Salesforce, while the missing
    value is ok. Django-salesforce supports it by a special default value
    ``model.BooleanField(default=models.DEFAULTED_ON_CREATE)``. That means "let
    it to Salesforce". This is useful for all fields marked by attribute
-   ``defaultedOnCreate`` in Salesforce. For example the current user of
+   *defaultedOnCreate* in Salesforce. For example the current user of
    Salesforce is assigned to ``owner`` field if no concrete user is  assigned,
-   but None would be rejected. All boolean fields have different default values
+   but ``None`` would be rejected. All boolean fields have different default values
    according to current ``Checked/Unchecked`` preferences.
 
--  **Comments # Reference to tables [...]**
-   Some builtin foreign keys are references to more tables. The class of first
-   table is used in the exported ``ForeignKey`` and all tables are listed in
-   the comment. Any of them can be used instead.::
+-  **Comments fo fields**
+   - **``# Reference to tables [...]``**
+     Some builtin foreign keys are references to more tables. The class of first
+     table is used in the exported ``ForeignKey`` and all tables are listed in
+     the comment. Any of them can be used instead.::
 
-     class AccountHistory(SalesforceModel):
-         created_by = models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
+       class AccountHistory(SalesforceModel):
+           created_by = models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
+   - **``# Master Detail Relationship *``** The asterisk denotes a master-detail
+	 relationship recognized only by cascade delete attribute as it is usual between bultin
+   	 SF objects. Relations from custom objects are marked explicitely as primary
+	 or secondary master-detail by ``'0'`` or ``'1'`` instead of ``'*'``.
+	 All cascade delete is done on the SFDC side, therefore they are exported with
+	 ``on_delete=models.DO_NOTHING``.
 
 -  **Partial Database Introspection with inspectdb** Tables that are exported into a
    Python model can be restricted by regular expression::
@@ -46,6 +54,8 @@ can see in the output of ``inspectdb`` in the most complete form.
    intended for use only with SFDC. If an alternate non SFDC test database
    is also expected and migrations of any SalesforceModel will be created then
    explicit names in the code are better: ``--verbosity=2``.
+
+---
 
 -  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
    be implemented using the generic relational database abstraction and the REST API.
@@ -64,8 +74,10 @@ can see in the output of ``inspectdb`` in the most complete form.
 
    All usual
    `additional parameters <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm>`__
-   are supported in the original letter case. It allows e.g. merging a Lead
-   with an existing Account or Contact and to control much more.
+   are supported in the original mixed letter case. It allows e.g. merging a Lead
+   with an existing Account or Contact and to control much more.::
+
+     response = convert_lead(lead, accountId=account_id)
 
    For the particular case of ``Lead`` conversion, beware that having
    some *custom* and *required* fields in either ``Contact``, ``Account`` or
