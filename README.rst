@@ -104,9 +104,9 @@ Primary Key
 -----------
 Salesforce doesn't allow you to define custom primary keys, so django-salesforce
 will add them automatically in all cases. You can override capitalization and use
-primary key `id` by configuring `SF_PK='id'` in your project settings. The previous
-capitalization of `Id` is only for old projects, but it will stay as the default
-variant until `django-salesforce>=0.5`.
+primary key ``id`` by configuring ``SF_PK='id'`` in your project settings. The previous
+capitalization of ``Id`` is only for old projects, but it will stay as the default
+variant until ``django-salesforce>=0.5``.
 
 Advanced usage
 --------------
@@ -121,8 +121,9 @@ Advanced usage
    another DB connection (preferably SQLite) during testing using the
    ``TEST_*`` settings variables. Django unit tests without SalesforceModel
    are fast everytimes. Special read only fields that are updated only by SFDC
-   e.g. `last_modified_date` need more parameters to be possible to save them
-   into an alternate database, e.g. by `auto_now=True`.
+   e.g. ``last_modified_date`` need more parameters to be possible to save them
+   into an alternate database, e.g. by ``auto_now=True`` or to play with
+   ``null=True`` or ``default=...``.
    
 -  **Multiple SFDC connections** - In most cases, a single connection is all
    that most apps require, so the default DB connection to use for Salesforce
@@ -146,7 +147,7 @@ Advanced usage
    deduced from Django field name, if no ``db_column`` is specified::
 
      last_name = models.CharField(max_length=80)     # db_column='LastName'
-     FirstName = models.CharField(max_length=80)    # db_column='FirstName'
+     FirstName = models.CharField(max_length=80)     # db_column='FirstName'
      custom_bool = models.BooleanField(custom=True)  # db_column='CustomBool__c'
    
    Fields named with an upper case character are never modified, except for the
@@ -168,23 +169,23 @@ Advanced usage
    descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
 
 -  **Query deleted objects** - Deleted objects that are in trash bin are
-   not selected by a normal queryset, but if a special method `query_all`
+   not selected by a normal queryset, but if a special method ``query_all``
    is used then also deleted objects are searched.
-   If a trash bin is supported by the model then a boolean field `IsDeleted`
+   If a trash bin is supported by the model then a boolean field ``IsDeleted``
    can be in the model and it is possible to select only deleted objects ::
 
      deleted_list = list(Lead.objects.filter(IsDeleted=True).query_all())
 
 -  **Migrations** - Migrations can be used for an alternate test database
-   with SalesforceModel. Then all tables must have Meta `managed = True` and
+   with SalesforceModel. Then all tables must have Meta ``managed = True`` and
    attributes db_table and db_column are required. (Migrations in SFDC
    will be probably never supported, though it was experimantally tested
    creation of a new simple table in sandbox if a development patch is
    applied and permissions increased. If anything would be implemented after
    all, a new attribute will be added to SalesforceModel for safe forward
-   compatibility. Consequently, the setting `managed = True` can be considered
+   compatibility. Consequently, the setting ``managed = True`` can be considered
    safe as it is related only to the alternate non SFDC database configured
-   by `SF_ALIAS`.)
+   by ``SF_ALIAS``.)
 
 Foreign Key Support
 -------------------
@@ -237,8 +238,8 @@ Backwards-incompatible changes
 -  v0.6.1: This is the last code that supports old Django 1.4, 1.5, 1.6 and it
    will be removed immediately.
 
--  v0.5: The name of primary key is currently `id`. The backward compatible
-   behaviour for code created before v0.5 can be reached by settings `SF_PK='Id'`.
+-  v0.5: The name of primary key is currently ``'id'``. The backward compatible
+   behaviour for code created before v0.5 can be reached by settings ``SF_PK='Id'``.
 
 News since version 0.5
 ----------------------

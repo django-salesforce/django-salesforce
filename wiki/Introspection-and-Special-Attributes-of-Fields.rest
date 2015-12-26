@@ -27,8 +27,9 @@ can see in the output of ``inspectdb`` in the most complete form.
    Some builtin foreign keys are references to more tables. The class of first
    table is used in the exported ``ForeignKey`` and all tables are listed in
    the comment. Any of them can be used instead.::
-   models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
-   cl object  [SelfServiceUser, User]
+
+     class AccountHistory(SalesforceModel):
+         created_by = models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
 
 -  **Partial Database Introspection with inspectdb** Tables that are exported into a
    Python model can be restricted by regular expression::
@@ -43,7 +44,8 @@ can see in the output of ``inspectdb`` in the most complete form.
    without explicit attribute ``db_column`` for many objects automatically.
    These attributes are not exported if a default verbosity is used. This is
    intended for use only with SFDC. If an alternate non SFDC test database
-   is also expected and migrations of any SalesforceModel will 
+   is also expected and migrations of any SalesforceModel will be created then
+   explicit names in the code are better: ``--verbosity=2``.
 
 -  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
    be implemented using the generic relational database abstraction and the REST API.

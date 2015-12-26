@@ -7,7 +7,7 @@ instance's data on your end user's behalf. You simply need to know or request th
 `Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`
 for the user in question. In this situation, it's not necessary to save any credentials
 for SFDC in Django settings. The manner in which you request or transmit this token
-(e.g., in the `Authorization:` header) is left up to the developer at this time.
+(e.g., in the ``Authorization:`` header) is left up to the developer at this time.
 
 Configure your ``DATABASES`` setting as follows::
 
@@ -24,7 +24,7 @@ A static SFDC connection can be specified with the data server URL in "HOST"
 Note that in this case we're not using the URL of the login server — the data
 server URL can be also used for login.
 
-Items with `'.'` value are ignored when using dynamic auth, but cannot be left
+Items with ``'.'`` value are ignored when using dynamic auth, but cannot be left
 empty.
 
 The last step is to enable the feature in your project in some way, probably by

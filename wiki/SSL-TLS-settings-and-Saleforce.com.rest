@@ -27,7 +27,7 @@ run by the command ::
 
    python manage.py test salesforce.tests.test_ssl.SslTest
 
-Additional tests are skipped without the word `SslTest` on the command line,
+Additional tests are skipped without the word ``SslTest`` on the command line,
 because some vulnerabilities are hopefully not (so?) important for connections
 to SFDC.
 
@@ -36,8 +36,8 @@ certificates, fixed InsecurePlatformWarning) by additional packages:
 
      pip install pyopenssl ndg-httpsclient pyasn1
 
-These have dependencies on the libffi development libararies. Install `libffi-dev` on
-Debian/Ubuntu or `libffi-devel` on RedHat derivatives.
+These have dependencies on the libffi development libararies. Install ``libffi-dev`` on
+Debian/Ubuntu or ``libffi-devel`` on RedHat derivatives.
 
 However, once you're using Python 2.7.9 and newer or Python 3.4.0 and newer, installing
 pyOpenSSL can enable SSLv3 again. If you *must* install PyOpenSSL on these Python versions,
