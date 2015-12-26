@@ -25,6 +25,7 @@ can see the most complete form in the output of ``inspectdb``.
    according to current ``Checked/Unchecked`` preferences.
 
 -  **Comments fo fields**
+
    - **``# Reference to tables [...]``**
      Some builtin foreign keys are references to more tables. The class of first
      table is used in the exported ``ForeignKey`` and all tables are listed in
@@ -32,12 +33,13 @@ can see the most complete form in the output of ``inspectdb``.
 
        class AccountHistory(SalesforceModel):
            created_by = models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
+
    - **``# Master Detail Relationship *``** The asterisk denotes a master-detail
-	 relationship recognized only by cascade delete attribute as it is usual between bultin
-   	 SF objects. Relations from custom objects are marked explicitely as primary
-	 or secondary master-detail by ``'0'`` or ``'1'`` instead of ``'*'``.
-	 All cascade delete is done on the SFDC side, therefore they are exported with
-	 ``on_delete=models.DO_NOTHING``.
+         relationship recognized only by cascade delete attribute as it is usual between bultin
+         SF objects. Relations from custom objects are marked explicitely as primary
+         or secondary master-detail by ``'0'`` or ``'1'`` instead of ``'*'``.
+         All cascade delete is done on the SFDC side, therefore they are exported with
+         ``on_delete=models.DO_NOTHING``.
 
 -  **Partial Database Introspection with inspectdb** Tables that are exported into a
    Python model can be restricted by regular expression::
@@ -56,6 +58,9 @@ can see the most complete form in the output of ``inspectdb``.
    explicit names in the code are better: ``--verbosity=2``.
 
 ---
+
+SOAP API
+--------
 
 -  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
    be implemented using the generic relational database abstraction and the REST API.

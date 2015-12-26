@@ -3,7 +3,7 @@
 **Dynamic authorization** - The original use-case for django-salesforce assumed
 use of a single set of credentials with read-write access to all necessary objects.
 It's now possible to write applications that use OAuth to interact with a Salesforce
-instance's data on your end user's behalf. You simply need to know or request the 
+instance's data on your end user's behalf. You simply need to know or request the
 `Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`
 for the user in question. In this situation, it's not necessary to save any credentials
 for SFDC in Django settings. The manner in which you request or transmit this token
@@ -34,7 +34,7 @@ creating a Django middleware component. Then at the beginning of each request::
    # After you get the access token for the user in some way
    # authenticate to SFDC with
    connections['salesforce'].sf_session.auth.dynamic_start(access_token)
-   
+
    # or to override the `instance_url` on a per-request basis
    connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url)
 

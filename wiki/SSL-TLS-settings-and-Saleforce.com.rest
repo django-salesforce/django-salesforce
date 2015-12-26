@@ -4,7 +4,7 @@ version that is available on both sides.
 (`requests issue 2118 <https://github.com/kennethreitz/requests/issues/2118>`__)
 The required version can be set in settings.py to one of reasonable values ::
 
-         import ssl	
+         import ssl
          SF_SSL = {'ssl_version': ssl.PROTOCOL_SSLv23}
 
 -  `ssl.PROTOCOL_SSLv23` - use the highest available protocol, including TLS.
