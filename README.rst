@@ -9,12 +9,10 @@ using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
-Python 2.6, 2.7, 3.3, 3.4 or pypy; Django 1.4.2 - 1.7, partly Django 1.8.
-The best supported version is currently Django 1.7, including relative
-complicated subqueries. Django 1.8 is only very rudimentally supported, without
-raw queries and without values_list() and values() methods. The usual support
+Python 2.7, 3.3 - 3.5 or pypy; Django 1.7, or with small restrictions Django 1.8.
+Django 1.8 is currently supported without raw queries and without values_list()
+and values() methods. The usual support
 can be expected in the next django-salesforce version.
-Note that Django 1.4.x is not compatible with Python 3.
 
 Quick Start
 -----------
@@ -241,10 +239,6 @@ Backwards-incompatible changes
 -  v0.5: The name of primary key is currently ``'id'``. The backward compatible
    behaviour for code created before v0.5 can be reached by settings ``SF_PK='Id'``.
 
-News since version 0.5
-----------------------
+Big news since version 0.5
+--------------------------
 
--  All child to parent filters are still correctly supported for Django 1.7 in
-   many levels, including foreign keys between custom models or mixed builtin
-   and custom models, also filters where the same model is used multiple times,
-   e.g. filter Account objects by a field of their parent Account.
