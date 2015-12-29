@@ -15,4 +15,5 @@ before_install:
 install:
   - pip install tox
 script:
+  - echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
   - tox -r
