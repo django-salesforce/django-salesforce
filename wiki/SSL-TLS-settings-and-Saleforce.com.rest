@@ -1,0 +1,47 @@
+The package `requests <http://python-requests.org>`__ doesn't provide an easy way
+to set the minimum required SSL/TLS version while ensuring use of the highest
+version that is available on both sides.
+(`requests issue 2118 <https://github.com/kennethreitz/requests/issues/2118>`__)
+The required version can be set in settings.py to one of reasonable values ::
+
+         import ssl
+         SF_SSL = {'ssl_version': ssl.PROTOCOL_SSLv23}
+
+-  `ssl.PROTOCOL_SSLv23` - use the highest available protocol, including TLS.
+   The security depends on the lowest protocol supported by your the installed
+   versions of Python, requests, pyOpenSSL, and installed versions of OpenSSL/libssl.
+
+-  `ssl.PROTOCOL_TLSv1` - This will pin the communication protocol to TLS 1.0.
+   This must be changed to `PROTOCOL_SSLv23` once SFDC disables TLS 1.0.
+
+The default for django-salesforce is currently `PROTOCOL_TLSv1` in hopes of reducing
+compatibility issues. If you have Python 2.7.9 and newer or Python 3.4.0 and newer,
+the old insecure protocols including SSL v3 are disabled unless you've installed
+PyOpenSSL. As long as you have *not* installed PyOpenSSL, it's recommended you
+update your settings to use `PROTOCOL_SSLv23`.
+
+The test of readiness for TLS better than 1.0 and a test of disabled SSL 3
+are run by all tests. These tests give also some suggestions for the tested machine.
+More tests for SSL/TLS client security by popular SSL evaluation sites can be
+run by the command ::
+
+   python manage.py test salesforce.tests.test_ssl.SslTest
+
+Additional tests are skipped without the word ``SslTest`` on the command line,
+because some vulnerabilities are hopefully not (so?) important for connections
+to SFDC.
+
+If you have an old Python, you can improve security a little (SNI, validation of
+certificates, fixed InsecurePlatformWarning) by additional packages:
+
+     pip install pyopenssl ndg-httpsclient pyasn1
+
+These have dependencies on the libffi development libararies. Install ``libffi-dev`` on
+Debian/Ubuntu or ``libffi-devel`` on RedHat derivatives.
+
+However, once you're using Python 2.7.9 and newer or Python 3.4.0 and newer, installing
+pyOpenSSL can enable SSLv3 again. If you *must* install PyOpenSSL on these Python versions,
+it is more secure to use ssl.PROTOCOL_TLSv1 than other protocols.
+
+Ultimately this will become moot for users of django-salesforce, as SFDC will soon require
+the updated setting.

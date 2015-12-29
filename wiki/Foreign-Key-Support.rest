@@ -1,0 +1,57 @@
+Foreign Key Support
+-------------------
+
+**Foreign key filters** are possible from child to parent without any known restriction,
+   in many levels, including foreign keys between custom models or mixed builtin
+   and custom models, also filters where the same model is used multiple times,
+   e.g. filter Account objects by a field of their parent Account.
+
+Example::
+
+    # example models demostrate that models with older TitleCase identifiers
+    # and new lowercase can also be combined, but not nice
+    contacts = Contact.objects.filter(account__Name='FOO Company')
+    print(contacts[0].account.Owner.LastName)
+    contacts = Contact.objects.filter(account__Owner__Username='me@example.com',
+                                      owner__Username='other@example.com')
+    print(contacts[0].account_id)
+
+In case of a ForeignKey you can specify the field name suffixed with ``_id``,
+as it is automatically allowed by Django. For example: ``account_id`` instead
+of ``account.id``, or ``AccountId`` instead of ``Account.Id``. It is faster,
+if you need not to access to the related ``Account`` object.
+
+Querysets can be easily inspected whether they are correctly compiled to SOQL.
+You can compare the the query compiled to SOQL and to SQL::
+
+    my_qs = Contact.objects.filter(my__little_more__complicated='queryset')
+    print(my_qs.query.get_compiler('salesforce').as_sql())   # SOQL
+    print(my_qs.query.get_compiler('default').as_sql())      # SQL
+
+::  comment until the end of identation
+    Related objects (Lookup field or Master-Detail Relationship) use two different names in
+    `SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
+    relation is by ID the columns are named ``FieldName__c``, whereas if the relation
+    is stored by object the column is named ``FieldName__r``. More details about
+    this can be found in the discussion about `#43 <https://github.com/freelancersunion/django-salesforce/issues/43>`__.
+
+Also Many2many relationships are possible in simple cases, like in the example models::
+
+    class Opportunity(SalesforceModel):
+        name = models.CharField(max_length=255)
+        contacts = django.db.models.ManyToManyField(
+            Contact, through='example.OpportunityContactRole',
+            related_name='opportunities')
+
+
+**Generic foreign keys** are frequently used in SF for fields that relate to
+objects of different types, e.g. the Parent of Note or Attachment can be almost
+any type of ususal SF objects. Filters by ``Parent.Type`` and retrieving this
+type is supported::
+
+    note = Note.objects.filter(parent_type='Contact')[0]
+    parent_model = getattr(example.models, note.parent_type)
+    parent_object = parent_model.objects.get(pk=note.parent_id)
+    assert note.parent_type == 'Contact'
+
+Example of ``Note`` model is in `salesforce.testrunner.example.models.Note`.
