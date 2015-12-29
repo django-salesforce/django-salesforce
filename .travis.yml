@@ -15,5 +15,4 @@ before_install:
 install:
   - pip install tox
 script:
-  - #echo -e "import ssl\nSF_SSL = dict(ssl_version=ssl.PROTOCOL_SSLv23)" > salesforce/testrunner/local_settings.py
   - tox -r
