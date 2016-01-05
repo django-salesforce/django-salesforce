@@ -78,7 +78,7 @@ def rest_api_url(sf_session, service, *args):
             )
 
 
-def quoted_string_literal(s, d):
+def quoted_string_literal(s):
     """
     SOQL requires single quotes to be escaped.
     http://www.salesforce.com/us/developer/docs/soql_sosl/Content/sforce_api_calls_soql_select_quotedstringescapes.htm
@@ -94,10 +94,10 @@ def process_args(args):
     """
     def _escape(item, conv):
         if(isinstance(item, models.SalesforceModel)):
-            return conv.get(models.SalesforceModel, conv[str])(item, conv)
+            return conv[models.SalesforceModel](item)
         if(isinstance(item, decimal.Decimal)):
-            return conv.get(decimal.Decimal, conv[str])(item, conv)
-        return conv.get(type(item), conv[str])(item, conv)
+            return conv[decimal.Decimal](item)
+        return conv.get(type(item), conv[str])(item)
     return tuple([_escape(x, sql_conversions) for x in args])
 
 def process_json_args(args):
@@ -106,10 +106,10 @@ def process_json_args(args):
     """
     def _escape(item, conv):
         if(isinstance(item, models.SalesforceModel)):
-            return conv.get(models.SalesforceModel, conv[str])(item, conv)
+            return conv[models.SalesforceModel](item)
         if(isinstance(item, decimal.Decimal)):
-            return conv.get(decimal.Decimal, conv[str])(item, conv)
-        return conv.get(type(item), conv[str])(item, conv)
+            return conv[decimal.Decimal](item)
+        return conv.get(type(item), conv[str])(item)
     return tuple([_escape(x, json_conversions) for x in args])
 
 
@@ -482,9 +482,9 @@ class CursorWrapper(object):
         # the encoding is detected automatically, e.g. from headers
         elif(response and response.text):
             # parse_float set to decimal.Decimal to avoid precision errors when
-            # converting from the json number to a float to a Decimal object
-            # on a model's DecimalField...converts from json number directly
-            # a Decimal object
+            # converting from the json number to a float and then to a Decimal object
+            # on a model's DecimalField. This converts from json number directly
+            # to a Decimal object
             data = response.json(parse_float=decimal.Decimal)
             # a SELECT query
             if('totalSize' in data):
@@ -727,8 +727,7 @@ def str_dict(some_dict):
     return {str(k): str(v) for k, v in some_dict.items()}
 
 
-string_literal = quoted_string_literal
-def date_literal(d, c):
+def date_literal(d):
     if not d.tzinfo:
         import time
         tz = pytz.timezone(settings.TIME_ZONE)
@@ -737,38 +736,31 @@ def date_literal(d, c):
     tzname = datetime.datetime.strftime(d, "%z")
     return datetime.datetime.strftime(d, "%Y-%m-%dT%H:%M:%S.000") + tzname
 
-def sobj_id(obj, conv):
+def sobj_id(obj):
     return obj.pk
 
 # supported types
-sql_conversions = {
-    int: lambda s,d: str(s),
-    float: lambda o,d: '%.15g' % o,
-    type(None): lambda s,d: 'NULL',
-    str: lambda o,d: string_literal(o, d), # default
-    bool: lambda s,d: str(s).lower(),
-    datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
-    datetime.datetime: lambda d,c: date_literal(d, c),
-    decimal.Decimal: lambda s,d: float(s),
-    models.SalesforceModel: sobj_id,
-}
-if not PY3:
-    sql_conversions[long] = lambda s,d: str(s)
-    sql_conversions[unicode] = lambda s,d: string_literal(s.encode('utf8'), d)
-
-# supported types
 json_conversions = {
-    int: lambda s,d: str(s),
-    float: lambda o,d: '%.15g' % o,
-    type(None): lambda s,d: None,
-    str: lambda o,d: o, # default
-    bool: lambda s,d: str(s).lower(),
-    datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
+    int: str,
+    float: lambda o: '%.15g' % o,
+    type(None): lambda s: None,
+    str: lambda o: o, # default
+    bool: lambda s: str(s).lower(),
+    datetime.date: lambda d: datetime.date.strftime(d, "%Y-%m-%d"),
     datetime.datetime: date_literal,
-    datetime.time: lambda d,c: datetime.time.strftime(d, "%H:%M:%S.%f"),
-    decimal.Decimal: lambda s,d: float(s),
+    datetime.time: lambda d: datetime.time.strftime(d, "%H:%M:%S.%f"),
+    decimal.Decimal: float,
     models.SalesforceModel: sobj_id,
 }
 if not PY3:
-    json_conversions[long] = lambda s,d: str(s)
-    json_conversions[unicode] = lambda s,d: s.encode('utf8')
+    json_conversions[long] = str
+
+sql_conversions = json_conversions.copy()
+sql_conversions.update({
+    type(None): lambda s: 'NULL',
+    str: quoted_string_literal, # default
+})
+
+if not PY3:
+    sql_conversions[unicode] = lambda s: quoted_string_literal(s.encode('utf8'))
+    json_conversions[unicode] = lambda s: s.encode('utf8')
