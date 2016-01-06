@@ -43,7 +43,7 @@ class UtilitiesTest(TestCase):
             ret2 = convert_lead(lead2, doNotCreateOpportunity=True, accountId=ret['accountId'])
             account = Account.objects.get(pk=ret['accountId'])
             # verify that account is merged
-            self.assertEqual(ret2['accountId'], account.Id)
+            self.assertEqual(ret2['accountId'], account.pk)
             self.assertEqual(account.BillingStreet, 'Test Avenue 45')
             self.assertEqual(account.Phone, '123456789')
         finally:
