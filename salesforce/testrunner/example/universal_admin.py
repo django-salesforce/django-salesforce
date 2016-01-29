@@ -14,14 +14,18 @@ def register_omitted_classes(models):
 	# This can be improved for fields that are only not creatable but are updateable or viceversa.
 	for mdl in models.__dict__.values():
 		if hasattr(mdl, '_salesforce_object') and not mdl._meta.abstract:
+			attributes = {
+				'readonly_fields':
+					[fld.name for fld in mdl._meta.fields if getattr(fld, 'sf_read_only', 0)]
+			}
+			list_display = [fld.name for fld in mdl._meta.fields if fld.column.lower() == 'name']
+			if list_display:
+				attributes['list_display'] = list_display
 			try:
-				admin.site.register(
-					mdl,
-					type(
-						type(mdl).__name__ + 'Admin',
-						(admin.ModelAdmin,),
-						{'readonly_fields': [mdl.name for mdl in mdl._meta.fields if getattr(mdl, 'sf_read_only', 0)]}
-					)
+				admin.site.register(mdl,
+									type(type(mdl).__name__ + 'Admin',
+										 (admin.ModelAdmin,),
+										 attributes)
 				)
 			except admin.sites.AlreadyRegistered:
 				pass
