@@ -715,9 +715,9 @@ class BasicSOQLRoTest(TestCase):
 		contact = Contact.objects.all()[0]
 		oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
 		oppo.save()
-		oc = OpportunityContactRole(opportunity=oppo, contact=contact, role='rolicka')
+		oc = OpportunityContactRole(opportunity=oppo, contact=contact, role='sponsor')
 		oc.save()
-		oc2 = OpportunityContactRole(opportunity=oppo, contact=contact, role='rolicka')
+		oc2 = OpportunityContactRole(opportunity=oppo, contact=contact, role='evaluator')
 		oc2.save()
 		try:
 			qs = contact.opportunities.all()
