@@ -57,7 +57,16 @@ can see the most complete form in the output of ``inspectdb``.
    is also expected and migrations of any SalesforceModel will be created then
    explicit names in the code are better: ``--verbosity=2``.
 
----
+
+-  **ForeignKey(unique=True)** SFDC doesn't allow to create a custom one-to-one
+   relationship field. SFDC uses it currently only in three internal objects whose structure
+   is not accessible through the SF user interface. A warning that OneToOneField
+   would be better for such fields is reported by Django 1.9 if
+   a ForeignKey(... unique=True) field is in a model. It is expected that
+   most of developers don't need these models or can use a ForeignKey and ignore the warning.
+   The OneToOneField will be not not implemented until Salesforce allows to create
+   such custom fields.
+
 
 SOAP API
 --------

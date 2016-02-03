@@ -28,7 +28,7 @@ You can compare the the query compiled to SOQL and to SQL::
     print(my_qs.query.get_compiler('salesforce').as_sql())   # SOQL
     print(my_qs.query.get_compiler('default').as_sql())      # SQL
 
-::  comment until the end of identation
+..  comment until the end of identation
     Related objects (Lookup field or Master-Detail Relationship) use two different names in
     `SOQL <http://www.salesforce.com/us/developer/docs/soql_sosl/>`__. If the
     relation is by ID the columns are named ``FieldName__c``, whereas if the relation
