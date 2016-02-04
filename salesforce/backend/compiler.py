@@ -285,7 +285,10 @@ class SQLCompiler(compiler.SQLCompiler):
 		assert len(alias2table) == len(alias_map_items)
 		# Recognize the top table
 		assert len(side_l.union(side_r)) == len(alias_map_items)
-		(top_lhs,) = set(side_l).difference(side_r)
+		top_lhs_set = set(side_l).difference(side_r)
+		assert len(top_lhs_set) == 1, ("Only queries with one top child model are "
+									   "supported by Salesforce. Use a subquery.")
+		(top_lhs,) = top_lhs_set
 		self.root_alias = top_lhs
 		# translation rules into SOQL
 		soql_trans = {top_lhs: alias2table[top_lhs]}
