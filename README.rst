@@ -72,30 +72,40 @@ Quick Start
    tests for django_salesforce requires many permissions or Administrator
    account for sandbox.
 
-4. **(optional)** To override the default timeout of 15 seconds,
-   define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file::
-
-    SALESFORCE_QUERY_TIMEOUT = 15
-
-5. **(optional)** If you want to use another name for your Salesforce DB
-   connection, define ``SALESFORCE_DB_ALIAS`` in your settings file::
-
-    SALESFORCE_DB_ALIAS = 'salesforce'
-
-6. Add ``salesforce.router.ModelRouter`` to your ``DATABASE_ROUTERS``
+4. Add ``salesforce.router.ModelRouter`` to your ``DATABASE_ROUTERS``
    setting::
 
     DATABASE_ROUTERS = [
         "salesforce.router.ModelRouter"
     ]
 
-7. Define a model that extends ``salesforce.models.Model`` or export the
+5. Define a model that extends ``salesforce.models.Model`` or export the
    complete SF schema by ``python manage.py inspectdb --database=salesforce``
    and simplify it to what you need.
 
+6. **(optional)** To override the default timeout of 15 seconds,
+   define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file::
+
+    SALESFORCE_QUERY_TIMEOUT = 15  # default
+
+7. **(optional)** If you want to use another name for your Salesforce DB
+   connection, define ``SALESFORCE_DB_ALIAS`` in your settings file::
+
+    SALESFORCE_DB_ALIAS = 'salesforce'  # default
+
 8. You're all done! Just use your model like a normal Django model.
 
-9. (Optional) Create a normal Django admin.py module for your Salesforce model.
+9. (Optional) Create a normal Django ``admin.py`` module for your Salesforce model::
+
+    from salesforce.testrunner.example.universal_admin import register_omitted_classes
+    # some admin classes that you wrote manually yet
+    # ...
+    # end of file
+    register_omitted_classes(your_application.models)
+
+This is a rudimentary way to verify that every model works in sandbox, before
+handwritting all admin classes. (Foreign keys to huge tables in the production
+require customized admins e.g. with search widgets.)
 
 Primary Key
 -----------
