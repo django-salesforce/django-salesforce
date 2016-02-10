@@ -102,6 +102,11 @@ Quick Start
     # ...
     # end of file
     register_omitted_classes(your_application.models)
+    
+10. **(optional)** If you want to make connection to Salesforce lazy, this can avoid application run failure when Salesforce is not reachable
+   connection, define ``SF_LAZY_CONNECT`` in your settings file::
+
+    SF_LAZY_CONNECT = True  # default is False
 
 This is a rudimentary way to verify that every model works in sandbox, before
 handwritting all admin classes. (Foreign keys to huge tables in the production
