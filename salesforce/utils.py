@@ -74,7 +74,7 @@ def convert_lead(lead, converted_status=None, **kwargs):
     response = soap_client.convertLead(kwargs)
 
     ret = dict((x._name[1], str(x)) for x in response)
-    
+
     if "errors" in str(ret):
         raise RuntimeError("The Lead conversion failed: {0}, leadId={1}".format(
                 ret['errors'], ret['leadId']))

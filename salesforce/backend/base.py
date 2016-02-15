@@ -47,7 +47,7 @@ connect_lock = threading.Lock()
 class SalesforceError(DatabaseError):
     """
     DatabaseError that usually gets detailed error information from SF response
-    
+
     in the second parameter, decoded from REST, that frequently need not to be
     displayed.
     """
@@ -78,7 +78,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # be loaded and cleaned by the testcase code. From the viewpoint of SF it is
     # irrelevant, but due to issue #28 it should be True.
     supports_transactions = True
-    
+
     # Never use `interprets_empty_strings_as_nulls=True`. It is an opposite
     # setting for Oracle, while Salesforce saves nulls as empty strings not vice
     # versa.

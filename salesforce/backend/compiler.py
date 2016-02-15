@@ -322,7 +322,7 @@ class SQLCompiler(compiler.SQLCompiler):
         replacements = self.query_topology()
         # the replaced string is a alphanumeric word, including underscore
         assert all(re.match(r'^\w+$', x) for x in replacements.keys())
-        pattern_replaced = re.compile(r'(?<=[^.\w])(%s)(?=\.\w+[^.\w])' % '|'.join(replacements.keys())) 
+        pattern_replaced = re.compile(r'(?<=[^.\w])(%s)(?=\.\w+[^.\w])' % '|'.join(replacements.keys()))
         def func(sql):
             start = 0
             out = []

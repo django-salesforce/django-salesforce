@@ -63,7 +63,7 @@ class SalesforceAuth(AuthBase):
     def authenticate(self):
         """
         Authenticate to the Salesforce API with the provided credentials.
-        
+
             Params:
                 db_alias:  The database alias e.g. the default SF alias 'salesforce'.
                 settings_dict: It is only important for the first connection.
@@ -74,7 +74,7 @@ class SalesforceAuth(AuthBase):
         This function can be called multiple times, but will only make
         an external request once per the lifetime of the auth token. Subsequent
         calls to authenticate() will return the original oauth response.
-        
+
         This function is thread-safe.
         """
         # if another thread is in this method, wait for it to finish.
@@ -90,7 +90,7 @@ class SalesforceAuth(AuthBase):
                     oauth_data[db_alias] = {'instance_url': settings_dict['HOST']}
                 else:
                     url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
-                    
+
                     log.info("attempting authentication to %s" % settings_dict['HOST'])
                     self._session.mount(settings_dict['HOST'], SslHttpAdapter(max_retries=MAX_RETRIES))
                     response = self._session.post(url, data=dict(
@@ -113,7 +113,7 @@ class SalesforceAuth(AuthBase):
                             raise RuntimeError('Invalid auth signature received')
                     else:
                         raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
-            
+
             return oauth_data[db_alias]
 
     def reauthenticate(self):

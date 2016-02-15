@@ -36,7 +36,7 @@ class ModelRouter(object):
     @property
     def sf_alias(self):
         return getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
-    
+
     def db_for_read(self, model, **hints):
         """
         If given some hints['instance'] that is saved in a db, use related

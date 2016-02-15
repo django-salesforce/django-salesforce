@@ -46,7 +46,7 @@ def refresh(obj):
     """
     db = obj._state.db
     return type(obj).objects.using(db).get(pk=obj.pk)
-    
+
 
 class BasicSOQLRoTest(TestCase):
     """Tests that need no setUp/tearDown"""
@@ -127,7 +127,7 @@ class BasicSOQLRoTest(TestCase):
             self.assertEqual(refresh(contact).email_bounced_date, now)
         finally:
             contact.delete()
-    
+
     def test_insert_date(self):
         """Test inserting a date.
         """
@@ -167,7 +167,7 @@ class BasicSOQLRoTest(TestCase):
                     refresh(contact).owner.Username, other_user_obj.Username)
         finally:
             contact.delete()
-    
+
     def test_not_null_related(self):
         """Verify conditions `isnull` for foreign keys: filter(Account=None)
 
@@ -182,7 +182,7 @@ class BasicSOQLRoTest(TestCase):
             self.assertEqual(len(contacts), 1)
         finally:
             test_contact.delete()
-    
+
     def test_unicode(self):
         """Make sure weird unicode breaks properly.
         """
@@ -194,7 +194,7 @@ class BasicSOQLRoTest(TestCase):
             self.assertEqual(refresh(test_lead).FirstName, u'\u2603')
         finally:
             test_lead.delete()
-    
+
     def test_date_comparison(self):
         """Test that date comparisons work properly.
         """
@@ -213,7 +213,7 @@ class BasicSOQLRoTest(TestCase):
             self.assertEqual(len(contacts2), 0)
         finally:
             contact.delete()
-    
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_insert(self):
         """Create a lead record, and make sure it ends up with a valid Salesforce ID.
@@ -226,7 +226,7 @@ class BasicSOQLRoTest(TestCase):
             self.assertEqual(len(test_lead.pk), 18)
         finally:
             test_lead.delete()
-    
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_double_save(self):
         """Double save without refresh of an object with a DEFAULTED_ON_CREATE
@@ -238,7 +238,7 @@ class BasicSOQLRoTest(TestCase):
             oppo.save()
         finally:
             oppo.delete()
-    
+
     def test_delete(self):
         """Create a lead record, then delete it, and make sure it's gone.
         """
@@ -247,9 +247,9 @@ class BasicSOQLRoTest(TestCase):
                 Company="Some company")
         test_lead.save()
         test_lead.delete()
-        
+
         self.assertRaises(Lead.DoesNotExist, Lead.objects.get, Email='test-djsf-delete-email@example.com')
-    
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_decimal_precision(self):
         """Verify the same precision of saved and retrived DecimalField
@@ -351,7 +351,7 @@ class BasicSOQLRoTest(TestCase):
 
     def test_escape_single_quote(self):
         """Test single quotes in strings used in a filter
-        
+
         Verity that they are escaped properly.
         """
         account_name = '''Dr. Evil's Giant\\' "Laser", LLC'''
@@ -504,7 +504,7 @@ class BasicSOQLRoTest(TestCase):
         cursor.execute(sql)
         self.assertEqual(cursor.fetchone(), contacts[0])
         self.assertEqual(cursor.fetchmany(), contacts[1:])
-    
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_cursor_execute_aggregate(self):
         """Verify that aggregate queries can be executed directly by SOQL.
@@ -516,7 +516,7 @@ class BasicSOQLRoTest(TestCase):
         contact_aggregate = cursor.fetchone()
         self.assertTrue('LastName' in contact_aggregate)
         self.assertGreaterEqual(contact_aggregate['expr0'], 1)
-    
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_errors(self):
         """Test for improving code coverage.
@@ -551,7 +551,7 @@ class BasicSOQLRoTest(TestCase):
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_double_delete(self):
         """Test that repeated delete of the same object is ignored
-        
+
         the same way like "DELETE FROM Contact WHERE Id='deleted yet'" would do.
         """
         contact = Contact(last_name='sf_test',
@@ -662,7 +662,7 @@ class BasicSOQLRoTest(TestCase):
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_filter_by_more_fk_to_the_same_model(self):
         """Test a filter with more relations to the same model.
-        
+
         Verify that aliases are correctly decoded in the query compiler.
         """
         test_lead = Lead(Company='sf_test lead', LastName='name')
@@ -686,7 +686,7 @@ class BasicSOQLRoTest(TestCase):
 
     def test_filter_by_more_fk_to_the_same_model_subquery(self):
         """Test a filter with more relations to the same model.
-        
+
         Verify that aliases are correctly decoded in the query compiler.
         """
         test_lead = Lead(Company='sf_test lead', LastName='name')
@@ -732,7 +732,7 @@ class BasicSOQLRoTest(TestCase):
 
     def test_filter_custom(self):
         """Verify that relations between custom and builtin objects
-        
+
         are correctly compiled. (__r, __c etc.)
         """
         from salesforce.testrunner.example.models import Attachment, Test
@@ -780,7 +780,7 @@ class BasicLeadSOQLTest(TestCase):
             add_obj(Contact(last_name='Test contact 1'))
             add_obj(Contact(last_name='Test contact 2'))
             add_obj(User(Username=current_user))
-    
+
     def tearDown(self):
         """Clean up our test records.
         """
@@ -814,14 +814,14 @@ class BasicLeadSOQLTest(TestCase):
             self.skipTest("Default database should be any Salesforce.")
         # test a read only field (formula of full name)
         self.assertEqual(lead.Name, 'User%s Unittest General' % uid)
-    
+
     def test_not_null(self):
         """Get the test lead record by isnull condition.
         """
         lead = Lead.objects.get(Email__isnull=False, FirstName='User' + uid)
         self.assertEqual(lead.FirstName, 'User' + uid)
         self.assertEqual(lead.LastName, 'Unittest General')
-    
+
     def test_update(self):
         """Update the test lead record.
         """

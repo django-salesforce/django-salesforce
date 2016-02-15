@@ -23,16 +23,16 @@ Default database operations, with unquoted names.
 
 class DatabaseOperations(BaseDatabaseOperations):
     compiler_module = "salesforce.backend.compiler"
-    
+
     def connection_init(self):
         pass
-    
+
     def sql_flush(self, style, tables, sequences):
         return []
-    
+
     def quote_name(self, name):
         return name
-    
+
     def value_to_db_datetime(self, value):
         """
         We let the JSON serializer handle dates for us.
@@ -44,7 +44,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         We let the JSON serializer handle dates for us.
         """
         return value
-    
+
     def value_to_db_decimal(self, value, *args):
         if str(value) == 'DEFAULTED_ON_CREATE':
             return value

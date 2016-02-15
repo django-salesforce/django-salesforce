@@ -22,7 +22,7 @@ from salesforce import router
 
 class SalesforceManager(manager.Manager):
     use_for_related_fields = True
-    
+
     def get_queryset(self):
         """
         Returns a QuerySet which access remote SF objects.
