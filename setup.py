@@ -39,9 +39,9 @@ def get_tagged_version():
             version = f.read().strip()
     else:
         proc = subprocess.Popen(['git', 'describe', '--tags'],
-            stderr  = subprocess.PIPE,
-            stdout  = subprocess.PIPE,
-            cwd     = os.path.dirname(__file__) or None
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            cwd=os.path.dirname(__file__) or None
         )
         (stdoutdata, stderrdata) = proc.communicate()
 
@@ -68,27 +68,27 @@ def autosetup():
     with_git = os.path.isdir(relative_path('.git'))
 
     return setup(
-        name            = "django-salesforce",
-        version         = get_tagged_version(),
+        name="django-salesforce",
+        version=get_tagged_version(),
 
-        include_package_data = True,
-        zip_safe        = False,
-        packages        = find_packages(exclude=['tests', 'tests.*']),
+        include_package_data=True,
+        zip_safe=False,
+        packages=find_packages(exclude=['tests', 'tests.*']),
 
         # setuptools won't auto-detect Git managed files without this
-        setup_requires = ["setuptools_git >= 0.4.2"] if with_git else [],
+        setup_requires=["setuptools_git >= 0.4.2"] if with_git else [],
 
-        install_requires = requirements_txt,
+        install_requires=requirements_txt,
 
         # metadata for upload to PyPI
-        author           = "Freelancers Union",
-        author_email     = "devs@freelancersunion.org",
-        maintainer       = "Phil Christensen",
-        maintainer_email = "phil@bubblehouse.org",
-        description      = "a Salesforce backend for Django's ORM",
-        license          = "MIT",
-        keywords         = "django salesforce orm backend",
-        url              = "https://github.com/django-salesforce/django-salesforce",
+        author="Freelancers Union",
+        author_email="devs@freelancersunion.org",
+        maintainer="Phil Christensen",
+        maintainer_email="phil@bubblehouse.org",
+        description="a Salesforce backend for Django's ORM",
+        license="MIT",
+        keywords="django salesforce orm backend",
+        url="https://github.com/django-salesforce/django-salesforce",
     )
 
 if(__name__ == '__main__'):

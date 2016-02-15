@@ -67,9 +67,9 @@ class ExportedModelTest(unittest.TestCase):
                 self.assertNotIn('db_column', self.match_line(r'    test_text = ', text))
                 # test foreign kea
                 line = self.match_line(r'    contact = ', text)
-                self.assertIn('custom=True',  line)
-                self.assertIn('ForeignKey(Contact',  line)
-                self.assertIn('on_delete=models.DO_NOTHING',  line)
+                self.assertIn('custom=True', line)
+                self.assertIn('ForeignKey(Contact', line)
+                self.assertIn('on_delete=models.DO_NOTHING', line)
                 break
         else:
             self.skipTest("The model for the table Test__c not exported.")

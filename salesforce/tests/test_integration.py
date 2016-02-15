@@ -89,7 +89,7 @@ class BasicSOQLRoTest(TestCase):
         """Verify that the owner of an Contact is the currently logged admin.
         """
         current_sf_user = User.objects.get(Username=current_user)
-        test_contact = Contact(first_name = 'sf_test', last_name='my')
+        test_contact = Contact(first_name='sf_test', last_name='my')
         test_contact.save()
         try:
             contact = Contact.objects.filter(owner=current_sf_user)[0]
@@ -102,9 +102,9 @@ class BasicSOQLRoTest(TestCase):
     def test_foreign_key_column(self):
         """Verify filtering by a column of related parent object.
         """
-        test_account = Account(Name = 'sf_test account')
+        test_account = Account(Name='sf_test account')
         test_account.save()
-        test_contact = Contact(first_name = 'sf_test', last_name='my', account=test_account)
+        test_contact = Contact(first_name='sf_test', last_name='my', account=test_account)
         test_contact.save()
         try:
             contacts = Contact.objects.filter(account__Name='sf_test account')
@@ -118,7 +118,7 @@ class BasicSOQLRoTest(TestCase):
         """
         # removed microseconds only for easy compare in the test, no problem
         now = timezone.now().replace(microsecond=0)
-        contact = Contact(first_name = 'sf_test', last_name='my')
+        contact = Contact(first_name='sf_test', last_name='my')
         contact.save()
         contact = refresh(contact)
         try:
@@ -133,8 +133,8 @@ class BasicSOQLRoTest(TestCase):
         """
         now = timezone.now().replace(microsecond=0)
         contact = Contact(
-                first_name = 'Joe',
-                last_name = 'Freelancer',
+                first_name='Joe',
+                last_name='Freelancer',
                 email_bounced_date=now)
         contact.save()
         try:
@@ -151,7 +151,7 @@ class BasicSOQLRoTest(TestCase):
         foreign keys that don't accept null.)
         """
         # Verify a smart default is used.
-        contact = Contact(first_name = 'sf_test', last_name='my')
+        contact = Contact(first_name='sf_test', last_name='my')
         contact.save()
         try:
             self.assertEqual(refresh(contact).owner.Username, current_user)
@@ -159,7 +159,7 @@ class BasicSOQLRoTest(TestCase):
             contact.delete()
         # Verify that an explicit value is possible for this field.
         other_user_obj = User.objects.exclude(Username=current_user)[0]
-        contact = Contact(first_name = 'sf_test', last_name='your',
+        contact = Contact(first_name='sf_test', last_name='your',
                 owner=other_user_obj)
         contact.save()
         try:
@@ -432,7 +432,7 @@ class BasicSOQLRoTest(TestCase):
             self.assertEqual(oppy.stage, 'Prospecting')
 
             # Test DecimalField
-            low_amount, high_amount  = 100000.00, 140000.00
+            low_amount, high_amount = 100000.00, 140000.00
             oppy = Opportunity.objects.filter(amount__range=(low_amount, high_amount))[0]
             self.assertEqual(oppy.amount, 130000.00)
 
@@ -765,11 +765,11 @@ class BasicLeadSOQLTest(TestCase):
             self.objs.append(obj)
         #
         self.test_lead = Lead(
-            FirstName   = "User" + uid,
-            LastName    = "Unittest General",
-            Email       = test_email,
-            Status      = 'Open',
-            Company = "Some company, Ltd.",
+            FirstName="User" + uid,
+            LastName="Unittest General",
+            Email=test_email,
+            Status='Open',
+            Company="Some company, Ltd.",
         )
         self.objs = []
         self.test_lead.save()
@@ -863,7 +863,7 @@ class BasicLeadSOQLTest(TestCase):
         """Test that a generic foreign key can be filtered by type name and
         the type name can be referenced.
         """
-        test_contact = Contact(first_name = 'sf_test', last_name='my')
+        test_contact = Contact(first_name='sf_test', last_name='my')
         test_contact.save()
         note_1 = Note(title='note for Lead', parent_id=self.test_lead.pk)
         note_2 = Note(title='note for Contact', parent_id=test_contact.pk)

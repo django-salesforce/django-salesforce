@@ -113,7 +113,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
         # Unauthorized (expired or invalid session ID or OAuth)
         data = response.json()[0]
         if(data['errorCode'] == 'INVALID_SESSION_ID'):
-            token = db_alias=f.__self__.auth.reauthenticate()
+            token = db_alias = f.__self__.auth.reauthenticate()
             if('headers' in kwargs):
                 kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
             try:
@@ -203,9 +203,9 @@ def prep_for_deserialize(model, record, using, init_list=None):
         raise base.DatabaseError("Not found some expected fields")
 
     return dict(
-        model   = '.'.join([app_label, model.__name__]),
-        pk      = record.pop('Id'),
-        fields  = fields,
+        model='.'.join([app_label, model.__name__]),
+        pk=record.pop('Id'),
+        fields=fields,
     )
 
 def extract_values(query):

@@ -14,7 +14,7 @@ class WebTest(TestCase):
         user.save()
         self.client.login(username='fredsu', password='passwd')
 
-        account = Account(Name = 'sf_test account')
+        account = Account(Name='sf_test account')
         account.save()
 
         response = self.client.get('/')
