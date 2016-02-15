@@ -36,70 +36,70 @@ log = logging.getLogger(__name__)
 
 
 class SalesforceModelBase(ModelBase):
-	"""
-	This is a sub-metaclass of the normal Django ModelBase.
+    """
+    This is a sub-metaclass of the normal Django ModelBase.
 
-	This metaclass overrides the default table-guessing behavior of Django
-	and replaces it with code that defaults to the model name.
-	"""
-	def __new__(cls, name, bases, attrs):
-		attr_meta = attrs.get('Meta', None)
-		if not DJANGO_18_PLUS and len(getattr(attr_meta, 'verbose_name', '')) > 39:
-			attr_meta.verbose_name = attr_meta.verbose_name[:39]
-		supplied_db_table = getattr(attr_meta, 'db_table', None)
-		result = super(SalesforceModelBase, cls).__new__(cls, name, bases, attrs)
-		if models.Model not in bases and supplied_db_table is None:
-			result._meta.db_table = result._meta.concrete_model._meta.object_name
-		return result
+    This metaclass overrides the default table-guessing behavior of Django
+    and replaces it with code that defaults to the model name.
+    """
+    def __new__(cls, name, bases, attrs):
+        attr_meta = attrs.get('Meta', None)
+        if not DJANGO_18_PLUS and len(getattr(attr_meta, 'verbose_name', '')) > 39:
+            attr_meta.verbose_name = attr_meta.verbose_name[:39]
+        supplied_db_table = getattr(attr_meta, 'db_table', None)
+        result = super(SalesforceModelBase, cls).__new__(cls, name, bases, attrs)
+        if models.Model not in bases and supplied_db_table is None:
+            result._meta.db_table = result._meta.concrete_model._meta.object_name
+        return result
 
-	def add_to_class(cls, name, value):
-		if name == '_meta':
-			sf_custom = False
-			if hasattr(value.meta, 'custom'):
-				sf_custom = value.meta.custom
-				delattr(value.meta, 'custom')
-			super(SalesforceModelBase, cls).add_to_class(name, value)
-			setattr(cls._meta, 'sf_custom', sf_custom)
-		else:
-			if type(value) is models.manager.Manager:
-				# TODO use args:  obj._constructor_args = (args, kwargs)
-				value = manager.SalesforceManager()
-			super(SalesforceModelBase, cls).add_to_class(name, value)
+    def add_to_class(cls, name, value):
+        if name == '_meta':
+            sf_custom = False
+            if hasattr(value.meta, 'custom'):
+                sf_custom = value.meta.custom
+                delattr(value.meta, 'custom')
+            super(SalesforceModelBase, cls).add_to_class(name, value)
+            setattr(cls._meta, 'sf_custom', sf_custom)
+        else:
+            if type(value) is models.manager.Manager:
+                # TODO use args:  obj._constructor_args = (args, kwargs)
+                value = manager.SalesforceManager()
+            super(SalesforceModelBase, cls).add_to_class(name, value)
 
 
 class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
-	"""
-	Abstract model class for Salesforce objects.
-	"""
-	_salesforce_object = True
+    """
+    Abstract model class for Salesforce objects.
+    """
+    _salesforce_object = True
 
-	class Meta:
-		managed = False
-		abstract = True
+    class Meta:
+        managed = False
+        abstract = True
 
-	# Name of primary key 'Id' can be easily changed to 'id'
-	# by "settings.SF_PK='id'".
-	id = SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
-							 verbose_name='ID', auto_created=True)
+    # Name of primary key 'Id' can be easily changed to 'id'
+    # by "settings.SF_PK='id'".
+    id = SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
+                             verbose_name='ID', auto_created=True)
 
 
 @deconstructible
 class DefaultedOnCreate(object):
-	"""
-	Default value that means that it shoud be replaced by Salesforce, not
-	by Django, because SF does it or even no real ralue nor None is accepted.
-	(e.g. for some builtin foreign keys with SF attributes
-	'defaultedOnCreate: true, nillable: false')
-	SFDC will set the correct value only if the field is omitted as the REST API.
+    """
+    Default value that means that it shoud be replaced by Salesforce, not
+    by Django, because SF does it or even no real ralue nor None is accepted.
+    (e.g. for some builtin foreign keys with SF attributes
+    'defaultedOnCreate: true, nillable: false')
+    SFDC will set the correct value only if the field is omitted as the REST API.
 
-	Example: `Owner` field is assigned to the current user if the field User is omitted.
+    Example: `Owner` field is assigned to the current user if the field User is omitted.
 
-		Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-				default=models.DefaultedOnCreate(),
-				db_column='OwnerId')
-	"""
-	def __str__(self):
-		return 'DEFAULTED_ON_CREATE'
+        Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+                default=models.DefaultedOnCreate(),
+                db_column='OwnerId')
+    """
+    def __str__(self):
+        return 'DEFAULTED_ON_CREATE'
 
 
 DEFAULTED_ON_CREATE = DefaultedOnCreate()

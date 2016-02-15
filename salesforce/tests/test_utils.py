@@ -21,7 +21,7 @@ class UtilitiesTest(TestCase):
     def test_lead_conversion(self):
         """
         Create a Lead object within Salesforce and try to
-		convert it, convert/merge it with the information from a duplicit Lead,
+        convert it, convert/merge it with the information from a duplicit Lead,
         then clean all the generated objects.
         """
         lead = Lead(FirstName="Foo", LastName="Bar", Company="django-salesforce",

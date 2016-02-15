@@ -11,53 +11,53 @@ log = logging.getLogger(__name__)
 
 
 class Error(Exception if PY3 else StandardError):
-	pass
+    pass
 
 
 class InterfaceError(Error):
-	pass
+    pass
 
 
 class DatabaseError(Error):
-	pass
+    pass
 
 
 class DataError(DatabaseError):
-	pass
+    pass
 
 
 class OperationalError(DatabaseError):
-	pass
+    pass
 
 
 class IntegrityError(DatabaseError):
-	pass
+    pass
 
 
 class InternalError(DatabaseError):
-	pass
+    pass
 
 
 class ProgrammingError(DatabaseError):
-	pass
+    pass
 
 
 class NotSupportedError(DatabaseError):
-	pass
+    pass
 
 
 class Connection(object):
-	# close and commit can be safely ignored because everything is
-	# committed automatically and REST is stateles.
-	def close(self):
-		pass
+    # close and commit can be safely ignored because everything is
+    # committed automatically and REST is stateles.
+    def close(self):
+        pass
 
-	def commit(self):
-		pass
+    def commit(self):
+        pass
 
-	def rollback(self):
-		log.info("Rollback is not implemented.")
+    def rollback(self):
+        log.info("Rollback is not implemented.")
 
 
 def connect(**params):
-	return Connection()
+    return Connection()
