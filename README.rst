@@ -102,15 +102,18 @@ Quick Start
     # ...
     # end of file
     register_omitted_classes(your_application.models)
-    
-10. **(optional)** If you want to make connection to Salesforce lazy, this can avoid application run failure when Salesforce is not reachable
-   connection, define ``SF_LAZY_CONNECT`` in your settings file::
-
-    SF_LAZY_CONNECT = True  # default is False
 
 This is a rudimentary way to verify that every model works in sandbox, before
 handwritting all admin classes. (Foreign keys to huge tables in the production
 require customized admins e.g. with search widgets.)
+    
+10. **(optional)** By default, the Django ORM connects to all DBs at startup. To delay
+SFDC connections until they are actually required, define ``SF_LAZY_CONNECT`` in your settings file::
+
+    SF_LAZY_CONNECT = True  # default is False
+
+Be careful when using this setting; since it won't fail during the application boot, it's
+possible for a bad password to be sent repeatedly, requiring an account reset to fix.
 
 Primary Key
 -----------
