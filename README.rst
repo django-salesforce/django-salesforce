@@ -95,7 +95,7 @@ Quick Start
 
 8. You're all done! Just use your model like a normal Django model.
 
-9. (Optional) Create a normal Django ``admin.py`` module for your Salesforce model::
+9. **(optional)** Create a normal Django ``admin.py`` module for your Salesforce model::
 
     from salesforce.testrunner.example.universal_admin import register_omitted_classes
     # some admin classes that you wrote manually yet
@@ -103,17 +103,16 @@ Quick Start
     # end of file
     register_omitted_classes(your_application.models)
 
-This is a rudimentary way to verify that every model works in sandbox, before
-handwritting all admin classes. (Foreign keys to huge tables in the production
-require customized admins e.g. with search widgets.)
+   This is a rudimentary way to verify that every model works in sandbox, before
+   handwritting all admin classes. (Foreign keys to huge tables in the production
+   require customized admins e.g. with search widgets.)
     
-10. **(optional)** By default, the Django ORM connects to all DBs at startup. To delay
-SFDC connections until they are actually required, define ``SF_LAZY_CONNECT`` in your settings file::
-
+10. **(optional)** By default, the Django ORM connects to all DBs at startup. To delay SFDC connections until they are actually required, define ``SF_LAZY_CONNECT`` in your settings file::
+   
     SF_LAZY_CONNECT = True  # default is False
 
-Be careful when using this setting; since it won't fail during the application boot, it's
-possible for a bad password to be sent repeatedly, requiring an account reset to fix.
+   Be careful when using this setting; since it won't fail during the application boot, it's
+   possible for a bad password to be sent repeatedly, requiring an account reset to fix.
 
 Primary Key
 -----------
@@ -256,6 +255,4 @@ Backwards-incompatible changes
 -  v0.5: The name of primary key is currently ``'id'``. The backward compatible
    behaviour for code created before v0.5 can be reached by settings ``SF_PK='Id'``.
 
-Big news since version 0.5
---------------------------
 
