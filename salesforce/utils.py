@@ -28,9 +28,9 @@ def convert_lead(lead, converted_status=None, **kwargs):
     The parameter `lead` is expected to be a Lead object that
     has not been converted yet.
 
-	kwargs: additional optional parameters like `accountId` if the Lead should
-		be merged with an existing Account. More info in
-	https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm
+    kwargs: additional optional parameters like `accountId` if the Lead should
+        be merged with an existing Account. More info in
+    https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm
 
     -- BEWARE --
     The current implementation won't work in case your `Contact`,
@@ -74,7 +74,7 @@ def convert_lead(lead, converted_status=None, **kwargs):
     response = soap_client.convertLead(kwargs)
 
     ret = dict((x._name[1], str(x)) for x in response)
-    
+
     if "errors" in str(ret):
         raise RuntimeError("The Lead conversion failed: {0}, leadId={1}".format(
                 ret['errors'], ret['leadId']))

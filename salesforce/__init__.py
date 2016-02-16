@@ -18,6 +18,6 @@ DJANGO_18_PLUS = django.VERSION[:2] >= (1, 8)
 DJANGO_184_PLUS = django.VERSION[:3] >= (1, 8, 4)
 DJANGO_19_PLUS = django.VERSION[:3] >= (1, 9)
 if not django.VERSION[:2] >= (1, 7):
-	raise ImportError("Django 1.7 or higher is required for django-salesforce.")
+    raise ImportError("Django 1.7 or higher is required for django-salesforce.")
 
 log = logging.getLogger(__name__)

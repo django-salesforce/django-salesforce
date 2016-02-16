@@ -11,10 +11,10 @@ Default validation code.
 from salesforce import DJANGO_18_PLUS
 
 if DJANGO_18_PLUS:
-	from django.db.backends.base.validation import BaseDatabaseValidation
+    from django.db.backends.base.validation import BaseDatabaseValidation
 else:
-	from django.db.backends import BaseDatabaseValidation
+    from django.db.backends import BaseDatabaseValidation
 
 class DatabaseValidation(BaseDatabaseValidation):
-	pass
+    pass
 
