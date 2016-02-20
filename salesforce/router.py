@@ -71,12 +71,14 @@ class ModelRouter(object):
         """
         Don't attempt to sync SF models to non SF databases and vice versa.
         """
+        if 'model' in hints:
+            model = hints['model']
+        elif model_name:
+            model = apps.get_model(app_label, model_name)
+        else:
+            # in data migrations
+            model = None
 
-        # data migrations can be skipped
-        if 'model' not in hints and not model_name:
-            return
-
-        model = hints['model'] if 'model' in hints else apps.get_model(app_label, model_name)
         if hasattr(model, '_salesforce_object'):
             # If SALESFORCE_DB_ALIAS is e.g. a sqlite3 database, than it can migrate SF models
             if not (is_sf_database(db) or db == self.sf_alias):
