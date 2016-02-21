@@ -12,8 +12,10 @@ cache:
     - $HOME/.pip-cache/
 before_install:
  - "pip install setuptools_git"
+ - "pip install rstcheck"
 install:
   - pip install tox
 script:
+  - rstcheck README.rst
   - echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
   - tox -r
