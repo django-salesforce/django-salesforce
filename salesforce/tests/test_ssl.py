@@ -1,7 +1,8 @@
-"""no hacks -> we can import immediately
+"""SSL Tests - compatibility and some security features
 
-I expect that more services wil disable TLS 1.0 before SFDC and the maintainers of `requests` will fix the issue
-without need to monkey patch long parts of requests code or to repeat hacks like the one criticised in .... issue.
+This module will be completely obsoleted on March 4th 2017 when all sites
+enable the critical update "Require TLS 1.1 or higher for HTTPS connections"
+for all organizations uncoditionally.
 """
 from django.conf import settings
 from django.test import TestCase

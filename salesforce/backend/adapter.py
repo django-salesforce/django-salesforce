@@ -18,10 +18,8 @@ class SslHttpAdapter(HTTPAdapter):
             Expected values are `ssl.PROTOCOL_TLSv1` or `ssl.PROTOCOL_SSLv23`.
     """
     def __init__(self, *args, **kwargs):
-        # TODO Change the default SSL version to ssl.PROTOCOL_SSLv23 in the
-        #      autumn release v0.7.
         default_ssl_version = getattr(settings, 'SF_SSL', {}).get('ssl_version',
-                ssl.PROTOCOL_TLSv1)
+                ssl.PROTOCOL_SSLv23)
         self.sf_ssl_version = kwargs.pop('ssl_version', default_ssl_version)
         super(SslHttpAdapter, self).__init__(*args, **kwargs)
 
