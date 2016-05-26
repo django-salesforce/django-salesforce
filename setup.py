@@ -5,8 +5,9 @@
 # See LICENSE.md for details
 #
 
-import os, os.path, subprocess
+import os
 import re
+import subprocess
 
 # disables creation of .DS_Store files inside tarballs on Mac OS X
 os.environ['COPY_EXTENDED_ATTRIBUTES_DISABLE'] = 'true'
@@ -28,7 +29,8 @@ def get_tagged_version():
     """
     with_git = os.path.isdir(relative_path('.git'))
     if with_git:
-        proc = subprocess.Popen(['git', 'describe', '--tags'],
+        proc = subprocess.Popen(
+            ['git', 'describe', '--tags'],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
             cwd=os.path.dirname(__file__) or None
@@ -76,5 +78,5 @@ def autosetup():
         url="https://github.com/django-salesforce/django-salesforce",
     )
 
-if(__name__ == '__main__'):
+if __name__ == '__main__':
     dist = autosetup()

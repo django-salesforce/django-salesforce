@@ -4,13 +4,13 @@ This module will be completely obsoleted on March 4th 2017 when all sites
 enable the critical update "Require TLS 1.1 or higher for HTTPS connections"
 for all organizations uncoditionally.
 """
+import ssl
+import sys
 from django.conf import settings
 from django.test import TestCase
 from salesforce.backend.adapter import SslHttpAdapter
 from ..backend.test_helpers import skip, skipUnless
 import requests
-import ssl
-import sys
 
 # some tests will be run only if they are selected explicitely on the command
 # line "test salesforce.tests.test_ssl.SSLTest..."
@@ -82,7 +82,7 @@ class SslTest(TestCase):
         url = "https://ssl3.zmap.io/sslv3test.js"
         if not self.verify_rejected_ssl(url):
             raise Exception("The protocol SSLv3 should be disabled for better security "
-                    "if possible. (It is disabled on all new systems.) see README")
+                            "if possible. (It is disabled on all new systems.) see README")
 
     # all ssllabs tests are from https://www.ssllabs.com/ssltest/viewMyClient.html
     @skipUnless(explicitely_selected, "these tests can be enabled on command line")
