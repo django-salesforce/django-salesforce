@@ -79,7 +79,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     @property
     def oauth(self):
-        return self.connection.sf_session.auth.authenticate()
+        return self.connection.sf_session.auth.get_auth()
 
     @property
     def table_list_cache(self):

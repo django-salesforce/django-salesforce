@@ -36,16 +36,17 @@ class OAuthTest(TestCase):
         import requests
         _session = requests.Session()
 
-        auth_obj = auth.SalesforceAuth(sf_alias, settings_dict=settings.DATABASES[sf_alias], _session=_session)
-        auth_obj.authenticate()
+        auth_obj = auth.SalesforcePasswordAuth(sf_alias, settings_dict=settings.DATABASES[sf_alias],
+                                               _session=_session)
+        auth_obj.get_auth()
         self.validate_oauth(auth.oauth_data[sf_alias])
         old_data = auth.oauth_data
 
         self.assertIn(sf_alias, auth.oauth_data)
-        auth_obj.expire_token()
+        auth_obj.del_token()
         self.assertNotIn(sf_alias, auth.oauth_data)
 
-        auth_obj.authenticate()
+        auth_obj.get_auth()
         self.validate_oauth(auth.oauth_data[sf_alias])
 
         self.assertEqual(old_data[sf_alias]['access_token'], auth.oauth_data[sf_alias]['access_token'])

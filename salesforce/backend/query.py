@@ -410,7 +410,7 @@ class CursorWrapper(object):
 
     @property
     def oauth(self):
-        return self.session.auth.authenticate()
+        return self.session.auth.get_auth()
 
     def execute(self, q, args=()):
         """

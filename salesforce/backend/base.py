@@ -25,7 +25,7 @@ if DJANGO_18_PLUS:
 else:
     from django.db.backends import BaseDatabaseWrapper, BaseDatabaseFeatures
 
-from salesforce.auth import SalesforceAuth
+from salesforce.auth import SalesforcePasswordAuth
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
@@ -135,15 +135,14 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         with connect_lock:
             if self._sf_session is None:
                 sf_session = requests.Session()
-                sf_session.auth = SalesforceAuth(db_alias=self.alias, settings_dict=self.settings_dict)
-                if self.settings_dict['USER'] == 'dynamic auth':
-                    sf_instance_url = self._sf_session or self.settings_dict['HOST']
-                else:
-                    sf_instance_url = sf_session.auth.authenticate()['instance_url']
+                # TODO configurable class Salesforce***Auth
+                sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
+                                                         settings_dict=self.settings_dict)
+                sf_instance_url = sf_session.auth.get_auth()['instance_url']
                 sf_requests_adapter = SslHttpAdapter(max_retries=MAX_RETRIES)
                 sf_session.mount(sf_instance_url, sf_requests_adapter)
-                # Additional header works, but the improvement unmeasurable for me.
-                # (less than SF speed fluctuation)
+                # Additional header works, but the improvement is immeasurable for
+                # me. (less than SF speed fluctuation)
                 #sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
                 self._sf_session = sf_session
 
