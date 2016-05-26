@@ -10,13 +10,13 @@ A database backend for the Django ORM.
 
 Allows access to all Salesforce objects accessible via the SOQL API.
 """
-from pkg_resources import get_distribution
 import logging
 import warnings
 
 import django
 
-__version__ = get_distribution('django-salesforce').version
+__version__ = "0.6.3"
+
 DJANGO_18_PLUS = django.VERSION[:2] >= (1, 8)
 DJANGO_184_PLUS = django.VERSION[:3] >= (1, 8, 4)
 DJANGO_19_PLUS = django.VERSION[:3] >= (1, 9)

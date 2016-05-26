@@ -6,6 +6,7 @@
 #
 
 import os, os.path, subprocess
+import re
 
 # disables creation of .DS_Store files inside tarballs on Mac OS X
 os.environ['COPY_EXTENDED_ATTRIBUTES_DISABLE'] = 'true'
@@ -21,41 +22,25 @@ def get_tagged_version():
     """
     Determine the current version of this package.
 
-    We tag all our releases in Git, but we want to be able to distribute
-    source packages without having to modify setup.py (and obviously without
-    including an entire Git history).
-
-    Since we're always creating the sdist from a checked-out Git repo, we
-    let setup.py query Git and save it into a VERSION file. All subsequent
-    runs of setup.py will read version info out of that file, and not
-    attempt to read the current Git tag.
-
-    It's therefore important that VERSION never gets checked into Git, and
-    that you delete VERSION after creating a source package (or at least
-    before making another one for a new version).
+    Precise long version numbers are used with Git, that contain Git tag,
+    the commit serial and a short commit id,
+    otherwise a short version number is used if installed from Pypi.
     """
-    if(os.path.exists(relative_path('VERSION'))):
-        with open(relative_path('VERSION'), 'rU') as f:
-            version = f.read().strip()
-    else:
+    with_git = os.path.isdir(relative_path('.git'))
+    if with_git:
         proc = subprocess.Popen(['git', 'describe', '--tags'],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
             cwd=os.path.dirname(__file__) or None
         )
         (stdoutdata, stderrdata) = proc.communicate()
+        if proc.returncode == 0:
+            version = stdoutdata.decode("utf-8").strip().lstrip('v')
+            return version
 
-        if(proc.returncode):
-            raise RuntimeError(stderrdata)
-
-        version = stdoutdata.decode("utf-8").strip().lstrip('v')
-
-        print("writing version file...")
-        f = open(relative_path('VERSION'), 'w')
-        f.write(version)
-        f.close()
-
-    print('package version: %s' % version)
+    with open(relative_path('salesforce/__init__.py'), 'r') as fd:
+        version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
+                            fd.read(), re.MULTILINE).group(1)
     return version
 
 def autosetup():
