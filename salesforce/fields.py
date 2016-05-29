@@ -180,7 +180,7 @@ class TimeField(SfField, models.TimeField):
 
 
 class ForeignKey(SfField, models.ForeignKey):
-    """ForeignKey with sf_read_only attribute for Salesforce."""
+    """ForeignKey with sf_read_only attribute and acceptable by Salesforce."""
     def __init__(self, *args, **kwargs):
         # Checks parameters before call to ancestor.
         if DJANGO_19_PLUS and args[1:2]:
@@ -212,6 +212,11 @@ class ForeignKey(SfField, models.ForeignKey):
         if self.db_column is None and not self.sf_custom:
             column += 'Id'
         return attname, column
+
+
+class OneToOneField(ForeignKey, models.OneToOneField):
+    """OneToOneField with sf_read_only attribute and acceptable by Salesforce."""
+    pass
 
 
 AutoField = SalesforceAutoField

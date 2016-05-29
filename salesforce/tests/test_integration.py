@@ -19,7 +19,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
-        BusinessHours, ChargentOrder, CronTrigger,
+        ApexEmailNotification, BusinessHours, ChargentOrder, CronTrigger,
         Opportunity, OpportunityContactRole,
         Product, Pricebook, PricebookEntry, Note, Task,
         Organization, models_template,
@@ -125,6 +125,52 @@ class BasicSOQLRoTest(TestCase):
         finally:
             test_contact.delete()
             test_account.delete()
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_one_to_one_field(self):
+        # test 1a is unique field
+        self.assertEqual(ApexEmailNotification._meta.get_field('user').unique, True)
+
+        current_sf_user = User.objects.get(Username=current_user)
+        orig_objects = list(ApexEmailNotification.objects.filter(
+                Q(user=current_sf_user) | Q(email='apex.bugs@example.com')))
+        try:
+            notifier_u = current_sf_user.apex_email_notification
+            new_u = None
+        except ApexEmailNotification.DoesNotExist:
+            notifier_u = new_u = ApexEmailNotification(user=current_sf_user)
+            notifier_u.save()
+        try:
+            notifier_e = ApexEmailNotification.objects.get(email='apex.bugs@example.com')
+            new_e = None
+        except ApexEmailNotification.DoesNotExist:
+            notifier_e = new_e = ApexEmailNotification(email='apex.bugs@example.com')
+            notifier_e.save()
+
+        try:
+            # test 1b is unique value
+            duplicate = ApexEmailNotification(user=current_sf_user)
+            # the method self.assertRaise was too verbose about exception
+            try:
+                duplicate.save()
+            except salesforce.backend.base.SalesforceError as exc:
+                self.assertEqual(exc.data['errorCode'], 'DUPLICATE_VALUE')
+            else:
+                self.assertRaises(salesforce.backend.base.SalesforceError, duplicate.save)
+
+            # test 2: the reverse relation is a value, not a set
+            result = User.objects.exclude(apex_email_notification__user=None)
+            self.assertIn(current_user, [x.Username for x in result])
+
+            # test 3: relation to the parent
+            result = ApexEmailNotification.objects.filter(user__Username=notifier_u.user.Username)
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0].user_id, notifier_u.user_id)
+        finally:
+            if new_u:
+                new_u.delete()
+            if new_e:
+                new_e.delete()
 
     def test_update_date(self):
         """Test updating a date.

@@ -188,7 +188,7 @@ def prep_for_deserialize(model, record, using, init_list=None):
 
     if len(record.keys()) == 1 and model._meta.db_table in record:
         # this is for objects with ManyToManyField and OneToOneField
-        while len(record) == 1:
+        while len(record) == 1 and list(record.values())[0]:
             record = list(record.values())[0]
             if record is None:
                 return None
