@@ -532,6 +532,38 @@ class CursorWrapper(object):
         self.rowcount = 1 if (ret and ret.status_code == 204) else 0
         return ret
 
+    # The following 3 methods (execute_ping, id_request, versions_request)
+    # can be renamed soon or moved.
+
+    def urls_request(self):
+        """Empty REST API request is useful after long inactivity before POST.
+
+        It ensures that the token will remain valid for at least half life time
+        of the new token. Otherwise it would be an awkward doubt if a timeout on
+        a lost connection is possible together with token expire in a post
+        request (insert).
+        """
+        url = rest_api_url(self.session, '')
+        ret = handle_api_exceptions(url, self.session.get, _cursor=self)
+        return str_dict(ret.json())
+
+    def id_request(self):
+        """The Force.com Identity Service (return type dict of text_type)"""
+        # https://developer.salesforce.com/page/Digging_Deeper_into_OAuth_2.0_at_Salesforce.com?language=en&language=en#The_Force.com_Identity_Service
+        if 'id' in self.oauth:
+            url =  self.oauth['id']
+        else:
+            # dynamic auth without 'id' parameter
+            url = self.urls_request()['identity']
+        ret = handle_api_exceptions(url, self.session.get, _cursor=self)
+        return ret.json()
+
+    def versions_request(self):
+        """List Available REST API Versions"""
+        url = self.session.auth.instance_url + '/services/data/'
+        ret = handle_api_exceptions(url, self.session.get, _cursor=self)
+        return [str_dict(x) for x in ret.json()]
+
     def query_results(self, results):
         while True:
             for rec in results['records']:
@@ -579,6 +611,12 @@ class CursorWrapper(object):
 
     def close(self):
         pass
+
+
+def str_dict(some_dict):
+    """Convert dict of ascii str/unicode to dict of str, if necessary"""
+    return {str(k): str(v) for k, v in some_dict.items()}
+
 
 string_literal = quoted_string_literal
 def date_literal(d, c):
