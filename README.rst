@@ -217,7 +217,7 @@ SSL/TLS settings
 ----------------
 For more details on SSL support in Django-Salesforce, particularly relating to
 the 2016 deprecation of TLS 1.0 on Salesforce.com, visit the wiki article,
-`SSL/TLS and Salesforce.com <https://github.com/django-salesforce/django-salesforce/wiki/SSL-TLS-settings-and-Saleforce.com>`__
+`SSL/TLS and Salesforce.com <https://github.com/django-salesforce/django-salesforce/wiki/SSL-TLS-settings-and-Salesforce.com>`__
 
 Caveats
 -------
