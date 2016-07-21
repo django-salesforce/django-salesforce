@@ -51,6 +51,19 @@ def refresh(obj):
 class BasicSOQLRoTest(TestCase):
     """Tests that need no setUp/tearDown"""
 
+    @classmethod
+    def setUpClass(cls):
+        """Add contact if less than 2 exist"""
+        super(BasicSOQLRoTest, cls).setUpClass()
+        some_contacts = Contact.objects.all()[:2]
+        if len(some_contacts) < 2:
+            for i in range(2 - len(some_contacts)):
+                contact = Contact(first_name='sf_test demo', last_name='Test %d' %i)
+                contact.save()
+        if User.objects.count() == 0:
+            user = User(Username=current_user)
+            user.save()
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     @expectedFailureIf(QUIET_DJANGO_18)
     def test_raw(self):
@@ -684,6 +697,7 @@ class BasicSOQLRoTest(TestCase):
         finally:
             test_lead.delete()
 
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_filter_by_more_fk_to_the_same_model_subquery(self):
         """Test a filter with more relations to the same model.
 
