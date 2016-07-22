@@ -21,7 +21,9 @@ from django.utils import timezone
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
         BusinessHours, ChargentOrder, CronTrigger,
         Opportunity, OpportunityContactRole,
-        Product, Pricebook, PricebookEntry, Note, Task)
+        Product, Pricebook, PricebookEntry, Note, Task,
+        Organization, models_template,
+        )
 from salesforce import router, DJANGO_18_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
@@ -764,6 +766,11 @@ class BasicSOQLRoTest(TestCase):
     def test_using_none(self):
         alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
         self.assertEqual(Contact.objects.using(None)._db, alias)
+
+    @skipUnless(hasattr(models_template, 'Organization'), "Skipped because models_template.Organization doesn't exist")
+    def test_dynamic_fields(self):
+        """Test that fields can be copied dynamically from other model"""
+        self.assertGreater(Organization.objects.get().created_by.Username, '')
 
 # ============= Tests that need setUp Lead ==================
 

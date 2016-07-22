@@ -5,7 +5,7 @@
 # See LICENSE.md for details
 #
 
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
 
@@ -304,6 +304,13 @@ class OpportunityContactRole(SalesforceModel):
     role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
 
 
+try:
+    import salesforce.testrunner.dynamic_models.models as models_template
+except ImportError:
+    # this is useful for the case that the model is being rewritten by inspectdb
+    models_template = None
+
+
 class Organization(models.Model):
     name = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE)
     division = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE, blank=True)
@@ -311,6 +318,14 @@ class Organization(models.Model):
             sf_read_only=models.READ_ONLY) # e.g 'Developer Edition', Enteprise, Unlimited...
     instance_name = models.CharField(max_length=5, sf_read_only=models.READ_ONLY, blank=True)
     is_sandbox = models.BooleanField(sf_read_only=models.READ_ONLY)
+    # Fields created_by, last_modified_by, last_modified_date are dynamic
+
+    class Meta:
+        db_table = 'Organization'
+        # Copy all fields that match the patters for Force.com field name
+        # from the class that use the same db_table "Organization" in the
+        # module models_template
+        dynamic_field_patterns = models_template, ['CreatedById', 'Last.*Id']
 
 
 class Test(SalesforceParentModel):
