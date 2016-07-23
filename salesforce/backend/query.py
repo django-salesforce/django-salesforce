@@ -30,9 +30,10 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import auth, models, DJANGO_18_PLUS, DJANGO_19_PLUS
+from salesforce import models, DJANGO_18_PLUS, DJANGO_19_PLUS
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
+import salesforce
 
 try:
     from urllib.parse import urlencode
@@ -45,7 +46,6 @@ except ImportError:
 
 log = logging.getLogger(__name__)
 
-API_STUB = '/services/data/v35.0'
 
 # Values of seconds are with 3 decimal places in SF, but they are rounded to
 # whole seconds for the most of fields.
@@ -53,6 +53,21 @@ SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
 request_count = 0
+
+
+def rest_api_url(sf_session, service, *args):
+    """Join the URL of REST_API
+
+    Examples: rest_url(sf_session, "query?q=select+id+from+Organization")
+              rest_url(sf_session, "sobject", "Contact", id)
+    """
+    return '{base}/services/data/v{version}/{service}{slash_args}'.format(
+                base=sf_session.auth.instance_url,
+                version=salesforce.API_VERSION,
+                service=service,
+                slash_args=''.join('/' + x for x in args)
+            )
+
 
 def quoted_string_literal(s, d):
     """
@@ -464,11 +479,8 @@ class CursorWrapper(object):
 
     def execute_select(self, q, args):
         processed_sql = str(q) % process_args(args)
-        cmd = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
-        url = u'{base}{api}/{cmd}?{query_str}'.format(
-                base=self.session.auth.instance_url, api=API_STUB, cmd=cmd,
-                query_str=urlencode(dict(q=processed_sql)),
-        )
+        service = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
+        url = rest_api_url(self.session, service, '?' + urlencode(dict(q=processed_sql)))
         log.debug(processed_sql)
         return handle_api_exceptions(url, self.session.get, _cursor=self)
 
@@ -478,7 +490,7 @@ class CursorWrapper(object):
 
     def execute_insert(self, query):
         table = query.model._meta.db_table
-        url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/' % table)
+        url = rest_api_url(self.session, 'sobjects', table, '')
         headers = {'Content-Type': 'application/json'}
         post_data = extract_values(query)
 
@@ -490,7 +502,7 @@ class CursorWrapper(object):
         # this will break in multi-row updates
         pk = query.where.children[0].rhs
         assert pk
-        url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+        url = rest_api_url(self.session, 'sobjects', table, pk)
         headers = {'Content-Type': 'application/json'}
         post_data = extract_values(query)
         log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
@@ -513,7 +525,7 @@ class CursorWrapper(object):
                 return pk
         pk = recurse_for_pk(self.query.where.children)
         assert pk
-        url = self.session.auth.instance_url + API_STUB + ('/sobjects/%s/%s' % (table, pk))
+        url = rest_api_url(self.session, 'sobjects', table, pk)
 
         log.debug('DELETE %s(%s)' % (table, pk))
         ret = handle_api_exceptions(url, self.session.delete, _cursor=self)

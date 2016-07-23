@@ -138,7 +138,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 # TODO configurable class Salesforce***Auth
                 sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
                                                          settings_dict=self.settings_dict)
-                sf_instance_url = sf_session.auth.get_auth()['instance_url']
+                sf_instance_url = sf_session.auth.instance_url
                 sf_requests_adapter = SslHttpAdapter(max_retries=MAX_RETRIES)
                 sf_session.mount(sf_instance_url, sf_requests_adapter)
                 # Additional header works, but the improvement is immeasurable for

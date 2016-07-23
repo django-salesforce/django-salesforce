@@ -25,3 +25,14 @@ if django.VERSION[:2] < (1, 7) or (1, 8, 0) <= django.VERSION[:3] < (1, 8, 4):
                       "and versions between 1.8 and 1.8.3 are unsupported.")
 
 log = logging.getLogger(__name__)
+
+# Default version of Force.com API.
+# It can be set by setattr() to any lower or higher supported value.
+# (The highest version can be set by "salesforce.utils.set_highest_api_version()".
+# It is useful for development, a constant version is for production.)
+
+# Example for settings.py:
+# >>> import salesforce
+# >>> setattr(salesforce, 'API_VERSION', '37.0')
+
+API_VERSION = '37.0'  # Summer '16

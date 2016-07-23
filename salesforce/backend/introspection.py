@@ -78,14 +78,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         self._converted_lead_status = None
 
     @property
-    def oauth(self):
-        return self.connection.sf_session.auth.get_auth()
-
-    @property
     def table_list_cache(self):
         if self._table_list_cache is None:
-            url = self.oauth['instance_url'] + query.API_STUB + '/sobjects/'
-
+            url = query.rest_api_url(self.connection.sf_session, 'sobjects')
             log.debug('Request API URL: %s' % url)
             response = query.handle_api_exceptions(url, self.connection.sf_session.get)
             # charset is detected from headers by requests package
@@ -94,8 +89,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def table_description_cache(self, table):
         if table not in self._table_description_cache:
-            url = self.oauth['instance_url'] + query.API_STUB + ('/sobjects/%s/describe/' % table)
-
+            url = query.rest_api_url(self.connection.sf_session, 'sobjects', table, 'describe/')
             log.debug('Request API URL: %s' % url)
             response = query.handle_api_exceptions(url, self.connection.sf_session.get)
             self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
