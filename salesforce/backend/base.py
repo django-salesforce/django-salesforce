@@ -14,35 +14,36 @@ import requests
 import sys
 import threading
 
-from salesforce import DJANGO_18_PLUS
-
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
-from django.db.backends.signals import connection_created
-if DJANGO_18_PLUS:
-    from django.db.backends.base.base import BaseDatabaseWrapper
-    from django.db.backends.base.features import BaseDatabaseFeatures
-else:
-    from django.db.backends import BaseDatabaseWrapper, BaseDatabaseFeatures
-
 from salesforce.auth import SalesforcePasswordAuth
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
-from salesforce.backend.driver import IntegrityError, DatabaseError
+from salesforce.backend.driver import IntegrityError, DatabaseError  # NOQA
 from salesforce.backend import driver as Database
 from salesforce.backend import MAX_RETRIES
 from salesforce.backend.adapter import SslHttpAdapter
+# from django.db.backends.signals import connection_created
+
+from salesforce import DJANGO_18_PLUS
+if DJANGO_18_PLUS:
+    from django.db.backends.base.base import BaseDatabaseWrapper
+    from django.db.backends.base.features import BaseDatabaseFeatures
+else:
+    from django.db.backends import BaseDatabaseWrapper, BaseDatabaseFeatures
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
 
+__all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)
 log = logging.getLogger(__name__)
 
 connect_lock = threading.Lock()
+
 
 class SalesforceError(DatabaseError):
     """
@@ -58,8 +59,7 @@ class SalesforceError(DatabaseError):
         self.verbose = verbose
         if verbose:
             log.info("Error (debug details) %s\n%s", response.text,
-                    response.__dict__)
-
+                     response.__dict__)
 
 
 class DatabaseFeatures(BaseDatabaseFeatures):
@@ -96,8 +96,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         'iexact': 'LIKE %s',
         'contains': 'LIKE %s',
         'icontains': 'LIKE %s',
-        #'regex': 'REGEXP %s',  # unsupported
-        #'iregex': 'REGEXP %s',
+        # 'regex': 'REGEXP %s',  # unsupported
+        # 'iregex': 'REGEXP %s',
         'gt': '> %s',
         'gte': '>= %s',
         'lt': '< %s',
@@ -143,7 +143,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 sf_session.mount(sf_instance_url, sf_requests_adapter)
                 # Additional header works, but the improvement is immeasurable for
                 # me. (less than SF speed fluctuation)
-                #sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
+                # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
                 self._sf_session = sf_session
 
     @property
@@ -180,7 +180,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         try:
             urlparse(d['HOST'])
         except Exception as e:
-            raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" % (self.alias, e))
+            raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" %
+                                       (self.alias, e))
 
     def cursor(self, query=None):
         """
