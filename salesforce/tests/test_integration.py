@@ -726,20 +726,53 @@ class BasicSOQLRoTest(TestCase):
     def test_only_fields(self):
         """Verify that access to "only" fields doesn't require a request, but others do.
         """
+        def assert_n_requests(n):
+            # verify the necessary number of requests
+            # print("-- req=%d (expect %d)" % (salesforce.backend.query.request_count - request_count_0, n))
+            self.assertEqual(salesforce.backend.query.request_count - request_count_0, n)
+
+        # print([(x.id, x.last_name) for x in Contact.objects.only('last_name').order_by('id')[:2]])
         request_count_0 = salesforce.backend.query.request_count
         sql = User.objects.only('Username').query.get_compiler('salesforce').as_sql()[0]
         self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
-        user = User.objects.only('Username')[0]                                 # req 1
-        pk = user.pk                                                            # no request
+        assert_n_requests(0)
+
+        user = User.objects.only('Username').order_by('pk')[0]                  # req
+        assert_n_requests(1)
+
         # Verify that deferred fields work
-        self.assertEqual(user.Username, User.objects.get(pk=user.pk).Username)  # req 2
-        _ = Contact.objects.only('last_name')[0].last_name                      # req 3
-        xx = Contact.objects.only('account')[0]                                 # req 4
-        _ = xx.account_id                                                       # no request
-        # verify the necessary number of requests
-        self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 4)
-        _ = xx.last_name                                                        # req 5
-        self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 5)
+        user.pk                                                                 # no request
+        user_username = user.Username
+        self.assertIn('@', user_username)
+        assert_n_requests(1)
+
+        self.assertGreater(len(user.LastName), 0)                               # req
+        #import pdb; pdb.set_trace()
+        assert_n_requests(2)
+
+        self.assertEqual(user_username, User.objects.get(pk=user.pk).Username)  # req
+        assert_n_requests(3)
+
+        xx = Contact.objects.only('last_name').order_by('pk')[0]                # req
+        assert_n_requests(4)
+
+        xx.last_name                                                            # no req
+        # print((xx.id, xx.last_name))
+        assert_n_requests(4)
+
+        xy = Contact.objects.only('account').order_by('pk')[1]                  # req
+        assert_n_requests(5)
+
+        xy.account_id                                                           # no req
+        assert_n_requests(5)
+
+        # print((xy.id, xy.last_name))                                          # req
+        #import pdb; pdb.set_trace()
+        self.assertGreater(len(xy.last_name), 0)
+        assert_n_requests(6)
+
+        xy.last_name                                                            # no req
+        assert_n_requests(6)                                                    # total 6 requests
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
