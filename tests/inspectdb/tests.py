@@ -8,6 +8,7 @@ try:
     from collections import OrderedDict
 except ImportError:
     from django.utils.datastructures import SortedDict as OrderedDict
+from salesforce import DJANGO_19_PLUS
 
 
 def relative_path(path):
@@ -69,7 +70,10 @@ class ExportedModelTest(unittest.TestCase):
                 line = self.match_line(r'    contact = ', text)
                 self.assertIn('custom=True', line)
                 self.assertIn('ForeignKey(Contact', line)
-                self.assertIn('on_delete=models.DO_NOTHING', line)
+                if DJANGO_19_PLUS:
+                    self.assertIn(', models.DO_NOTHING,', line)
+                else:
+                    self.assertIn(', on_delete=models.DO_NOTHING', line)
                 break
         else:
             self.skipTest("The model for the table Test__c not exported.")
