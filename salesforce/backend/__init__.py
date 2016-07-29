@@ -22,22 +22,21 @@ Incorrectly located files: (It is better not to change it now.)
     auth.py              => backend/auth.py
 """
 
-import socket
-from django.conf import settings
 import logging
 log = logging.getLogger(__name__)
 
-# The maximal number of retries for requests to SF API.
-MAX_RETRIES = getattr(settings, 'REQUESTS_MAX_RETRIES', 1)
+# The maximal number of retries for timeouts in requests to Force.com API.
+# Can be set dynamically
+# None: use defaults from settings.REQUESTS_MAX_RETRIES (default 1)
+# 0: no retry
+# 1: one retry
+MAX_RETRIES = None  # uses defaults below)
 
 
-def getaddrinfo_wrapper(host, port, family=socket.AF_INET, socktype=0, proto=0, flags=0):
-    """Patched 'getaddrinfo' with default family IPv4 (enabled by settings IPV4_ONLY=True)"""
-    return orig_getaddrinfo(host, port, family, socktype, proto, flags)
-
-# patch to IPv4 if required and not patched by anything other yet
-if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('socket', '_socket'):
-    log.info("Patched socket to IPv4 only")
-    orig_getaddrinfo = socket.getaddrinfo
-    # replace the original socket.getaddrinfo by our version
-    socket.getaddrinfo = getaddrinfo_wrapper
+def get_max_retries():
+    """Get the maximal number of requests retries"""
+    global MAX_RETRIES
+    from django.conf import settings
+    if MAX_RETRIES is None:
+        MAX_RETRIES = getattr(settings, 'REQUESTS_MAX_RETRIES', 1)
+    return MAX_RETRIES

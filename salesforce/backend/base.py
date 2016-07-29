@@ -23,8 +23,7 @@ from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError  # NOQA
-from salesforce.backend import driver as Database
-from salesforce.backend import MAX_RETRIES
+from salesforce.backend import driver as Database, get_max_retries
 from salesforce.backend.adapter import SslHttpAdapter
 # from django.db.backends.signals import connection_created
 
@@ -77,7 +76,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # cleaning the database in testrunner after every test and loading fixtures
     # before it, however SF does not support any of these and all test data must
     # be loaded and cleaned by the testcase code. From the viewpoint of SF it is
-    # irrelevant, but due to issue #28 it should be True.
+    # irrelevant, but due to issue #28 (slow unit tests) it should be True.
     supports_transactions = True
 
     # Never use `interprets_empty_strings_as_nulls=True`. It is an opposite
@@ -140,7 +139,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
                                                          settings_dict=self.settings_dict)
                 sf_instance_url = sf_session.auth.instance_url
-                sf_requests_adapter = SslHttpAdapter(max_retries=MAX_RETRIES)
+                sf_requests_adapter = SslHttpAdapter(max_retries=get_max_retries())
                 sf_session.mount(sf_instance_url, sf_requests_adapter)
                 # Additional header works, but the improvement is immeasurable for
                 # me. (less than SF speed fluctuation)
