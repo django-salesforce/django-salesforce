@@ -21,11 +21,10 @@ from requests.adapters import HTTPAdapter
 from salesforce.auth import SalesforcePasswordAuth
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
-from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
-from salesforce.backend.driver import IntegrityError, DatabaseError  # NOQA
-from salesforce.backend import driver as Database, get_max_retries
+from salesforce.backend.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA - TODO
+from salesforce.backend import introspection, driver as Database, get_max_retries
 # from django.db.backends.signals import connection_created
 
 from salesforce import DJANGO_18_PLUS
@@ -43,23 +42,6 @@ __all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)
 log = logging.getLogger(__name__)
 
 connect_lock = threading.Lock()
-
-
-class SalesforceError(DatabaseError):
-    """
-    DatabaseError that usually gets detailed error information from SF response
-
-    in the second parameter, decoded from REST, that frequently need not to be
-    displayed.
-    """
-    def __init__(self, message='', data=None, response=None, verbose=False):
-        DatabaseError.__init__(self, message)
-        self.data = data
-        self.response = response
-        self.verbose = verbose
-        if verbose:
-            log.info("Error (debug details) %s\n%s", response.text,
-                     response.__dict__)
 
 
 class DatabaseFeatures(BaseDatabaseFeatures):
@@ -122,7 +104,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         self.ops = DatabaseOperations(self)
         self.client = DatabaseClient(self)
         self.creation = DatabaseCreation(self)
-        self.introspection = DatabaseIntrospection(self)
+        self.introspection = introspection.DatabaseIntrospection(self)
         self.validation = DatabaseValidation(self)
         self._sf_session = None
         self._is_sandbox = None

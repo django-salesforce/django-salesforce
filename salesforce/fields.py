@@ -14,12 +14,13 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
+from django.db.models import PROTECT, DO_NOTHING  # NOQA
 from django.db import models
 from django.utils.encoding import smart_text
 from django.utils.six import string_types
 
 from salesforce import DJANGO_19_PLUS
-import salesforce
+from salesforce.backend.operations import DefaultedOnCreate
 
 # None of field types defined in this module need a "deconstruct" method,
 # in Django 1.7+, because their parameters only describe fixed nature of SF
@@ -28,7 +29,8 @@ import salesforce
 FULL_WRITABLE  = 0
 NOT_UPDATEABLE = 1
 NOT_CREATEABLE = 2
-READ_ONLY   = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
+READ_ONLY = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
+DEFAULTED_ON_CREATE = DefaultedOnCreate()
 
 SF_PK = getattr(settings, 'SF_PK', 'id')
 if not SF_PK in ('id', 'Id'):
@@ -163,7 +165,7 @@ class BooleanField(SfField, models.BooleanField):
         super(BooleanField, self).__init__(default=default, **kwargs)
 
     def to_python(self, value):
-        if isinstance(value, salesforce.models.DefaultedOnCreate):
+        if isinstance(value, DefaultedOnCreate):
             return value
         else:
             return super(BooleanField, self).to_python(value)

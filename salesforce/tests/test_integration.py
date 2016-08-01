@@ -416,11 +416,11 @@ class BasicSOQLRoTest(TestCase):
         try:
             objects = [Contact(last_name='sf_test a', account=account),
                        Contact(last_name='sf_test b', account=account)]
-            request_count_0 = salesforce.backend.query.request_count
+            request_count_0 = salesforce.backend.driver.request_count
 
             ret = Contact.objects.bulk_create(objects)
 
-            request_count_1 = salesforce.backend.query.request_count
+            request_count_1 = salesforce.backend.driver.request_count
             self.assertEqual(request_count_1,  request_count_0 + 1)
             self.assertEqual(len(Contact.objects.filter(account=account)), 2)
         finally:
@@ -433,11 +433,11 @@ class BasicSOQLRoTest(TestCase):
         account_0.save()
         account_1.save()
         try:
-            request_count_0 = salesforce.backend.query.request_count
+            request_count_0 = salesforce.backend.driver.request_count
             Account.objects.filter(pk=account_0.pk).update(Name="test2" + uid)
             Account.objects.filter(pk__in=[account_1.pk]).update(Name="test2" + uid)
             Account.objects.filter(pk__in=Account.objects.filter(Name='test2' + uid)).update(Name="test3" + uid)
-            request_count_1 = salesforce.backend.query.request_count
+            request_count_1 = salesforce.backend.driver.request_count
             self.assertEqual(Account.objects.filter(Name='test3' + uid).count(), 2)
             self.assertEqual(request_count_1,  request_count_0 + 4)
         finally:
@@ -728,11 +728,11 @@ class BasicSOQLRoTest(TestCase):
         """
         def assert_n_requests(n):
             # verify the necessary number of requests
-            # print("-- req=%d (expect %d)" % (salesforce.backend.query.request_count - request_count_0, n))
-            self.assertEqual(salesforce.backend.query.request_count - request_count_0, n)
+            # print("-- req=%d (expect %d)" % (salesforce.backend.driver.request_count - request_count_0, n))
+            self.assertEqual(salesforce.backend.driver.request_count - request_count_0, n)
 
         # print([(x.id, x.last_name) for x in Contact.objects.only('last_name').order_by('id')[:2]])
-        request_count_0 = salesforce.backend.query.request_count
+        request_count_0 = salesforce.backend.driver.request_count
         sql = User.objects.only('Username').query.get_compiler('salesforce').as_sql()[0]
         self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
         assert_n_requests(0)
@@ -779,13 +779,13 @@ class BasicSOQLRoTest(TestCase):
     def test_defer_fields(self):
         """Verify that access to a deferred field requires a new request, but others don't.
         """
-        request_count_0 = salesforce.backend.query.request_count
+        request_count_0 = salesforce.backend.driver.request_count
         contact = Contact.objects.defer('email')[0]
-        self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 1)
+        self.assertEqual(salesforce.backend.driver.request_count, request_count_0 + 1)
         _ = contact.last_name
-        self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 1)
+        self.assertEqual(salesforce.backend.driver.request_count, request_count_0 + 1)
         _ = contact.email
-        self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 2)
+        self.assertEqual(salesforce.backend.driver.request_count, request_count_0 + 2)
 
     @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_incomplete_raw(self):

@@ -8,12 +8,17 @@
 """
 Salesforce object query and queryset customizations.
 """
-# TODO hynekcer: class CursorWrapper and function handle_api_exceptions should
+# TODO hynekcer: class CursorWrapper should
 #      be moved to salesforce.backend.driver at the next big refactoring
 #      (Evenso some low level internals of salesforce.auth should be moved to
 #      salesforce.backend.driver.Connection)
 
-import logging, types, datetime, decimal
+from __future__ import print_function
+import datetime
+import decimal
+import logging
+import pytz
+from itertools import islice
 
 from django.conf import settings
 from django.core.serializers import python
@@ -24,13 +29,10 @@ from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.utils.six import PY3
 
-from itertools import islice
-
-import requests
-import pytz
-
 from salesforce import models, DJANGO_18_PLUS, DJANGO_110_PLUS
+from salesforce.backend.driver import DatabaseError, SalesforceError, handle_api_exceptions, API_STUB
 from salesforce.backend.compiler import SQLCompiler
+from salesforce.backend.operations import DefaultedOnCreate
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 import salesforce.backend.driver
 
@@ -54,7 +56,6 @@ log = logging.getLogger(__name__)
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
-request_count = 0
 
 
 def rest_api_url(sf_session, service, *args):
@@ -105,70 +106,6 @@ def process_json_args(args):
         return conv.get(type(item), conv[str])(item, conv)
     return tuple([_escape(x, json_conversions) for x in args])
 
-def handle_api_exceptions(url, f, *args, **kwargs):
-    """Call REST API and handle exceptions
-    Params:
-        f:  requests.get or requests.post...
-        _cursor: sharing the debug information in cursor
-    """
-    global request_count
-    from salesforce.backend import base
-    # The 'verify' option is about verifying SSL certificates
-    kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
-                 'verify': True}
-    kwargs_in.update(kwargs)
-    _cursor = kwargs_in.pop('_cursor', None)
-    log.debug('Request API URL: %s' % url)
-    request_count += 1
-    try:
-        response = f(url, *args, **kwargs_in)
-    # TODO some timeouts can be rarely raised as "SSLError: The read operation timed out"
-    except requests.exceptions.Timeout:
-        raise base.SalesforceError("Timeout, URL=%s" % url)
-    if response.status_code == 401:
-        # Unauthorized (expired or invalid session ID or OAuth)
-        data = response.json()[0]
-        if(data['errorCode'] == 'INVALID_SESSION_ID'):
-            token = db_alias = f.__self__.auth.reauthenticate()
-            if('headers' in kwargs):
-                kwargs['headers'].update(dict(Authorization='OAuth %s' % token))
-            try:
-                response = f(url, *args, **kwargs_in)
-            except requests.exceptions.Timeout:
-                raise base.SalesforceError("Timeout, URL=%s" % url)
-
-    if response.status_code in (200, 201, 204):
-        return response
-
-    # TODO Remove this verbose setting after tuning of specific messages.
-    #      Currently it is better more or less.
-    # http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
-    verbose = not getattr(getattr(_cursor, 'query', None), 'debug_silent', False)
-    # Errors are reported in the body
-    data = response.json()[0]
-    if response.status_code == 404:  # ResourceNotFound
-        if (f.__func__.__name__ == 'delete') and data['errorCode'] in (
-                'ENTITY_IS_DELETED', 'INVALID_CROSS_REFERENCE_KEY'):
-            # It is a delete command and the object is in trash bin or
-            # completely deleted or it only could be a valid Id for this type
-            # then is ignored similarly to delete by a classic database query:
-            # DELETE FROM xy WHERE id = 'something_deleted_yet'
-            return None
-        else:
-            # if this Id can not be ever valid.
-            raise base.SalesforceError("Couldn't connect to API (404): %s, URL=%s"
-                    % (response.text, url), data, response, verbose)
-    if(data['errorCode'] == 'INVALID_FIELD'):
-        raise base.SalesforceError(data['message'], data, response, verbose)
-    elif(data['errorCode'] == 'MALFORMED_QUERY'):
-        raise base.SalesforceError(data['message'], data, response, verbose)
-    elif(data['errorCode'] == 'INVALID_FIELD_FOR_INSERT_UPDATE'):
-        raise base.SalesforceError(data['message'], data, response, verbose)
-    elif(data['errorCode'] == 'METHOD_NOT_ALLOWED'):
-        raise base.SalesforceError('%s: %s' % (url, data['message']), data, response, verbose)
-    # some kind of failed query
-    else:
-        raise base.SalesforceError('%s' % data, data, response, verbose)
 
 def prep_for_deserialize_inner(model, record, init_list=None):
     fields = dict()
@@ -224,7 +161,8 @@ def prep_for_deserialize(model, record, using, init_list=None):
     fields = prep_for_deserialize_inner(model, record, init_list=init_list)
 
     if init_list and set(init_list).difference(fields).difference([SF_PK]):
-        raise base.DatabaseError("Not found some expected fields")
+        raise DatabaseError("Not found some expected fields")
+
     return dict(
         model='.'.join([app_label, model.__name__]),
         pk=record.pop('Id'),
@@ -272,7 +210,7 @@ def extract_values_inner(row, query):
         if isinstance(field, (models.ForeignKey, models.BooleanField, models.DecimalField)):
             if value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
                 continue
-        if isinstance(value, models.DefaultedOnCreate):
+        if isinstance(value, DefaultedOnCreate):
             continue
         [arg] = process_json_args([value])
         d[field.column] = arg
@@ -478,8 +416,6 @@ class CursorWrapper(object):
         """
         Send a query to the Salesforce API.
         """
-        from salesforce.backend import base
-
         self.rowcount = None
         if isinstance(self.query, SalesforceQuery) or self.query is None:
             response = self.execute_select(q, args)
@@ -493,7 +429,7 @@ class CursorWrapper(object):
         elif isinstance(self.query, subqueries.DeleteQuery):
             response = self.execute_delete(self.query)
         else:
-            raise base.DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
+            raise DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
 
         if response and isinstance(response, list):
             # bulk operation SOAP
@@ -520,7 +456,7 @@ class CursorWrapper(object):
                 return
             # something we don't recognize
             else:
-                raise base.DatabaseError(data)
+                raise DatabaseError(data)
 
             if q.upper().startswith('SELECT COUNT() FROM'):
                 # COUNT() queries in SOQL are a special case, as they don't actually return rows

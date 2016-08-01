@@ -5,13 +5,13 @@
 # See LICENSE.md for details
 #
 
+import itertools
 import re
 
 import django.db.backends.utils
-import itertools
+from django.utils.deconstruct import deconstructible
 
 from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
-from salesforce.models import DefaultedOnCreate
 import salesforce.backend.driver
 
 if DJANGO_18_PLUS:
@@ -74,7 +74,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         return BULK_BATCH_SIZE
 
     # This SQL is not important because we control the db from the compiler
-    # but anything must exist
+    # but something must exist
     if DJANGO_19_PLUS:
         def bulk_insert_sql(self, fields, placeholder_rows):
             return "VALUES " + ", ".join(itertools.chain(*placeholder_rows))
@@ -82,3 +82,24 @@ class DatabaseOperations(BaseDatabaseOperations):
         def bulk_insert_sql(self, fields, num_values):
             items_sql = "(%s)" % ", ".join(["%s"] * len(fields))
             return "VALUES " + ", ".join([items_sql] * num_values)
+
+@deconstructible
+class DefaultedOnCreate(object):
+    """
+    The default value which denotes that the value should skipped and
+    replaced later on the SFDC server.
+
+    It should not be replaced by Django, because SF can do it better or
+    even no real ralue neither None is accepted.
+    SFDC can set the correct value only if the field is omitted as the REST API.
+    (No normal soulution exists e.g. for some builtin foreign keys with
+    SF attributes 'defaultedOnCreate: true, nillable: false')
+
+    Example: `Owner` field is assigned to the current user if the field User is omitted.
+
+        Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+                default=models.DefaultedOnCreate(),
+                db_column='OwnerId')
+    """
+    def __str__(self):
+        return 'DEFAULTED_ON_CREATE'

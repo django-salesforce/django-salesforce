@@ -20,18 +20,18 @@ import warnings
 from django.db import models
 from django.db.models.base import ModelBase
 # Only these two `on_delete` options are currently supported
-from django.db.models import PROTECT, DO_NOTHING
+from django.db.models import PROTECT, DO_NOTHING  # NOQA
 # from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
-from django.utils.deconstruct import deconstructible
 from django.utils.six import with_metaclass, text_type
 
 from salesforce.backend import manager
 from salesforce.fields import SalesforceAutoField, SF_PK, SfField, ForeignKey
-from salesforce.fields import *  # NOQA imports for other modules
-
+from salesforce.fields import DEFAULTED_ON_CREATE, NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
+from salesforce.fields import *  # NOQA - imports for other modules
 from salesforce import DJANGO_18_PLUS
 
-__all__ = ('SalesforceModel', 'Model', 'DEFAULTED_ON_CREATE', 'PROTECT', 'DO_NOTHING', 'SF_PK', 'SfField')
+__all__ = ('SalesforceModel', 'Model', 'DEFAULTED_ON_CREATE', 'PROTECT', 'DO_NOTHING', 'SF_PK', 'SfField',
+           'NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY')
 log = logging.getLogger(__name__)
 
 
@@ -200,24 +200,4 @@ def make_dynamic_fields(pattern_module, dynamic_field_patterns, attrs):
                 attrs[field.name] = new_field
 
 
-@deconstructible
-class DefaultedOnCreate(object):
-    """
-    Default value that means that it shoud be replaced by Salesforce, not
-    by Django, because SF does it or even no real ralue nor None is accepted.
-    (e.g. for some builtin foreign keys with SF attributes
-    'defaultedOnCreate: true, nillable: false')
-    SFDC will set the correct value only if the field is omitted as the REST API.
-
-    Example: `Owner` field is assigned to the current user if the field User is omitted.
-
-        Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                default=models.DefaultedOnCreate(),
-                db_column='OwnerId')
-    """
-    def __str__(self):
-        return 'DEFAULTED_ON_CREATE'
-
-
-DEFAULTED_ON_CREATE = DefaultedOnCreate()
 Model = SalesforceModel

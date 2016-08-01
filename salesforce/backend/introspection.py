@@ -12,8 +12,10 @@ Salesforce introspection code.
 import logging
 import re
 
-from salesforce import models, DJANGO_18_PLUS
+from salesforce import DJANGO_18_PLUS
+from salesforce.backend import driver
 from salesforce.fields import SF_PK
+import salesforce.fields
 
 from django.conf import settings
 if DJANGO_18_PLUS:
@@ -82,7 +84,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         if self._table_list_cache is None:
             url = query.rest_api_url(self.connection.sf_session, 'sobjects')
             log.debug('Request API URL: %s' % url)
-            response = query.handle_api_exceptions(url, self.connection.sf_session.get)
+            response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
             # charset is detected from headers by requests package
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
         return self._table_list_cache
@@ -91,7 +93,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         if table not in self._table_description_cache:
             url = query.rest_api_url(self.connection.sf_session, 'sobjects', table, 'describe/')
             log.debug('Request API URL: %s' % url)
-            response = query.handle_api_exceptions(url, self.connection.sf_session.get)
+            response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
             self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
             assert self._table_description_cache[table]['fields'][0]['type'] == 'id'
             assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
@@ -240,7 +242,10 @@ class SymbolicModelsName(object):
     """
     def __init__(self, name):
         self.name = 'models.%s' % name
-        self.value = getattr(models, name)
+        # it is imported from salesforce.fields due to dependencies,
+        # but it is the same as in salesforce.models
+        self.value = getattr(salesforce.fields, name)
+
     def __repr__(self):
         return self.name
 
