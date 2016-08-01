@@ -12,16 +12,18 @@ import itertools
 
 from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
 from salesforce.models import DefaultedOnCreate
+import salesforce.backend.driver
 
 if DJANGO_18_PLUS:
     from django.db.backends.base.operations import BaseDatabaseOperations
 else:
     from django.db.backends import BaseDatabaseOperations
 
+BULK_BATCH_SIZE = 200 if salesforce.backend.driver.beatbox else 25
+
 """
 Default database operations, with unquoted names.
 """
-
 class DatabaseOperations(BaseDatabaseOperations):
     compiler_module = "salesforce.backend.compiler"
 
@@ -69,8 +71,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         return django.db.backends.utils.format_number(value, max_digits, decimal_places)
 
     def bulk_batch_size(self, fields, objs):
-        limit = 25
-        return limit
+        return BULK_BATCH_SIZE
 
     # This SQL is not important because we control the db from the compiler
     # but anything must exist
