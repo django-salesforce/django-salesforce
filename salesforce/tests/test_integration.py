@@ -358,11 +358,21 @@ class BasicSOQLRoTest(TestCase):
         # Operators regex and iregex not tested because they are not supported.
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    def test_unsupported_bulk_create(self):
-        """Unsupported bulk_create: "Errors should never pass silently."
+    def test_bulk_create(self):
+        """Create two Contacts by one request in one command and find them.
         """
-        objects = [Contact(last_name='sf_test a'), Contact(last_name='sf_test b')]
-        self.assertRaises(AssertionError, Contact.objects.bulk_create, objects)
+        account = Account(Name='test bulk')
+        account.save()
+        try:
+            objects = [Contact(last_name='sf_test a', account=account),
+                       Contact(last_name='sf_test b', account=account)]
+            request_count_0 = salesforce.backend.query.request_count
+            ret = Contact.objects.bulk_create(objects)
+            request_count_1 = salesforce.backend.query.request_count
+            self.assertEqual(request_count_1,  request_count_0 + 1)
+            self.assertEqual(len(Contact.objects.filter(account=account)), 2)
+        finally:
+            account.delete()
 
     def test_escape_single_quote(self):
         """Test single quotes in strings used in a filter

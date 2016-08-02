@@ -69,6 +69,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     allows_group_by_pk = True
     supports_unspecified_pk = False
     can_return_id_from_insert = False
+    has_bulk_insert = True
     # TODO If the following would be True, it requires a good relation name resolution
     supports_select_related = False
     # Though Salesforce doesn't support transactions, the setting

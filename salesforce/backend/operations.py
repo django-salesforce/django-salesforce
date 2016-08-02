@@ -8,8 +8,9 @@
 import re
 
 import django.db.backends.utils
+import itertools
 
-from salesforce import DJANGO_18_PLUS
+from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
 from salesforce.models import DefaultedOnCreate
 
 if DJANGO_18_PLUS:
@@ -66,3 +67,17 @@ class DatabaseOperations(BaseDatabaseOperations):
         if isinstance(value, DefaultedOnCreate):
             return value
         return django.db.backends.utils.format_number(value, max_digits, decimal_places)
+
+    def bulk_batch_size(self, fields, objs):
+        limit = 25
+        return limit
+
+    # This SQL is not important because we control the db from the compiler
+    # but anything must exist
+    if DJANGO_19_PLUS:
+        def bulk_insert_sql(self, fields, placeholder_rows):
+            return "VALUES " + ", ".join(itertools.chain(*placeholder_rows))
+    else:
+        def bulk_insert_sql(self, fields, num_values):
+            items_sql = "(%s)" % ", ".join(["%s"] * len(fields))
+            return "VALUES " + ", ".join([items_sql] * num_values)

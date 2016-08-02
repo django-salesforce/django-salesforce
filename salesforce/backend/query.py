@@ -222,16 +222,20 @@ def prep_for_deserialize(model, record, using, init_list=None):
         fields=fields,
     )
 
+
 def extract_values(query):
     """
     Extract values from insert or update query.
+    Supports bulk_create
     """
     if isinstance(query, subqueries.UpdateQuery):
         row = query.values
         return extract_values_inner(row, query)
     else:
-        row = query.objs[0]
-        return [extract_values_inner(row, query)]
+        ret = []
+        for row in query.objs:
+            ret.append(extract_values_inner(row, query))
+        return ret
 
 
 def extract_values_inner(row, query):
@@ -254,7 +258,6 @@ def extract_values_inner(row, query):
                 continue
         else:
             # insert
-            assert len(query.objs) == 1, "bulk_create is not supported by Salesforce REST API"
             value = getattr(row, field.attname)
         # The 'DEFAULT' is a backward compatibility name.
         if isinstance(field, (models.ForeignKey, models.BooleanField, models.DecimalField)):
@@ -464,8 +467,12 @@ class CursorWrapper(object):
         else:
             raise base.DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
 
+        if response and isinstance(response, list):
+            # bulk operation SOAP
+            if all(x['success'] for x in response):
+                self.lastrowid = [item['id'] for item in response]
         # the encoding is detected automatically, e.g. from headers
-        if(response and response.text):
+        elif(response and response.text):
             # parse_float set to decimal.Decimal to avoid precision errors when
             # converting from the json number to a float to a Decimal object
             # on a model's DecimalField...converts from json number directly
@@ -477,6 +484,11 @@ class CursorWrapper(object):
             # a successful INSERT query, return after getting PK
             elif('success' in data and 'id' in data):
                 self.lastrowid = data['id']
+                return
+            elif data['hasErrors'] == False:
+                # save id from bulk_create even if Django don't use it
+                if data['results'] and data['results'][0]['result']:
+                    self.lastrowid = [item['result']['id'] for item in data['results']]
                 return
             # something we don't recognize
             else:
@@ -508,9 +520,30 @@ class CursorWrapper(object):
         table = query.model._meta.db_table
         headers = {'Content-Type': 'application/json'}
         post_data = extract_values(query)
-        if True:  # only single object supported still
+        if len(post_data) == 1:
+            # single object
             url = rest_api_url(self.session, 'sobjects', table, '')
             post_data = post_data[0]
+        elif not self.use_soap_for_bulk:
+            # bulk by REST
+            url = rest_api_url(self.session, 'composite/batch')
+            post_data = {
+                'batchRequests': [{'method': 'POST',
+                                   'url': 'v{0}/sobjects/{1}'.format(salesforce.API_VERSION,
+                                                                     table),
+                                   'richInput': row
+                                   }
+                                  for row in post_data
+                                  ]
+                         }
+        else:
+            # bulk by SOAP
+            svc = salesforce.utils.get_soap_client('salesforce')
+            for x in post_data:
+                x.update({'type': table})
+            ret = svc.create(post_data)
+            return ret
+
         log.debug('INSERT %s%s' % (table, post_data))
         return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
 
