@@ -550,15 +550,56 @@ class CursorWrapper(object):
     def execute_update(self, query):
         table = query.model._meta.db_table
         # this will break in multi-row updates
+        assert (len(query.where.children) == 1 and
+                query.where.children[0].lookup_name in ('exact', 'in') and
+                query.where.children[0].lhs.target.column == 'Id')
         pk = query.where.children[0].rhs
         assert pk
-        url = rest_api_url(self.session, 'sobjects', table, pk)
         headers = {'Content-Type': 'application/json'}
         post_data = extract_values(query)
         log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-        ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data), _cursor=self)
+        if isinstance(pk, (tuple, list, SalesforceQuerySet)):
+            if not self.use_soap_for_bulk:
+                # bulk by REST
+                url = rest_api_url(self.session, 'composite/batch')
+                last_mod = None
+                if pk and hasattr(pk[0], 'pk'):
+                    last_mod = max(getattr(x, fld.name)
+                                   for x in pk if hasattr(x, 'pk')
+                                   for fld in x._meta.fields if fld.db_column=='LastModifiedDate'
+                                   )
+                if last_mod is None:
+                    last_mod = datetime.datetime.utcnow()
+                post_data = {
+                    'batchRequests': [{'method' : 'PATCH',
+                                       'url' : 'v{0}/sobjects/{1}/{2}'.format(salesforce.API_VERSION,
+                                                                              table,
+                                                                              getattr(x, 'pk', x)),
+                                       'richInput': post_data
+                                       }
+                                      for x in pk
+                                      ]
+                             }
+                import time
+                headers.update({'If-Unmodified-Since': time.strftime('%a, %d %b %Y %H:%M:%S GMT',
+                               (last_mod + datetime.timedelta(seconds=0)).timetuple())})
+                _ret = handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
+            else:
+                # bulk by SOAP
+                svc = salesforce.utils.get_soap_client('salesforce')
+                out = []
+                for x in pk:
+                    d = post_data.copy()
+                    d.update({'type': table, 'Id': getattr(x, 'pk', x)})
+                    out.append(d)
+                ret = svc.update(out)
+                return ret
+        else:
+            # single request
+            url = rest_api_url(self.session, 'sobjects', table, pk)
+            _ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data), _cursor=self)
         self.rowcount = 1
-        return ret
+        return _ret
 
     def execute_delete(self, query):
         table = query.model._meta.db_table
