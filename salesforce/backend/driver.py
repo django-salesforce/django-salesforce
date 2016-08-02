@@ -2,6 +2,10 @@
 Dummy Salesforce driver that simulates some parts of DB API 2
 """
 from django.utils.six import PY3
+try:
+    import beatbox
+except ImportError:
+    beatbox = None
 
 import logging
 log = logging.getLogger(__name__)

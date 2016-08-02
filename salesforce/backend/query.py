@@ -33,7 +33,7 @@ import pytz
 from salesforce import models, DJANGO_18_PLUS, DJANGO_19_PLUS
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
-import salesforce
+import salesforce.backend.driver
 
 try:
     from urllib.parse import urlencode
@@ -226,6 +226,15 @@ def extract_values(query):
     """
     Extract values from insert or update query.
     """
+    if isinstance(query, subqueries.UpdateQuery):
+        row = query.values
+        return extract_values_inner(row, query)
+    else:
+        row = query.objs[0]
+        return [extract_values_inner(row, query)]
+
+
+def extract_values_inner(row, query):
     d = dict()
     fields = query.model._meta.fields
     for index in range(len(fields)):
@@ -245,9 +254,8 @@ def extract_values(query):
                 continue
         else:
             # insert
-            # TODO bulk insert
             assert len(query.objs) == 1, "bulk_create is not supported by Salesforce REST API"
-            value = getattr(query.objs[0], field.attname)
+            value = getattr(row, field.attname)
         # The 'DEFAULT' is a backward compatibility name.
         if isinstance(field, (models.ForeignKey, models.BooleanField, models.DecimalField)):
             if value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
@@ -256,8 +264,8 @@ def extract_values(query):
             continue
         [arg] = process_json_args([value])
         d[field.column] = arg
-    #print("postdata : %s" % d)
     return d
+
 
 class SalesforceRawQuerySet(query.RawQuerySet):
     def __len__(self):
@@ -405,10 +413,16 @@ class CursorWrapper(object):
     This is the class that is actually responsible for making connections
     to the SF REST API
     """
+    # This can be used to disable SOAP API for bulk operations even if beatbox
+    # is installed and use REST API Bulk requests (Useful for tests, but worse
+    # than SOAP especially due to governor limits.) 
+    use_soap_for_bulk = True
+
     def __init__(self, db, query=None):
         """
         Connect to the Salesforce API.
         """
+        import salesforce.utils
         self.db = db
         self.query = query
         self.session = db.sf_session
@@ -416,6 +430,8 @@ class CursorWrapper(object):
         self.results = None
         self.rowcount = None
         self.first_row = None
+        if salesforce.backend.driver.beatbox is None:
+            self.use_soap_for_bulk = False
 
     def __enter__(self):
         return self
@@ -490,10 +506,11 @@ class CursorWrapper(object):
 
     def execute_insert(self, query):
         table = query.model._meta.db_table
-        url = rest_api_url(self.session, 'sobjects', table, '')
         headers = {'Content-Type': 'application/json'}
         post_data = extract_values(query)
-
+        if True:  # only single object supported still
+            url = rest_api_url(self.session, 'sobjects', table, '')
+            post_data = post_data[0]
         log.debug('INSERT %s%s' % (table, post_data))
         return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
 
