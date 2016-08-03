@@ -16,6 +16,8 @@ import threading
 
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
+from requests.adapters import HTTPAdapter
+
 from salesforce.auth import SalesforcePasswordAuth
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
@@ -24,7 +26,6 @@ from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.driver import IntegrityError, DatabaseError  # NOQA
 from salesforce.backend import driver as Database, get_max_retries
-from salesforce.backend.adapter import SslHttpAdapter
 # from django.db.backends.signals import connection_created
 
 from salesforce import DJANGO_18_PLUS
@@ -139,7 +140,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
                                                          settings_dict=self.settings_dict)
                 sf_instance_url = sf_session.auth.instance_url
-                sf_requests_adapter = SslHttpAdapter(max_retries=get_max_retries())
+                sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
                 sf_session.mount(sf_instance_url, sf_requests_adapter)
                 # Additional header works, but the improvement is immeasurable for
                 # me. (less than SF speed fluctuation)

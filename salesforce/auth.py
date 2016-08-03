@@ -19,13 +19,14 @@ import base64
 import hashlib
 import hmac
 import logging
-import requests
 import threading
+
 from django.db import connections
+import requests
+from requests.adapters import HTTPAdapter
+from requests.auth import AuthBase
 from salesforce.backend import get_max_retries
 from salesforce.backend.driver import DatabaseError, IntegrityError
-from salesforce.backend.adapter import SslHttpAdapter
-from requests.auth import AuthBase
 
 # TODO hy: more advanced methods with ouathlib can be implemented, but
 #      the simple doesn't require a special package.
@@ -173,7 +174,7 @@ class SalesforcePasswordAuth(SalesforceAuth):
         url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
 
         log.info("attempting authentication to %s" % settings_dict['HOST'])
-        self._session.mount(settings_dict['HOST'], SslHttpAdapter(max_retries=get_max_retries()))
+        self._session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=get_max_retries()))
         response = self._session.post(url, data=dict(
             grant_type      = 'password',
             client_id       = settings_dict['CONSUMER_KEY'],

@@ -219,12 +219,6 @@ Some Salesforce fields can not be fully used without special attributes, namely
 read-only and default value fields. Further details can be found in
 `Introspection and Special Attributes of Fields <https://github.com/django-salesforce/django-salesforce/wiki/Introspection-and-Special-Attributes-of-Fields>`__
 
-SSL/TLS settings
-----------------
-For more details on SSL support in Django-Salesforce, particularly relating to
-the 2016 deprecation of TLS 1.0 on Salesforce.com, visit the wiki article,
-`SSL/TLS and Salesforce.com <https://github.com/django-salesforce/django-salesforce/wiki/SSL-TLS-settings-and-Salesforce.com>`__
-
 Caveats
 -------
 
