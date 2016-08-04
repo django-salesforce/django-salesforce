@@ -9,10 +9,15 @@ using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
-Python 2.7.9+, 3.4, 3.5, Django 1.8.4+, 1.9. are supported and tested continuously
-(Python 3.3 and PyPy probably still work, but not tested more. Django 1.10
-is currently being implemeted and Django 1.7 is beeing removed.)
+Python 2.7.9+, 3.4, 3.5, Django 1.7, 1.8.4+, 1.9., 1.10 are supported.
 Currently problematic: raw queries, values_list() and values() methods.
+Django 1.10 is currently supported without values(), values_list(), defer(),
+some raw() methods and without makemigrations.
+The full support of 1.10 can be still expected during August 2016.
+(Make it a footnote:
+The lowest Python versions are restricted by TLSv1.1 support that is
+required for development sites now. PyPy probably still works, but it
+seems not easy to get a precompiled version linked to a new libssl.)
 
 Quick Start
 -----------

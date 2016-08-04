@@ -22,7 +22,6 @@ from django.db import connections
 from django.db.models import query, Count
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
-from django.db.models.query_utils import deferred_class_factory
 from django.utils.six import PY3
 
 from itertools import islice
@@ -30,10 +29,13 @@ from itertools import islice
 import requests
 import pytz
 
-from salesforce import models, DJANGO_18_PLUS, DJANGO_19_PLUS
+from salesforce import models, DJANGO_18_PLUS, DJANGO_110_PLUS
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 import salesforce.backend.driver
+
+if not DJANGO_110_PLUS:
+    from django.db.models.query_utils import deferred_class_factory
 
 try:
     from urllib.parse import urlencode
@@ -168,6 +170,32 @@ def handle_api_exceptions(url, f, *args, **kwargs):
     else:
         raise base.SalesforceError('%s' % data, data, response, verbose)
 
+def prep_for_deserialize_inner(model, record, init_list=None):
+    fields = dict()
+    for x in model._meta.fields:
+        if not x.primary_key and (not init_list or x.name in init_list):
+            if x.column.endswith('.Type'):
+                # Type of generic foreign key
+                simple_column, _ = x.column.split('.')
+                fields[x.name] = record[simple_column]['Type']
+            else:
+                # Normal fields
+                field_val = record[x.column]
+                #db_type = x.db_type(connection=connections[using])
+                if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
+                    d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
+                    import pytz
+                    d = d.replace(tzinfo=pytz.utc)
+                    if settings.USE_TZ:
+                        fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
+                    else:
+                        tz = pytz.timezone(settings.TIME_ZONE)
+                        d = tz.normalize(d.astimezone(tz))
+                        fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT[:-6])
+                else:
+                    fields[x.name] = field_val
+    return fields
+
 def prep_for_deserialize(model, record, using, init_list=None):
     """
     Convert a record from SFDC (decoded JSON) to dict(model string, pk, fields)
@@ -193,32 +221,10 @@ def prep_for_deserialize(model, record, using, init_list=None):
             if record is None:
                 return None
 
-    fields = dict()
-    for x in model._meta.fields:
-        if not x.primary_key and (not init_list or x.name in init_list):
-            if x.column.endswith('.Type'):
-                # Type of generic foreign key
-                simple_column, _ = x.column.split('.')
-                fields[x.name] = record[simple_column]['Type']
-            else:
-                # Normal fields
-                field_val = record[x.column]
-                #db_type = x.db_type(connection=connections[using])
-                if(x.__class__.__name__ == 'DateTimeField' and field_val is not None):
-                    d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
-                    import pytz
-                    d = d.replace(tzinfo=pytz.utc)
-                    if settings.USE_TZ:
-                        fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
-                    else:
-                        tz = pytz.timezone(settings.TIME_ZONE)
-                        d = tz.normalize(d.astimezone(tz))
-                        fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT[:-6])
-                else:
-                    fields[x.name] = field_val
+    fields = prep_for_deserialize_inner(model, record, init_list=init_list)
+
     if init_list and set(init_list).difference(fields).difference([SF_PK]):
         raise base.DatabaseError("Not found some expected fields")
-
     return dict(
         model='.'.join([app_label, model.__name__]),
         pk=record.pop('Id'),
@@ -296,8 +302,6 @@ class SalesforceQuerySet(query.QuerySet):
         cursor = CursorWrapper(connections[self.db], self.query)
         cursor.execute(sql, params)
 
-        pfd = prep_for_deserialize
-
         only_load = self.query.get_loaded_field_names()
         load_fields = []
         # If only/defer clauses have been specified,
@@ -328,14 +332,27 @@ class SalesforceQuerySet(query.QuerySet):
                     skip.add(field.attname)
                 else:
                     init_list.append(field.name)
-            model_cls = deferred_class_factory(self.model, skip)
+            if DJANGO_110_PLUS:
+                model_cls = self.model
+            else:
+                model_cls = deferred_class_factory(self.model, skip)
 
         field_names = self.query.get_loaded_field_names()
-        for res in python.Deserializer(x for x in (pfd(model_cls, r, self.db, init_list) for r in cursor.results) if x is not None):
+        for res in python.Deserializer(
+                x for x in
+                (prep_for_deserialize(model_cls, r, self.db, init_list)
+                 for r in cursor.results
+                 )
+                if x is not None
+        ):
             # Store the source database of the object
             res.object._state.db = self.db
             # This object came from the database; it's not being added.
             res.object._state.adding = False
+
+            if DJANGO_110_PLUS and init_list is not None and len(init_list) != len(model_cls._meta.concrete_fields):
+                raise NotImplementedError("methods defer() and only() are not implemented for Django 1.10 yet")
+
             yield res.object
 
     def query_all(self):
@@ -371,9 +388,9 @@ class SalesforceRawQuery(RawQuery):
         return "<SalesforceRawQuery: %s; %r>" % (self.sql, tuple(self.params))
 
     def __iter__(self):
+        #import pdb; pdb.set_trace()
         for row in super(SalesforceRawQuery, self).__iter__():
             if DJANGO_18_PLUS:
-                #import pdb; pdb.set_trace()
                 row = [row[k] for k in self.get_columns()]
             yield row
 

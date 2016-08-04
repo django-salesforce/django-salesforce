@@ -19,6 +19,7 @@ from django.utils.encoding import smart_text
 from django.utils.six import string_types
 
 from salesforce import DJANGO_19_PLUS
+import salesforce
 
 # None of field types defined in this module need a "deconstruct" method,
 # in Django 1.7+, because their parameters only describe fixed nature of SF
@@ -160,6 +161,14 @@ class BooleanField(SfField, models.BooleanField):
     """BooleanField with sf_read_only attribute for Salesforce."""
     def __init__(self, default=False, **kwargs):
         super(BooleanField, self).__init__(default=default, **kwargs)
+
+    def to_python(self, value):
+        if isinstance(value, salesforce.models.DefaultedOnCreate):
+            return value
+        else:
+            return super(BooleanField, self).to_python(value)
+
+
 class DecimalField(SfField, models.DecimalField):
     """DecimalField with sf_read_only attribute for Salesforce."""
     def to_python(self, value):

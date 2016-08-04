@@ -24,7 +24,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
         Product, Pricebook, PricebookEntry, Note, Task,
         Organization, models_template,
         )
-from salesforce import router, DJANGO_18_PLUS
+from salesforce import router, DJANGO_18_PLUS, DJANGO_110_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid
@@ -624,6 +624,9 @@ class BasicSOQLRoTest(TestCase):
     def test_queryset_values(self):
         """Test list of dict qs.values() and list of tuples qs.values_list()
         """
+        tmp = Contact.objects.values('pk', 'last_name')
+        # import pdb; pdb.set_trace()
+        tmp[0]
         values = Contact.objects.values()[:2]
         self.assertEqual(len(values), 2)
         self.assertIn('first_name', values[0])
@@ -719,6 +722,7 @@ class BasicSOQLRoTest(TestCase):
     #   list(Contact.objects.raw("select Count() from Contact"))
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_only_fields(self):
         """Verify that access to "only" fields doesn't require a request, but others do.
         """
@@ -738,6 +742,7 @@ class BasicSOQLRoTest(TestCase):
         self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 5)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_defer_fields(self):
         """Verify that access to a deferred field requires a new request, but others don't.
         """
@@ -749,8 +754,10 @@ class BasicSOQLRoTest(TestCase):
         _ = contact.email
         self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 2)
 
+    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_incomplete_raw(self):
-        Contact.objects.raw("select id from Contact")[0].last_name
+        last_name = Contact.objects.raw("select id from Contact")[0].last_name
+        self.assertGreater(len(last_name), 0)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_filter_by_more_fk_to_the_same_model(self):
