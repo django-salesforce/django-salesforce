@@ -67,7 +67,6 @@ class BasicSOQLRoTest(TestCase):
             user.save()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_18_PLUS)
     def test_raw(self):
         """Get the first two contact records.
 
@@ -75,14 +74,13 @@ class BasicSOQLRoTest(TestCase):
         """
         contacts = Contact.objects.raw(
                 "SELECT Id, LastName, FirstName FROM Contact "
-                "LIMIT 2")
+                "LIMIT 2", translation={'id': 'Id'})
         self.assertEqual(len(contacts), 2)
         # It had a side effect that the same assert failed second times.
         self.assertEqual(len(contacts), 2)
         '%s' % contacts[0].__dict__  # Check that all fields are accessible
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_18_PLUS)
     def test_raw_foreignkey_id(self):
         """Get the first two contacts by raw query with a ForeignKey id field.
         """
@@ -408,7 +406,6 @@ class BasicSOQLRoTest(TestCase):
             account.delete()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_18_PLUS)
     def test_escape_single_quote_in_raw_query(self):
         """Test that manual escaping within a raw query is not double escaped.
         """
@@ -700,7 +697,6 @@ class BasicSOQLRoTest(TestCase):
         _ = contact.email
         self.assertEqual(salesforce.backend.query.request_count, request_count_0 + 2)
 
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_18_PLUS)
     def test_incomplete_raw(self):
         Contact.objects.raw("select id from Contact")[0].last_name
 

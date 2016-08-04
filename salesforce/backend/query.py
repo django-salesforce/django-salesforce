@@ -187,8 +187,11 @@ def prep_for_deserialize(model, record, using, init_list=None):
         raise ImproperlyConfigured("Can't discover the app_label for %s, you must specify it via model meta options.")
 
     if len(record.keys()) == 1 and model._meta.db_table in record:
+        # this is for objects with ManyToManyField and OneToOneField
         while len(record) == 1:
             record = list(record.values())[0]
+            if record is None:
+                return None
 
     fields = dict()
     for x in model._meta.fields:
@@ -366,6 +369,14 @@ class SalesforceRawQuery(RawQuery):
 
     def __repr__(self):
         return "<SalesforceRawQuery: %s; %r>" % (self.sql, tuple(self.params))
+
+    def __iter__(self):
+        for row in super(SalesforceRawQuery, self).__iter__():
+            if DJANGO_18_PLUS:
+                #import pdb; pdb.set_trace()
+                row = [row[k] for k in self.get_columns()]
+            yield row
+
 
 class SalesforceQuery(Query):
     """

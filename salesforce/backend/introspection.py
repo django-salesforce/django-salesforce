@@ -99,7 +99,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         return self._table_description_cache[table]
 
     def table_name_converter(self, name):
-        return name if name.lower() != 'id' else SF_PK
+        return name if (name.lower() != 'id' or DJANGO_18_PLUS) else SF_PK
 
     def get_table_list(self, cursor):
         "Returns a list of table names in the current database."
