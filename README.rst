@@ -13,6 +13,7 @@ traditional database.
 Python 2.7.9+, 3.4, 3.5, Django 1.7, 1.8.4+, 1.9., 1.10 are supported with
 some limitations on raw queries, values_list() and values() methods.
 
+Python 2.7.9+, 3.4, 3.5, Django 1.8.4+, 1.9., 1.10 are supported.
 Django 1.10 is currently supported without values(), values_list(), defer(),
 some raw() methods and without makemigrations. Full support of 1.10 is
 expected near the end of Q3 or beginning of Q4 in 2016.
