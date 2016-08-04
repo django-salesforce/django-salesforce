@@ -31,7 +31,6 @@ import requests
 import pytz
 
 from salesforce import auth, models, DJANGO_18_PLUS, DJANGO_19_PLUS
-from salesforce import DJANGO_184_PLUS
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 
@@ -333,7 +332,7 @@ class SalesforceRawQuery(RawQuery):
         # TODO hy: A more general fix is desirable with rewriting more code.
         #   This is changed due to Django 1.8.4+  https://github.com/django/django/pull/5036
         #   related to https://code.djangoproject.com/ticket/12768
-        return ['Id'] if DJANGO_184_PLUS else [SF_PK]
+        return ['Id'] if DJANGO_18_PLUS else [SF_PK]
 
     def _execute_query(self):
         self.cursor = CursorWrapper(connections[self.using], self)

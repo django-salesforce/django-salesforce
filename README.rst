@@ -9,9 +9,10 @@ using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
-Python 2.7, 3.3 - 3.5 or pypy; Django 1.7, or with small restrictions up to Django 1.9.
-Django 1.9 is currently supported without raw queries and without values_list()
-and values() methods. The usual support can be expected in the next django-salesforce version.
+Python 2.7.9+, 3.4, 3.5, Django 1.8.4+, 1.9. are supported and tested continuously
+(Python 3.3 and PyPy probably still work, but not tested more. Django 1.10
+is currently being implemeted and Django 1.7 is beeing removed.)
+Currently problematic: raw queries, values_list() and values() methods.
 
 Quick Start
 -----------
