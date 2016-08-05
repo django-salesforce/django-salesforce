@@ -1,4 +1,7 @@
-"""Tests by parsing the file modules.py exported by inspectdb."""
+"""Tests by parsing the file modules.py exported by inspectdb
+
+test of a dependent module.
+"""
 import unittest
 import os
 import re
