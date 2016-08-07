@@ -15,7 +15,7 @@ import warnings
 
 import django
 
-__version__ = "0.6.3"
+__version__ = "0.6.9"
 
 DJANGO_18_PLUS = django.VERSION[:2] >= (1, 8)
 DJANGO_19_PLUS = django.VERSION[:3] >= (1, 9)
