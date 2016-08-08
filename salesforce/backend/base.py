@@ -27,12 +27,8 @@ from salesforce.backend.driver import IntegrityError, DatabaseError, SalesforceE
 from salesforce.backend import introspection, driver as Database, get_max_retries
 # from django.db.backends.signals import connection_created
 
-from salesforce import DJANGO_18_PLUS
-if DJANGO_18_PLUS:
-    from django.db.backends.base.base import BaseDatabaseWrapper
-    from django.db.backends.base.features import BaseDatabaseFeatures
-else:
-    from django.db.backends import BaseDatabaseWrapper, BaseDatabaseFeatures
+from django.db.backends.base.base import BaseDatabaseWrapper
+from django.db.backends.base.features import BaseDatabaseFeatures
 try:
     from urllib.parse import urlparse
 except ImportError:

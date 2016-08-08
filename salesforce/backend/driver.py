@@ -32,7 +32,7 @@ API_STUB = '/services/data/v35.0'
 request_count = 0  # global counter
 
 # All error types described in DB API 2 are implemented the same way as in
-# Django 1.6, otherwise some exceptions are not correctly reported in it.
+# Django 1.8, otherwise some exceptions are not correctly reported in it.
 
 
 class Error(Exception if PY3 else StandardError):

@@ -28,10 +28,10 @@ from salesforce.backend import manager
 from salesforce.fields import SalesforceAutoField, SF_PK, SfField, ForeignKey
 from salesforce.fields import DEFAULTED_ON_CREATE, NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
 from salesforce.fields import *  # NOQA - imports for other modules
-from salesforce import DJANGO_18_PLUS
 
 __all__ = ('SalesforceModel', 'Model', 'DEFAULTED_ON_CREATE', 'PROTECT', 'DO_NOTHING', 'SF_PK', 'SfField',
            'NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY')
+
 log = logging.getLogger(__name__)
 
 
@@ -44,8 +44,6 @@ class SalesforceModelBase(ModelBase):
     """
     def __new__(cls, name, bases, attrs):
         attr_meta = attrs.get('Meta', None)
-        if not DJANGO_18_PLUS and len(getattr(attr_meta, 'verbose_name', '')) > 39:
-            attr_meta.verbose_name = attr_meta.verbose_name[:39]
         supplied_db_table = getattr(attr_meta, 'db_table', None)
         if getattr(attr_meta, 'dynamic_field_patterns', None):
             pattern_module, dynamic_field_patterns = getattr(attr_meta, 'dynamic_field_patterns')
