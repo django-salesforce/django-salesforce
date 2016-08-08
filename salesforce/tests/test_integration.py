@@ -172,6 +172,12 @@ class BasicSOQLRoTest(TestCase):
             if new_e:
                 new_e.delete()
 
+        # this had fail, therefore moved at the end and itemized for debugging
+        # qs = User.objects.exclude(apex_email_notification=None)
+        # print(qs.query.get_compiler('salesforce').as_sql())
+        # list(qs)
+        list(User.objects.exclude(apex_email_notification=None))
+
     def test_update_date(self):
         """Test updating a date.
         """

@@ -188,7 +188,7 @@ def prep_for_deserialize(model, record, using, init_list=None):
 
     if len(record.keys()) == 1 and model._meta.db_table in record:
         # this is for objects with ManyToManyField and OneToOneField
-        while len(record) == 1 and list(record.values())[0]:
+        while len(record) == 1:
             record = list(record.values())[0]
             if record is None:
                 return None
@@ -331,7 +331,7 @@ class SalesforceQuerySet(query.QuerySet):
             model_cls = deferred_class_factory(self.model, skip)
 
         field_names = self.query.get_loaded_field_names()
-        for res in python.Deserializer(pfd(model_cls, r, self.db, init_list) for r in cursor.results):
+        for res in python.Deserializer(x for x in (pfd(model_cls, r, self.db, init_list) for r in cursor.results) if x is not None):
             # Store the source database of the object
             res.object._state.db = self.db
             # This object came from the database; it's not being added.
