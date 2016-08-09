@@ -9,8 +9,6 @@ from distutils.util import strtobool
 import datetime
 import os
 import pytz
-import random
-import string
 
 from django.conf import settings
 from django.db import connections
@@ -27,7 +25,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
 from salesforce import router, DJANGO_110_PLUS, DJANGO_111_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
-from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid
+from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid_version as uid
 
 import logging
 log = logging.getLogger(__name__)
