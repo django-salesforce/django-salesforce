@@ -14,34 +14,52 @@ import requests
 import sys
 import threading
 
+from salesforce import DJANGO_18_PLUS
+
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
-from requests.adapters import HTTPAdapter
-
-from salesforce.auth import SalesforcePasswordAuth
-from salesforce.backend.client import DatabaseClient
-from salesforce.backend.creation import DatabaseCreation
-from salesforce.backend.validation import DatabaseValidation
-from salesforce.backend.operations import DatabaseOperations
-from salesforce.backend.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA - TODO
-from salesforce.backend import introspection, driver as Database, get_max_retries
-# from django.db.backends.signals import connection_created
-
-from salesforce import DJANGO_18_PLUS
+from django.db.backends.signals import connection_created
 if DJANGO_18_PLUS:
     from django.db.backends.base.base import BaseDatabaseWrapper
     from django.db.backends.base.features import BaseDatabaseFeatures
 else:
     from django.db.backends import BaseDatabaseWrapper, BaseDatabaseFeatures
+
+from salesforce.auth import SalesforceAuth
+from salesforce.backend.client import DatabaseClient
+from salesforce.backend.creation import DatabaseCreation
+from salesforce.backend.introspection import DatabaseIntrospection
+from salesforce.backend.validation import DatabaseValidation
+from salesforce.backend.operations import DatabaseOperations
+from salesforce.backend.driver import IntegrityError, DatabaseError
+from salesforce.backend import driver as Database
+from salesforce.backend import MAX_RETRIES
+from salesforce.backend.adapter import SslHttpAdapter
 try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
 
-__all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)
 log = logging.getLogger(__name__)
 
 connect_lock = threading.Lock()
+
+class SalesforceError(DatabaseError):
+    """
+    DatabaseError that usually gets detailed error information from SF response
+
+    in the second parameter, decoded from REST, that frequently need not to be
+    displayed.
+    """
+    def __init__(self, message='', data=None, response=None, verbose=False):
+        DatabaseError.__init__(self, message)
+        self.data = data
+        self.response = response
+        self.verbose = verbose
+        if verbose:
+            log.info("Error (debug details) %s\n%s", response.text,
+                    response.__dict__)
+
 
 
 class DatabaseFeatures(BaseDatabaseFeatures):
@@ -51,7 +69,6 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     allows_group_by_pk = True
     supports_unspecified_pk = False
     can_return_id_from_insert = False
-    has_bulk_insert = True
     # TODO If the following would be True, it requires a good relation name resolution
     supports_select_related = False
     # Though Salesforce doesn't support transactions, the setting
@@ -59,7 +76,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # cleaning the database in testrunner after every test and loading fixtures
     # before it, however SF does not support any of these and all test data must
     # be loaded and cleaned by the testcase code. From the viewpoint of SF it is
-    # irrelevant, but due to issue #28 (slow unit tests) it should be True.
+    # irrelevant, but due to issue #28 it should be True.
     supports_transactions = True
 
     # Never use `interprets_empty_strings_as_nulls=True`. It is an opposite
@@ -79,8 +96,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         'iexact': 'LIKE %s',
         'contains': 'LIKE %s',
         'icontains': 'LIKE %s',
-        # 'regex': 'REGEXP %s',  # unsupported
-        # 'iregex': 'REGEXP %s',
+        #'regex': 'REGEXP %s',  # unsupported
+        #'iregex': 'REGEXP %s',
         'gt': '> %s',
         'gte': '>= %s',
         'lt': '< %s',
@@ -104,7 +121,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         self.ops = DatabaseOperations(self)
         self.client = DatabaseClient(self)
         self.creation = DatabaseCreation(self)
-        self.introspection = introspection.DatabaseIntrospection(self)
+        self.introspection = DatabaseIntrospection(self)
         self.validation = DatabaseValidation(self)
         self._sf_session = None
         self._is_sandbox = None
@@ -118,15 +135,16 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         with connect_lock:
             if self._sf_session is None:
                 sf_session = requests.Session()
-                # TODO configurable class Salesforce***Auth
-                sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
-                                                         settings_dict=self.settings_dict)
-                sf_instance_url = sf_session.auth.instance_url
-                sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
+                sf_session.auth = SalesforceAuth(db_alias=self.alias, settings_dict=self.settings_dict)
+                if self.settings_dict['USER'] == 'dynamic auth':
+                    sf_instance_url = self._sf_session or self.settings_dict['HOST']
+                else:
+                    sf_instance_url = sf_session.auth.authenticate()['instance_url']
+                sf_requests_adapter = SslHttpAdapter(max_retries=MAX_RETRIES)
                 sf_session.mount(sf_instance_url, sf_requests_adapter)
-                # Additional header works, but the improvement is immeasurable for
-                # me. (less than SF speed fluctuation)
-                # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
+                # Additional header works, but the improvement unmeasurable for me.
+                # (less than SF speed fluctuation)
+                #sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
                 self._sf_session = sf_session
 
     @property
@@ -163,8 +181,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         try:
             urlparse(d['HOST'])
         except Exception as e:
-            raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" %
-                                       (self.alias, e))
+            raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" % (self.alias, e))
 
     def cursor(self, query=None):
         """

@@ -1,5 +1,4 @@
-from salesforce.testrunner.settings import *  # NOQA
-from salesforce.testrunner.settings import DATABASES, INSTALLED_APPS
+from salesforce.testrunner.settings import *
 
 SF_LAZY_CONNECT = True
 # backup the static setting and set an empty dynamic setting

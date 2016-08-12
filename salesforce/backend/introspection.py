@@ -12,10 +12,8 @@ Salesforce introspection code.
 import logging
 import re
 
-from salesforce import DJANGO_18_PLUS
-from salesforce.backend import driver
+from salesforce import models, DJANGO_18_PLUS
 from salesforce.fields import SF_PK
-import salesforce.fields
 
 from django.conf import settings
 if DJANGO_18_PLUS:
@@ -80,20 +78,26 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         self._converted_lead_status = None
 
     @property
+    def oauth(self):
+        return self.connection.sf_session.auth.authenticate()
+
+    @property
     def table_list_cache(self):
         if self._table_list_cache is None:
-            url = query.rest_api_url(self.connection.sf_session, 'sobjects')
+            url = self.oauth['instance_url'] + query.API_STUB + '/sobjects/'
+
             log.debug('Request API URL: %s' % url)
-            response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
+            response = query.handle_api_exceptions(url, self.connection.sf_session.get)
             # charset is detected from headers by requests package
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
         return self._table_list_cache
 
     def table_description_cache(self, table):
         if table not in self._table_description_cache:
-            url = query.rest_api_url(self.connection.sf_session, 'sobjects', table, 'describe/')
+            url = self.oauth['instance_url'] + query.API_STUB + ('/sobjects/%s/describe/' % table)
+
             log.debug('Request API URL: %s' % url)
-            response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
+            response = query.handle_api_exceptions(url, self.connection.sf_session.get)
             self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
             assert self._table_description_cache[table]['fields'][0]['type'] == 'id'
             assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
@@ -101,7 +105,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         return self._table_description_cache[table]
 
     def table_name_converter(self, name):
-        return name if (name.lower() != 'id' or DJANGO_18_PLUS) else SF_PK
+        return name if name.lower() != 'id' else SF_PK
 
     def get_table_list(self, cursor):
         "Returns a list of table names in the current database."
@@ -242,10 +246,7 @@ class SymbolicModelsName(object):
     """
     def __init__(self, name):
         self.name = 'models.%s' % name
-        # it is imported from salesforce.fields due to dependencies,
-        # but it is the same as in salesforce.models
-        self.value = getattr(salesforce.fields, name)
-
+        self.value = getattr(models, name)
     def __repr__(self):
         return self.name
 

@@ -5,12 +5,11 @@ Tests that do not need to connect servers
 from django.test import TestCase
 from django.db.models import DO_NOTHING
 from salesforce import fields, models
-from salesforce.testrunner.example.models import (
-        Contact, Opportunity, OpportunityContactRole, ChargentOrder)
+from salesforce.testrunner.example.models import (Contact, Opportunity,
+        OpportunityContactRole, ChargentOrder)
 
-# from salesforce.backend.subselect import TestSubSelectSearch
+from salesforce.backend.subselect import TestSubSelectSearch
 import salesforce
-
 
 class EasyCharField(models.CharField):
     def __init__(self, max_length=255, null=True, default='', **kwargs):
@@ -45,10 +44,8 @@ class TestField(TestCase):
         """
         class Aa(models.SalesforceModel):
             pass
-
         class Dest(models.SalesforceModel):
             pass
-
         def test(field, expect_attname, expect_column):
             "Compare field attributes with expected `attname` and `column`."
             field.contribute_to_class(Dest, field.name)
@@ -67,12 +64,8 @@ class TestField(TestCase):
         test(EasyForeignKey(Aa, name='account', db_column='UglyNameId'), 'account_id', 'UglyNameId')
         test(EasyForeignKey(Aa, name='CampaignMember'), 'CampaignMemberId', 'CampaignMemberId')
         test(EasyForeignKey(Aa, name='campaign_member'), 'campaign_member_id', 'CampaignMemberId')
-        test(EasyForeignKey(Aa, name='MyCustomForeignField', custom=True),
-             'MyCustomForeignFieldId',
-             'MyCustomForeignField__c')
-        test(EasyForeignKey(Aa, name='my_custom_foreign_field', custom=True),
-             'my_custom_foreign_field_id',
-             'MyCustomForeignField__c')
+        test(EasyForeignKey(Aa, name='MyCustomForeignField', custom=True), 'MyCustomForeignFieldId', 'MyCustomForeignField__c')
+        test(EasyForeignKey(Aa, name='my_custom_foreign_field', custom=True), 'my_custom_foreign_field_id', 'MyCustomForeignField__c')
 
 
 class TestQueryCompiler(TestCase):
@@ -91,29 +84,25 @@ class TestQueryCompiler(TestCase):
 
         This test is very similar to the required example in PR #103.
         """
-        qs = OpportunityContactRole.objects.filter(
-                role='abc',
+        qs = OpportunityContactRole.objects.filter(role='abc',
                 opportunity__in=Opportunity.objects.filter(stage='Prospecting'))
         sql, params = qs.query.get_compiler('salesforce').as_sql()
-        self.assertRegexpMatches(sql,
-                                 "WHERE Opportunity.StageName =",
-                                 "Probably because aliases are invalid for SFDC, e.g. 'U0.StageName'")
-        self.assertRegexpMatches(sql,
-                                 'SELECT .*OpportunityContactRole\.Role.* '
-                                 'FROM OpportunityContactRole WHERE \(.* AND .*\)')
-        self.assertRegexpMatches(sql,
-                                 'OpportunityContactRole.OpportunityId IN '
-                                 '\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
+        self.assertRegexpMatches(sql, "WHERE Opportunity.StageName =",
+                    "Probably because aliases are invalid for SFDC, e.g. 'U0.StageName'")
+        self.assertRegexpMatches(sql, 'SELECT .*OpportunityContactRole\.Role.* '
+                                        'FROM OpportunityContactRole WHERE \(.* AND .*\)')
+        self.assertRegexpMatches(sql, 'OpportunityContactRole.OpportunityId IN '
+                    '\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
         self.assertRegexpMatches(sql, 'OpportunityContactRole.Role = %s')
 
     def test_none_method_queryset(self):
         """Test that none() method in the queryset returns [], not error"""
-        request_count_0 = salesforce.backend.driver.request_count
+        request_count_0 = salesforce.backend.query.request_count
         self.assertEqual(tuple(Contact.objects.none()), ())
         self.assertEqual(tuple(Contact.objects.all().none().all()), ())
         self.assertTrue('[]' in repr(Contact.objects.none()))
-        self.assertEqual(salesforce.backend.driver.request_count, request_count_0,
-                         "Do database requests should be done with .none() method")
+        self.assertEqual(salesforce.backend.query.request_count, request_count_0,
+                "Do database requests should be done with .none() method")
 
 
 class TestTopologyCompiler(TestCase):
@@ -135,15 +124,15 @@ class TestTopologyCompiler(TestCase):
         self.assertTopo([(None, 'C', None, 'C'), ('C', 'P', (('PId', 'Id'),), 'P')], {'C': 'C', 'P': 'C.P'})
 
     def test_normal2custom(self):
-        # qs = Attachment.objects.filter(parent__name='abc')
-        # self.assertTopo()
+        #qs = Attachment.objects.filter(parent__name='abc')
+        #self.assertTopo()
         # "SELECT Attachment.Id FROM Attachment WHERE Attachment.Parent.Name = 'abc'"
         self.assertTopo([('C', 'P__c', (('PId', 'Id'),), 'P__c'), (None, 'C', ((None, None),), 'C')],
-                        {'P__c': 'C.P', 'C': 'C'})
+                         {'P__c': 'C.P', 'C': 'C'})
 
     def test_custom2normal(self):
-        # qs = Test.objects.filter(contact__last_name='Johnson')
-        # ret = qs.query.get_compiler('salesforce').query_topology()
+        #qs = Test.objects.filter(contact__last_name='Johnson')
+        #ret = qs.query.get_compiler('salesforce').query_topology()
         # "SELECT ... FROM django_Test__c WHERE django_Test__c.Contact__r.LastName = 'Johnson'")
         self.assertTopo([(None, 'C__c', None, 'C__c'), ('C__c', 'P', (('P__c', 'Id'),), 'P')],
                         {'C__c': 'C__c', 'P': 'C__c.P__r'})

@@ -14,13 +14,11 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
-from django.db.models import PROTECT, DO_NOTHING  # NOQA
 from django.db import models
 from django.utils.encoding import smart_text
 from django.utils.six import string_types
 
 from salesforce import DJANGO_19_PLUS
-from salesforce.backend.operations import DefaultedOnCreate
 
 # None of field types defined in this module need a "deconstruct" method,
 # in Django 1.7+, because their parameters only describe fixed nature of SF
@@ -29,8 +27,7 @@ from salesforce.backend.operations import DefaultedOnCreate
 FULL_WRITABLE  = 0
 NOT_UPDATEABLE = 1
 NOT_CREATEABLE = 2
-READ_ONLY = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
-DEFAULTED_ON_CREATE = DefaultedOnCreate()
+READ_ONLY   = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
 
 SF_PK = getattr(settings, 'SF_PK', 'id')
 if not SF_PK in ('id', 'Id'):
@@ -163,14 +160,6 @@ class BooleanField(SfField, models.BooleanField):
     """BooleanField with sf_read_only attribute for Salesforce."""
     def __init__(self, default=False, **kwargs):
         super(BooleanField, self).__init__(default=default, **kwargs)
-
-    def to_python(self, value):
-        if isinstance(value, DefaultedOnCreate):
-            return value
-        else:
-            return super(BooleanField, self).to_python(value)
-
-
 class DecimalField(SfField, models.DecimalField):
     """DecimalField with sf_read_only attribute for Salesforce."""
     def to_python(self, value):
@@ -191,7 +180,7 @@ class TimeField(SfField, models.TimeField):
 
 
 class ForeignKey(SfField, models.ForeignKey):
-    """ForeignKey with sf_read_only attribute and acceptable by Salesforce."""
+    """ForeignKey with sf_read_only attribute for Salesforce."""
     def __init__(self, *args, **kwargs):
         # Checks parameters before call to ancestor.
         if DJANGO_19_PLUS and args[1:2]:
@@ -223,11 +212,6 @@ class ForeignKey(SfField, models.ForeignKey):
         if self.db_column is None and not self.sf_custom:
             column += 'Id'
         return attname, column
-
-
-class OneToOneField(ForeignKey, models.OneToOneField):
-    """OneToOneField with sf_read_only attribute and acceptable by Salesforce."""
-    pass
 
 
 AutoField = SalesforceAutoField

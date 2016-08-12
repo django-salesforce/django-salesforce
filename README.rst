@@ -9,15 +9,9 @@ using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
 
-Python 2.7.9+, 3.4, 3.5, Django 1.7, 1.8.4+, 1.9., 1.10 are supported.
-Currently problematic: raw queries, values_list() and values() methods.
-Django 1.10 is currently supported without values(), values_list(), defer(),
-some raw() methods and without makemigrations.
-The full support of 1.10 can be still expected during August 2016.
-(Make it a footnote:
-The lowest Python versions are restricted by TLSv1.1 support that is
-required for development sites now. PyPy probably still works, but it
-seems not easy to get a precompiled version linked to a new libssl.)
+Python 2.7, 3.3 - 3.5 or pypy; Django 1.7, or with small restrictions up to Django 1.9.
+Django 1.9 is currently supported without raw queries and without values_list()
+and values() methods. The usual support can be expected in the next django-salesforce version.
 
 Quick Start
 -----------
@@ -219,6 +213,12 @@ Some Salesforce fields can not be fully used without special attributes, namely
 read-only and default value fields. Further details can be found in
 `Introspection and Special Attributes of Fields <https://github.com/django-salesforce/django-salesforce/wiki/Introspection-and-Special-Attributes-of-Fields>`__
 
+SSL/TLS settings
+----------------
+For more details on SSL support in Django-Salesforce, particularly relating to
+the 2016 deprecation of TLS 1.0 on Salesforce.com, visit the wiki article,
+`SSL/TLS and Salesforce.com <https://github.com/django-salesforce/django-salesforce/wiki/SSL-TLS-settings-and-Salesforce.com>`__
+
 Caveats
 -------
 
@@ -248,9 +248,8 @@ here are the potential pitfalls and unimplemented operations:
 Backwards-incompatible changes
 ------------------------------
 
--  v0.6.9: This is the last code that supports old Django 1.7 and 1.8.0 - 1.8.3
-
--  v0.6.1: This is the last code that supports old Django 1.4, 1.5, 1.6.
+-  v0.6.1: This is the last code that supports old Django 1.4, 1.5, 1.6 and it
+   will be removed immediately.
 
 -  v0.5: The name of primary key is currently ``'id'``. The backward compatible
    behaviour for code created before v0.5 can be reached by settings ``SF_PK='Id'``.
