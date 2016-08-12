@@ -7,17 +7,20 @@ django-salesforce
 This library allows you to load and edit the objects in any Salesforce instance
 using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
-the objects in your SFDC instance (Salesforce .com) as if they were in a traditional database.
+the objects in your SFDC instance (Salesforce .com) as if they were in a
+traditional database.
 
-Python 2.7.9+, 3.4, 3.5, Django 1.7, 1.8.4+, 1.9., 1.10 are supported.
-Currently problematic: raw queries, values_list() and values() methods.
+Python 2.7.9+, 3.4, 3.5, Django 1.7, 1.8.4+, 1.9., 1.10 are supported with
+some limitations on raw queries, values_list() and values() methods.
+
 Django 1.10 is currently supported without values(), values_list(), defer(),
-some raw() methods and without makemigrations.
-The full support of 1.10 can be still expected during August 2016.
-(Make it a footnote:
-The lowest Python versions are restricted by TLSv1.1 support that is
-required for development sites now. PyPy probably still works, but it
-seems not easy to get a precompiled version linked to a new libssl.)
+some raw() methods and without makemigrations. Full support of 1.10 is
+expected near the end of Q3 or beginning of Q4 in 2016.
+
+Pre-2.7.9 Python versions don't have the required TLS 1.1 support to use
+both production and sandbox Salesforce instances. PyPy may still work,
+but currently it's a challenge to get a PyPy build linked to a recent
+version of libssl.
 
 Quick Start
 -----------
@@ -62,7 +65,7 @@ Quick Start
    * ``PASSWORD`` is a concatenation of the user's password and security token.
      Security token can be omitted if the local IP address has been
      whitelisted in Security Controls / Network Access.
-   * ``HOST`` is ``https://test.salesforce.com`` to access the sandbox, or
+   * ``HOST`` is ``https://test.salesforce.com`` to access a sandbox, or
      ``https://login.salesforce.com`` to access production.
 
    If an error message is received while connecting, review the error received.
@@ -77,6 +80,10 @@ Quick Start
    models. Introspection (inspectdb) doesn't require any permissions. Running
    tests for django_salesforce requires many permissions or Administrator
    account for sandbox.
+   
+   **Note about permissions**: Administrator rights are only required to run
+   the full suite of unit tests; otherwise, as long as the account has rights to
+   read or modify the chosen object, everything should work properly.
 
 4. Add ``salesforce.router.ModelRouter`` to your ``DATABASE_ROUTERS``
    setting::
@@ -110,7 +117,7 @@ Quick Start
     register_omitted_classes(your_application.models)
 
    This is a rudimentary way to verify that every model works in sandbox, before
-   handwritting all admin classes. (Foreign keys to huge tables in the production
+   hand-writing all admin classes. (Foreign keys to huge tables in the production
    require customized admins e.g. with search widgets.)
     
 10. **(optional)** By default, the Django ORM connects to all DBs at startup. To delay
