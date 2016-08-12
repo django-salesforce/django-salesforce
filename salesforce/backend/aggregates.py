@@ -11,9 +11,10 @@ Aggregates like COUNT(), MAX(), MIN() are customized here.
 from salesforce import DJANGO_18_PLUS
 
 if DJANGO_18_PLUS:
-    from django.db.models.aggregates import *
+    from django.db.models.aggregates import *  # NOQA
+    from django.db.models.aggregates import Aggregate
 else:
-    from django.db.models.sql.aggregates import *
+    from django.db.models.sql.aggregates import *  # NOQA
 
 
 class Count(Aggregate):
@@ -28,4 +29,3 @@ class Count(Aggregate):
         if(col == '*'):
             col = ''
         super(Count, self).__init__(col, distinct=distinct and 'DISTINCT ' or '', **extra)
-

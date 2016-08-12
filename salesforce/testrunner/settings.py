@@ -19,8 +19,8 @@ DATABASES = {
     # in order to protect private secret values from unintentional committing.
     'salesforce': {
         'ENGINE': 'salesforce.backend',
-        "CONSUMER_KEY" : os.environ.get('SF_CONSUMER_KEY', ''),
-        "CONSUMER_SECRET" : os.environ.get('SF_CONSUMER_SECRET', ''),
+        "CONSUMER_KEY": os.environ.get('SF_CONSUMER_KEY', ''),
+        "CONSUMER_SECRET": os.environ.get('SF_CONSUMER_SECRET', ''),
         'USER': os.environ.get('SF_USER', ''),
         'PASSWORD': os.environ.get('SF_PASSWORD', ''),
         'HOST': 'https://login.salesforce.com',
@@ -79,7 +79,7 @@ STATICFILES_DIRS = (
 STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.FileSystemFinder',
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-#    'django.contrib.staticfiles.finders.DefaultStorageFinder',
+    # 'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
 # Make this unique, and don't share it with anybody.
@@ -125,12 +125,13 @@ INSTALLED_APPS = (
     'django.contrib.admindocs',
     'salesforce',
     'salesforce.testrunner.example',
+    'salesforce.testrunner.dynamic_models',
 )
 
 SALESFORCE_DB_ALIAS = 'salesforce'
 SALESFORCE_QUERY_TIMEOUT = 15
 # Maximal number of retries after timeout.
-#REQUESTS_MAX_RETRIES = 1
+# REQUESTS_MAX_RETRIES = 1
 DATABASE_ROUTERS = [
     "salesforce.router.ModelRouter"
 ]
@@ -185,9 +186,9 @@ IPV4_ONLY = True
 
 # Name of primary key - by default 'id'. The value 'Id' was the default for
 # version "django-salesforce < 0.5".
-#SF_PK = 'Id'
+# SF_PK = 'Id'
 
 try:
-    from salesforce.testrunner.local_settings import *
+    from salesforce.testrunner.local_settings import *  # NOQA
 except ImportError:
     pass

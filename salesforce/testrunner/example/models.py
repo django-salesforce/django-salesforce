@@ -5,7 +5,7 @@
 # See LICENSE.md for details
 #
 
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
 
@@ -26,6 +26,7 @@ INDUSTRIES = [
     'Other', 'Recreation', 'Retail', 'Shipping', 'Technology',
     'Telecommunications', 'Transportation', 'Utilities'
 ]
+
 
 # This class customizes `managed = True` for tests and does not disturbe SF
 class SalesforceModel(SalesforceModelParent):
@@ -53,8 +54,8 @@ class AbstractAccount(SalesforceModel):
     ]
 
     Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-            default=models.DEFAULTED_ON_CREATE,
-            db_column='OwnerId')
+                              default=models.DEFAULTED_ON_CREATE,
+                              db_column='OwnerId')
     Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
                             null=True)
     BillingStreet = models.CharField(max_length=255)
@@ -88,6 +89,7 @@ class AbstractAccount(SalesforceModel):
 
 class CoreAccount(AbstractAccount):
     Name = models.CharField(max_length=255)
+
     class Meta(AbstractAccount.Meta):
         abstract = True
 
@@ -120,19 +122,19 @@ class Contact(SalesforceModel):
     # Example that db_column is not necessary for most of fields even with
     # lower case names and for ForeignKey
     account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
-            blank=True, null=True)  # db_column: 'AccountId'
+                                blank=True, null=True)  # db_column: 'AccountId'
     last_name = models.CharField(max_length=80)
     first_name = models.CharField(max_length=40, blank=True)
     name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
-            verbose_name='Full Name')
+                            verbose_name='Full Name')
     email = models.EmailField(blank=True, null=True)
     email_bounced_date = models.DateTimeField(blank=True, null=True)
     # The `default=` with lambda function is easy readable, but can be
     # problematic with migrations in the future because it is not serializable.
     # It can be replaced by normal function.
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-            default=models.DEFAULTED_ON_CREATE,
-            related_name='contact_owner_set')
+                              default=models.DEFAULTED_ON_CREATE,
+                              related_name='contact_owner_set')
 
     def __str__(self):
         return self.name
@@ -177,7 +179,7 @@ class Lead(SalesforceModel):
                                   choices=[(x, x) for x in SOURCES])
     Status = models.CharField(max_length=100, choices=[(x, x) for x in STATUSES])
     Industry = models.CharField(max_length=100,
-                                  choices=[(x, x) for x in INDUSTRIES])
+                                choices=[(x, x) for x in INDUSTRIES])
     # Added an example of special DateTime field in Salesforce that can
     # not be inserted, but can be updated
     # TODO write test for it
@@ -186,13 +188,14 @@ class Lead(SalesforceModel):
     # Deleted object can be found only in querysets with "query_all" SF method.
     IsDeleted = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-            default=models.DEFAULTED_ON_CREATE,
-            related_name='lead_owner_set')
+                              default=models.DEFAULTED_ON_CREATE,
+                              related_name='lead_owner_set')
     last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, null=True,
-            sf_read_only=models.READ_ONLY,
-            related_name='lead_lastmodifiedby_set')
+                                         sf_read_only=models.READ_ONLY,
+                                         related_name='lead_lastmodifiedby_set')
     is_converted = models.BooleanField(verbose_name='Converted',
-            sf_read_only=models.NOT_UPDATEABLE, default=models.DEFAULTED_ON_CREATE)
+                                       sf_read_only=models.NOT_UPDATEABLE,
+                                       default=models.DEFAULTED_ON_CREATE)
 
     def __str__(self):
         return self.Name
@@ -275,6 +278,7 @@ class SalesforceParentModel(SalesforceModel):
     # This model is not custom because it has not an explicit attribute
     # `custom = True` in Meta and also has not a `db_table` that ends with
     # '__c'.
+
     class Meta:
         abstract = True
 
@@ -288,9 +292,10 @@ class Note(models.Model):
 
 class Opportunity(SalesforceModel):
     name = models.CharField(max_length=255)
-    contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole', related_name='opportunities')
+    contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole',
+                                                related_name='opportunities')
     close_date = models.DateField()
-    stage = models.CharField(max_length=255, db_column='StageName') # e.g. "Prospecting"
+    stage = models.CharField(max_length=255, db_column='StageName')  # e.g. "Prospecting"
     created_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
     amount = models.DecimalField(max_digits=18, decimal_places=2, blank=True, null=True)
     probability = models.DecimalField(
@@ -304,13 +309,29 @@ class OpportunityContactRole(SalesforceModel):
     role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
 
 
+try:
+    import salesforce.testrunner.dynamic_models.models as models_template
+except ImportError:
+    # this is useful for the case that the model is being rewritten by inspectdb
+    models_template = None
+
+
 class Organization(models.Model):
     name = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE)
     division = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE, blank=True)
     organization_type = models.CharField(max_length=40, verbose_name='Edition',
-            sf_read_only=models.READ_ONLY) # e.g 'Developer Edition', Enteprise, Unlimited...
+                                         sf_read_only=models.READ_ONLY
+                                         )  # e.g 'Developer Edition', Enteprise, Unlimited...
     instance_name = models.CharField(max_length=5, sf_read_only=models.READ_ONLY, blank=True)
     is_sandbox = models.BooleanField(sf_read_only=models.READ_ONLY)
+    # Fields created_by, last_modified_by, last_modified_date are dynamic
+
+    class Meta:
+        db_table = 'Organization'
+        # Copy all fields that match the patters for Force.com field name
+        # from the class that use the same db_table "Organization" in the
+        # module models_template
+        dynamic_field_patterns = models_template, ['CreatedById', 'Last.*Id']
 
 
 class Test(SalesforceParentModel):
@@ -359,5 +380,20 @@ class Attachment(models.Model):
 
 
 class Task(models.Model):
-    who = models.ForeignKey(Lead, on_delete=models.DO_NOTHING, blank=True, null=True)  # Reference to tables [Contact, Lead]
-    what = models.ForeignKey(Account, related_name='task_what_set', on_delete=models.DO_NOTHING, blank=True, null=True)  # Refer
+    # Reference to tables [Contact, Lead]
+    who = models.ForeignKey(Lead, on_delete=models.DO_NOTHING, blank=True, null=True)
+    # Refer
+    what = models.ForeignKey(Account, related_name='task_what_set', on_delete=models.DO_NOTHING, blank=True, null=True)
+
+
+# OneToOneField
+
+class ApexEmailNotification(models.Model):
+    """Stores Salesforce users and external email addresses to be notified when unhandled Apex exceptions occur.
+
+    Available in API version 35.0 and later.
+    """
+    # A semicolon-delimited list of email addresses to notify when unhandled Apex exceptions occur.
+    user = models.OneToOneField('User', related_name='apex_email_notification', on_delete=models.DO_NOTHING, blank=True, null=True)
+    # Users of your org to notify when unhandled Apex exceptions occur.
+    email = models.CharField(unique=True, max_length=255, verbose_name='email', blank=True)
