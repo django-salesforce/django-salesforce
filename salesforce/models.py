@@ -66,8 +66,11 @@ class SalesforceModelBase(ModelBase):
             setattr(cls._meta, 'sf_custom', sf_custom)
         else:
             if type(value) is models.manager.Manager:
-                # TODO use args:  obj._constructor_args = (args, kwargs)
+                # this is or better migrations because: obj._constructor_args = (args, kwargs)
+                _constructor_args = value._constructor_args
                 value = manager.SalesforceManager()
+                value._constructor_args = _constructor_args
+
             super(SalesforceModelBase, cls).add_to_class(name, value)
 
 

@@ -158,7 +158,7 @@ Advanced usage
    salesforce.backend.router.ModelRouter.
 
 -  **Non SF databases** - If ``SALESFORCE_DB_ALIAS`` is set to a conventional
-   database, the tables defined by the SF models will be created by syncdb. This
+   database, the tables defined by the SF models will be created by ``migrate``. This
    behavior can be disabled by adding a Meta class with ``managed=False``.
 
 -  **Custom Managers** - When creating a custom manager for a model, the manager
@@ -243,11 +243,9 @@ here are the potential pitfalls and unimplemented operations:
    types on Salesforce must extend salesforce.models.SalesforceModel. The
    model router checks for this to determine which models to handle through
    the Salesforce connection.
--  **Multiple Updates** — Multiple update support is not yet
-   implemented.
 -  **Multiple Deletes** — Multiple delete support is not yet
    implemented.
--  **Database Sync** — ``syncdb`` will only create new databases in non-SF
+-  **Database Migrations** — ``migrate`` will only create new tables; in non-SF
    databases (useful for unit tests); SFDC classes are assumed to already
    exist with the appropriate permissions.
 

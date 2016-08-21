@@ -63,10 +63,6 @@ class ModelRouter(object):
         if getattr(model, '_salesforce_object', False):
             return self.sf_alias
 
-    # TODO hy: implement the new signature for Django 1.8 (necessary for
-    # RunPython)
-    #     def allow_migrate(self, db, app_label, model_name=None, **hints)
-
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         """
         Don't attempt to sync SF models to non SF databases and vice versa.
@@ -80,21 +76,22 @@ class ModelRouter(object):
             model = None
 
         if hasattr(model, '_salesforce_object'):
-            # If SALESFORCE_DB_ALIAS is e.g. a sqlite3 database, than it can migrate SF models
+            # SF models can be migrated if SALESFORCE_DB_ALIAS is e.g.
+            # a sqlite3 database or any non-SF database.
             if not (is_sf_database(db) or db == self.sf_alias):
                 return False
         else:
             if is_sf_database(db):
                 return False
-        # TODO: It is usual that syncdb is currently disallowed for SF but in
-        # the future it can be allowed to do deep check of compatibily Django
-        # models with SF models by introspection.
-        if(hasattr(model, '_salesforce_object')):
+        # TODO: It is usual that "migrate" is currently disallowed for SF.
+        # In the future it can be implemented to do a deep check by
+        # introspection of compatibily between Django models and SF database.
+        if hasattr(model, '_salesforce_object'):
             #return False
             pass
         # Nothing is said about non SF models with non SF databases, because
-        # it can be solved by other routers, otherwise is enabled if all
-        # routers say None.
+        # it can be solved by other routers. By default it is enabled if all
+        # routers say "None".
 
     if not DJANGO_18_PLUS:
         _allow_migrate = allow_migrate
