@@ -163,11 +163,8 @@ def handle_api_exceptions(url, f, *args, **kwargs):
     #      Currently it is better more or less.
     # http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
     verbose = not getattr(getattr(_cursor, 'query', None), 'debug_silent', False)
-    if 'json' not in response.headers.get('Content-Type', ''):
-        raise OperationalError("HTTP error code %d: %s" % (response.status_code, response.text))
-    else:
-        # Errors are reported in the body
-        data = response.json()[0]
+    # Errors are reported in the body
+    data = response.json()[0]
     if response.status_code == 404:  # ResourceNotFound
         if (f.__func__.__name__ == 'delete') and data['errorCode'] in (
                 'ENTITY_IS_DELETED', 'INVALID_CROSS_REFERENCE_KEY'):

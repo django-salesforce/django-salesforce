@@ -175,7 +175,7 @@ class SQLCompiler(compiler.SQLCompiler):
                     params.extend(s_params)
                     out_cols.append(s_sql)
 
-                result.append(','.join(out_cols))
+                result.append(', '.join(out_cols))
 
                 result.append('FROM')
                 result.extend(from_)
