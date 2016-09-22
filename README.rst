@@ -10,7 +10,7 @@ django-salesforce
 .. image:: https://img.shields.io/badge/Python-2.7.9%2B%2C%203.4%2C%203.5-brightgreen.svg
    :target: https://www.python.org/
 
-.. image:: https://img.shields.io/badge/Django-1.7%2C%201.8.4%2B%2C%201.9.%2C%201.10-blue.svg
+.. image:: https://img.shields.io/badge/Django-1.7%2C%201.8.4%2B%2C%201.9%2C%201.10-blue.svg
    :target: https://www.djangoproject.com/
 
 This library allows you to load and edit the objects in any Salesforce instance
@@ -19,7 +19,7 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 2.7.9+, 3.4, 3.5, Django 1.7, 1.8.4+, 1.9., 1.10 are supported with
+Python 2.7.9+, 3.4, 3.5, Django 1.7, 1.8.4+, 1.9, 1.10 are supported with
 some limitations on raw queries, values_list() and values() methods.
 
 Django 1.10 is currently supported without values(), values_list(), defer(),
