@@ -267,10 +267,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
 class SymbolicModelsName(object):
     """A symbolic name from the `models` module.
+    >>> from salesforce import models
     >>> assert models.READ_ONLY == 3
-    >>> SymbolicName('READ_ONLY').value
+    >>> SymbolicModelsName('READ_ONLY').value
     3
-    >>> [SymbolicName('READ_ONLY')]
+    >>> [SymbolicModelsName('READ_ONLY')]
     [models.READ_ONLY]
     """
     def __init__(self, name):
