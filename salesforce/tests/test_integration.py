@@ -126,6 +126,27 @@ class BasicSOQLRoTest(TestCase):
             test_contact.delete()
             test_account.delete()
 
+    def test_simple_select_related(self):
+        """Verify that simple_selct_related does not require additional queries.
+        """
+        test_account = Account(Name='sf_test account')
+        test_account.save()
+        test_contact = Contact(first_name='sf_test', last_name='my', account=test_account)
+        test_contact.save()
+        req_count_0 = salesforce.backend.driver.request_count
+        try:
+            contacts = list(Contact.objects.filter(account__Name='sf_test account').simple_select_related('account'))
+            req_count_1 = salesforce.backend.driver.request_count
+        finally:
+            test_contact.delete()
+            test_account.delete()
+        req_count_2 = salesforce.backend.driver.request_count
+        [x.account.Name for x in contacts]
+        req_count_3 = salesforce.backend.driver.request_count
+        self.assertEqual(req_count_1, req_count_0 + 2)
+        self.assertEqual(req_count_3, req_count_2)
+        self.assertGreaterEqual(len(contacts), 1)
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_one_to_one_field(self):
         # test 1a is unique field
