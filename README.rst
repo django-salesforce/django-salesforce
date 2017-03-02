@@ -19,7 +19,7 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 2.7.9+, 3.4, 3.5, Django 1.7, 1.8.4+, 1.9, 1.10 are supported with
+Python 2.7.9+, 3.4, 3.5, Django 1.8.4+, 1.9, 1.10 are supported with
 some limitations on raw queries, values_list() and values() methods.
 
 Django 1.10 is currently supported without values(), values_list(), defer(),
