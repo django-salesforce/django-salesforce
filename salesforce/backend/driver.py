@@ -32,7 +32,7 @@ API_STUB = '/services/data/v35.0'
 request_count = 0  # global counter
 
 # All error types described in DB API 2 are implemented the same way as in
-# Django 1.6, otherwise some exceptions are not correctly reported in it.
+# Django 1.8, otherwise some exceptions are not correctly reported in it.
 
 
 class Error(Exception if PY3 else StandardError):
@@ -163,8 +163,11 @@ def handle_api_exceptions(url, f, *args, **kwargs):
     #      Currently it is better more or less.
     # http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
     verbose = not getattr(getattr(_cursor, 'query', None), 'debug_silent', False)
-    # Errors are reported in the body
-    data = response.json()[0]
+    if 'json' not in response.headers.get('Content-Type', ''):
+        raise OperationalError("HTTP error code %d: %s" % (response.status_code, response.text))
+    else:
+        # Errors are reported in the body
+        data = response.json()[0]
     if response.status_code == 404:  # ResourceNotFound
         if (f.__func__.__name__ == 'delete') and data['errorCode'] in (
                 'ENTITY_IS_DELETED', 'INVALID_CROSS_REFERENCE_KEY'):

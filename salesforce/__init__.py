@@ -15,14 +15,16 @@ import warnings
 
 import django
 
-__version__ = "0.6.9"
+__version__ = "0.6.9"  # development shortly before 0.7
 
-DJANGO_18_PLUS = django.VERSION[:2] >= (1, 8)
-DJANGO_19_PLUS = django.VERSION[:3] >= (1, 9)
-DJANGO_110_PLUS = django.VERSION[:3] >= (1, 10)
-if django.VERSION[:2] < (1, 7) or (1, 8, 0) <= django.VERSION[:3] < (1, 8, 4):
-    raise ImportError("Django 1.7 or higher is required for django-salesforce "
-                      "and versions between 1.8 and 1.8.3 are unsupported.")
+DJANGO_18_PLUS = True  # unused by us now - backward compatibility
+DJANGO_19_PLUS = django.VERSION[:2] >= (1, 9)
+DJANGO_110_PLUS = django.VERSION[:2] >= (1, 10)
+if django.VERSION[:3] < (1, 8, 4) or django.VERSION[:2] > (1, 10):
+    # Statistically three or more blocking issues can be expected by every
+    # new major Django version, if not fixed early. Optimism is misplaced.
+    raise ImportError("Django version between 1.8.4 and 1.10.x is required "
+                      "for this django-salesforce.")
 
 log = logging.getLogger(__name__)
 

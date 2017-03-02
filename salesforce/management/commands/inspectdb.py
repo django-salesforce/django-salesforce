@@ -5,7 +5,7 @@ from django.core.management.commands.inspectdb import Command as InspectDBComman
 from django.db import connections, DEFAULT_DB_ALIAS
 from django.utils import six
 from salesforce.backend import introspection as sf_introspection
-from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
+from salesforce import DJANGO_19_PLUS
 import django
 import salesforce
 
@@ -67,22 +67,12 @@ def fix_international(text):
 
 class Command(InspectDBCommand):
 
-    if DJANGO_18_PLUS:
+    def add_arguments(self, parser):
+        super(Command, self).add_arguments(parser)
+        parser.add_argument('--table-filter', action='store', dest='table_name_filter',
+            help='Regular expression that filters API Names of SF tables to introspect.')
 
-        def add_arguments(self, parser):
-            super(Command, self).add_arguments(parser)
-            parser.add_argument('--table-filter', action='store', dest='table_name_filter',
-                help='Regular expression that filters API Names of SF tables to introspect.')
-
-    else:
-
-        option_list = InspectDBCommand.option_list + (
-            make_option('--table-filter', action='store', dest='table_name_filter',
-                help='Regular expression that filters API Names of SF tables to introspect.'),
-        )
-
-
-    def handle_noargs(self, **options):
+    def handle(self, **options):
         if isinstance(options['table_name_filter'], str):
             options['table_name_filter'] = re.compile(options['table_name_filter']).match
         self.verbosity = int(options['verbosity'])
@@ -96,14 +86,7 @@ class Command(InspectDBCommand):
                 line = re.sub(' #$', '', line)
                 self.stdout.write(fix_international("%s\n" % line))
         else:
-            if DJANGO_18_PLUS:
-                super(Command, self).handle(**options)
-            else:
-                super(Command, self).handle_noargs(**options)
-
-    if DJANGO_18_PLUS:
-        handle = handle_noargs
-        del handle_noargs
+            super(Command, self).handle(**options)
 
     def get_field_type(self, connection, table_name, row):
         field_type, field_params, field_notes = super(Command, self

@@ -11,13 +11,10 @@ import re
 import django.db.backends.utils
 from django.utils.deconstruct import deconstructible
 
-from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
+from salesforce import DJANGO_19_PLUS
 import salesforce.backend.driver
 
-if DJANGO_18_PLUS:
-    from django.db.backends.base.operations import BaseDatabaseOperations
-else:
-    from django.db.backends import BaseDatabaseOperations
+from django.db.backends.base.operations import BaseDatabaseOperations
 
 BULK_BATCH_SIZE = 200 if salesforce.backend.driver.beatbox else 25
 

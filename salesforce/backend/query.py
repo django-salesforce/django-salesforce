@@ -16,6 +16,7 @@ Salesforce object query and queryset customizations.
 from __future__ import print_function
 import datetime
 import decimal
+import json
 import logging
 import pytz
 from itertools import islice
@@ -29,7 +30,7 @@ from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.utils.six import PY3
 
-from salesforce import models, DJANGO_18_PLUS, DJANGO_110_PLUS
+from salesforce import models, DJANGO_110_PLUS
 from salesforce.backend.driver import DatabaseError, SalesforceError, handle_api_exceptions, API_STUB
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.backend.operations import DefaultedOnCreate
@@ -43,10 +44,6 @@ try:
     from urllib.parse import urlencode
 except ImportError:
     from urllib import urlencode
-try:
-    import json
-except ImportError:
-    import simplejson as json
 
 log = logging.getLogger(__name__)
 
@@ -254,8 +251,7 @@ class SalesforceQuerySet(query.QuerySet):
                 if model is None:
                     model = self.model
                 try:
-                    selected_name = field.attname if DJANGO_18_PLUS else field.name
-                    if selected_name in only_load[model]:
+                    if field.attname in only_load[model]:
                         # Add a field that has been explicitly included
                         load_fields.append(field.name)
                 except KeyError:
@@ -342,9 +338,7 @@ class SalesforceRawQuery(RawQuery):
         if self.cursor.rowcount > 0:
             return [converter(col) for col in self.cursor.first_row.keys() if col != 'attributes']
         # TODO hy: A more general fix is desirable with rewriting more code.
-        #   This is changed due to Django 1.8.4+  https://github.com/django/django/pull/5036
-        #   related to https://code.djangoproject.com/ticket/12768
-        return ['Id'] if DJANGO_18_PLUS else [SF_PK]
+        return ['Id']  # originally [SF_PK] before Django 1.8.4
 
     def _execute_query(self):
         self.cursor = CursorWrapper(connections[self.using], self)
@@ -356,21 +350,13 @@ class SalesforceRawQuery(RawQuery):
     def __iter__(self):
         #import pdb; pdb.set_trace()
         for row in super(SalesforceRawQuery, self).__iter__():
-            if DJANGO_18_PLUS:
-                row = [row[k] for k in self.get_columns()]
-            yield row
+            yield [row[k] for k in self.get_columns()]
 
 
 class SalesforceQuery(Query):
     """
     Override aggregates.
     """
-    # Warn against name collision: The name 'aggregates' is the name of
-    # a new property introduced by Django 1.7 to the parent class
-    # 'django.db.models.sql.query.Query'.
-    # 'aggregates_module' is overriden here, to be visible in the base class.
-    from salesforce.backend import aggregates as aggregates_module
-
     def __init__(self, *args, **kwargs):
         super(SalesforceQuery, self).__init__(*args, **kwargs)
         self.is_query_all = False
@@ -390,17 +376,16 @@ class SalesforceQuery(Query):
     def set_query_all(self):
         self.is_query_all = True
 
-    if DJANGO_18_PLUS:
-        def get_count(self, using):
-            """
-            Performs a COUNT() query using the current filter constraints.
-            """
-            obj = self.clone()
-            obj.add_annotation(Count('pk'), alias='x_sf_count', is_summary=True)
-            number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']
-            if number is None:
-                number = 0
-            return number
+    def get_count(self, using):
+        """
+        Performs a COUNT() query using the current filter constraints.
+        """
+        obj = self.clone()
+        obj.add_annotation(Count('pk'), alias='x_sf_count', is_summary=True)
+        number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']
+        if number is None:
+            number = 0
+        return number
 
 
 class CursorWrapper(object):
@@ -650,9 +635,8 @@ class CursorWrapper(object):
     def query_results(self, results):
         while True:
             for rec in results['records']:
-                ANNOTATION_SELECT_NAME = 'annotation_select' if DJANGO_18_PLUS else 'aggregate_select'
-                if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, ANNOTATION_SELECT_NAME):
-                    annotation_select = getattr(self.query, ANNOTATION_SELECT_NAME)
+                if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, 'annotation_select'):
+                    annotation_select = self.query.annotation_select
                     assert len(rec) -1 == len(list(annotation_select.items()))
                     # The 'attributes' info is unexpected for Django within fields.
                     rec = [rec[k] for k, _ in annotation_select.items()]

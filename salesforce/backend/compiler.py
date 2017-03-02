@@ -12,10 +12,10 @@ import re
 from django.db import models
 from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
+import django.db.models.aggregates
 from . import subselect
 
-from salesforce import DJANGO_18_PLUS, DJANGO_19_PLUS
-DJANGO_17_EXACT = not DJANGO_18_PLUS
+from salesforce import DJANGO_19_PLUS
 
 
 class SQLCompiler(compiler.SQLCompiler):
@@ -23,11 +23,6 @@ class SQLCompiler(compiler.SQLCompiler):
     A subclass of the default SQL compiler for the SOQL dialect.
     """
     soql_trans = None
-
-    def resolve_columns(self, row, fields):
-        # This method (conversion from row dict to list) is necessary only for
-        # SF raw query, but if it exists then it is used by all SOQL queries.
-        return [row[field.column] for field in fields]
 
     def get_columns(self, with_aliases=False):
         """
@@ -95,22 +90,12 @@ class SQLCompiler(compiler.SQLCompiler):
         if not result_type or result_type == 'cursor':
             return cursor
 
-        if DJANGO_18_PLUS:
-            ordering_aliases = None
-        else:
-            ordering_aliases = self.ordering_aliases
         if result_type == constants.SINGLE:
-            if ordering_aliases:
-                return cursor.fetchone()[:-len(ordering_aliases)]
             return cursor.fetchone()
 
         # The MULTI case.
-        if ordering_aliases:
-            result = compiler.order_modified_iter(cursor, len(ordering_aliases),
-                    self.connection.features.empty_fetchmany_value)
-        else:
-            result = iter((lambda: cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)),
-                    self.connection.features.empty_fetchmany_value)
+        result = iter((lambda: cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)),
+                self.connection.features.empty_fetchmany_value)
         if not self.connection.features.can_use_chunked_reads:
             # If we are using non-chunked reads, we return the same data
             # structure as normally, but ensure it is all read into memory
@@ -118,126 +103,123 @@ class SQLCompiler(compiler.SQLCompiler):
             return list(result)
         return result
 
-    if DJANGO_18_PLUS:  # or Django 1.9
-        def as_sql(self, with_limits=True, with_col_aliases=False, subquery=False):
-            """
-            Creates the SQL for this query. Returns the SQL string and list of
-            parameters.
+    def as_sql(self, with_limits=True, with_col_aliases=False, subquery=False):
+        """
+        Creates the SQL for this query. Returns the SQL string and list of
+        parameters.
 
-            If 'with_limits' is False, any limit/offset information is not included
-            in the query.
-            """
-            # After executing the query, we must get rid of any joins the query
-            # setup created. So, take note of alias counts before the query ran.
-            # However we do not want to get rid of stuff done in pre_sql_setup(),
-            # as the pre_sql_setup will modify query state in a way that forbids
-            # another run of it.
+        If 'with_limits' is False, any limit/offset information is not included
+        in the query.
+        """
+        # After executing the query, we must get rid of any joins the query
+        # setup created. So, take note of alias counts before the query ran.
+        # However we do not want to get rid of stuff done in pre_sql_setup(),
+        # as the pre_sql_setup will modify query state in a way that forbids
+        # another run of it.
+        if DJANGO_19_PLUS:
+            if with_limits and self.query.low_mark == self.query.high_mark:
+                return '', ()
+        self.subquery = subquery
+        refcounts_before = self.query.alias_refcount.copy()
+        soql_trans = self.query_topology()
+        try:
+            extra_select, order_by, group_by = self.pre_sql_setup()
+            if with_limits and self.query.low_mark == self.query.high_mark:
+                return '', ()
+            distinct_fields = self.get_distinct()
+
+            # This must come after 'select', 'ordering', and 'distinct' -- see
+            # docstring of get_from_clause() for details.
+            from_, f_params = self.get_from_clause()
+
             if DJANGO_19_PLUS:
-                if with_limits and self.query.low_mark == self.query.high_mark:
-                    return '', ()
-            self.subquery = subquery
-            refcounts_before = self.query.alias_refcount.copy()
-            soql_trans = self.query_topology()
-            try:
-                extra_select, order_by, group_by = self.pre_sql_setup()
-                if with_limits and self.query.low_mark == self.query.high_mark:
-                    return '', ()
-                distinct_fields = self.get_distinct()
+                where, w_params = self.compile(self.where) if self.where is not None else ("", [])
+                having, h_params = self.compile(self.having) if self.having is not None else ("", [])
+            else:
+                where, w_params = self.compile(self.query.where)
+                having, h_params = self.compile(self.query.having)
+            params = []
+            result = ['SELECT']
 
-                # This must come after 'select', 'ordering', and 'distinct' -- see
-                # docstring of get_from_clause() for details.
-                from_, f_params = self.get_from_clause()
+            if self.query.distinct:
+                result.append(self.connection.ops.distinct_sql(distinct_fields))
 
-                if DJANGO_19_PLUS:
-                    where, w_params = self.compile(self.where) if self.where is not None else ("", [])
-                    having, h_params = self.compile(self.having) if self.having is not None else ("", [])
-                else:
-                    where, w_params = self.compile(self.query.where)
-                    having, h_params = self.compile(self.query.having)
-                params = []
-                result = ['SELECT']
+            out_cols = []
+            col_idx = 1
+            for _, (s_sql, s_params), alias in self.select + extra_select:
+                if alias:
+                    # fixed by removing 'AS'
+                    s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
+                elif with_col_aliases:
+                    s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
+                    col_idx += 1
+                if soql_trans and re.match(r'^\w+\.\w+$', s_sql):
+                    tab_name, col_name = s_sql.split('.')
+                    s_sql = '%s.%s' % (soql_trans[tab_name], col_name)
+                params.extend(s_params)
+                out_cols.append(s_sql)
 
-                if self.query.distinct:
-                    result.append(self.connection.ops.distinct_sql(distinct_fields))
+            result.append(', '.join(out_cols))
 
-                out_cols = []
-                col_idx = 1
-                for _, (s_sql, s_params), alias in self.select + extra_select:
-                    if alias:
-                        # fixed by removing 'AS'
-                        s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
-                    elif with_col_aliases:
-                        s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
-                        col_idx += 1
-                    if soql_trans and re.match(r'^\w+\.\w+$', s_sql):
-                        tab_name, col_name = s_sql.split('.')
-                        s_sql = '%s.%s' % (soql_trans[tab_name], col_name)
-                    params.extend(s_params)
-                    out_cols.append(s_sql)
+            result.append('FROM')
+            result.extend(from_)
+            params.extend(f_params)
 
-                result.append(', '.join(out_cols))
+            if where:
+                result.append('WHERE %s' % where)
+                params.extend(w_params)
 
-                result.append('FROM')
-                result.extend(from_)
-                params.extend(f_params)
+            grouping = []
+            for g_sql, g_params in group_by:
+                grouping.append(g_sql)
+                params.extend(g_params)
+            if grouping:
+                if distinct_fields:
+                    raise NotImplementedError(
+                        "annotate() + distinct(fields) is not implemented.")
+                if not order_by:
+                    order_by = self.connection.ops.force_no_ordering()
+                result.append('GROUP BY %s' % ', '.join(grouping))
 
-                if where:
-                    result.append('WHERE %s' % where)
-                    params.extend(w_params)
+            if having:
+                result.append('HAVING %s' % having)
+                params.extend(h_params)
 
-                grouping = []
-                for g_sql, g_params in group_by:
-                    grouping.append(g_sql)
-                    params.extend(g_params)
-                if grouping:
-                    if distinct_fields:
-                        raise NotImplementedError(
-                            "annotate() + distinct(fields) is not implemented.")
-                    if not order_by:
-                        order_by = self.connection.ops.force_no_ordering()
-                    result.append('GROUP BY %s' % ', '.join(grouping))
+            if order_by:
+                ordering = []
+                for _, (o_sql, o_params, _) in order_by:
+                    ordering.append(o_sql)
+                    params.extend(o_params)
+                result.append('ORDER BY %s' % ', '.join(ordering))
 
-                if having:
-                    result.append('HAVING %s' % having)
-                    params.extend(h_params)
+            if with_limits:
+                if self.query.high_mark is not None:
+                    result.append('LIMIT %d' % (self.query.high_mark - self.query.low_mark))
+                if self.query.low_mark:
+                    if self.query.high_mark is None:
+                        val = self.connection.ops.no_limit_value()
+                        if val:
+                            result.append('LIMIT %d' % val)
+                    result.append('OFFSET %d' % self.query.low_mark)
 
-                if order_by:
-                    ordering = []
-                    for _, (o_sql, o_params, _) in order_by:
-                        ordering.append(o_sql)
-                        params.extend(o_params)
-                    result.append('ORDER BY %s' % ', '.join(ordering))
+            if self.query.select_for_update and self.connection.features.has_select_for_update:
+                if self.connection.get_autocommit():
+                    raise TransactionManagementError(
+                        "select_for_update cannot be used outside of a transaction."
+                    )
 
-                if with_limits:
-                    if self.query.high_mark is not None:
-                        result.append('LIMIT %d' % (self.query.high_mark - self.query.low_mark))
-                    if self.query.low_mark:
-                        if self.query.high_mark is None:
-                            val = self.connection.ops.no_limit_value()
-                            if val:
-                                result.append('LIMIT %d' % val)
-                        result.append('OFFSET %d' % self.query.low_mark)
+                # If we've been asked for a NOWAIT query but the backend does
+                # not support it, raise a DatabaseError otherwise we could get
+                # an unexpected deadlock.
+                nowait = self.query.select_for_update_nowait
+                if nowait and not self.connection.features.has_select_for_update_nowait:
+                    raise DatabaseError('NOWAIT is not supported on this database backend.')
+                result.append(self.connection.ops.for_update_sql(nowait=nowait))
 
-                if self.query.select_for_update and self.connection.features.has_select_for_update:
-                    if self.connection.get_autocommit():
-                        raise TransactionManagementError(
-                            "select_for_update cannot be used outside of a transaction."
-                        )
-
-                    # If we've been asked for a NOWAIT query but the backend does
-                    # not support it, raise a DatabaseError otherwise we could get
-                    # an unexpected deadlock.
-                    nowait = self.query.select_for_update_nowait
-                    if nowait and not self.connection.features.has_select_for_update_nowait:
-                        raise DatabaseError('NOWAIT is not supported on this database backend.')
-                    result.append(self.connection.ops.for_update_sql(nowait=nowait))
-
-                return ' '.join(result), tuple(params)
-            finally:
-                # Finally do cleanup - get rid of the joins we created above.
-                self.query.reset_refcounts(refcounts_before)
-
-    # nothing special needed for as_sql in Django 1.7
+            return ' '.join(result), tuple(params)
+        finally:
+            # Finally do cleanup - get rid of the joins we created above.
+            self.query.reset_refcounts(refcounts_before)
 
     def query_topology(self, _alias_map_items=None):
         # SOQL for SFDC requires:
@@ -250,20 +232,17 @@ class SQLCompiler(compiler.SQLCompiler):
         if self.soql_trans is not None:
             return self.soql_trans
         if not _alias_map_items and not self.query.alias_map:
-            assert DJANGO_18_PLUS, "empty alias_map is possible due to field expr in Django 1.8"
+            # empty alias_map is possible due to field expr in Django 1.8
             return []
         # Unified interface:
         #   alias_map_items = [(lhs, table, join_cols_, rhs),...]
         query = self.query
         if _alias_map_items:
             alias_map_items = _alias_map_items
-        elif DJANGO_18_PLUS:
+        else:
             alias_map_items = [(getattr(v, 'parent_alias', None), v.table_name,
                                getattr(v, 'join_cols', None), v.table_alias
                               ) for v in query.alias_map.values()]
-        else: # Django 1.7
-            alias_map_items = [(v.lhs_alias, v.table_name, v.join_cols, v.rhs_alias)
-                               for v in query.alias_map.values()]
         # Analyze
         alias2table = {}
         side_l, side_r = set(), set()
@@ -316,55 +295,12 @@ class SQLCompiler(compiler.SQLCompiler):
         self.soql_trans = soql_trans
         return self.soql_trans
 
-    def late_fix(self, sql):
-        """Fix the WHERE condition in old Django 1.6"""
-        assert not re.search(r'[\\"\']', sql)
-        replacements = self.query_topology()
-        # the replaced string is a alphanumeric word, including underscore
-        assert all(re.match(r'^\w+$', x) for x in replacements.keys())
-        pattern_replaced = re.compile(r'(?<=[^.\w])(%s)(?=\.\w+[^.\w])' % '|'.join(replacements.keys()))
-        def func(sql):
-            start = 0
-            out = []
-            for match in pattern_replaced.finditer(sql):
-                out.append(sql[start:match.start()])
-                out.append(replacements[match.group(1)])
-                start = match.end()
-            out.append(sql[start:len(sql)])
-            return ''.join(out)
-        return subselect.transform_except_subselect(sql, func)
-
 
 class SalesforceWhereNode(where.WhereNode):
     overridden_types = ['isnull']
 
-    def make_atom(self, child, qn, connection):
-        # The make_atom() method is ignored in Django 1.7 unless explicitely required.
-        # Use Lookup class instead. The make_atom() method will be removed in Django 1.9.
-        lvalue, lookup_type, value_annot, params_or_value = child
-        result = super(SalesforceWhereNode, self).make_atom(child, qn, connection)
-
-        if(lookup_type in self.overridden_types):
-            if hasattr(lvalue, 'process'):
-                try:
-                    lvalue, params = lvalue.process(lookup_type, params_or_value, connection)
-                except where.EmptyShortCircuit:
-                    raise EmptyResultSet
-            if isinstance(lvalue, tuple):
-                # A direct database column lookup.
-                field_sql = self.sql_for_columns(lvalue, qn, connection)
-            else:
-                # A smart object with an as_sql() method.
-                field_sql = lvalue.as_sql(qn, connection)
-
-            if lookup_type == 'isnull':
-                return ('%s %snull' % (field_sql,
-                    (not value_annot and '!= ' or '= ')), ())
-        else:
-            return result
-
-
     # TODO compare, how much it is updated to 1.7
+    # TODO though there is no problem, update to Django 1.8 - 1.10!
     # patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.5, 1.6., 1.7
     def as_sql(self, qn, connection):
         """
@@ -388,13 +324,8 @@ class SalesforceWhereNode(where.WhereNode):
 
         for child in self.children:
             try:
-                if hasattr(child, 'as_sql'):
-                    # patch begin (combined Django 1.7)
-                    sql, params = qn.compile(child)
-                    # patch end
-                else:
-                    # A leaf node in the tree.
-                    sql, params = self.make_atom(child, qn, connection)
+                assert hasattr(child, 'as_sql')
+                sql, params = qn.compile(child)
             except EmptyResultSet:
                 nothing_childs += 1
             else:
@@ -491,10 +422,6 @@ class SQLUpdateCompiler(compiler.SQLUpdateCompiler, SQLCompiler):
 class SQLAggregateCompiler(compiler.SQLAggregateCompiler, SQLCompiler):
     pass
 
-if DJANGO_17_EXACT:
-    class SQLDateCompiler(compiler.SQLDateCompiler, SQLCompiler):
-        pass
-
 
 # Lookups
 class IsNull(models.lookups.IsNull):
@@ -519,8 +446,6 @@ class Range(models.lookups.Range):
         if connection.vendor == 'salesforce':
             lhs, lhs_params = self.process_lhs(qn, connection)
             rhs, rhs_params = self.process_rhs(qn, connection)
-            if DJANGO_17_EXACT:
-                rhs = [rhs, rhs]
             assert rhs == ['%s', '%s']
             params = lhs_params + rhs_params[:1] + lhs_params + rhs_params[1:2]
             # The symbolic parameters %s are again substituted by %s. The real
@@ -531,17 +456,15 @@ class Range(models.lookups.Range):
 
 models.Field.register_lookup(Range)
 
-if DJANGO_18_PLUS:
-    from django.db.models.aggregates import Count
-    def count_as_salesforce(self, *args, **kwargs):
-        if (len(self.source_expressions) == 1 and
-                isinstance(self.source_expressions[0], models.expressions.Value) and
-                self.source_expressions[0].value == '*'):
-            return 'COUNT(Id)', []
-        else:
-            #tmp = Count('pk')
-            #args[0].query.add_annotation(Count('pk'), alias='__count', is_summary=True)
-            #obj.add_annotation(Count('*'), alias='__count', is_summary=True
-            #self.source_expressions[0] = models.expressions.Col('__count', args[0].query.model._meta.fields[0])  #'Id'
-            return self.as_sql(*args, **kwargs)
-    setattr(Count, 'as_salesforce', count_as_salesforce)
+def count_as_salesforce(self, *args, **kwargs):
+    if (len(self.source_expressions) == 1 and
+            isinstance(self.source_expressions[0], models.expressions.Value) and
+            self.source_expressions[0].value == '*'):
+        return 'COUNT(Id)', []
+    else:
+        # tmp = Count('pk')
+        # args[0].query.add_annotation(Count('pk'), alias='__count', is_summary=True)
+        # obj.add_annotation(Count('*'), alias='__count', is_summary=True
+        # self.source_expressions[0] = models.expressions.Col('__count', args[0].query.model._meta.fields[0])  #'Id'
+        return self.as_sql(*args, **kwargs)
+setattr(django.db.models.aggregates.Count, 'as_salesforce', count_as_salesforce)

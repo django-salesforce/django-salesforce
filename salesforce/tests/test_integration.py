@@ -24,7 +24,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
         Product, Pricebook, PricebookEntry, Note, Task,
         Organization, models_template,
         )
-from salesforce import router, DJANGO_18_PLUS, DJANGO_110_PLUS
+from salesforce import router, DJANGO_110_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid
@@ -244,7 +244,7 @@ class BasicSOQLRoTest(TestCase):
         finally:
             contact.delete()
         # Verify that an explicit value is possible for this field.
-        other_user_obj = User.objects.exclude(Username=current_user)[0]
+        other_user_obj = User.objects.exclude(Username=current_user).filter(IsActive=True)[0]
         contact = Contact(first_name='sf_test', last_name='your',
                 owner=other_user_obj)
         contact.save()
@@ -641,7 +641,7 @@ class BasicSOQLRoTest(TestCase):
         bad_queryset.query.debug_silent = True
         self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
 
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_18_PLUS)
+    @expectedFailureIf(QUIET_KNOWN_BUGS)
     def test_queryset_values(self):
         """Test list of dict qs.values() and list of tuples qs.values_list()
         """
@@ -739,7 +739,7 @@ class BasicSOQLRoTest(TestCase):
 
     # This should not be implemented due to Django conventions.
     #def test_raw_aggregate(self):
-    #   # raises "TypeError: list indices must be integers, not str" in resolve_columns
+    #   # raises "TypeError: list indices must be integers, not str"
     #   list(Contact.objects.raw("select Count() from Contact"))
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")

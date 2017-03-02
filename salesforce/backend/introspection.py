@@ -12,16 +12,12 @@ Salesforce introspection code.
 import logging
 import re
 
-from salesforce import DJANGO_18_PLUS
 from salesforce.backend import driver
 from salesforce.fields import SF_PK
 import salesforce.fields
 
 from django.conf import settings
-if DJANGO_18_PLUS:
-    from django.db.backends.base.introspection import BaseDatabaseIntrospection
-else:
-    from django.db.backends import BaseDatabaseIntrospection
+from django.db.backends.base.introspection import BaseDatabaseIntrospection
 
 from salesforce.backend import compiler, query
 
@@ -101,7 +97,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         return self._table_description_cache[table]
 
     def table_name_converter(self, name):
-        return name if (name.lower() != 'id' or DJANGO_18_PLUS) else SF_PK
+        return name
 
     def get_table_list(self, cursor):
         "Returns a list of table names in the current database."
@@ -174,11 +170,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                     if True in relationship_tmp:
                         relationship_order = '*'
                 last_refs[field['name']] = (field['referenceTo'], relationship_order)
-                if DJANGO_18_PLUS:
-                    result[field['name']] = ('Id', reference_to_name)
-                else:
-                    INDEX_OF_PRIMARY_KEY = 0
-                    result[i] = (INDEX_OF_PRIMARY_KEY, reference_to_name)
+                result[field['name']] = ('Id', reference_to_name)
                 reverse.setdefault(reference_to_name, []).append(field['name'])
                 if not field['updateable'] or not field['createable']:
                     sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
