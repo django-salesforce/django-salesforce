@@ -135,17 +135,17 @@ class BasicSOQLRoTest(TestCase):
         test_contact.save()
         req_count_0 = salesforce.backend.driver.request_count
         try:
-            contacts = list(Contact.objects.filter(account__Name='sf_test account').simple_select_related('account'))
+            qs = Contact.objects.filter(account__Name='sf_test account').simple_select_related('account')
+            contacts = list(qs)
             req_count_1 = salesforce.backend.driver.request_count
+            [x.account.Name for x in contacts]
+            req_count_2 = salesforce.backend.driver.request_count
+            self.assertEqual(req_count_1, req_count_0 + 2)
+            self.assertEqual(req_count_2, req_count_1)
+            self.assertGreaterEqual(len(contacts), 1)
         finally:
             test_contact.delete()
             test_account.delete()
-        req_count_2 = salesforce.backend.driver.request_count
-        [x.account.Name for x in contacts]
-        req_count_3 = salesforce.backend.driver.request_count
-        self.assertEqual(req_count_1, req_count_0 + 2)
-        self.assertEqual(req_count_3, req_count_2)
-        self.assertGreaterEqual(len(contacts), 1)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_one_to_one_field(self):
