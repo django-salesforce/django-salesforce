@@ -103,6 +103,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
         self.validate_settings(settings_dict)
 
+        self.features = DatabaseFeatures(self)
+        self.ops = DatabaseOperations(self)
+        self.client = DatabaseClient(self)
+        self.creation = DatabaseCreation(self)
+        self.introspection = introspection.DatabaseIntrospection(self)
+        self.validation = DatabaseValidation(self)
         self._sf_session = None
         self._is_sandbox = None
         # The SFDC database is connected as late as possible if only tests
