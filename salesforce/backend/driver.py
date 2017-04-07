@@ -144,6 +144,13 @@ def handle_api_exceptions(url, f, *args, **kwargs):
     # TODO some timeouts can be rarely raised as "SSLError: The read operation timed out"
     except requests.exceptions.Timeout:
         raise SalesforceError("Timeout, URL=%s" % url)
+    except ConnectionResetError:
+        # retry two more times
+        try:
+            response = f(url, *args, **kwargs_in)
+        except ConnectionResetError:
+            response = f(url, *args, **kwargs_in)
+
     if response.status_code == 401:
         # Unauthorized (expired or invalid session ID or OAuth)
         data = response.json()[0]
