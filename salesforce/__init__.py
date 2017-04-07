@@ -23,7 +23,7 @@ DJANGO_110_PLUS = django.VERSION[:2] >= (1, 10)
 if django.VERSION[:3] < (1, 8, 4) or django.VERSION[:2] > (1, 10):
     # Statistically three or more blocking issues can be expected by every
     # new major Django version, if not fixed early. Optimism is misplaced.
-    raise ImportError("Django version between 1.8.4 and 1.10.x is required "
+    raise ImportError("Django version between 1.8.4 and 1.11.x is required "
                       "for this django-salesforce.")
 
 log = logging.getLogger(__name__)
