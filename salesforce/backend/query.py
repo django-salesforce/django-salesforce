@@ -26,6 +26,7 @@ from django.core.serializers import python
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.models import query, Count
+from django.db.models.query import BaseIterable
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.utils.six import PY3
@@ -221,35 +222,38 @@ class SalesforceRawQuerySet(query.RawQuerySet):
             self.query.get_columns()
         return self.query.cursor.rowcount
 
-class SalesforceQuerySet(query.QuerySet):
+
+class SalesforceModelIterable(BaseIterable):
     """
-    Use a custom SQL compiler to generate SOQL-compliant queries.
+    Iterable that yields a model instance for each row.
     """
-    def iterator(self):
+
+    def __iter__(self):
+        queryset = self.queryset
         """
         An iterator over the results from applying this QuerySet to the
         remote web service.
         """
         try:
-            sql, params = SQLCompiler(self.query, connections[self.db], None).as_sql()
+            sql, params = SQLCompiler(queryset.query, connections[queryset.db], None).as_sql()
         except EmptyResultSet:
             raise StopIteration
-        cursor = CursorWrapper(connections[self.db], self.query)
+        cursor = CursorWrapper(connections[queryset.db], queryset.query)
         cursor.execute(sql, params)
 
-        only_load = self.query.get_loaded_field_names()
+        only_load = queryset.query.get_loaded_field_names()
         load_fields = []
         # If only/defer clauses have been specified,
         # build the list of fields that are to be loaded.
         if not only_load:
-            model_cls = self.model
+            model_cls = queryset.model
             init_list = None
         else:
-            fields = self.model._meta.concrete_fields
+            fields = queryset.model._meta.concrete_fields
             for field in fields:
                 model = field.model._meta.concrete_model
                 if model is None:
-                    model = self.model
+                    model = queryset.model
                 try:
                     if field.attname in only_load[model]:
                         # Add a field that has been explicitly included
@@ -267,20 +271,20 @@ class SalesforceQuerySet(query.QuerySet):
                 else:
                     init_list.append(field.name)
             if DJANGO_110_PLUS:
-                model_cls = self.model
+                model_cls = queryset.model
             else:
-                model_cls = deferred_class_factory(self.model, skip)
+                model_cls = deferred_class_factory(queryset.model, skip)
 
-        field_names = self.query.get_loaded_field_names()
+        field_names = queryset.query.get_loaded_field_names()
         for res in python.Deserializer(
                 x for x in
-                (prep_for_deserialize(model_cls, r, self.db, init_list)
+                (prep_for_deserialize(model_cls, r, queryset.db, init_list)
                  for r in cursor.results
                  )
                 if x is not None
         ):
             # Store the source database of the object
-            res.object._state.db = self.db
+            res.object._state.db = queryset.db
             # This object came from the database; it's not being added.
             res.object._state.adding = False
 
@@ -288,6 +292,16 @@ class SalesforceQuerySet(query.QuerySet):
                 raise NotImplementedError("methods defer() and only() are not implemented for Django 1.10 yet")
 
             yield res.object
+
+
+class SalesforceQuerySet(query.QuerySet):
+    """
+    Use a custom SQL compiler to generate SOQL-compliant queries.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(SalesforceQuerySet, self).__init__(*args, **kwargs)
+        self._iterable_class = SalesforceModelIterable
 
     def query_all(self):
         """
