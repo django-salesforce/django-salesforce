@@ -61,7 +61,7 @@ class SQLCompiler(compiler.SQLCompiler):
         self.quote_cache[name] = r
         return r
 
-    def execute_sql(self, result_type=constants.MULTI):
+    def execute_sql(self, result_type=constants.MULTI, chunked_fetch=False):
         """
         Run the query against the database and returns the result(s). The
         return value is a single data item if result_type is SINGLE, or an
