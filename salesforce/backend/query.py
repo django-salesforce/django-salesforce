@@ -26,7 +26,13 @@ from django.core.serializers import python
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.models import query, Count
-from django.db.models.query import BaseIterable
+try:
+    from django.db.models.query import BaseIterable
+except ImportError:
+    class BaseIterable(object):
+        def __init__(self, queryset, chunked_fetch=False):
+            self.queryset = queryset
+            self.chunked_fetch = chunked_fetch
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.utils.six import PY3
@@ -302,6 +308,13 @@ class SalesforceQuerySet(query.QuerySet):
     def __init__(self, *args, **kwargs):
         super(SalesforceQuerySet, self).__init__(*args, **kwargs)
         self._iterable_class = SalesforceModelIterable
+
+    def iterator(self):
+        """
+        An iterator over the results from applying this QuerySet to the
+        database.
+        """
+        return iter(self._iterable_class(self, chunked_fetch=True))
 
     def query_all(self):
         """
