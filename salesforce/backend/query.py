@@ -314,7 +314,7 @@ class SalesforceQuerySet(query.QuerySet):
         An iterator over the results from applying this QuerySet to the
         database.
         """
-        return iter(self._iterable_class(self, chunked_fetch=True))
+        return iter(self._iterable_class(self))
 
     def query_all(self):
         """
