@@ -89,13 +89,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     Database = Database
 
-    client_class = DatabaseClient
-    creation_class = DatabaseCreation
-    features_class = DatabaseFeatures
-    introspection_class = introspection.DatabaseIntrospection
-    ops_class = DatabaseOperations
-    validation_class = DatabaseValidation
-
     def __init__(self, settings_dict, alias=None):
         if alias is None:
             alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
