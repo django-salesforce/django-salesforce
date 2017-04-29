@@ -24,7 +24,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
         Product, Pricebook, PricebookEntry, Note, Task,
         Organization, models_template,
         )
-from salesforce import router, DJANGO_110_PLUS
+from salesforce import router, DJANGO_110_PLUS, DJANGO_111_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid
@@ -447,6 +447,7 @@ class BasicSOQLRoTest(TestCase):
         finally:
             account.delete()
 
+    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_111_PLUS)
     def test_bulk_update(self):
         """Create two Contacts by one request in one command, find them.
         """
