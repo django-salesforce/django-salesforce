@@ -24,6 +24,7 @@ from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.introspection import DatabaseIntrospection
+from salesforce.backend.schema import DatabaseSchemaEditor
 from salesforce.backend.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA - TODO
 from salesforce.backend import driver as Database, get_max_retries
 # from django.db.backends.signals import connection_created
@@ -90,6 +91,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     }
 
     Database = Database
+    SchemaEditorClass = DatabaseSchemaEditor
 
     if DJANGO_111_PLUS:
         # Classes instantiated in __init__().

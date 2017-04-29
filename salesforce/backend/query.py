@@ -469,6 +469,8 @@ class CursorWrapper(object):
             response = self.execute_update(self.query)
         elif isinstance(self.query, subqueries.DeleteQuery):
             response = self.execute_delete(self.query)
+        elif q == "SELECT django_migrations.app, django_migrations.name FROM django_migrations":
+            response = self.execute_select(q, args)
         else:
             raise DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
 
@@ -511,6 +513,12 @@ class CursorWrapper(object):
             self.results = iter([])
 
     def execute_select(self, q, args):
+        if q == "SELECT django_migrations.app, django_migrations.name FROM django_migrations":
+            # It is required by "makemigrations" in Django 1.10 that this query
+            # must be accepted. Empty results are possible. Later it can be replaced by:
+            # q = "SELECT app__c, Name FROM django_migrations__c"
+            self.results = iter([])
+            return
         processed_sql = str(q) % process_args(args)
         service = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
         url = rest_api_url(self.session, service, '?' + urlencode(dict(q=processed_sql)))
