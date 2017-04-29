@@ -61,6 +61,7 @@ log = logging.getLogger(__name__)
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
+MIGRATIONS_QUERY_TO_BE_IGNORED = "SELECT django_migrations.app, django_migrations.name FROM django_migrations"
 
 
 def rest_api_url(sf_session, service, *args):
@@ -469,7 +470,7 @@ class CursorWrapper(object):
             response = self.execute_update(self.query)
         elif isinstance(self.query, subqueries.DeleteQuery):
             response = self.execute_delete(self.query)
-        elif q == "SELECT django_migrations.app, django_migrations.name FROM django_migrations":
+        elif q == MIGRATIONS_QUERY_TO_BE_IGNORED:
             response = self.execute_select(q, args)
         else:
             raise DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
@@ -513,17 +514,22 @@ class CursorWrapper(object):
             self.results = iter([])
 
     def execute_select(self, q, args):
-        if q == "SELECT django_migrations.app, django_migrations.name FROM django_migrations":
-            # It is required by "makemigrations" in Django 1.10 that this query
-            # must be accepted. Empty results are possible. Later it can be replaced by:
-            # q = "SELECT app__c, Name FROM django_migrations__c"
-            self.results = iter([])
-            return
         processed_sql = str(q) % process_args(args)
         service = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
         url = rest_api_url(self.session, service, '?' + urlencode(dict(q=processed_sql)))
         log.debug(processed_sql)
-        return handle_api_exceptions(url, self.session.get, _cursor=self)
+        if q != MIGRATIONS_QUERY_TO_BE_IGNORED:
+            # normal query
+            return handle_api_exceptions(url, self.session.get, _cursor=self)
+        else:
+            # Nothing queried about django_migrations to SFDC and immediately responded that
+            # nothing about migration status is recorded in SFDC.
+            #
+            # That is required by "makemigrations" in Django 1.10+ to accept this query.
+            # Empty results are possible.
+            # (It could be eventually replaced by: "SELECT app__c, Name FROM django_migrations__c")
+            self.results = iter([])
+            return
 
     def query_more(self, nextRecordsUrl):
         url = u'%s%s' % (self.session.auth.instance_url, nextRecordsUrl)

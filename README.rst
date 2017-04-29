@@ -22,8 +22,9 @@ traditional database.
 Python 2.7.9+, 3.4 to 3.6, Django 1.8.4+, 1.9, 1.10, 1.11 are supported with
 some limitations on raw queries, values_list() and values() methods.
 
-Django 1.10 and 1.10 is currently supported without values(), values_list(), defer(),
-some raw() methods.
+Django 1.10 and 1.11 is currently supported without values(), values_list(), defer(),
+some raw() methods. (All fixed in a development repository, waiting for review,
+consensus etc.)
 
 Pre-2.7.9 Python versions don't have the required TLS 1.1 support to use
 both production and sandbox Salesforce instances. PyPy may still work,
