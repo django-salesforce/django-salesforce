@@ -65,7 +65,7 @@ def autosetup():
         # setuptools won't auto-detect Git managed files without this
         setup_requires=["setuptools_git >= 0.4.2"] if with_git else [],
 
-        install_requires=requirements_txt,
+        install_requires=['django>=1.8.4,<1.11.99'] + requirements_txt,
 
         # metadata for upload to PyPI
         author="Freelancers Union",
