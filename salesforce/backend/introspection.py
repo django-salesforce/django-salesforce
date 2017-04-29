@@ -29,6 +29,12 @@ from django.utils.text import camel_case_to_spaces
 
 log = logging.getLogger(__name__)
 
+# these sObjects are not tables - ignore them
+# not queryable, not searchable, not retrieveable, only triggerable
+PROBLEMATIC_OBJECTS = [
+    'AssetTokenEvent',  # new in API 39.9 Spring '17
+]
+
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
     """
@@ -83,6 +89,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
             # charset is detected from headers by requests package
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
+            self._table_list_cache['sobjects'] = [
+                x for x in self._table_list_cache['sobjects']
+                if x['name'] not in PROBLEMATIC_OBJECTS
+            ]
         return self._table_list_cache
 
     def table_description_cache(self, table):
@@ -91,8 +101,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             log.debug('Request API URL: %s' % url)
             response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
             self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
-            assert self._table_description_cache[table]['fields'][0]['type'] == 'id'
-            assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
+            assert self._table_description_cache[table]['fields'][0]['type'] == 'id', (
+                "Invalid type of the first field in the table '{}'".format(table))
+            assert self._table_description_cache[table]['fields'][0]['name'] == 'Id', (
+                "Invalid name of the first field in the table '{}'".format(table))
             del self._table_description_cache[table]['fields'][0]
         return self._table_description_cache[table]
 
