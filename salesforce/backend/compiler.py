@@ -446,7 +446,11 @@ class Range(models.lookups.Range):
         if connection.vendor == 'salesforce':
             lhs, lhs_params = self.process_lhs(qn, connection)
             rhs, rhs_params = self.process_rhs(qn, connection)
-            assert rhs == ['%s', '%s']
+            lhs = list(lhs) if isinstance(lhs, tuple) else lhs
+            lhs_params = list(lhs_params) if isinstance(lhs_params, tuple) else lhs_params
+            rhs = list(rhs) if isinstance(rhs, tuple) else rhs
+            rhs_params = list(rhs_params) if isinstance(rhs_params, tuple) else rhs_params
+            assert rhs == ['%s', '%s'], "%r != ['%%s', '%%s']" % (rhs, )
             params = lhs_params + rhs_params[:1] + lhs_params + rhs_params[1:2]
             # The symbolic parameters %s are again substituted by %s. The real
             # parameters will be passed finally directly to CursorWrapper.execute
