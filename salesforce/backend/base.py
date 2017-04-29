@@ -23,9 +23,11 @@ from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
+from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA - TODO
-from salesforce.backend import introspection, driver as Database, get_max_retries
+from salesforce.backend import driver as Database, get_max_retries
 # from django.db.backends.signals import connection_created
+from salesforce import DJANGO_111_PLUS
 
 from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.backends.base.features import BaseDatabaseFeatures
@@ -89,12 +91,14 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     Database = Database
 
-    client_class = DatabaseClient
-    creation_class = DatabaseCreation
-    features_class = DatabaseFeatures
-    introspection_class = introspection.DatabaseIntrospection
-    ops_class = DatabaseOperations
-    validation_class = DatabaseValidation
+    if DJANGO_111_PLUS:
+        # Classes instantiated in __init__().
+        client_class = DatabaseClient
+        creation_class = DatabaseCreation
+        features_class = DatabaseFeatures
+        introspection_class = DatabaseIntrospection
+        ops_class = DatabaseOperations
+        validation_class = DatabaseValidation
 
     def __init__(self, settings_dict, alias=None):
         if alias is None:
@@ -103,12 +107,13 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
         self.validate_settings(settings_dict)
 
-        self.features = DatabaseFeatures(self)
-        self.ops = DatabaseOperations(self)
-        self.client = DatabaseClient(self)
-        self.creation = DatabaseCreation(self)
-        self.introspection = introspection.DatabaseIntrospection(self)
-        self.validation = DatabaseValidation(self)
+        if not DJANGO_111_PLUS:
+            self.features = DatabaseFeatures(self)
+            self.ops = DatabaseOperations(self)
+            self.client = DatabaseClient(self)
+            self.creation = DatabaseCreation(self)
+            self.introspection = DatabaseIntrospection(self)
+            self.validation = DatabaseValidation(self)
         self._sf_session = None
         self._is_sandbox = None
         # The SFDC database is connected as late as possible if only tests

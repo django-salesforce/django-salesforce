@@ -20,11 +20,16 @@ __version__ = "0.6.9"  # development shortly before 0.7
 DJANGO_18_PLUS = True  # unused by us now - backward compatibility
 DJANGO_19_PLUS = django.VERSION[:2] >= (1, 9)
 DJANGO_110_PLUS = django.VERSION[:2] >= (1, 10)
+DJANGO_111_PLUS = django.VERSION[:2] >= (1, 11)
 if django.VERSION[:3] < (1, 8, 4) or django.VERSION[:2] > (1, 11):
     # Statistically three or more blocking issues can be expected by every
     # new major Django version, if not fixed early. Optimism is misplaced.
     raise ImportError("Django version between 1.8.4 and 1.11.x is required "
                       "for this django-salesforce.")
+
+if DJANGO_111_PLUS:
+    warnings.warn("Support for Django 1.11 is still in Release Candidatus quality. "
+                  "Test your app properly after upgraging!")
 
 log = logging.getLogger(__name__)
 
@@ -37,4 +42,5 @@ log = logging.getLogger(__name__)
 # >>> import salesforce
 # >>> setattr(salesforce, 'API_VERSION', '37.0')
 
-API_VERSION = '37.0'  # Summer '16
+API_VERSION = '38.0'  # Winter '17
+# API_VERSION = '39.0'  # Spring '17 - still not ready for this

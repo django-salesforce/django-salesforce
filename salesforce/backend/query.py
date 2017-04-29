@@ -26,18 +26,11 @@ from django.core.serializers import python
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.models import query, Count
-try:
-    from django.db.models.query import BaseIterable
-except ImportError:
-    class BaseIterable(object):
-        def __init__(self, queryset, chunked_fetch=False):
-            self.queryset = queryset
-            self.chunked_fetch = chunked_fetch
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.utils.six import PY3
 
-from salesforce import models, DJANGO_110_PLUS
+from salesforce import models, DJANGO_19_PLUS, DJANGO_110_PLUS
 from salesforce.backend.driver import DatabaseError, SalesforceError, handle_api_exceptions, API_STUB
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.backend.operations import DefaultedOnCreate
@@ -51,6 +44,14 @@ try:
     from urllib.parse import urlencode
 except ImportError:
     from urllib import urlencode
+
+if DJANGO_19_PLUS:
+    from django.db.models.query import BaseIterable
+else:
+    class BaseIterable(object):
+        def __init__(self, queryset, chunked_fetch=False):
+            self.queryset = queryset
+            self.chunked_fetch = chunked_fetch
 
 log = logging.getLogger(__name__)
 
