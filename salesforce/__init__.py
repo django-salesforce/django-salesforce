@@ -20,6 +20,7 @@ __version__ = "0.6.9"  # development shortly before 0.7
 DJANGO_18_PLUS = True  # unused by us now - backward compatibility
 DJANGO_19_PLUS = django.VERSION[:2] >= (1, 9)
 DJANGO_110_PLUS = django.VERSION[:2] >= (1, 10)
+DJANGO_111_PLUS = django.VERSION[:2] >= (1, 11)
 if django.VERSION[:3] < (1, 8, 4) or django.VERSION[:2] > (1, 11):
     # Statistically three or more blocking issues can be expected by every
     # new major Django version, if not fixed early. Optimism is misplaced.
