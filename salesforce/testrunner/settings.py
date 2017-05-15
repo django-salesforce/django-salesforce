@@ -129,7 +129,8 @@ INSTALLED_APPS = (
 )
 
 SALESFORCE_DB_ALIAS = 'salesforce'
-SALESFORCE_QUERY_TIMEOUT = 15
+# Timeouts tuple: (waiting for connection, waiting for data) in seconds
+SALESFORCE_QUERY_TIMEOUT = (4, 15)
 # Maximal number of retries after timeout.
 # REQUESTS_MAX_RETRIES = 1
 DATABASE_ROUTERS = [
