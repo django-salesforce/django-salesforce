@@ -29,19 +29,6 @@ def get_tagged_version():
     They contain: the Git tag, the commit serial and a short commit id.
     otherwise a short version number is used if installed from Pypi.
     """
-    with_git = os.path.isdir(relative_path('.git'))
-    if with_git:
-        proc = subprocess.Popen(
-            ['git', 'describe', '--tags'],
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            cwd=os.path.dirname(__file__) or None
-        )
-        (stdoutdata, stderrdata) = proc.communicate()
-        if proc.returncode == 0:
-            version = stdoutdata.decode("utf-8").strip().lstrip('v')
-            return version
-
     with open(relative_path('salesforce/__init__.py'), 'r') as fd:
         version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                             fd.read(), re.MULTILINE).group(1)
