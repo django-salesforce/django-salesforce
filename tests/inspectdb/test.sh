@@ -1,4 +1,13 @@
 #!/bin/bash
+
+# TODO check also sometimes manually that a file "models.py"
+#      created by older Python, Django and django-salesferce versions
+#      can be imported by newer versions.
+#      test it by command
+#          .tox/py..-dj.../bin/python manage.py check --settings=tests.inspectdb.settings --traceback
+#      after version switching
+
+
 echo "python manage.py inspectdb --database=salesforce >tests/inspectdb/models.py"
 if python manage.py inspectdb --database=salesforce --traceback >tests/inspectdb/models.py; then
 
