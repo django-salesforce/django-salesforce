@@ -15,7 +15,7 @@ import warnings
 
 import django
 
-__version__ = "0.6.9"  # development shortly before 0.7
+__version__ = "0.7.1"
 
 DJANGO_18_PLUS = True  # unused by us now - backward compatibility
 DJANGO_19_PLUS = django.VERSION[:2] >= (1, 9)
@@ -29,7 +29,7 @@ if django.VERSION[:3] < (1, 8, 4) or django.VERSION[:2] > (1, 11):
 
 if DJANGO_111_PLUS:
     warnings.warn("Support for Django 1.11 is still in pre-release quality. "
-                  "Test your app properly after upgraging.")
+                  "Test your app properly after upgrading.")
 
 log = logging.getLogger(__name__)
 
