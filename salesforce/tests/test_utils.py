@@ -51,7 +51,12 @@ class UtilitiesTest(TestCase):
             if ret:
                 # Deleting the Account object will also delete the related Contact
                 # and Opportunity objects.
-                account = Account.objects.get(pk=ret['accountId'])
+                try:
+                    account = Account.objects.get(pk=ret['accountId'])
+                except Exception:
+                    # this allows to recycle the account even if the queryset code is broken
+                    account = Account(pk=ret['accountId'])
+                    account._state.db = lead._state.db
                 account.delete()
             lead.delete()   # FYI, ret['leadId'] == lead.pk
             lead2.delete()
