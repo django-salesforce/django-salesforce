@@ -22,6 +22,7 @@ Incorrectly located files: (It is better not to change it now.)
     auth.py              => backend/auth.py
 """
 
+from django.apps import apps as django_apps
 import logging
 log = logging.getLogger(__name__)
 
@@ -40,3 +41,8 @@ def get_max_retries():
     if MAX_RETRIES is None:
         MAX_RETRIES = getattr(settings, 'REQUESTS_MAX_RETRIES', 1)
     return MAX_RETRIES
+
+
+# check 'salesforce' is in installed apps,
+# if 'salesforce.backend' is in DATABASES.
+django_apps.get_app_config('salesforce')
