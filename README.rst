@@ -251,7 +251,7 @@ here are the potential pitfalls and unimplemented operations:
    are specific to their individual applications' needs. Models that have
    been included with this library are for example and documentation
    purposes.
--  **Inheritence** — When using the default router, all models for object
+-  **Inheritance** — When using the default router, all models for object
    types on Salesforce must extend salesforce.models.SalesforceModel. The
    model router checks for this to determine which models to handle through
    the Salesforce connection.
