@@ -154,10 +154,11 @@ Advanced usage
 
 -  **Testing** - By default, tests will be run against the SFDC connection
    specified in settings.py, which will substantially increase testing time.
-   
+
    One way to speed this up is to change the SALESFORCE_DB_ALIAS to point to
    another DB connection (preferably SQLite) during testing using the
-   ``TEST_*`` settings variables. Django unit tests without SalesforceModel
+   ``TEST_*`` settings variables. Such simple tests can run without any network
+   access. Django unit tests without SalesforceModel
    are fast everytimes. Special read only fields that are updated only by SFDC
    e.g. ``last_modified_date`` need more parameters to be possible to save them
    into an alternate database, e.g. by ``auto_now=True`` or to play with
@@ -203,9 +204,6 @@ Advanced usage
    Also namespace prefixes of managed packages (prefixed with "PackageName\__"
    can be automatically applied to custom fields without db_column.
 
--  **Meta class options** - If an inner ``Meta`` class is used, it must be a
-   descendant of ``SalesforceModel.Meta`` or must have ``managed=False``.
-
 -  **Query deleted objects** - Deleted objects that are in trash bin are
    not selected by a normal queryset, but if a special method ``query_all``
    is used then also deleted objects are searched.
@@ -215,15 +213,16 @@ Advanced usage
      deleted_list = list(Lead.objects.filter(IsDeleted=True).query_all())
 
 -  **Migrations** - Migrations can be used for an alternate test database
-   with SalesforceModel. Then all tables must have Meta ``managed = True`` and
-   attributes db_table and db_column are required. (Migrations in SFDC
-   will be probably never supported, though it was experimantally tested
-   creation of a new simple table in sandbox if a development patch is
-   applied and permissions increased. If anything would be implemented after
-   all, a new attribute will be added to SalesforceModel for safe forward
-   compatibility. Consequently, the setting ``managed = True`` can be considered
-   safe as it is related only to the alternate non SFDC database configured
-   by ``SF_ALIAS``.)
+   with SalesforceModel. Then all tables must have Meta options ``db_table``
+   and fields must have option ``db_column``, which can be get
+   by ``inspectdb`` with ``--verbosity=2``. Models exported by introspection
+   ``inspectdb`` do not specify the option ``managed`` because the
+   default value True is considered safe.
+   (Migrations in SFDC are not supported. If anything would
+   be implemented after all, only explicitly clearly selected fields and models
+   could be migrated in explicitly labeled SFDC databases.
+   Consequently, the setting ``managed = True`` is related only to an alternate
+   non SFDC database configured by ``SF_ALIAS``.)
 
 Foreign Key Support
 -------------------
@@ -264,6 +263,9 @@ here are the potential pitfalls and unimplemented operations:
 
 Backwards-incompatible changes
 ------------------------------
+
+-  v0.8 (future): The default Meta option if now ``managed = True``, which is an unimportant
+   change for Salesforce databases (see about Migrations above).
 
 -  v0.6.9: This is the last code that supports old Django 1.7 and 1.8.0 - 1.8.3
 

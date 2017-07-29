@@ -16,6 +16,7 @@ from django.conf import settings
 
 log = logging.getLogger(__name__)
 
+
 def is_sf_database(db, model=None):
     """The alias is a Salesforce database."""
     from django.db import connections
@@ -66,10 +67,12 @@ class ModelRouter(object):
         """
         Don't attempt to sync SF models to non SF databases and vice versa.
         """
-        if 'model' in hints:
-            model = hints['model']
-        elif model_name:
+        if model_name:
             model = apps.get_model(app_label, model_name)
+        elif 'model' in hints:
+            # hints are used with less priority, because many hints are dynamic
+            # models on a '__fake__' module which are not SalesforceModels
+            model = hints['model']
         else:
             # in data migrations
             model = None
@@ -80,7 +83,7 @@ class ModelRouter(object):
             if not (is_sf_database(db) or db == self.sf_alias):
                 return False
         else:
-            if is_sf_database(db):
+            if is_sf_database(db) or self.sf_alias != 'default' and db == self.sf_alias:
                 return False
         # TODO: It is usual that "migrate" is currently disallowed for SF.
         # In the future it can be implemented to do a deep check by
