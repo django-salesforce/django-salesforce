@@ -79,7 +79,6 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
     _salesforce_object = True
 
     class Meta:
-        managed = False
         abstract = True
 
     # Name of primary key 'Id' can be easily changed to 'id'
