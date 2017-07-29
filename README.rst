@@ -204,11 +204,6 @@ Advanced usage
    Also namespace prefixes of managed packages (prefixed with "PackageName\__"
    can be automatically applied to custom fields without db_column.
 
--  **Meta class options** - If a ``Meta`` class is used, remember that the
-   default ``SalesforceModel.Meta``value ``managed=False`` will be changed to
-   True by Django if managed=False is not repeated. (probably without any
-   important consequence for you)
-
 -  **Query deleted objects** - Deleted objects that are in trash bin are
    not selected by a normal queryset, but if a special method ``query_all``
    is used then also deleted objects are searched.
@@ -218,14 +213,16 @@ Advanced usage
      deleted_list = list(Lead.objects.filter(IsDeleted=True).query_all())
 
 -  **Migrations** - Migrations can be used for an alternate test database
-   with SalesforceModel. Then all tables must have a Meta with ``managed = True``
-   or without ``managed`` attribute and attributes ``db_table`` and ``db_column``
-   are required. (Migrations in SFDC are not supported. If anything would
+   with SalesforceModel. Then all tables must have Meta options ``db_table``
+   and fields must have option ``db_column``, which can be get
+   by ``inspectdb`` with ``--verbosity=2``. Models exported by introspection
+   ``inspectdb`` do not specify the option ``managed`` because the
+   default value True is considered safe.
+   (Migrations in SFDC are not supported. If anything would
    be implemented after all, only explicitly clearly selected fields and models
    could be migrated in explicitly labeled SFDC databases.
-   Consequently, the setting ``managed = True`` can be considered
-   safe as it is related only to an alternate non SFDC database configured
-   by ``SF_ALIAS``.)
+   Consequently, the setting ``managed = True`` is related only to an alternate
+   non SFDC database configured by ``SF_ALIAS``.)
 
 Foreign Key Support
 -------------------
@@ -266,6 +263,9 @@ here are the potential pitfalls and unimplemented operations:
 
 Backwards-incompatible changes
 ------------------------------
+
+-  v0.8 (future): The default Meta option if now ``managed = True``, which is an unimportant
+   change for Salesforce databases (see about Migrations above).
 
 -  v0.6.9: This is the last code that supports old Django 1.7 and 1.8.0 - 1.8.3
 
