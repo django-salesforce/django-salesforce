@@ -21,9 +21,8 @@ DJANGO_18_PLUS = True  # unused by us now - backward compatibility
 DJANGO_19_PLUS = django.VERSION[:2] >= (1, 9)
 DJANGO_110_PLUS = django.VERSION[:2] >= (1, 10)
 DJANGO_111_PLUS = django.VERSION[:2] >= (1, 11)
+
 if django.VERSION[:3] < (1, 8, 4) or django.VERSION[:2] > (1, 11):
-    # Statistically three or more blocking issues can be expected by every
-    # new major Django version. Strict check before support is better.
     raise ImportError("Django version between 1.8.4 and 1.11.x is required "
                       "for this django-salesforce.")
 
