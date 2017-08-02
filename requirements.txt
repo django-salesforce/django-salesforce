@@ -1,4 +1,5 @@
-django>=1.8.4,<1.10.99
 simplejson>=2.5.0
 pytz>=2012c
-requests>=2.0.0
+requests>=2.4.0
+# Django requirement is specified in setup.py,
+# because pip doesn't accept double requirement in tests.

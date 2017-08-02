@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from django.test import TestCase
 from tests.test_compatibility.models import Lead, User
-from salesforce.backend.test_helpers import current_user, uid
+from salesforce.backend.test_helpers import current_user, uid_version as uid
 
 
 class CompatibilityTest(TestCase):

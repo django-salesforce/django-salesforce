@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from django.test import TestCase
 from tests.test_mixin.models import Account, Contact, User, ProxyContact, Proxy2Contact
-from salesforce.backend.test_helpers import current_user, uid
+from salesforce.backend.test_helpers import current_user, uid_version as uid
 
 
 def refresh(obj):

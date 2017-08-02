@@ -13,37 +13,27 @@ import subprocess
 os.environ['COPY_EXTENDED_ATTRIBUTES_DISABLE'] = 'true'
 os.environ['COPYFILE_DISABLE'] = 'true'
 
+
 def relative_path(path):
     """
     Return the given path relative to this file.
     """
     return os.path.join(os.path.dirname(__file__), path)
 
+
 def get_tagged_version():
     """
     Determine the current version of this package.
 
-    Precise long version numbers are used with Git, that contain Git tag,
-    the commit serial and a short commit id,
+    Precise long version numbers are used if the Git repository is found.
+    They contain: the Git tag, the commit serial and a short commit id.
     otherwise a short version number is used if installed from Pypi.
     """
-    with_git = os.path.isdir(relative_path('.git'))
-    if with_git:
-        proc = subprocess.Popen(
-            ['git', 'describe', '--tags'],
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            cwd=os.path.dirname(__file__) or None
-        )
-        (stdoutdata, stderrdata) = proc.communicate()
-        if proc.returncode == 0:
-            version = stdoutdata.decode("utf-8").strip().lstrip('v')
-            return version
-
     with open(relative_path('salesforce/__init__.py'), 'r') as fd:
         version = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
                             fd.read(), re.MULTILINE).group(1)
     return version
+
 
 def autosetup():
     from setuptools import setup, find_packages
@@ -63,9 +53,9 @@ def autosetup():
         packages=find_packages(exclude=['tests', 'tests.*']),
 
         # setuptools won't auto-detect Git managed files without this
-        setup_requires=["setuptools_git >= 0.4.2"] if with_git else [],
+        setup_requires=[] if not with_git else ["setuptools_git >= 0.4.2"],
 
-        install_requires=requirements_txt,
+        install_requires=['django>=1.8.4,<1.11.99'] + requirements_txt,
 
         # metadata for upload to PyPI
         author="Freelancers Union",

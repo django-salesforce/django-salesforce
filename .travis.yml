@@ -1,7 +1,7 @@
 sudo: false
 language: python
-python:
-    "3.5"
+python: "3.6"
+dist: trusty
 env:
   global:
     - secure: "Z6wS6a/YcyT8w5l+2HfMItbn2mbv+f1W43WixoqB4QkgiocjBWvmAQD6PN1sEgWVmZlRvWCABK8FcGG+Y6RPFeNdCE0U1h9hEgOiAnhUpWWH/AhOYDZ0PnFwA3/iRrHS2VFPmhdkjw1BUEfqXaJfDYtlZLgpMMfRvEjIJ8Uqq6M="
@@ -13,6 +13,7 @@ cache:
   directories:
     - $HOME/.pip-cache/
 before_install:
+ - if [[ $TOXENV = py35 && -f ~/virtualenv/python3.5/bin/activate ]]; then source ~/virtualenv/python3.5/bin/activate; fi
  - "pip install setuptools_git"
  - "pip install rstcheck"
 install:

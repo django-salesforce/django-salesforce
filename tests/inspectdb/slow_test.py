@@ -16,15 +16,15 @@ import os
 import sys
 
 import django
-from salesforce.backend.base import SalesforceError
-
-from tests.inspectdb import models as mdl
-
 sys.path.insert(0, '.')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.inspectdb.settings'
-from django.db import connections  # NOQA
-# The same "django.setup()" is used by manage.py subcommands in Django
 django.setup()
+
+# there 3 lines- must be imported after: path, environ, django.setup()
+from django.db import connections  # NOQA
+from tests.inspectdb import models as mdl  # NOQA
+from salesforce.backend.base import SalesforceError  # NOQA
+
 
 sf = connections['salesforce']
 
@@ -72,6 +72,8 @@ def run():
                     'StaticResource', 'WebLink',
                     # This is not writable due to 'NamespacePrefix' field
                     'ApexPage',
+                    # It does not update the 'last_modified_date' field
+                    'AppMenuItem',
                     # Some Leads are not writable becase they are coverted to Contact
                     'Lead',
                     # Insufficient access rights on cross-reference id

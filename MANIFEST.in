@@ -1,3 +1,2 @@
-include VERSION
 exclude .gitignore
 exclude salesforce/testrunner/local_settings.py

@@ -6,7 +6,6 @@ should be independent on Django.db
 and if possible should be independent on django.conf.settings
 Code at lower level than DB API should be also here.
 """
-from collections import namedtuple
 import requests
 import socket
 
@@ -129,11 +128,9 @@ def handle_api_exceptions(url, f, *args, **kwargs):
         f:  requests.get or requests.post...
         _cursor: sharing the debug information in cursor
     """
-    #import pdb; pdb.set_trace()
-    #print("== REQUEST %s | %s | %s | %s" % (url, f, args, kwargs))
     global request_count
     # The 'verify' option is about verifying SSL certificates
-    kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', 3),
+    kwargs_in = {'timeout': getattr(settings, 'SALESFORCE_QUERY_TIMEOUT', (4, 15)),
                  'verify': True}
     kwargs_in.update(kwargs)
     _cursor = kwargs_in.pop('_cursor', None)

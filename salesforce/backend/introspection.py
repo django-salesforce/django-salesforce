@@ -29,6 +29,12 @@ from django.utils.text import camel_case_to_spaces
 
 log = logging.getLogger(__name__)
 
+# these sObjects are not tables - ignore them
+# not queryable, not searchable, not retrieveable, only triggerable
+PROBLEMATIC_OBJECTS = [
+    'AssetTokenEvent',  # new in API 39.9 Spring '17
+]
+
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
     """
@@ -83,6 +89,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
             # charset is detected from headers by requests package
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
+            self._table_list_cache['sobjects'] = [
+                x for x in self._table_list_cache['sobjects']
+                if x['name'] not in PROBLEMATIC_OBJECTS
+            ]
         return self._table_list_cache
 
     def table_description_cache(self, table):
@@ -91,8 +101,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             log.debug('Request API URL: %s' % url)
             response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
             self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
-            assert self._table_description_cache[table]['fields'][0]['type'] == 'id'
-            assert self._table_description_cache[table]['fields'][0]['name'] == 'Id'
+            assert self._table_description_cache[table]['fields'][0]['type'] == 'id', (
+                "Invalid type of the first field in the table '{}'".format(table))
+            assert self._table_description_cache[table]['fields'][0]['name'] == 'Id', (
+                "Invalid name of the first field in the table '{}'".format(table))
             del self._table_description_cache[table]['fields'][0]
         return self._table_description_cache[table]
 
@@ -192,6 +204,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def get_indexes(self, cursor, table_name):
         """
+        DEPRECATED
         Returns a dictionary of fieldname -> infodict for the given table,
         where each infodict is in the format:
             {'primary_key': boolean representing whether it's the primary key,
@@ -204,6 +217,34 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                         primary_key=(field['type'] == 'id'),
                         unique=field['unique']
                         )
+        return result
+
+    def get_constraints(self, cursor, table_name):
+        """
+        Retrieves any constraints or keys (unique, pk, fk, check, index)
+        across one or more columns.
+
+        Returns a dict mapping constraint names to their attributes,
+        where attributes is a dict with keys:
+         * columns: List of columns this covers
+         * primary_key: True if primary key, False otherwise
+         * unique: True if this is a unique constraint, False otherwise
+         * foreign_key: (table, column) of target, or None
+         * check: True if check constraint, False otherwise
+         * index: True if index, False otherwise.
+         * orders: The order (ASC/DESC) defined for the columns of indexes
+         * type: The type of the index (btree, hash, etc.)
+        """
+        result = {}
+        for field in self.table_description_cache(table_name)['fields']:
+            if field['type'] in ('id', 'reference') or field['unique']:
+                result[field['name']] = dict(
+                    columns=field['name'],
+                    primary_key=(field['type'] == 'id'),
+                    unique=field['unique'],
+                    foreign_key=(field['referenceTo'], 'id'),
+                    check=False,
+                )
         return result
 
     def get_additional_meta(self, table_name):
@@ -226,10 +267,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
 class SymbolicModelsName(object):
     """A symbolic name from the `models` module.
+    >>> from salesforce import models
     >>> assert models.READ_ONLY == 3
-    >>> SymbolicName('READ_ONLY').value
+    >>> SymbolicModelsName('READ_ONLY').value
     3
-    >>> [SymbolicName('READ_ONLY')]
+    >>> [SymbolicModelsName('READ_ONLY')]
     [models.READ_ONLY]
     """
     def __init__(self, name):

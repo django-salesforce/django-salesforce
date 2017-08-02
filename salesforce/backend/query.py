@@ -30,7 +30,7 @@ from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.utils.six import PY3
 
-from salesforce import models, DJANGO_110_PLUS
+from salesforce import models, DJANGO_19_PLUS, DJANGO_110_PLUS
 from salesforce.backend.driver import DatabaseError, SalesforceError, handle_api_exceptions, API_STUB
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.backend.operations import DefaultedOnCreate
@@ -45,6 +45,14 @@ try:
 except ImportError:
     from urllib import urlencode
 
+if DJANGO_19_PLUS:
+    from django.db.models.query import BaseIterable
+else:
+    class BaseIterable(object):
+        def __init__(self, queryset, chunked_fetch=False):
+            self.queryset = queryset
+            self.chunked_fetch = chunked_fetch
+
 log = logging.getLogger(__name__)
 
 
@@ -53,6 +61,7 @@ log = logging.getLogger(__name__)
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
+MIGRATIONS_QUERY_TO_BE_IGNORED = "SELECT django_migrations.app, django_migrations.name FROM django_migrations"
 
 
 def rest_api_url(sf_session, service, *args):
@@ -69,7 +78,7 @@ def rest_api_url(sf_session, service, *args):
             )
 
 
-def quoted_string_literal(s, d):
+def quoted_string_literal(s):
     """
     SOQL requires single quotes to be escaped.
     http://www.salesforce.com/us/developer/docs/soql_sosl/Content/sforce_api_calls_soql_select_quotedstringescapes.htm
@@ -79,29 +88,25 @@ def quoted_string_literal(s, d):
     except TypeError as e:
         raise NotImplementedError("Cannot quote %r objects: %r" % (type(s), s))
 
-def process_args(args):
+def arg_to_soql(arg):
     """
-    Perform necessary quoting on the arg list.
+    Perform necessary SOQL quoting on the arg.
     """
-    def _escape(item, conv):
-        if(isinstance(item, models.SalesforceModel)):
-            return conv.get(models.SalesforceModel, conv[str])(item, conv)
-        if(isinstance(item, decimal.Decimal)):
-            return conv.get(decimal.Decimal, conv[str])(item, conv)
-        return conv.get(type(item), conv[str])(item, conv)
-    return tuple([_escape(x, sql_conversions) for x in args])
+    if(isinstance(arg, models.SalesforceModel)):
+        return sql_conversions[models.SalesforceModel](arg)
+    if(isinstance(arg, decimal.Decimal)):
+        return sql_conversions[decimal.Decimal](arg)
+    return sql_conversions.get(type(arg), sql_conversions[str])(arg)
 
-def process_json_args(args):
+def arg_to_sf(arg):
     """
-    Perform necessary JSON quoting on the arg list.
+    Perform necessary JSON conversion on the arg.
     """
-    def _escape(item, conv):
-        if(isinstance(item, models.SalesforceModel)):
-            return conv.get(models.SalesforceModel, conv[str])(item, conv)
-        if(isinstance(item, decimal.Decimal)):
-            return conv.get(decimal.Decimal, conv[str])(item, conv)
-        return conv.get(type(item), conv[str])(item, conv)
-    return tuple([_escape(x, json_conversions) for x in args])
+    if(isinstance(arg, models.SalesforceModel)):
+        return json_conversions[models.SalesforceModel](arg)
+    if(isinstance(arg, decimal.Decimal)):
+        return json_conversions[decimal.Decimal](arg)
+    return json_conversions.get(type(arg), json_conversions[str])(arg)
 
 
 def prep_for_deserialize_inner(model, record, init_list=None):
@@ -209,8 +214,7 @@ def extract_values_inner(row, query):
                 continue
         if isinstance(value, DefaultedOnCreate):
             continue
-        [arg] = process_json_args([value])
-        d[field.column] = arg
+        d[field.column] = arg_to_sf(value)
     return d
 
 
@@ -221,35 +225,38 @@ class SalesforceRawQuerySet(query.RawQuerySet):
             self.query.get_columns()
         return self.query.cursor.rowcount
 
-class SalesforceQuerySet(query.QuerySet):
+
+class SalesforceModelIterable(BaseIterable):
     """
-    Use a custom SQL compiler to generate SOQL-compliant queries.
+    Iterable that yields a model instance for each row.
     """
-    def iterator(self):
+
+    def __iter__(self):
+        queryset = self.queryset
         """
         An iterator over the results from applying this QuerySet to the
         remote web service.
         """
         try:
-            sql, params = SQLCompiler(self.query, connections[self.db], None).as_sql()
+            sql, params = SQLCompiler(queryset.query, connections[queryset.db], None).as_sql()
         except EmptyResultSet:
             raise StopIteration
-        cursor = CursorWrapper(connections[self.db], self.query)
+        cursor = CursorWrapper(connections[queryset.db], queryset.query)
         cursor.execute(sql, params)
 
-        only_load = self.query.get_loaded_field_names()
+        only_load = queryset.query.get_loaded_field_names()
         load_fields = []
         # If only/defer clauses have been specified,
         # build the list of fields that are to be loaded.
         if not only_load:
-            model_cls = self.model
+            model_cls = queryset.model
             init_list = None
         else:
-            fields = self.model._meta.concrete_fields
+            fields = queryset.model._meta.concrete_fields
             for field in fields:
                 model = field.model._meta.concrete_model
                 if model is None:
-                    model = self.model
+                    model = queryset.model
                 try:
                     if field.attname in only_load[model]:
                         # Add a field that has been explicitly included
@@ -267,20 +274,20 @@ class SalesforceQuerySet(query.QuerySet):
                 else:
                     init_list.append(field.name)
             if DJANGO_110_PLUS:
-                model_cls = self.model
+                model_cls = queryset.model
             else:
-                model_cls = deferred_class_factory(self.model, skip)
+                model_cls = deferred_class_factory(queryset.model, skip)
 
-        field_names = self.query.get_loaded_field_names()
+        field_names = queryset.query.get_loaded_field_names()
         for res in python.Deserializer(
                 x for x in
-                (prep_for_deserialize(model_cls, r, self.db, init_list)
+                (prep_for_deserialize(model_cls, r, queryset.db, init_list)
                  for r in cursor.results
                  )
                 if x is not None
         ):
             # Store the source database of the object
-            res.object._state.db = self.db
+            res.object._state.db = queryset.db
             # This object came from the database; it's not being added.
             res.object._state.adding = False
 
@@ -288,6 +295,23 @@ class SalesforceQuerySet(query.QuerySet):
                 raise NotImplementedError("methods defer() and only() are not implemented for Django 1.10 yet")
 
             yield res.object
+
+
+class SalesforceQuerySet(query.QuerySet):
+    """
+    Use a custom SQL compiler to generate SOQL-compliant queries.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(SalesforceQuerySet, self).__init__(*args, **kwargs)
+        self._iterable_class = SalesforceModelIterable
+
+    def iterator(self):
+        """
+        An iterator over the results from applying this QuerySet to the
+        database.
+        """
+        return iter(self._iterable_class(self))
 
     def query_all(self):
         """
@@ -441,6 +465,8 @@ class CursorWrapper(object):
             response = self.execute_update(self.query)
         elif isinstance(self.query, subqueries.DeleteQuery):
             response = self.execute_delete(self.query)
+        elif q == MIGRATIONS_QUERY_TO_BE_IGNORED:
+            response = self.execute_select(q, args)
         else:
             raise DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
 
@@ -451,9 +477,9 @@ class CursorWrapper(object):
         # the encoding is detected automatically, e.g. from headers
         elif(response and response.text):
             # parse_float set to decimal.Decimal to avoid precision errors when
-            # converting from the json number to a float to a Decimal object
-            # on a model's DecimalField...converts from json number directly
-            # a Decimal object
+            # converting from the json number to a float and then to a Decimal object
+            # on a model's DecimalField. This converts from json number directly
+            # to a Decimal object
             data = response.json(parse_float=decimal.Decimal)
             # a SELECT query
             if('totalSize' in data):
@@ -483,11 +509,22 @@ class CursorWrapper(object):
             self.results = iter([])
 
     def execute_select(self, q, args):
-        processed_sql = str(q) % process_args(args)
+        processed_sql = str(q) % tuple(arg_to_soql(x) for x in args)
         service = 'query' if not getattr(self.query, 'is_query_all', False) else 'queryAll'
         url = rest_api_url(self.session, service, '?' + urlencode(dict(q=processed_sql)))
         log.debug(processed_sql)
-        return handle_api_exceptions(url, self.session.get, _cursor=self)
+        if q != MIGRATIONS_QUERY_TO_BE_IGNORED:
+            # normal query
+            return handle_api_exceptions(url, self.session.get, _cursor=self)
+        else:
+            # Nothing queried about django_migrations to SFDC and immediately responded that
+            # nothing about migration status is recorded in SFDC.
+            #
+            # That is required by "makemigrations" in Django 1.10+ to accept this query.
+            # Empty results are possible.
+            # (It could be eventually replaced by: "SELECT app__c, Name FROM django_migrations__c")
+            self.results = iter([])
+            return
 
     def query_more(self, nextRecordsUrl):
         url = u'%s%s' % (self.session.auth.instance_url, nextRecordsUrl)
@@ -685,8 +722,7 @@ def str_dict(some_dict):
     return {str(k): str(v) for k, v in some_dict.items()}
 
 
-string_literal = quoted_string_literal
-def date_literal(d, c):
+def date_literal(d):
     if not d.tzinfo:
         import time
         tz = pytz.timezone(settings.TIME_ZONE)
@@ -695,38 +731,31 @@ def date_literal(d, c):
     tzname = datetime.datetime.strftime(d, "%z")
     return datetime.datetime.strftime(d, "%Y-%m-%dT%H:%M:%S.000") + tzname
 
-def sobj_id(obj, conv):
+def sobj_id(obj):
     return obj.pk
 
 # supported types
-sql_conversions = {
-    int: lambda s,d: str(s),
-    float: lambda o,d: '%.15g' % o,
-    type(None): lambda s,d: 'NULL',
-    str: lambda o,d: string_literal(o, d), # default
-    bool: lambda s,d: str(s).lower(),
-    datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
-    datetime.datetime: lambda d,c: date_literal(d, c),
-    decimal.Decimal: lambda s,d: float(s),
-    models.SalesforceModel: sobj_id,
-}
-if not PY3:
-    sql_conversions[long] = lambda s,d: str(s)
-    sql_conversions[unicode] = lambda s,d: string_literal(s.encode('utf8'), d)
-
-# supported types
 json_conversions = {
-    int: lambda s,d: str(s),
-    float: lambda o,d: '%.15g' % o,
-    type(None): lambda s,d: None,
-    str: lambda o,d: o, # default
-    bool: lambda s,d: str(s).lower(),
-    datetime.date: lambda d,c: datetime.date.strftime(d, "%Y-%m-%d"),
+    int: str,
+    float: lambda o: '%.15g' % o,
+    type(None): lambda s: None,
+    str: lambda o: o, # default
+    bool: lambda s: str(s).lower(),
+    datetime.date: lambda d: datetime.date.strftime(d, "%Y-%m-%d"),
     datetime.datetime: date_literal,
-    datetime.time: lambda d,c: datetime.time.strftime(d, "%H:%M:%S.%f"),
-    decimal.Decimal: lambda s,d: float(s),
+    datetime.time: lambda d: datetime.time.strftime(d, "%H:%M:%S.%f"),
+    decimal.Decimal: float,
     models.SalesforceModel: sobj_id,
 }
 if not PY3:
-    json_conversions[long] = lambda s,d: str(s)
-    json_conversions[unicode] = lambda s,d: s.encode('utf8')
+    json_conversions[long] = str
+
+sql_conversions = json_conversions.copy()
+sql_conversions.update({
+    type(None): lambda s: 'NULL',
+    str: quoted_string_literal, # default
+})
+
+if not PY3:
+    sql_conversions[unicode] = lambda s: quoted_string_literal(s.encode('utf8'))
+    json_conversions[unicode] = lambda s: s.encode('utf8')

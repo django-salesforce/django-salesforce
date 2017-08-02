@@ -14,8 +14,10 @@ from django.db.models.sql import compiler, query, where, constants, AND, OR
 from django.db.models.sql.datastructures import EmptyResultSet
 import django.db.models.aggregates
 from . import subselect
-
 from salesforce import DJANGO_19_PLUS
+from salesforce.backend.driver import DatabaseError
+from django.db.transaction import TransactionManagementError
+import salesforce
 
 
 class SQLCompiler(compiler.SQLCompiler):
@@ -61,7 +63,7 @@ class SQLCompiler(compiler.SQLCompiler):
         self.quote_cache[name] = r
         return r
 
-    def execute_sql(self, result_type=constants.MULTI):
+    def execute_sql(self, result_type=constants.MULTI, chunked_fetch=False):
         """
         Run the query against the database and returns the result(s). The
         return value is a single data item if result_type is SINGLE, or an
@@ -96,10 +98,10 @@ class SQLCompiler(compiler.SQLCompiler):
         # The MULTI case.
         result = iter((lambda: cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)),
                 self.connection.features.empty_fetchmany_value)
-        if not self.connection.features.can_use_chunked_reads:
+        if not chunked_fetch and not self.connection.features.can_use_chunked_reads:
             # If we are using non-chunked reads, we return the same data
             # structure as normally, but ensure it is all read into memory
-            # before going any further.
+            # before going any further. Use chunked_fetch if requested.
             return list(result)
         return result
 
@@ -150,7 +152,7 @@ class SQLCompiler(compiler.SQLCompiler):
                 if alias:
                     # fixed by removing 'AS'
                     s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
-                elif with_col_aliases:
+                elif with_col_aliases and not isinstance(with_col_aliases, salesforce.backend.base.DatabaseWrapper):
                     s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
                     col_idx += 1
                 if soql_trans and re.match(r'^\w+\.\w+$', s_sql):
@@ -316,6 +318,12 @@ class SalesforceWhereNode(where.WhereNode):
         # technically matches everything) for backwards compatibility reasons.
         # Refs #5261.
 
+        if not isinstance(qn, SQLCompiler):
+            # future fix for DJANGO_20_PLUS, when deprecated "use_for_related_fields"
+            # removed from managers,
+            # "str(<UpdateQuery...>)" or "<UpdateQuery...>.get_compiler('default').as_sql()"
+            return super(SalesforceWhereNode, self).as_sql(qn, connection)
+
         soql_trans = qn.query_topology()
         result = []
         result_params = []
@@ -446,8 +454,9 @@ class Range(models.lookups.Range):
         if connection.vendor == 'salesforce':
             lhs, lhs_params = self.process_lhs(qn, connection)
             rhs, rhs_params = self.process_rhs(qn, connection)
-            assert rhs == ['%s', '%s']
-            params = lhs_params + rhs_params[:1] + lhs_params + rhs_params[1:2]
+            assert tuple(rhs) == ('%s', '%s')  # tuple in Django 1.11+, list in old Django
+            assert len(rhs_params) == 2
+            params = lhs_params + [rhs_params[0]] + lhs_params + [rhs_params[1]]
             # The symbolic parameters %s are again substituted by %s. The real
             # parameters will be passed finally directly to CursorWrapper.execute
             return '(%s >= %s AND %s <= %s)' % (lhs, rhs[0], lhs, rhs[1]), params

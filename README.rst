@@ -10,7 +10,7 @@ django-salesforce
 .. image:: https://img.shields.io/badge/Python-2.7.9%2B%2C%203.4%2C%203.5-brightgreen.svg
    :target: https://www.python.org/
 
-.. image:: https://img.shields.io/badge/Django-1.8.4%2B%2C%201.9%2C%201.10-blue.svg
+.. image:: https://img.shields.io/badge/Django-1.8.4%2B%2C%201.9%2C%201.10%2C%201.11-blue.svg
    :target: https://www.djangoproject.com/
 
 This library allows you to load and edit the objects in any Salesforce instance
@@ -19,12 +19,12 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 2.7.9+, 3.4, 3.5, Django 1.8.4+, 1.9, 1.10 are supported with
+Python 2.7.9+, 3.4 to 3.6, Django 1.8.4+, 1.9, 1.10, 1.11 are supported with
 some limitations on raw queries, values_list() and values() methods.
 
-Django 1.10 is currently supported without values(), values_list(), defer(),
-some raw() methods and without makemigrations. Full support of 1.10 is
-expected near the end of Q3 or beginning of Q4 in 2016.
+Django 1.10 and 1.11 is currently supported without values(), values_list(), defer(),
+some raw() methods. (All fixed in a development repository, waiting for review,
+consensus etc.)
 
 Pre-2.7.9 Python versions don't have the required TLS 1.1 support to use
 both production and sandbox Salesforce instances. PyPy may still work,
@@ -106,9 +106,12 @@ Quick Start
    and simplify it to what you need.
 
 6. **(optional)** To override the default timeout of 15 seconds,
-   define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file::
+   define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file.
+   It can be one number or better a tuple with a short value for connection
+   timeout and a longer value that includes time for running a query,
+   but never need be longer than 30 seconds::
 
-    SALESFORCE_QUERY_TIMEOUT = 15  # default
+    SALESFORCE_QUERY_TIMEOUT = (4, 15)  # default (connect timeout, data timeout)
 
 7. **(optional)** If you want to use another name for your Salesforce DB
    connection, define ``SALESFORCE_DB_ALIAS`` in your settings file::
@@ -248,7 +251,7 @@ here are the potential pitfalls and unimplemented operations:
    are specific to their individual applications' needs. Models that have
    been included with this library are for example and documentation
    purposes.
--  **Inheritence** — When using the default router, all models for object
+-  **Inheritance** — When using the default router, all models for object
    types on Salesforce must extend salesforce.models.SalesforceModel. The
    model router checks for this to determine which models to handle through
    the Salesforce connection.

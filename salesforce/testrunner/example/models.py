@@ -389,11 +389,13 @@ class Task(models.Model):
 # OneToOneField
 
 class ApexEmailNotification(models.Model):
-    """Stores Salesforce users and external email addresses to be notified when unhandled Apex exceptions occur.
+    """Stores who should be notified when unhandled Apex exceptions occur.
 
+    The target can be more Salesforce users or an external email addresses.
     Available in API version 35.0 and later.
     """
     # A semicolon-delimited list of email addresses to notify when unhandled Apex exceptions occur.
-    user = models.OneToOneField('User', related_name='apex_email_notification', on_delete=models.DO_NOTHING, blank=True, null=True)
+    user = models.OneToOneField('User', related_name='apex_email_notification',
+                                on_delete=models.DO_NOTHING, blank=True, null=True)
     # Users of your org to notify when unhandled Apex exceptions occur.
     email = models.CharField(unique=True, max_length=255, verbose_name='email', blank=True)
