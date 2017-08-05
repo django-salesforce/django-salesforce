@@ -410,15 +410,28 @@ class SalesforceWhereNode(where.WhereNode):
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
     def execute_sql(self, return_id=False):
-        assert not (return_id and len(self.query.objs) != 1)
+        # copied from Django 1.11, except one line patch
+        assert not (
+            return_id and len(self.query.objs) != 1 and
+            not self.connection.features.can_return_ids_from_bulk_insert
+        )
         self.return_id = return_id
-        cursor = self.connection.cursor(query=self.query)
-        for sql, params in self.as_sql():
-            cursor.execute(sql, params)
-        if not return_id:
-            return
-        return self.connection.ops.last_insert_id(cursor,
-                self.query.model._meta.db_table, self.query.model._meta.pk.column)
+        with self.connection.cursor() as cursor:
+            # this line is the adde patch:
+            cursor.query = self.query
+            for sql, params in self.as_sql():
+                cursor.execute(sql, params)
+            if not (return_id and cursor):
+                return
+            if self.connection.features.can_return_ids_from_bulk_insert and len(self.query.objs) > 1:
+                return self.connection.ops.fetch_returned_insert_ids(cursor)
+            if self.connection.features.can_return_id_from_insert:
+                assert len(self.query.objs) == 1
+                return self.connection.ops.fetch_returned_insert_id(cursor)
+            return self.connection.ops.last_insert_id(
+                cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column
+            )
+        return super(SQLInsertCompiler, self).execute_sql(return_id)
 
 
 class SQLDeleteCompiler(compiler.SQLDeleteCompiler, SQLCompiler):
