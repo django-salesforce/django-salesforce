@@ -53,6 +53,12 @@ class DatabaseOperations(BaseDatabaseOperations):
     def last_insert_id(self, cursor, db_table, db_column):
         return cursor.lastrowid
 
+    def fetch_returned_insert_id(self, cursor):
+        return cursor.lastrowid
+
+    def fetch_returned_insert_ids(self, cursor):
+        return cursor.lastrowid
+
     def adapt_datefield_value(self, value):
         return value
 
@@ -79,6 +85,10 @@ class DatabaseOperations(BaseDatabaseOperations):
         def bulk_insert_sql(self, fields, num_values):
             items_sql = "(%s)" % ", ".join(["%s"] * len(fields))
             return "VALUES " + ", ".join([items_sql] * num_values)
+
+    def return_insert_id(self):
+        return "", ()
+
 
 @deconstructible
 class DefaultedOnCreate(object):
