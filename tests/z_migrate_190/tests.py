@@ -1,5 +1,4 @@
-"""Test djangoBackward compatible behaviour with primary key 'Id'."""
-from __future__ import absolute_import
+"""A writable test, not specifically important what is tested"""
 from django.test import TestCase
 
 from .models import Contact
@@ -10,7 +9,7 @@ class CompatibilityTest(TestCase):
         test_contact = Contact(last_name='Smith')
         test_contact.save()
         try:
-            refreshed_contact = Contact.objects.get(id=test_contact.id)
-            self.assertEqual(refreshed_contact.id, test_contact.id)
+            refreshed_contact = Contact.objects.get(pk=test_contact.pk)
+            self.assertEqual(refreshed_contact.pk, test_contact.pk)
         finally:
             test_contact.delete()
