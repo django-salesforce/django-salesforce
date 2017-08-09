@@ -146,10 +146,10 @@ def prep_for_deserialize(model, record, using, init_list=None):
     attribs = record.pop('attributes')
 
     mod = model.__module__.split('.')
-    if(mod[-1] == 'models'):
-        app_label = mod[-2]
-    elif(hasattr(model._meta, 'app_label')):
+    if hasattr(model._meta, 'app_label'):
         app_label = getattr(model._meta, 'app_label')
+    elif mod[-1] == 'models':
+        app_label = mod[-2]
     else:
         raise ImproperlyConfigured("Can't discover the app_label for %s, you must specify it via model meta options.")
 
