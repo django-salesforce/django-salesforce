@@ -2,6 +2,7 @@
 Tests that do not need to connect servers
 """
 
+from django.apps.registry import Apps
 from django.test import TestCase
 from django.db.models import DO_NOTHING
 from salesforce import fields, models
@@ -30,8 +31,12 @@ class TestField(TestCase):
         """
         Verify the expected attributes of primary key
         """
+        test_apps = Apps(['salesforce.testrunner.example'])
+
         class Ab(models.SalesforceModel):
-            pass
+            class Meta:
+                app_label = 'example'
+                apps = test_apps
         self.assertTrue(isinstance(fields.SF_PK, str))
         self.assertTrue(hasattr(Ab(), 'pk'))
         self.assertTrue(hasattr(Ab(), fields.SF_PK))
@@ -43,11 +48,17 @@ class TestField(TestCase):
         Verify it for lower_case and CamelCase conventions, for standard fields
         and for custom fields, for normal fields and for foreign keys.
         """
+        test_apps = Apps(['salesforce.testrunner.example'])
+
         class Aa(models.SalesforceModel):
-            pass
+            class Meta:
+                app_label = 'example'
+                apps = test_apps
 
         class Dest(models.SalesforceModel):
-            pass
+            class Meta:
+                app_label = 'example'
+                apps = test_apps
 
         def test(field, expect_attname, expect_column):
             "Compare field attributes with expected `attname` and `column`."
