@@ -46,6 +46,8 @@ Quick Start
         "salesforce"
     }
 
+   (This was required before version 0.8 only.)
+
 
 3. Add a salesforce connection to your ``DATABASES`` setting::
 
