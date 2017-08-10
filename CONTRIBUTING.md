@@ -3,10 +3,10 @@
 _(Most of this is copied from @thoughtbot's [factory_girl_rails project].)_
 
 Pull requests are highly encouraged from everyone. By participating in this project, you
-agree to abide by the thoughtbot [code of conduct].
+agree to abide by the [code of conduct].
 
 [factory_girl_rails project]: https://github.com/thoughtbot/factory_girl_rails/blob/master/CONTRIBUTING.md
-[code of conduct]: https://thoughtbot.com/open-source-code-of-conduct
+[code of conduct]: https://github.com/django-salesforce/django-salesforce/blob/master/CODE_OF_CONDUCT.md
 
 Fork, then clone the repo:
 
