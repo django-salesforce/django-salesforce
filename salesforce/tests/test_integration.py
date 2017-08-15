@@ -440,7 +440,7 @@ class BasicSOQLRoTest(TestCase):
             ret = Contact.objects.bulk_create(objects)
             if DJANGO_110_PLUS:
                 # test that can return ids from bulk_create
-                self.assertTrue(ret and all(x.pk for x in ret))
+                self.assertEqual(len(set(x.pk for x in ret if x.pk)), 2)
 
             request_count_1 = salesforce.backend.driver.request_count
             self.assertEqual(request_count_1,  request_count_0 + 1)
