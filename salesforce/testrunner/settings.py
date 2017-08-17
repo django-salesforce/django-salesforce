@@ -123,6 +123,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'django.contrib.admin',
     'django.contrib.admindocs',
+    'salesforce',
     'salesforce.testrunner.example',
     'salesforce.testrunner.dynamic_models',
 )
