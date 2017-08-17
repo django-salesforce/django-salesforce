@@ -36,20 +36,7 @@ Quick Start
 
 1. Install django-salesforce: ``pip install django-salesforce``
 
-2. Add the ``salesforce`` app to your ``INSTALLED_APPS`` setting::
-
-    INSTALLED_APPS = {
-        "django.contrib.auth",
-        "django.contrib.contenttypes",
-        ...
-        ...
-        "salesforce"
-    }
-
-   (This was required before version 0.8 only.)
-
-
-3. Add a salesforce connection to your ``DATABASES`` setting::
+2. Add a salesforce connection to your ``DATABASES`` setting::
 
     'salesforce': {
         'ENGINE': 'salesforce.backend',
@@ -96,14 +83,33 @@ Quick Start
    the full suite of unit tests; otherwise, as long as the account has rights to
    read or modify the chosen object, everything should work properly.
 
-4. Add ``salesforce.router.ModelRouter`` to your ``DATABASE_ROUTERS``
+3. Add ``salesforce.router.ModelRouter`` to your ``DATABASE_ROUTERS``
    setting::
 
     DATABASE_ROUTERS = [
         "salesforce.router.ModelRouter"
     ]
 
-5. Define a model that extends ``salesforce.models.Model`` or export the
+   (This is important for switching between 'salesforce' database for
+   models derived from SalesforceModel and 'default' database for normal models
+   with tables created by migrations, especially for 'django.contrib'.)
+
+4. Add the ``salesforce`` app to your ``INSTALLED_APPS`` setting::
+
+    INSTALLED_APPS = {
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        ...
+        ...
+        "salesforce"
+    }
+
+   (This is necessary for running Salesforce extensions in the command
+   ``inspectdb --database=salesforce`` in development, otherwise it is
+   not important.)
+
+
+5. Define a model that extends ``salesforce.models.Model`` (alias SalesforceModel) or export the
    complete SF schema by ``python manage.py inspectdb --database=salesforce``
    and simplify it to what you need.
 
