@@ -246,7 +246,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         for field in self.table_description_cache(table_name)['fields']:
             if field['type'] in ('id', 'reference') or field['unique']:
                 result[field['name']] = dict(
-                    columns=field['name'],
+                    columns=[field['name']],
                     primary_key=(field['type'] == 'id'),
                     unique=field['unique'],
                     foreign_key=(field['referenceTo'], 'id'),
