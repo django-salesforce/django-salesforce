@@ -13,6 +13,7 @@ cache:
   directories:
     - $HOME/.pip-cache/
 before_install:
+ - pyenv global system 3.5
  - if [[ $TOXENV = py35 && -f ~/virtualenv/python3.5/bin/activate ]]; then source ~/virtualenv/python3.5/bin/activate; fi
  - "pip install setuptools_git"
  - "pip install rstcheck"
