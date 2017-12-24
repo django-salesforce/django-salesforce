@@ -142,7 +142,25 @@ def prep_for_deserialize(model, record, using, init_list=None):
     specified, then only these fields are processed.
     """
     from salesforce.backend import base
-    # TODO the parameter 'using' is not currently important.
+    if record['attributes'].get('type', None) != model._meta.db_table:
+        # this is for objects that were filtered using a reverse relationship field (OneToOne or ManyToMany)
+        # this is required because salesforce return hierarchical JSON, and the parent object is first.
+        # e.g. Dog(owner=Person.object.get(name="barperson",name="foodog").
+        # now we want to look for Persons that have a dog name foodog, in the case an owner can have more than one dog.
+        # now lets say the dog model looks like this:
+        # class Person(models.Model):
+        #   name = models.CharField(name=32)
+        # class Dog(models.Model):
+        #    owner = models.ForeignKey(Person, related_name="dogs")
+        #    name = models.CharField(max_length=32)
+        # now we want: list_of_names_of_owners_of_foodog = [i.name for i in Persons.object.filter(dogs__name="foodog")]
+        #
+        record.pop('attributes')
+        if len(record.keys()) == 1 and record[list(record.keys())[0]].get('attributes', {}).get('type', None) == model._meta.db_table:
+            record = list(record.values())[0]
+            if record is None:
+                return None
+	# TODO the parameter 'using' is not currently important.
     attribs = record.pop('attributes')
 
     mod = model.__module__.split('.')
