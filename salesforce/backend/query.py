@@ -156,11 +156,13 @@ def prep_for_deserialize(model, record, using, init_list=None):
         # now we want: list_of_names_of_owners_of_foodog = [i.name for i in Persons.object.filter(dogs__name="foodog")]
         #
         record.pop('attributes')
-        if len(record.keys()) == 1 and record[list(record.keys())[0]].get('attributes', {}).get('type', None) == model._meta.db_table:
-            record = list(record.values())[0]
-            if record is None:
+        if len(record) == 1:
+            parent = list(record.values())[0]
+            if parent is None:
                 return None
-	# TODO the parameter 'using' is not currently important.
+            if parent.get('attributes', {}).get('type', None) == model._meta.db_table:
+                record = parent
+    # TODO the parameter 'using' is not currently important.
     attribs = record.pop('attributes')
 
     mod = model.__module__.split('.')
