@@ -63,7 +63,7 @@ class SQLCompiler(compiler.SQLCompiler):
         self.quote_cache[name] = r
         return r
 
-    def execute_sql(self, result_type=constants.MULTI, chunked_fetch=False):
+    def execute_sql(self, result_type=constants.MULTI, chunked_fetch=False, chunk_size=constants.GET_ITERATOR_CHUNK_SIZE):
         """
         Run the query against the database and returns the result(s). The
         return value is a single data item if result_type is SINGLE, or an
@@ -96,7 +96,7 @@ class SQLCompiler(compiler.SQLCompiler):
             return cursor.fetchone()
 
         # The MULTI case.
-        result = iter((lambda: cursor.fetchmany(constants.GET_ITERATOR_CHUNK_SIZE)),
+        result = iter((lambda: cursor.fetchmany(chunk_size)),
                 self.connection.features.empty_fetchmany_value)
         if not chunked_fetch and not self.connection.features.can_use_chunked_reads:
             # If we are using non-chunked reads, we return the same data
