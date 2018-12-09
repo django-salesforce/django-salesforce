@@ -30,7 +30,7 @@ from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.utils.six import PY3
 
-from salesforce import models, DJANGO_19_PLUS, DJANGO_110_PLUS, DJANGO_2X_PLUS
+from salesforce import models, DJANGO_19_PLUS, DJANGO_110_PLUS, DJANGO_20_PLUS
 from salesforce.backend.driver import DatabaseError, SalesforceError, handle_api_exceptions, API_STUB
 from salesforce.backend.compiler import SQLCompiler
 from salesforce.backend.operations import DefaultedOnCreate
@@ -319,7 +319,10 @@ class SalesforceQuerySet(query.QuerySet):
             Lead.objects.query_all().filter(IsDeleted=True,...)
         https://www.salesforce.com/us/developer/docs/api_rest/Content/resources_queryall.htm
         """
-        obj = self._clone(klass=SalesforceQuerySet)
+        if DJANGO_20_PLUS:
+            obj = self._clone()
+        else:
+            obj = self._clone(klass=SalesforceQuerySet)
         obj.query.set_query_all()
         return obj
 
@@ -388,7 +391,7 @@ class SalesforceQuery(Query):
         self.max_depth = 1
 
     def clone(self, klass=None, memo=None, **kwargs):
-        if DJANGO_2X_PLUS:
+        if DJANGO_20_PLUS:
             query = Query.clone(self)
         else:
             query = Query.clone(self, klass, memo, **kwargs)

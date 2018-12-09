@@ -68,8 +68,8 @@ class SalesforceAutoField(fields.AutoField):
         if bool(cls._meta.auto_field):
             if (type(self) == type(cls._meta.auto_field) and self.model._meta.abstract and
                     cls._meta.auto_field.name == SF_PK):
-                # Creating the Model that inherits fields from more abstract classes
-                # with the same default SalesforceAutoFieldy The second one can be
+                # A model is created  that inherits fields from more abstract classes
+                # with the same default SalesforceAutoFieldy. Therefore the second should be
                 # ignored.
                 return
             else:

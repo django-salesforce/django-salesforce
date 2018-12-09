@@ -22,7 +22,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
         Product, Pricebook, PricebookEntry, Note, Task,
         Organization, models_template,
         )
-from salesforce import router, DJANGO_110_PLUS, DJANGO_111_PLUS
+from salesforce import router, DJANGO_110_PLUS, DJANGO_111_PLUS, DJANGO_20_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid_version as uid
@@ -124,6 +124,7 @@ class BasicSOQLRoTest(TestCase):
             test_contact.delete()
             test_account.delete()
 
+    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_20_PLUS)
     def test_simple_select_related(self):
         """Verify that simple_selct_related does not require additional queries.
         """
@@ -139,8 +140,8 @@ class BasicSOQLRoTest(TestCase):
             [x.account.Name for x in contacts]
             req_count_2 = salesforce.backend.driver.request_count
             self.assertEqual(req_count_1, req_count_0 + 2)
-            self.assertEqual(req_count_2, req_count_1)
             self.assertGreaterEqual(len(contacts), 1)
+            self.assertEqual(req_count_2, req_count_1)
         finally:
             test_contact.delete()
             test_account.delete()

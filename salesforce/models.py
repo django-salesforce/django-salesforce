@@ -64,7 +64,7 @@ class SalesforceModelBase(ModelBase):
             setattr(cls._meta, 'sf_custom', sf_custom)
         else:
             if type(value) is models.manager.Manager:
-                # this is or better migrations because: obj._constructor_args = (args, kwargs)
+                # this is for better migrations because: obj._constructor_args = (args, kwargs)
                 _constructor_args = value._constructor_args
                 value = manager.SalesforceManager()
                 value._constructor_args = _constructor_args
@@ -77,11 +77,11 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
     Abstract model class for Salesforce objects.
     """
     _salesforce_object = True
-    sf_manager = manager.SalesforceManager()
+    objects = manager.SalesforceManager()
 
     class Meta:
         abstract = True
-        base_manager_name = 'sf_manager'
+        base_manager_name = 'objects'
 
     # Name of primary key 'Id' can be easily changed to 'id'
     # by "settings.SF_PK='id'".
@@ -190,12 +190,13 @@ def make_dynamic_fields(pattern_module, dynamic_field_patterns, attrs):
                         # salesforce
                         'sf_read_only',
                     )}
+                    remote = field.remote_field
                     new_field = type(field)(
-                        field.rel.to if isinstance(field.rel.to, (str, text_type)) else field.rel.to.__name__,
-                        on_delete=field.rel.on_delete,
-                        to_field=field.rel.field_name,
-                        related_name=field.rel.related_name,
-                        related_query_name=field.rel.related_query_name,
+                        remote.model._meta.object_name,
+                        on_delete=remote.on_delete,
+                        to_field=remote.field_name,
+                        related_name=remote.related_name,
+                        related_query_name=remote.related_query_name,
                         custom=field.sf_custom,  # salesforce option
                         # ?? 'limit_choices_to', 'sf_namespace',
                         **kw)

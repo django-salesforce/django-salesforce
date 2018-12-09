@@ -19,17 +19,16 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 2.7.9+, 3.4 to 3.6, Django 1.8.4+, 1.9, 1.10, 1.11 are supported with
-some limitations on raw queries, values_list() and values() methods.
+Python 2.7.9+, 3.4 to 3.7, Django 1.10, 1.11, 2.0, 2.1 are supported with
+some limitations: on raw queries, values_list() and values() methods.
 
-Django 1.10 and 1.11 is currently supported without values(), values_list(), defer(),
-some raw() methods. (All fixed in a development repository, waiting for review,
+Unsupported methost are currently: values(), values_list(), defer(), only()
+and some raw() queries. (All fixed in a development repository, waiting for review,
 consensus etc.)
 
-Pre-2.7.9 Python versions don't have the required TLS 1.1 support to use
-both production and sandbox Salesforce instances. PyPy may still work,
-but currently it's a challenge to get a PyPy build linked to a recent
-version of libssl.
+Pre-2.7.9 Python versions don't have the required TLS 1.1+ support required
+by Salesforce. PyPy versions compatible with supported Python versions are
+also supported.
 
 Quick Start
 -----------
