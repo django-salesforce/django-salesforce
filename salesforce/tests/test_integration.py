@@ -684,7 +684,7 @@ class BasicSOQLRoTest(TestCase):
         # Simulate the same with obsoleted oauth session
         # It is not possible to use salesforce.auth.expire_token() to simulate
         # expiration because it forces reauhentication before the next request
-        salesforce.auth.oauth_data[sf_alias]['access_token'] = '* something invalid *'
+        salesforce.auth.oauth_data[sf_alias]['access_token'] = 'something invalid/expired'
         Contact(pk=contact_id).delete()
         # Id of completely deleted item or fake but valid item.
         Contact(pk='003000000000000AAA').delete()
