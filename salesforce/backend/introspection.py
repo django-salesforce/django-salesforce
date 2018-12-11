@@ -33,6 +33,8 @@ log = logging.getLogger(__name__)
 # not queryable, not searchable, not retrieveable, only triggerable
 PROBLEMATIC_OBJECTS = [
     'AssetTokenEvent',  # new in API 39.9 Spring '17
+    'OrgLifecycleNotification',  # new in API 40.0 Summer '17
+    'BatchApexErrorEvent',  # new in API 44.0 Winter '18 
 ]
 
 

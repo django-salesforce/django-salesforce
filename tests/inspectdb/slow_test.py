@@ -86,6 +86,13 @@ def run():
                     'UserShare',
                     # Cannot directly insert FeedItem with type TrackedChange
                     'FeedItem',
+                    # The Apex Class selected is not valid. An Apex Class that implements
+                    # the Messaging.InboundEmailHandler interface must be selected.
+                    'EmailServicesFunction',
+                    # A special user of type user_type='AutomatedProcess' exists in Users
+                    # since API 41.0 Winter'18.
+                    # That user account can not be saved because it has an invalid email.
+                    'User',
             ):
                 stdout.write('(write) ')
                 try:

@@ -33,6 +33,7 @@ if python manage.py inspectdb --database=salesforce --traceback >tests/inspectdb
 	#python manage.py test --settings=tests.inspectdb.settings tests.inspectdb
 	RESULT_4=$?
 
+	echo -en "\nSummary: "
 	if [ $RESULT_1 == 0 -a $RESULT_2 == 0 -a $RESULT_3 == 0 -a $RESULT_4 == 0 ]; then
 		echo OK
 	else

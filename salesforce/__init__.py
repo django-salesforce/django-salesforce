@@ -44,4 +44,4 @@ log = logging.getLogger(__name__)
 # >>> import salesforce
 # >>> setattr(salesforce, 'API_VERSION', '37.0')
 
-API_VERSION = '39.0'  # Spring '17
+API_VERSION = '44.0'  # Winter '19
