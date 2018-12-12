@@ -22,16 +22,11 @@ DJANGO_19_PLUS = django.VERSION[:2] >= (1, 9)
 DJANGO_110_PLUS = django.VERSION[:2] >= (1, 10)
 DJANGO_111_PLUS = django.VERSION[:2] >= (1, 11)
 DJANGO_20_PLUS = django.VERSION[:2] >= (2, 0)
-if django.VERSION[:3] < (1, 8, 4):
+if django.VERSION[:2] < (1, 10):
     # Statistically three or more blocking issues can be expected by every
     # new major Django version. Strict check before support is better.
-    raise ImportError("Django version of at least 1.8.4 is required "
+    raise ImportError("Django version of at least 1.10 is required "
                       "for this django-salesforce.")
-if DJANGO_20_PLUS:
-    warnings.warn("Very experimental support for Django 2.x")
-elif DJANGO_111_PLUS:
-    warnings.warn("Support for Django 1.11 is still in pre-release quality. "
-                  "Test your app properly after upgrading.")
 
 log = logging.getLogger(__name__)
 
