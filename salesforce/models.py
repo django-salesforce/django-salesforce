@@ -77,9 +77,11 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
     Abstract model class for Salesforce objects.
     """
     _salesforce_object = True
+    sf_manager = manager.SalesforceManager()
 
     class Meta:
         abstract = True
+        base_manager_name = 'sf_manager'
 
     # Name of primary key 'Id' can be easily changed to 'id'
     # by "settings.SF_PK='id'".

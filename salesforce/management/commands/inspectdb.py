@@ -140,7 +140,7 @@ class Command(InspectDBCommand):
                     ).normalize_col_name(col_name, used_column_names, is_relation)
         return new_name, fix_field_params_repr(field_params), field_notes
 
-    def get_meta(self, table_name, constraints=None, column_to_field_name=None):
+    def get_meta(self, table_name, constraints=None, column_to_field_name=None, is_view=False):
         """
         Return a sequence comprising the lines of code necessary
         to construct the inner Meta class for the model corresponding

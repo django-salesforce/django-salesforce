@@ -18,14 +18,15 @@ from django.db.models import manager
 from django.db.models.query import RawQuerySet
 from django.db.utils import DEFAULT_DB_ALIAS
 
-from salesforce import router, DJANGO_110_PLUS
+from salesforce import router, DJANGO_110_PLUS, DJANGO_2X_PLUS
 
 
 class SalesforceManager(manager.Manager):
-    use_for_related_fields = True
-    if DJANGO_110_PLUS:
-        # silence because this deprecation can be solved after removing Django 1.8
-        silence_use_for_related_fields_deprecation = True
+    if not DJANGO_2X_PLUS:
+        use_for_related_fields = True
+        if DJANGO_110_PLUS:
+            # silence because this deprecation can be solved after removing Django 1.8
+            silence_use_for_related_fields_deprecation = True
 
     def get_queryset(self):
         """
