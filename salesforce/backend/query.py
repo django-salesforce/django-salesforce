@@ -240,7 +240,8 @@ class SalesforceModelIterable(BaseIterable):
         try:
             sql, params = SQLCompiler(queryset.query, connections[queryset.db], None).as_sql()
         except EmptyResultSet:
-            raise StopIteration
+            # StopIteration
+            return
         cursor = CursorWrapper(connections[queryset.db], queryset.query)
         cursor.execute(sql, params)
 
