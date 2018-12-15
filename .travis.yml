@@ -1,7 +1,6 @@
 sudo: false
 language: python
-python: "3.6"
-dist: trusty
+dist: xenial
 env:
   global:
     - secure: "Z6wS6a/YcyT8w5l+2HfMItbn2mbv+f1W43WixoqB4QkgiocjBWvmAQD6PN1sEgWVmZlRvWCABK8FcGG+Y6RPFeNdCE0U1h9hEgOiAnhUpWWH/AhOYDZ0PnFwA3/iRrHS2VFPmhdkjw1BUEfqXaJfDYtlZLgpMMfRvEjIJ8Uqq6M="
@@ -12,14 +11,14 @@ env:
 cache:
   directories:
     - $HOME/.pip-cache/
+    - $HOME/.pyenv/
 before_install:
- # - pyenv global system 3.5
- # - if [[ $TOXENV = py35 && -f ~/virtualenv/python3.5/bin/activate ]]; then source ~/virtualenv/python3.5/bin/activate; fi
- - "pip install setuptools_git"
- - "pip install rstcheck"
+ - pyenv install --skip-existing 2.7.15 3.4.9 3.5.5 3.6.7 3.7.1
 install:
-  - pip install tox
+  - pip install rstcheck setuptools_git tox tox-pyenv
+  - pyenv root
+  - pyenv local 2.7.15 3.4.9 3.5.5 3.6.7 3.7.1
 script:
   - rstcheck README.rst
   - echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
-  - tox -r -e py27-dj111,py36-dj20,py36-dj21,py36-dj110
+  - tox -r 
