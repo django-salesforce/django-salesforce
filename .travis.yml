@@ -13,16 +13,19 @@ cache:
     - $HOME/.pip-cache/
     - $HOME/.pyenv/
 before_install:
+ - git clone git://github.com/pyenv/pyenv-update.git $(pyenv root)/plugins/pyenv-update
+ - pyenv update
  - pyenv install --list
  - pyenv install --skip-existing 2.7.15
  - pyenv install --skip-existing 3.4.7
  - pyenv install --skip-existing 3.5.4
  - pyenv install --skip-existing 3.6.3
- - pyenv install --skip-existing 3.7-dev
+ #- pyenv install --skip-existing 3.7-dev
 install:
   - pip install rstcheck setuptools_git tox tox-pyenv
   - pyenv root
-  - pyenv local 2.7.15 3.4.7 3.5.4 3.6.3 3.7-dev
+  - pyenv local 2.7.15 3.4.7 3.5.4 3.6.3
+  # 3.7-dev
 script:
   - rstcheck README.rst
   - echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
