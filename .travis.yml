@@ -13,7 +13,11 @@ cache:
     - $HOME/.pip-cache/
     - $HOME/.pyenv/
 before_install:
- - pyenv install --skip-existing 2.7.15 3.4.9 3.5.5 3.6.7 3.7.1
+ - pyenv install --skip-existing 2.7.15
+ - pyenv install --skip-existing 3.4.9
+ - pyenv install --skip-existing 3.5.5
+ - pyenv install --skip-existing 3.6.7
+ - pyenv install --skip-existing 3.7.1
 install:
   - pip install rstcheck setuptools_git tox tox-pyenv
   - pyenv root
