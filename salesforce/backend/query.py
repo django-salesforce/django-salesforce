@@ -601,9 +601,10 @@ class CursorWrapper(object):
                                       for x in pk
                                       ]
                              }
-                import time
-                headers.update({'If-Unmodified-Since': time.strftime('%a, %d %b %Y %H:%M:%S GMT',
-                               (last_mod + datetime.timedelta(seconds=0)).timetuple())})
+                # # Unnecessary code after Salesforce Release Winter '16 Patch 12.0:
+                # import email.utils
+                # headers.update({'If-Unmodified-Since': email.utils.formatdate(
+                #               last_mod.timestamp() + 0, usegmt=True)})
                 _ret = handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
             else:
                 # bulk by SOAP

@@ -26,6 +26,7 @@ from salesforce import router, DJANGO_110_PLUS, DJANGO_111_PLUS, DJANGO_20_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid_version as uid
+from ..backend.test_helpers import no_soap_decorator
 
 import logging
 log = logging.getLogger(__name__)
@@ -448,6 +449,8 @@ class BasicSOQLRoTest(TestCase):
             self.assertEqual(len(Contact.objects.filter(account=account)), 2)
         finally:
             account.delete()
+    
+    test_bulk_create_no_soap = no_soap_decorator(test_bulk_create)
 
     @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_111_PLUS)
     def test_bulk_update(self):
@@ -467,6 +470,8 @@ class BasicSOQLRoTest(TestCase):
         finally:
             account_0.delete()
             account_1.delete()
+
+    test_bulk_update_no_soap = no_soap_decorator(test_bulk_update)
 
     def test_escape_single_quote(self):
         """Test single quotes in strings used in a filter

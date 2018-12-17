@@ -24,3 +24,18 @@ def expectedFailureIf(condition):
         return expectedFailure
     else:
         return lambda func: func
+
+
+def no_soap_decorator(f):
+    """Decorator to not temporarily use SOAP API (Beatbox)"""
+    from functools import wraps
+    import salesforce.backend.driver
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        beatbox_orig = salesforce.backend.driver.beatbox
+        setattr(salesforce.backend.driver, 'beatbox', None)
+        try:
+            return f(*args, **kwds)
+        finally:
+            setattr(salesforce.backend.driver, 'beatbox', beatbox_orig)
+    return wrapper
