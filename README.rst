@@ -7,10 +7,10 @@ django-salesforce
 .. image:: https://badge.fury.io/py/django-salesforce.svg
    :target: https://pypi.python.org/pypi/django-salesforce
 
-.. image:: https://img.shields.io/badge/Python-2.7.9%2B%2C%203.4%2C%203.5-brightgreen.svg
+.. image:: https://img.shields.io/badge/Python-2.7.9%2B%2C%203.4%2C%203.5%2C%203.6%2C%203.7-brightgreen.svg
    :target: https://www.python.org/
 
-.. image:: https://img.shields.io/badge/Django-1.8.4%2B%2C%201.9%2C%201.10%2C%201.11-blue.svg
+.. image:: https://img.shields.io/badge/Django-1.10%2C%201.11%2C%202.0%2C%202.1-blue.svg
    :target: https://www.djangoproject.com/
 
 This library allows you to load and edit the objects in any Salesforce instance
