@@ -159,7 +159,7 @@ def handle_api_exceptions(url, f, *args, **kwargs):
     # TODO Remove this verbose setting after tuning of specific messages.
     #      Currently it is better more or less.
     # http://www.salesforce.com/us/developer/docs/api_rest/Content/errorcodes.htm
-    verbose = not getattr(getattr(_cursor, 'query', None), 'debug_silent', False)
+    verbose = not getattr(getattr(_cursor, 'db', None), 'debug_silent', False)
     if 'json' not in response.headers.get('Content-Type', ''):
         raise OperationalError("HTTP error code %d: %s" % (response.status_code, response.text))
     else:

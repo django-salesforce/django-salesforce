@@ -26,6 +26,25 @@ def expectedFailureIf(condition):
         return lambda func: func
 
 
+class QuietSalesforceErrors(object):
+    """Context manager that helps expected SalesforceErrors to be quiet"""
+    def __init__(self, alias):
+        from django.db import connections
+        self.connection = connections[alias]
+
+    def __enter__(self):
+        if hasattr(self.connection, 'debug_silent'):
+            self.save_debug_silent = self.connection.debug_silent
+            self.connection.debug_silent = True
+        return self
+
+    def __exit__(self, type, value, traceback):
+        try:
+            self.connection.debug_silent = self.save_debug_silent
+        except AttributeError:
+            pass
+
+
 def no_soap_decorator(f):
     """Decorator to not temporarily use SOAP API (Beatbox)"""
     from functools import wraps

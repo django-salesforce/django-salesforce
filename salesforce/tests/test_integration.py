@@ -26,7 +26,7 @@ from salesforce import router, DJANGO_110_PLUS, DJANGO_111_PLUS, DJANGO_20_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid_version as uid
-from ..backend.test_helpers import no_soap_decorator
+from ..backend.test_helpers import no_soap_decorator, QuietSalesforceErrors
 
 import logging
 log = logging.getLogger(__name__)
@@ -173,7 +173,8 @@ class BasicSOQLRoTest(TestCase):
             duplicate = ApexEmailNotification(user=current_sf_user)
             # the method self.assertRaise was too verbose about exception
             try:
-                duplicate.save()
+                with QuietSalesforceErrors(sf_alias):
+                    duplicate.save()
             except salesforce.backend.base.SalesforceError as exc:
                 self.assertEqual(exc.data['errorCode'], 'DUPLICATE_VALUE')
             else:
@@ -646,8 +647,8 @@ class BasicSOQLRoTest(TestCase):
         """
         # broken query raises exception
         bad_queryset = Lead.objects.raw("select XYZ from Lead")
-        bad_queryset.query.debug_silent = True
-        self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
+        with QuietSalesforceErrors(sf_alias):
+            self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
 
     @expectedFailureIf(QUIET_KNOWN_BUGS)
     def test_queryset_values(self):

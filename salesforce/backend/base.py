@@ -119,6 +119,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             self.validation = DatabaseValidation(self)
         self._sf_session = None
         self._is_sandbox = None
+        # debug attributes and test attributes
+        self.debug_silent = False
         # The SFDC database is connected as late as possible if only tests
         # are running. Some tests don't require a connection.
         if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):
