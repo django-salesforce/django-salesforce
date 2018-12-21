@@ -34,7 +34,8 @@ request_count = 0  # global counter
 # Django 1.8, otherwise some exceptions are not correctly reported in it.
 
 
-class Error(Exception if PY3 else StandardError):
+
+class Error(Exception if PY3 else StandardError):  # NOQA: StandardError undefined on PY3
     pass
 
 
@@ -111,6 +112,7 @@ def connect(**params):
 def getaddrinfo_wrapper(host, port, family=socket.AF_INET, socktype=0, proto=0, flags=0):
     """Patched 'getaddrinfo' with default family IPv4 (enabled by settings IPV4_ONLY=True)"""
     return orig_getaddrinfo(host, port, family, socktype, proto, flags)
+
 
 # patch to IPv4 if required and not patched by anything other yet
 if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('socket', '_socket'):

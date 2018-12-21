@@ -9,4 +9,4 @@
 Multi-database support for the Django admin.
 Not important yet - replaced by an empty stub.
 """
-from django.contrib.admin.options import ModelAdmin as RoutedModelAdmin
+from django.contrib.admin.options import ModelAdmin as RoutedModelAdmin  # NOQA

@@ -2,12 +2,10 @@
 Tests for `salesforce.utils`
 """
 from django.test import TestCase
-import unittest
+from unittest import skipUnless
 
-
-from salesforce.testrunner.example.models import Account, Contact, Lead, Opportunity
+from salesforce.testrunner.example.models import Account, Lead
 from salesforce.utils import convert_lead
-from ..backend.test_helpers import skip, skipUnless
 
 try:
     import beatbox
@@ -34,8 +32,8 @@ class UtilitiesTest(TestCase):
         try:
             # convert the first Lead
             ret = convert_lead(lead, doNotCreateOpportunity=True)
-            #print("Response from convertLead: " +
-            #        ', '.join('%s: %s' % (k, v) for k, v in sorted(ret.items())))
+            # print("Response from convertLead: " +
+            #       ', '.join('%s: %s' % (k, v) for k, v in sorted(ret.items())))
             expected_names = set(('accountId', 'contactId', 'leadId', 'opportunityId', 'success'))
             self.assertEqual(set(ret), expected_names)
             self.assertEqual(ret['success'], 'true')

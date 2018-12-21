@@ -32,6 +32,7 @@ class Organization(models.Model):
     last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
     last_modified_by = models.ForeignKey('User', related_name='organization_lastmodifiedby_set',
                                          sf_read_only=models.READ_ONLY, on_delete=models.DO_NOTHING)
+
     class Meta(models.Model.Meta):
         db_table = 'Organization'
         verbose_name = 'Organization'

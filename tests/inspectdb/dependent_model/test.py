@@ -2,7 +2,7 @@ import unittest
 import django
 # in ortder to can run also by unittest without manage.py
 django.setup()
-from tests.inspectdb.dependent_model.models import Organization
+from tests.inspectdb.dependent_model.models import Organization  # NOQA must be after setup()
 
 
 class DependentModelTest(unittest.TestCase):

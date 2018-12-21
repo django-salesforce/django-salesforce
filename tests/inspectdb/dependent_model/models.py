@@ -3,8 +3,10 @@ from salesforce import models
 
 from tests.inspectdb import models as models_template
 
+
 class User(models.Model):
     Username = models.CharField(max_length=80)
+
 
 class Organization(models.Model):
     # all fields are copie dynamically

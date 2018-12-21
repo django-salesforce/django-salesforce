@@ -9,7 +9,6 @@
 Salesforce database backend for Django.
 """
 
-import logging
 import requests
 import sys
 import threading
@@ -38,7 +37,6 @@ except ImportError:
     from urlparse import urlparse
 
 __all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)
-log = logging.getLogger(__name__)
 
 connect_lock = threading.Lock()
 

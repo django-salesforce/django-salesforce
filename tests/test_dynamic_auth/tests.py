@@ -3,6 +3,7 @@ from django.db import connections
 from salesforce.testrunner.example.models import User
 from requests.exceptions import ConnectionError
 
+
 class DynamicAuthTest(TestCase):
     def assertConnectionProblem(self, queryset):
         with self.assertRaises(Exception) as cm:

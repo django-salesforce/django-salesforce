@@ -3,7 +3,7 @@ Simple dynamic registration of admin for all yet unregistered models,
 for demonstration, with respect to read only fields.
 """
 from django.contrib import admin
-import salesforce
+
 
 def register_omitted_classes(models):
     """
@@ -26,6 +26,6 @@ def register_omitted_classes(models):
                                     type(type(mdl).__name__ + 'Admin',
                                          (admin.ModelAdmin,),
                                          attributes)
-                )
+                                    )
             except admin.sites.AlreadyRegistered:
                 pass

@@ -175,21 +175,27 @@ class SalesforcePasswordAuth(SalesforceAuth):
 
         log.info("attempting authentication to %s" % settings_dict['HOST'])
         self._session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=get_max_retries()))
-        response = self._session.post(url, data=dict(
-            grant_type      = 'password',
-            client_id       = settings_dict['CONSUMER_KEY'],
-            client_secret   = settings_dict['CONSUMER_SECRET'],
-            username        = settings_dict['USER'],
-            password        = settings_dict['PASSWORD'],
-        ))
+        auth_params = {
+            'grant_type':    'password',
+            'client_id':     settings_dict['CONSUMER_KEY'],
+            'client_secret': settings_dict['CONSUMER_SECRET'],
+            'username':      settings_dict['USER'],
+            'password':      settings_dict['PASSWORD'],
+        }
+        response = self._session.post(url, data=auth_params)
         if response.status_code == 200:
             # prefer str in Python 2 due to other API
             response_data = {str(k): str(v) for k, v in response.json().items()}
             # Verify signature (not important for this auth mechanism)
-            calc_signature = (base64.b64encode(hmac.new(
-                    key=settings_dict['CONSUMER_SECRET'].encode('ascii'),
-                    msg=(response_data['id'] + response_data['issued_at']).encode('ascii'),
-                    digestmod=hashlib.sha256).digest())).decode('ascii')
+            calc_signature = (
+                base64.b64encode(
+                    hmac.new(
+                        key=settings_dict['CONSUMER_SECRET'].encode('ascii'),
+                        msg=(response_data['id'] + response_data['issued_at']).encode('ascii'),
+                        digestmod=hashlib.sha256
+                    ).digest()
+                )
+            ).decode('ascii')
             if calc_signature == response_data['signature']:
                 log.info("successfully authenticated %s" % settings_dict['USER'])
             else:

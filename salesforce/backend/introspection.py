@@ -13,16 +13,14 @@ import logging
 import re
 
 from salesforce.backend import driver
-from salesforce.fields import SF_PK
 import salesforce.fields
 
-from django.conf import settings
 from django.db.backends.base.introspection import BaseDatabaseIntrospection
 
-from salesforce.backend import compiler, query
+from salesforce.backend import query
 
 # require "simplejson" to ensure that it is available to "requests" hook.
-import simplejson
+import simplejson  # NOQA
 
 from collections import OrderedDict
 from django.utils.text import camel_case_to_spaces
@@ -49,33 +47,33 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
     by django.core.management.commands.inspectdb
     """
     data_types_reverse = {
-        'base64'                        : 'TextField',
-        'boolean'                       : 'BooleanField',
-        'byte'                          : 'SmallIntegerField',
-        'date'                          : 'DateField',
-        'datetime'                      : 'DateTimeField',
-        'double'                        : 'DecimalField',
-        'int'                           : 'IntegerField',
-        'string'                        : 'CharField',
-        'time'                          : 'TimeField',
-        'anyType'                       : 'CharField',
-        'calculated'                    : 'CharField',
-        'combobox'                      : 'CharField',
-        'currency'                      : 'DecimalField',
-        'datacategorygroupreference'    : 'CharField',
-        'email'                         : 'EmailField',
-        'encryptedstring'               : 'CharField',
-        'id'                            : 'AutoField',
-        'masterrecord'                  : 'CharField',
+        'base64':                         'TextField',
+        'boolean':                        'BooleanField',
+        'byte':                           'SmallIntegerField',
+        'date':                           'DateField',
+        'datetime':                       'DateTimeField',
+        'double':                         'DecimalField',
+        'int':                            'IntegerField',
+        'string':                         'CharField',
+        'time':                           'TimeField',
+        'anyType':                        'CharField',
+        'calculated':                     'CharField',
+        'combobox':                       'CharField',
+        'currency':                       'DecimalField',
+        'datacategorygroupreference':     'CharField',
+        'email':                          'EmailField',
+        'encryptedstring':                'CharField',
+        'id':                             'AutoField',
+        'masterrecord':                   'CharField',
         # multipicklist can be implemented by a descendant with a special validator + widget
-        'multipicklist'                 : 'CharField',
-        'percent'                       : 'DecimalField',
-        'phone'                         : 'CharField',
+        'multipicklist':                  'CharField',
+        'percent':                        'DecimalField',
+        'phone':                          'CharField',
         # picklist is ('CharField', {'choices': (...)})
-        'picklist'                      : 'CharField',
-        'reference'                     : 'ForeignKey',
-        'textarea'                      : 'TextField',
-        'url'                           : 'URLField',
+        'picklist':                       'CharField',
+        'reference':                      'ForeignKey',
+        'textarea':                       'TextField',
+        'url':                            'URLField',
     }
 
     def __init__(self, conn):
@@ -116,8 +114,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def get_table_list(self, cursor):
         "Returns a list of table names in the current database."
-        result = [SfProtectName(x['name'])
-                for x in self.table_list_cache['sobjects']]
+        result = [SfProtectName(x['name']) for x in self.table_list_cache['sobjects']]
         return result
 
     def get_table_description(self, cursor, table_name):
@@ -151,13 +148,13 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
             result.append((
-                field['name'], # name,
-                field['type'], # type_code,
-                field['length'], # display_size,
-                field['length'], # internal_size,
-                field['precision'], # precision,
-                field['scale'], # scale,
-                field['nillable'], # null_ok,
+                field['name'],       # name,
+                field['type'],       # type_code,
+                field['length'],     # display_size,
+                field['length'],     # internal_size,
+                field['precision'],  # precision,
+                field['scale'],      # scale,
+                field['nillable'],   # null_ok,
                 params,
             ))
         return result
@@ -167,9 +164,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         Returns a dictionary of {field_index: (field_index_other_table, other_table)}
         representing all relationships to the given table. Indexes are 0-based.
         """
+        def table2model(table_name):
+            return SfProtectName(table_name).title().replace(' ', '').replace('-', '')
         global last_introspected_model, last_with_important_related_name, last_read_only, last_refs
-        table2model = lambda table_name: (SfProtectName(table_name).title()
-                .replace(' ', '').replace('-', ''))
         result = {}
         reverse = {}
         last_with_important_related_name = []
@@ -198,11 +195,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         for ref, ilist in reverse.items():
             # Example of back_collision: a class Aaa has a ForeignKey to a class
             # Bbb and the class Bbb has any field with the name 'aaa'.
-            back_name_collisions = [x['name'] for x
-                    in self.table_description_cache(ref)['fields']
+            back_name_collisions = [
+                    x['name'] for x in self.table_description_cache(ref)['fields']
                     if re.sub('Id$' if x['type'] == 'reference' else '', '',
-                        re.sub('__c$', '', x['name'])).replace('_', '').lower()
-                    == table2model(table_name).lower()]
+                              re.sub('__c$', '', x['name'])
+                              ).replace('_', '').lower() == table2model(table_name).lower()]
             # add `related_name` only if necessary
             if len(ilist) > 1 or back_name_collisions:
                 last_with_important_related_name.extend(ilist)
@@ -257,10 +254,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
     def get_additional_meta(self, table_name):
         item = [x for x in self.table_list_cache['sobjects'] if x['name'] == table_name][0]
         return ["verbose_name = '%s'" % item['label'],
-            "verbose_name_plural = '%s'" % item['labelPlural'],
-            "# keyPrefix = '%s'" % item['keyPrefix'],
-
-        ]
+                "verbose_name_plural = '%s'" % item['labelPlural'],
+                "# keyPrefix = '%s'" % item['keyPrefix'],
+                ]
 
     @property
     def converted_lead_status(self):
@@ -290,6 +286,7 @@ class SymbolicModelsName(object):
     def __repr__(self):
         return self.name
 
+
 class SfProtectName(str):
     """
     Protect CamelCase class names and improve NOT_camelCase names by injecting
@@ -302,6 +299,7 @@ class SfProtectName(str):
     >>> assert SfProtectName('an_ODD2TableName__c') == 'an_ODD2TableName__c'
     """
     type = 't'  # 't'=table, 'v'=view
+
     # This better preserves the names. It is exact for all SF builtin tables,
     # though not perfect for names with more consecutive upper case characters,
     # e.g 'MyURLTable__c' -> 'MyUrltable' is still better than 'MyurltableC'.
@@ -315,5 +313,6 @@ class SfProtectName(str):
 
 
 reverse_models_names = dict((obj.value, obj) for obj in
-    [SymbolicModelsName(name) for name in ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')]
-)
+                            [SymbolicModelsName(name) for name in
+                                ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')
+                             ])

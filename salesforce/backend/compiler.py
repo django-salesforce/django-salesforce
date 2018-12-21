@@ -10,13 +10,13 @@ Generate queries using the SOQL dialect.
 """
 import re
 from django.db import models
-from django.db.models.sql import compiler, query, where, constants, AND, OR
+from django.db.models.sql import compiler, where, constants, AND
 from django.db.models.sql.datastructures import EmptyResultSet
+from django.db.transaction import TransactionManagementError
 import django.db.models.aggregates
-from . import subselect
+
 from salesforce import DJANGO_19_PLUS
 from salesforce.backend.driver import DatabaseError
-from django.db.transaction import TransactionManagementError
 import salesforce
 
 
@@ -63,7 +63,8 @@ class SQLCompiler(compiler.SQLCompiler):
         self.quote_cache[name] = r
         return r
 
-    def execute_sql(self, result_type=constants.MULTI, chunked_fetch=False, chunk_size=constants.GET_ITERATOR_CHUNK_SIZE):
+    def execute_sql(self, result_type=constants.MULTI, chunked_fetch=False,
+                    chunk_size=constants.GET_ITERATOR_CHUNK_SIZE):
         """
         Run the query against the database and returns the result(s). The
         return value is a single data item if result_type is SINGLE, or an
@@ -96,8 +97,8 @@ class SQLCompiler(compiler.SQLCompiler):
             return cursor.fetchone()
 
         # The MULTI case.
-        result = iter((lambda: cursor.fetchmany(chunk_size)),
-                self.connection.features.empty_fetchmany_value)
+        result = iter(lambda: cursor.fetchmany(chunk_size),
+                      self.connection.features.empty_fetchmany_value)
         if not chunked_fetch and not self.connection.features.can_use_chunked_reads:
             # If we are using non-chunked reads, we return the same data
             # structure as normally, but ensure it is all read into memory
@@ -243,8 +244,9 @@ class SQLCompiler(compiler.SQLCompiler):
             alias_map_items = _alias_map_items
         else:
             alias_map_items = [(getattr(v, 'parent_alias', None), v.table_name,
-                               getattr(v, 'join_cols', None), v.table_alias
-                              ) for v in query.alias_map.values()]
+                                getattr(v, 'join_cols', None), v.table_alias
+                                ) for v in query.alias_map.values()
+                               ]
         # Analyze
         alias2table = {}
         side_l, side_r = set(), set()
@@ -284,7 +286,7 @@ class SQLCompiler(compiler.SQLCompiler):
                         lhs, rhs = rhs, lhs
                         join_cols = join_cols[1], join_cols[0]
                     if lhs in work_lhses:
-                        assert not rhs in soql_trans
+                        assert rhs not in soql_trans
                         if join_cols[0].endswith('__c'):
                             fkey = re.sub('__c$', '__r', join_cols[0])
                         else:
@@ -342,7 +344,7 @@ class SalesforceWhereNode(where.WhereNode):
                     if x_match:
                         x_table, x_field = x_match.groups()
                         sql = '%s.%s' % (soql_trans[x_table], x_field)
-                        #print('sql params:', sql, params)
+                        # print('sql params:', sql, params)
                     result.append(sql)
                     result_params.extend(params)
                 else:
@@ -437,8 +439,10 @@ class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
 class SQLDeleteCompiler(compiler.SQLDeleteCompiler, SQLCompiler):
     pass
 
+
 class SQLUpdateCompiler(compiler.SQLUpdateCompiler, SQLCompiler):
     pass
+
 
 class SQLAggregateCompiler(compiler.SQLAggregateCompiler, SQLCompiler):
     pass
@@ -455,6 +459,7 @@ class IsNull(models.lookups.IsNull):
             return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
         else:
             return super(IsNull, self).as_sql(qn, connection)
+
 
 models.Field.register_lookup(IsNull)
 
@@ -476,7 +481,9 @@ class Range(models.lookups.Range):
         else:
             return super(Range, self).as_sql(qn, connection)
 
+
 models.Field.register_lookup(Range)
+
 
 def count_as_salesforce(self, *args, **kwargs):
     if (len(self.source_expressions) == 1 and
@@ -489,4 +496,6 @@ def count_as_salesforce(self, *args, **kwargs):
         # obj.add_annotation(Count('*'), alias='__count', is_summary=True
         # self.source_expressions[0] = models.expressions.Col('__count', args[0].query.model._meta.fields[0])  #'Id'
         return self.as_sql(*args, **kwargs)
+
+
 setattr(django.db.models.aggregates.Count, 'as_salesforce', count_as_salesforce)
