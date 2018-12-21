@@ -110,11 +110,11 @@ class TestQueryCompiler(TestCase, LazyTestMixin):
                                  "WHERE Opportunity.StageName =",
                                  "Probably because aliases are invalid for SFDC, e.g. 'U0.StageName'")
         self.assertRegexpMatches(sql,
-                                 'SELECT .*OpportunityContactRole\.Role.* '
-                                 'FROM OpportunityContactRole WHERE \(.* AND .*\)')
+                                 r'SELECT .*OpportunityContactRole\.Role.* '
+                                 r'FROM OpportunityContactRole WHERE \(.* AND .*\)')
         self.assertRegexpMatches(sql,
-                                 'OpportunityContactRole.OpportunityId IN '
-                                 '\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
+                                 r'OpportunityContactRole.OpportunityId IN '
+                                 r'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
         self.assertRegexpMatches(sql, 'OpportunityContactRole.Role = %s')
 
     def test_none_method_queryset(self):

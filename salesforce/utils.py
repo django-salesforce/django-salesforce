@@ -42,14 +42,14 @@ def get_soap_client(db_alias, client_class=None):
     cursor.urls_request()
     auth_info = connections[db_alias].sf_session.auth
 
-    access_token = connections[db_alias].sf_session.auth.get_auth()['access_token']
+    access_token = auth_info.get_auth()['access_token']
     assert access_token[15] == '!'
     org_id = access_token[:15]
     url = '/services/Soap/u/{version}/{org_id}'.format(version=salesforce.API_VERSION,
                                                        org_id=org_id)
-    soap_client.useSession(access_token,
-                           connections[db_alias].sf_session.auth.instance_url + url)
+    soap_client.useSession(access_token, auth_info.instance_url + url)
     return soap_client
+
 
 def convert_lead(lead, converted_status=None, **kwargs):
     """
@@ -63,7 +63,7 @@ def convert_lead(lead, converted_status=None, **kwargs):
 
     kwargs: additional optional parameters according docs
     https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm
-    e.g. `accountId` if the Lead should be merged with an existing Account. 
+    e.g. `accountId` if the Lead should be merged with an existing Account.
 
     Return value:
         {'accountId':.., 'contactId':.., 'leadId':.., 'opportunityId':.., 'success':..}
@@ -106,9 +106,10 @@ def convert_lead(lead, converted_status=None, **kwargs):
 
     if "errors" in str(ret):
         raise DatabaseError("The Lead conversion failed: {0}, leadId={1}".format(
-                ret['errors'], ret['leadId']))
+                            ret['errors'], ret['leadId']))
 
     return ret
+
 
 def set_highest_api_version(db_aliases):
     """Set the highest version of Force.com API supported by all databases in db_aliases
@@ -117,5 +118,5 @@ def set_highest_api_version(db_aliases):
     if not isinstance(db_aliases, (list, tuple)):
         db_aliases = [db_aliases]
     max_version = max(CursorWrapper(connections[db_alias]).versions_request()[-1]['version']
-                       for db_alias in db_aliases)
+                      for db_alias in db_aliases)
     setattr(salesforce, 'API_VERSION', max_version)

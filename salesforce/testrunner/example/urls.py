@@ -5,7 +5,7 @@
 # See LICENSE.md for details
 #
 
-from django.conf.urls import url, include
+from django.conf.urls import url
 from . import views
 
 urlpatterns = [

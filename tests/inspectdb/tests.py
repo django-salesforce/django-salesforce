@@ -27,10 +27,10 @@ def get_classes_texts():
     """
     result = OrderedDict()
     excluded_pattern = re.compile(r'^('
-            r'# coding: utf-8|'
-            r'# This is an auto-generated Django model|'
-            r'from salesforce import models$'
-        ')')
+                                  r'# coding: utf-8|'
+                                  r'# This is an auto-generated Django model|'
+                                  r'from salesforce import models$'
+                                  r')')
     with open(relative_path('models.py'), 'rU') as f:
         for text in f.read().split('\n\n'):
             text = text.strip()

@@ -9,12 +9,8 @@
 Database router for SalesforceModel objects.
 """
 
-import logging
-
 from django.apps import apps
 from django.conf import settings
-
-log = logging.getLogger(__name__)
 
 
 def is_sf_database(db, model=None):
