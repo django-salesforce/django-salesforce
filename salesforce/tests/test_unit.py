@@ -8,9 +8,9 @@ from django.db.models import DO_NOTHING
 from salesforce import fields, models
 from salesforce.testrunner.example.models import (
         Contact, Opportunity, OpportunityContactRole, ChargentOrder)
+from salesforce.backend.test_helpers import LazyTestMixin
 
 # from salesforce.backend.subselect import TestSubSelectSearch
-import salesforce
 
 
 class EasyCharField(models.CharField):
@@ -86,7 +86,7 @@ class TestField(TestCase):
              'MyCustomForeignField__c')
 
 
-class TestQueryCompiler(TestCase):
+class TestQueryCompiler(TestCase, LazyTestMixin):
     def test_namespaces_auto(self):
         """Verify that the database column name can be correctly autodetected
 
@@ -119,12 +119,11 @@ class TestQueryCompiler(TestCase):
 
     def test_none_method_queryset(self):
         """Test that none() method in the queryset returns [], not error"""
-        request_count_0 = salesforce.backend.driver.request_count
-        self.assertEqual(tuple(Contact.objects.none()), ())
-        self.assertEqual(tuple(Contact.objects.all().none().all()), ())
-        self.assertTrue('[]' in repr(Contact.objects.none()))
-        self.assertEqual(salesforce.backend.driver.request_count, request_count_0,
-                         "Do database requests should be done with .none() method")
+        with self.lazy_assert_n_requests(0, "No database requests should be run for .none() method"):
+            self.assertEqual(tuple(Contact.objects.none()), ())
+            self.assertEqual(tuple(Contact.objects.all().none().all()), ())
+            self.assertTrue('[]' in repr(Contact.objects.none()))
+        self.lazy_check()
 
 
 class TestTopologyCompiler(TestCase):

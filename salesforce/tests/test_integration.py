@@ -24,9 +24,9 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
         )
 from salesforce import router, DJANGO_110_PLUS, DJANGO_111_PLUS, DJANGO_20_PLUS
 import salesforce
-from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators
+from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators # NOQA
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid_version as uid
-from ..backend.test_helpers import no_soap_decorator, QuietSalesforceErrors
+from ..backend.test_helpers import no_soap_decorator, QuietSalesforceErrors, LazyTestMixin
 
 import logging
 log = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def refresh(obj):
     return type(obj).objects.using(db).get(pk=obj.pk)
 
 
-class BasicSOQLRoTest(TestCase):
+class BasicSOQLRoTest(TestCase, LazyTestMixin):
     """Tests that need no setUp/tearDown"""
 
     @classmethod
@@ -133,16 +133,14 @@ class BasicSOQLRoTest(TestCase):
         test_account.save()
         test_contact = Contact(first_name='sf_test', last_name='my', account=test_account)
         test_contact.save()
-        req_count_0 = salesforce.backend.driver.request_count
         try:
-            qs = Contact.objects.filter(account__Name='sf_test account').simple_select_related('account')
-            contacts = list(qs)
-            req_count_1 = salesforce.backend.driver.request_count
-            [x.account.Name for x in contacts]
-            req_count_2 = salesforce.backend.driver.request_count
-            self.assertEqual(req_count_1, req_count_0 + 2)
+            with self.lazy_assert_n_requests(2):
+                qs = Contact.objects.filter(account__Name='sf_test account').simple_select_related('account')
+                contacts = list(qs)
+            with self.lazy_assert_n_requests(0):
+                [x.account.Name for x in contacts]
             self.assertGreaterEqual(len(contacts), 1)
-            self.assertEqual(req_count_2, req_count_1)
+            self.lazy_check()
         finally:
             test_contact.delete()
             test_account.delete()
@@ -756,66 +754,58 @@ class BasicSOQLRoTest(TestCase):
     def test_only_fields(self):
         """Verify that access to "only" fields doesn't require a request, but others do.
         """
-        def assert_n_requests(n):
-            # verify the necessary number of requests
-            # print("-- req=%d (expect %d)" % (salesforce.backend.driver.request_count - request_count_0, n))
-            self.assertEqual(salesforce.backend.driver.request_count - request_count_0, n)
-
         # print([(x.id, x.last_name) for x in Contact.objects.only('last_name').order_by('id')[:2]])
-        request_count_0 = salesforce.backend.driver.request_count
-        sql = User.objects.only('Username').query.get_compiler('salesforce').as_sql()[0]
-        self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
-        assert_n_requests(0)
+        with self.lazy_assert_n_requests(0):
+            sql = User.objects.only('Username').query.get_compiler('salesforce').as_sql()[0]
+            self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
 
-        user = User.objects.only('Username').order_by('pk')[0]                  # req
-        assert_n_requests(1)
+        with self.lazy_assert_n_requests(1):
+            user = User.objects.only('Username').order_by('pk')[0]
 
         # Verify that deferred fields work
-        user.pk                                                                 # no request
-        user_username = user.Username
+        with self.lazy_assert_n_requests(0):
+            user.pk
+            user_username = user.Username
         self.assertIn('@', user_username)
-        assert_n_requests(1)
 
-        self.assertGreater(len(user.LastName), 0)                               # req
-        #import pdb; pdb.set_trace()
-        assert_n_requests(2)
+        with self.lazy_assert_n_requests(1):
+            self.assertGreater(len(user.LastName), 0)
 
-        self.assertEqual(user_username, User.objects.get(pk=user.pk).Username)  # req
-        assert_n_requests(3)
+        with self.lazy_assert_n_requests(1):
+            self.assertEqual(user_username, User.objects.get(pk=user.pk).Username)
 
-        xx = Contact.objects.only('last_name').order_by('pk')[0]                # req
-        assert_n_requests(4)
+        with self.lazy_assert_n_requests(1):
+            xx = Contact.objects.only('last_name').order_by('pk')[0]
 
-        xx.last_name                                                            # no req
-        # print((xx.id, xx.last_name))
-        assert_n_requests(4)
+        with self.lazy_assert_n_requests(0):
+            xx.last_name
 
-        xy = Contact.objects.only('account').order_by('pk')[1]                  # req
-        assert_n_requests(5)
+        with self.lazy_assert_n_requests(1):
+            xy = Contact.objects.only('account').order_by('pk')[1]
 
-        xy.account_id                                                           # no req
-        assert_n_requests(5)
+        with self.lazy_assert_n_requests(0):
+            xy.account_id
 
-        # print((xy.id, xy.last_name))                                          # req
-        #import pdb; pdb.set_trace()
-        self.assertGreater(len(xy.last_name), 0)
-        assert_n_requests(6)
+        with self.lazy_assert_n_requests(1):
+            self.assertGreater(len(xy.last_name), 0)
 
-        xy.last_name                                                            # no req
-        assert_n_requests(6)                                                    # total 6 requests
+        with self.lazy_assert_n_requests(0):
+            xy.last_name
+
+        self.lazy_check()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_defer_fields(self):
         """Verify that access to a deferred field requires a new request, but others don't.
         """
-        request_count_0 = salesforce.backend.driver.request_count
-        contact = Contact.objects.defer('email')[0]
-        self.assertEqual(salesforce.backend.driver.request_count, request_count_0 + 1)
-        _ = contact.last_name
-        self.assertEqual(salesforce.backend.driver.request_count, request_count_0 + 1)
-        _ = contact.email
-        self.assertEqual(salesforce.backend.driver.request_count, request_count_0 + 2)
+        with self.lazy_assert_n_requests(1):
+            contact = Contact.objects.defer('email')[0]
+        with self.lazy_assert_n_requests(0):
+            _ = contact.last_name
+        with self.lazy_assert_n_requests(1):
+            _ = contact.email
+        self.lazy_check()
 
     @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_incomplete_raw(self):
