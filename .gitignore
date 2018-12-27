@@ -13,7 +13,7 @@ salesforce_testrunner_db
 .tox/
 setuptools_git-*.egg
 .ropeproject/
-.coverage/
+.coverage
 htmlcov/
 coverage_html/
 log

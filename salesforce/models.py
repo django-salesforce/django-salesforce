@@ -30,7 +30,7 @@ from salesforce.fields import DEFAULTED_ON_CREATE, NOT_UPDATEABLE, NOT_CREATEABL
 from salesforce.fields import *  # NOQA - imports for other modules
 
 __all__ = ('SalesforceModel', 'Model', 'DEFAULTED_ON_CREATE', 'PROTECT', 'DO_NOTHING', 'SF_PK', 'SfField',
-           'NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY')
+           'NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')
 
 log = logging.getLogger(__name__)
 
