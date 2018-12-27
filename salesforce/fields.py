@@ -10,6 +10,7 @@ Adds support for Salesforce primary keys.
 """
 
 import warnings
+from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import ugettext_lazy as _
@@ -155,9 +156,49 @@ class TextField(SfField, models.TextField):
 class IntegerField(SfField, models.IntegerField):
     """IntegerField with sf_read_only attribute for Salesforce."""
     pass
+
+
+class BigIntegerField(SfField, models.BigIntegerField):
+    """BigIntegerField with sf_read_only attribute for Salesforce."""
+    # important for other database backends, e.g. in tests
+    # The biggest exact value is +-(2 ** 53 -1 ), approx. 9.007E15
+    pass
+
+
 class SmallIntegerField(SfField, models.SmallIntegerField):
     """SmallIntegerField with sf_read_only attribute for Salesforce."""
     pass
+
+
+class DecimalField(SfField, models.DecimalField):
+    """
+    DecimalField with sf_read_only attribute for Salesforce.
+
+    Salesforce has only one numeric type xsd:double, but no integer.
+    Even a numeric field with declared zero decimal_places can contain
+    pi=3.14159265358979 in the database accidentally, but if also the value
+    is integer,then it is without '.0'.
+    DecimalField is the default numeric type used by itrospection inspectdb.
+    """
+    def to_python(self, value):
+        if str(value) == 'DEFAULTED_ON_CREATE':
+            return value
+        ret = super(DecimalField, self).to_python(value)
+        if ret is not None and self.decimal_places == 0:
+            # this is because Salesforce has no numeric integer type
+            if ret == int(ret):
+                ret = Decimal(int(ret))
+        return ret
+
+
+class FloatField(SfField, models.FloatField):
+    """FloatField for Salesforce.
+
+    It is Float in Python and the same as DecimalField in the database.
+    """
+    pass
+
+
 class BooleanField(SfField, models.BooleanField):
     """BooleanField with sf_read_only attribute for Salesforce."""
     def __init__(self, default=False, **kwargs):
@@ -168,14 +209,6 @@ class BooleanField(SfField, models.BooleanField):
             return value
         else:
             return super(BooleanField, self).to_python(value)
-
-
-class DecimalField(SfField, models.DecimalField):
-    """DecimalField with sf_read_only attribute for Salesforce."""
-    def to_python(self, value):
-        if str(value) == 'DEFAULTED_ON_CREATE':
-            return value
-        return super(DecimalField, self).to_python(value)
 
 
 class DateTimeField(SfField, models.DateTimeField):
