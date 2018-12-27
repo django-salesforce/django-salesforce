@@ -17,7 +17,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
-        ApexEmailNotification, BusinessHours, ChargentOrder, CronTrigger,
+        ApexEmailNotification, BusinessHours, Campaign, ChargentOrder, CronTrigger,
         Opportunity, OpportunityContactRole,
         Product, Pricebook, PricebookEntry, Note, Task,
         Organization, models_template,
@@ -354,6 +354,19 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         finally:
             retrieved_pricebook_entry.delete()
             product.delete()
+
+    def test_zero_decimal_places(self):
+        """Test that DecimalField with decimal_places=0 is correctly parsed"""
+        campaign = Campaign(name='test something', number_sent=3)
+        campaign.save()
+        try:
+            ret = Campaign.objects.filter(number_sent=3)
+            # should be parsed without ".0"
+            val = ret[0].number_sent
+            self.assertEqual(repr(val), "Decimal('3')")
+            self.assertEqual(str(val), "3")
+        finally:
+            campaign.delete()
 
     def test_simple_custom_object(self):
         """Create, read and delete a simple custom object `django_Test__c`.

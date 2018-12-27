@@ -399,3 +399,8 @@ class ApexEmailNotification(models.Model):
                                 on_delete=models.DO_NOTHING, blank=True, null=True)
     # Users of your org to notify when unhandled Apex exceptions occur.
     email = models.CharField(unique=True, max_length=255, verbose_name='email', blank=True)
+
+
+class Campaign(models.Model):
+    name = models.CharField(max_length=80)
+    number_sent = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Num Sent', blank=True, null=True)
