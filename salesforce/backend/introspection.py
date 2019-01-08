@@ -34,7 +34,8 @@ log = logging.getLogger(__name__)
 PROBLEMATIC_OBJECTS = [
     'AssetTokenEvent',  # new in API 39.9 Spring '17
     'OrgLifecycleNotification',  # new in API 40.0 Summer '17
-    'BatchApexErrorEvent',  # new in API 44.0 Winter '18 
+    'BatchApexErrorEvent',  # new in API 44.0 Winter '19
+    'PlatformStatusAlertEvent'  # new in API 45.0 Spring '19
 ]
 
 
@@ -143,6 +144,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             if field['type'] == 'reference' and not field['referenceTo']:
                 params['ref_comment'] = 'No Reference table'
                 field['type'] = 'string'
+            if field['calculatedFormula']:
+                # calculated formula field are without length in Salesforce 45 Spring '19,
+                # but Django requires a length, though the field is read only and never written
+                field['length'] = 1300
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
             result.append((
