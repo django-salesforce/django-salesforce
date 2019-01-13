@@ -22,7 +22,7 @@ from salesforce.testrunner.example.models import (Account, Contact, Lead, User,
         Product, Pricebook, PricebookEntry, Note, Task,
         Organization, models_template,
         )
-from salesforce import router, DJANGO_110_PLUS, DJANGO_111_PLUS, DJANGO_20_PLUS
+from salesforce import router, DJANGO_110_PLUS, DJANGO_20_PLUS
 import salesforce
 from ..backend.test_helpers import skip, skipUnless, expectedFailure, expectedFailureIf # test decorators # NOQA
 from ..backend.test_helpers import current_user, default_is_sf, sf_alias, uid_version as uid
@@ -429,48 +429,67 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_bulk_create(self):
-        """Create two Contacts by one request in one command and find them.
+        """Create two Contacts by one request in one command, find them.
         """
         account = Account(Name='test bulk')
         account.save()
         try:
             objects = [Contact(last_name='sf_test a', account=account),
                        Contact(last_name='sf_test b', account=account)]
-            request_count_0 = salesforce.backend.driver.request_count
 
-            ret = Contact.objects.bulk_create(objects)
-            if DJANGO_110_PLUS:
+            with self.lazy_assert_n_requests(1):
+                ret = Contact.objects.bulk_create(objects)
                 # test that can return ids from bulk_create
                 self.assertEqual(len(set(x.pk for x in ret if x.pk)), 2)
 
-            request_count_1 = salesforce.backend.driver.request_count
-            self.assertEqual(request_count_1,  request_count_0 + 1)
             self.assertEqual(len(Contact.objects.filter(account=account)), 2)
+            self.lazy_check()
         finally:
             account.delete()
     
     test_bulk_create_no_soap = no_soap_decorator(test_bulk_create)
 
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_111_PLUS)
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_bulk_update(self):
-        """Create two Contacts by one request in one command, find them.
+        """Update two Accounts by one request, after searching them by one request.
         """
         account_0, account_1 = [Account(Name='test' + uid), Account(Name='test' + uid)]
         account_0.save()
         account_1.save()
         try:
-            request_count_0 = salesforce.backend.driver.request_count
-            Account.objects.filter(pk=account_0.pk).update(Name="test2" + uid)
-            Account.objects.filter(pk__in=[account_1.pk]).update(Name="test2" + uid)
-            Account.objects.filter(pk__in=Account.objects.filter(Name='test2' + uid)).update(Name="test3" + uid)
-            request_count_1 = salesforce.backend.driver.request_count
+            # 2x update with different filters by primary key: 1 request per update
+            with self.lazy_assert_n_requests(1):
+                Account.objects.filter(pk=account_0.pk).update(Name="test2" + uid)
+            with self.lazy_assert_n_requests(1):
+                Account.objects.filter(pk__in=[account_1.pk]).update(Name="test2" + uid)
+
+            # 1x update of 2 records + 1 more complicated filter == 2 requests
+            with self.lazy_assert_n_requests(2):
+                Account.objects.filter(pk__in=Account.objects.filter(Name='test2' + uid)).update(Name="test3" + uid)
             self.assertEqual(Account.objects.filter(Name='test3' + uid).count(), 2)
-            self.assertEqual(request_count_1,  request_count_0 + 4)
+            self.lazy_check()
         finally:
             account_0.delete()
             account_1.delete()
 
     test_bulk_update_no_soap = no_soap_decorator(test_bulk_update)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_bulk_delete(self):
+        """Delete two Accounts one request.
+        """
+        account_0, account_1 = [Account(Name='test' + uid), Account(Name='test' + uid)]
+        account_0.save()
+        account_1.save()
+        try:
+            with self.lazy_assert_n_requests(2):
+                ret = Account.objects.filter(Name='test' + uid).delete()
+            self.assertEqual(ret, (2, {'example.Account': 2}))
+            self.assertEqual(Account.objects.filter(Name='test' + uid).count(), 0)
+            self.lazy_check()
+        finally:
+            account_0.delete()
+            account_1.delete()
 
     def test_escape_single_quote(self):
         """Test single quotes in strings used in a filter

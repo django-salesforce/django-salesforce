@@ -28,7 +28,7 @@ from django.db import connections
 from django.db.models import query, Count
 from django.db.models.sql import Query, RawQuery, constants, subqueries
 from django.db.models.sql.datastructures import EmptyResultSet
-from django.utils.six import PY3
+from django.utils.six import PY3, text_type
 
 from salesforce import models, DJANGO_19_PLUS, DJANGO_110_PLUS, DJANGO_20_PLUS
 from salesforce.backend.driver import DatabaseError, SalesforceError, handle_api_exceptions, API_STUB
@@ -495,7 +495,12 @@ class CursorWrapper(object):
             elif('success' in data and 'id' in data):
                 self.lastrowid = data['id']
                 return
-            elif data['hasErrors'] == False:
+            elif 'compositeResponse' in data:
+                # TODO treat error reporting for composite requests
+                self.lastrowid = [x['body']['id'] if x['body'] is not None else x['referenceId']
+                                  for x in data['compositeResponse']]
+                return
+            elif data['hasErrors'] is False:
                 # save id from bulk_create even if Django don't use it
                 if data['results'] and data['results'][0]['result']:
                     self.lastrowid = [item['result']['id'] for item in data['results']]
@@ -547,16 +552,19 @@ class CursorWrapper(object):
             post_data = post_data[0]
         elif not self.use_soap_for_bulk:
             # bulk by REST
-            url = rest_api_url(self.session, 'composite/batch')
+            url = rest_api_url(self.session, 'composite')
             post_data = {
-                'batchRequests': [{'method': 'POST',
-                                   'url': 'v{0}/sobjects/{1}'.format(salesforce.API_VERSION,
-                                                                     table),
-                                   'richInput': row
-                                   }
-                                  for row in post_data
-                                  ]
-                         }
+                'allOrNone': True,
+                'compositeRequest': [
+                    {
+                        'method': 'POST',
+                        'url': '/services/data/v{0}/sobjects/{1}'.format(salesforce.API_VERSION, table),
+                        'referenceId': str(i),
+                        'body': row,
+                    }
+                    for i, row in enumerate(post_data)
+                ]
+            }
         else:
             # bulk by SOAP
             svc = salesforce.utils.get_soap_client('salesforce')
@@ -568,82 +576,116 @@ class CursorWrapper(object):
         log.debug('INSERT %s%s' % (table, post_data))
         return handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
 
+    def get_pks_from_query(self, query):
+        """Prepare primary keys for update and delete queries"""
+        where = query.where
+        sql = None
+        if where.connector == 'AND' and not where.negated and len(where.children) == 1:
+            # simple cases are optimized, especially because a suboptimal
+            # nested query based on the same table is not allowed by SF
+            child = where.children[0]
+            if (child.lookup_name in ('exact', 'in') and child.lhs.target.column == 'Id'
+                    and not child.bilateral_transforms and child.lhs.target.model is self.query.model):
+                pks = child.rhs
+                if child.lookup_name == 'exact':
+                    assert isinstance(pks, text_type)
+                    return [pks]
+                else:  # lookup_name 'in'
+                    assert isinstance(pks, (tuple, list, SalesforceQuerySet, SalesforceQuery))
+                    assert not child.bilateral_transforms
+                    if isinstance(pks, (tuple, list)):
+                        return pks
+                    elif isinstance(pks, SalesforceQuerySet):
+                        # a SalesforceQuerySet is used only for Django 1.10
+                        return [x.pk for x in pks]
+                    elif isinstance(pks, SalesforceQuery):
+                        # # alternative solution:
+                        # return list(salesforce.backend.query.SalesforceQuerySet(pk.model, query=pk, using=pk._db))
+
+                        sql, params = pks.get_compiler('salesforce').as_sql()
+        if not sql:
+            # a subquery is necessary in this case
+            where_sql, params = where.as_sql(query.get_compiler('salesforce'), self.db.connection)
+            sql = "SELECT Id FROM {} WHERE {}".format(query.model._meta.db_table, where_sql)
+        with self.db.cursor() as cur:
+            cur.execute(sql, params)
+            return [x['Id'] for x in cur]
+
     def execute_update(self, query):
         table = query.model._meta.db_table
-        # this will break in multi-row updates
-        assert (len(query.where.children) == 1 and
-                query.where.children[0].lookup_name in ('exact', 'in') and
-                query.where.children[0].lhs.target.column == 'Id')
-        pk = query.where.children[0].rhs
-        assert pk
         headers = {'Content-Type': 'application/json'}
         post_data = extract_values(query)
+        pk = self.get_pks_from_query(query)
         log.debug('UPDATE %s(%s)%s' % (table, pk, post_data))
-        if isinstance(pk, (tuple, list, SalesforceQuerySet)):
+        if not pk:
+            return
+        if len(pk) > 1:
             if not self.use_soap_for_bulk:
                 # bulk by REST
-                url = rest_api_url(self.session, 'composite/batch')
-                last_mod = None
-                if pk and hasattr(pk[0], 'pk'):
-                    last_mod = max(getattr(x, fld.name)
-                                   for x in pk if hasattr(x, 'pk')
-                                   for fld in x._meta.fields if fld.db_column=='LastModifiedDate'
-                                   )
-                if last_mod is None:
-                    last_mod = datetime.datetime.utcnow()
+                url = rest_api_url(self.session, 'composite')
                 post_data = {
-                    'batchRequests': [{'method' : 'PATCH',
-                                       'url' : 'v{0}/sobjects/{1}/{2}'.format(salesforce.API_VERSION,
-                                                                              table,
-                                                                              getattr(x, 'pk', x)),
-                                       'richInput': post_data
-                                       }
-                                      for x in pk
-                                      ]
-                             }
-                # # Unnecessary code after Salesforce Release Winter '16 Patch 12.0:
-                # import email.utils
-                # headers.update({'If-Unmodified-Since': email.utils.formatdate(
-                #               last_mod.timestamp() + 0, usegmt=True)})
-                _ret = handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data), _cursor=self)
+                    'allOrNone': True,
+                    'compositeRequest': [
+                        {
+                            'method': 'PATCH',
+                            'url': '/services/data/v{0}/sobjects/{1}/{2}'.format(
+                                           salesforce.API_VERSION, table, x),
+                            'referenceId': x,
+                            'body': post_data,
+                         } for x in pk
+                     ]
+                 }
+                ret = handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data),
+                                            _cursor=self)
             else:
                 # bulk by SOAP
                 svc = salesforce.utils.get_soap_client('salesforce')
                 out = []
                 for x in pk:
                     d = post_data.copy()
-                    d.update({'type': table, 'Id': getattr(x, 'pk', x)})
+                    d.update({'type': table, 'Id': x})
                     out.append(d)
                 ret = svc.update(out)
                 return ret
         else:
             # single request
-            url = rest_api_url(self.session, 'sobjects', table, pk)
-            _ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data), _cursor=self)
+            url = rest_api_url(self.session, 'sobjects', table, pk[0])
+            ret = handle_api_exceptions(url, self.session.patch, headers=headers, data=json.dumps(post_data),
+                                        _cursor=self)
         self.rowcount = 1
-        return _ret
+        return ret
 
     def execute_delete(self, query):
         table = query.model._meta.db_table
-        ## the root where node's children may itself have children..
-        def recurse_for_pk(children):
-            for node in children:
-                if hasattr(node, 'rhs'):
-                    pk = node.rhs[0]
-                else:
-                    try:
-                        pk = node[-1][0]
-                    except TypeError:
-                        pk = recurse_for_pk(node.children)
-                return pk
-        pk = recurse_for_pk(self.query.where.children)
-        assert pk
-        url = rest_api_url(self.session, 'sobjects', table, pk)
+        pk = self.get_pks_from_query(query)
 
         log.debug('DELETE %s(%s)' % (table, pk))
-        ret = handle_api_exceptions(url, self.session.delete, _cursor=self)
-        self.rowcount = 1 if (ret and ret.status_code == 204) else 0
-        return ret
+        if not pk:
+            self.rowcount = 0
+            return
+        elif len(pk) == 1:
+            url = rest_api_url(self.session, 'sobjects', table, pk[0])
+            ret = handle_api_exceptions(url, self.session.delete, _cursor=self)
+            self.rowcount = 1 if (ret and ret.status_code == 204) else 0
+            return ret
+        else:
+            # bulk by REST
+            headers = {'Content-Type': 'application/json'}
+            url = rest_api_url(self.session, 'composite')
+            post_data = {
+                'allOrNone': True,
+                'compositeRequest': [
+                    {
+                        'method': 'DELETE',
+                        'url': '/services/data/v{0}/sobjects/{1}/{2}'.format(
+                                       salesforce.API_VERSION, table, x),
+                        'referenceId': x,
+                     } for x in pk
+                 ]
+             }
+            ret = handle_api_exceptions(url, self.session.post, headers=headers, data=json.dumps(post_data),
+                                        _cursor=self)
+            self.rowcount = len([x for x in ret.json()['compositeResponse'] if x['httpStatusCode'] == 204])
 
     # The following 3 methods (execute_ping, id_request, versions_request)
     # can be renamed soon or moved.
