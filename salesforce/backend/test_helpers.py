@@ -7,7 +7,9 @@ import uuid
 
 import django
 from django.conf import settings
+
 from salesforce import router
+from salesforce.dbapi.test_helpers import LazyTestMixin  # NOQA
 
 # uid strings for tests that accidentally run concurrent
 uid_random = '-' + str(uuid.uuid4())[:7]
