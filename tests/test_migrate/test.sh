@@ -1,5 +1,5 @@
 #!/bin/sh
-PROJ=z_migrate_190
+PROJ=test_migrate
 SETTINGS=--settings=tests.$PROJ.settings
 
 # test for Issue 190

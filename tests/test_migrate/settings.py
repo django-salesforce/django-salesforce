@@ -2,7 +2,7 @@ from salesforce.testrunner.settings import *  # NOQA
 from salesforce.testrunner.settings import INSTALLED_APPS
 
 INSTALLED_APPS = tuple(x for x in INSTALLED_APPS if x != 'salesforce.testrunner.example')
-INSTALLED_APPS += ('tests.z_migrate_190',)
+INSTALLED_APPS += ('tests.test_migrate',)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
