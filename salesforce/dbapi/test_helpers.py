@@ -1,8 +1,37 @@
 import sys
 import traceback
 from contextlib import contextmanager
+from functools import wraps
+from unittest import expectedFailure
 
+from django.db import connections
 from salesforce.backend import driver
+
+
+def expectedFailureIf(condition):
+    """Conditional 'expectedFailure' decorator for TestCase"""
+    if condition:
+        return expectedFailure
+    else:
+        return lambda func: func
+
+
+class QuietSalesforceErrors(object):
+    """Context manager that helps expected SalesforceErrors to be quiet"""
+    def __init__(self, alias):
+        self.connection = connections[alias]
+
+    def __enter__(self):
+        if hasattr(self.connection, 'debug_silent'):
+            self.save_debug_silent = self.connection.debug_silent
+            self.connection.debug_silent = True
+        return self
+
+    def __exit__(self, type, value, traceback):
+        try:
+            self.connection.debug_silent = self.save_debug_silent
+        except AttributeError:
+            pass
 
 
 class LazyTestMixin(object):
@@ -74,3 +103,17 @@ class LazyTestMixin(object):
             msg += ('expected requests != real requests;  checked by:\n'
                     'with self.lazy_assert_n_requests({}):'.format(expected_requests))
             self.lazyAssertEqual(expected_requests, request_count_1 - request_count_0, msg=msg)
+
+
+def no_soap_decorator(f):
+    """Decorator to not temporarily use SOAP API (Beatbox)"""
+
+    @wraps(f)
+    def wrapper(*args, **kwds):
+        beatbox_orig = driver.beatbox
+        setattr(driver, 'beatbox', None)
+        try:
+            return f(*args, **kwds)
+        finally:
+            setattr(driver, 'beatbox', beatbox_orig)
+    return wrapper

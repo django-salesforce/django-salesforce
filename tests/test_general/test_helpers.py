@@ -1,10 +1,23 @@
 # The tests of "dbapi/test_helpers.py" are here, because
 # - they should not depend on Django
+# - it is not nice to see '(expected failures=1)' in the main test results
+#   if we really test the @expectedFailureIf decorator
 
 from unittest import TestCase
 
 from salesforce.backend import driver
-from salesforce.dbapi.test_helpers import LazyTestMixin
+from salesforce.dbapi.test_helpers import LazyTestMixin, expectedFailureIf
+
+
+class TestExpectedFailure(TestCase):
+
+    @expectedFailureIf(False)
+    def test_condition_false(self):
+        assert True
+
+    @expectedFailureIf(True)
+    def test_condition_true(self):
+        assert False
 
 
 class TestLazyAssert(TestCase, LazyTestMixin):
