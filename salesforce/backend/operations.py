@@ -4,18 +4,16 @@
 # (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 # See LICENSE.md for details
 #
-
+"""
+DatabaseOperations  (like salesforce.db.backends.*.operations)
+"""
 import itertools
 
 import django.db.backends.utils
 from django.utils.deconstruct import deconstructible
-
-from salesforce import DJANGO_19_PLUS
-import salesforce.backend.driver
-
 from django.db.backends.base.operations import BaseDatabaseOperations
 
-BULK_BATCH_SIZE = 200 if salesforce.backend.driver.beatbox else 25
+BULK_BATCH_SIZE = 200
 
 """
 Default database operations, with unquoted names.
@@ -23,12 +21,20 @@ Default database operations, with unquoted names.
 
 
 class DatabaseOperations(BaseDatabaseOperations):
+    # undefined abstract methods:
+    #       date_extract_sql, date_interval_sql,     date_trunc_sql,  datetime_cast_date_sql
+    #   datetime_extract_sql,                    datetime_trunc_sql,
+    #                                                time_trunc_sql,  datetime_cast_time_sql;
+    #   no_limit_value,   regex_lookup
+    #
+    # pylint:disable=abstract-method,no-self-use,unused-argument
+
     compiler_module = "salesforce.backend.compiler"
 
     def connection_init(self):
         pass
 
-    def sql_flush(self, style, tables, sequences):
+    def sql_flush(self, style, tables, sequences, allow_cascade=False):
         return []
 
     def quote_name(self, name):
@@ -46,12 +52,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         """
         return value
 
-    def value_to_db_decimal(self, value, *args):
-        if str(value) == 'DEFAULTED_ON_CREATE':
-            return value
-        return super(DatabaseOperations, self).value_to_db_decimal(value, *args)
-
-    def last_insert_id(self, cursor, db_table, db_column):
+    def last_insert_id(self, cursor, table_name, pk_name):
         return cursor.lastrowid
 
     def fetch_returned_insert_id(self, cursor):
@@ -69,7 +70,7 @@ class DatabaseOperations(BaseDatabaseOperations):
     def adapt_timefield_value(self, value):
         return value
 
-    def adapt_decimalfield_value(self, value, max_digits, decimal_places):
+    def adapt_decimalfield_value(self, value, max_digits=None, decimal_places=None):
         if isinstance(value, DefaultedOnCreate):
             return value
         return django.db.backends.utils.format_number(value, max_digits, decimal_places)
@@ -79,13 +80,8 @@ class DatabaseOperations(BaseDatabaseOperations):
 
     # This SQL is not important because we control the db from the compiler
     # but something must exist
-    if DJANGO_19_PLUS:
-        def bulk_insert_sql(self, fields, placeholder_rows):
-            return "VALUES " + ", ".join(itertools.chain(*placeholder_rows))
-    else:
-        def bulk_insert_sql(self, fields, num_values):
-            items_sql = "(%s)" % ", ".join(["%s"] * len(fields))
-            return "VALUES " + ", ".join([items_sql] * num_values)
+    def bulk_insert_sql(self, fields, placeholder_rows):
+        return "VALUES " + ", ".join(itertools.chain(*placeholder_rows))
 
     def return_insert_id(self):
         return "", ()
@@ -109,5 +105,6 @@ class DefaultedOnCreate(object):
                 default=models.DefaultedOnCreate(),
                 db_column='OwnerId')
     """
+    # pylint:disable=too-few-public-methods
     def __str__(self):
         return 'DEFAULTED_ON_CREATE'

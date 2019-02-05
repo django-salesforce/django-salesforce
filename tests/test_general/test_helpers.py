@@ -5,7 +5,7 @@
 
 from unittest import TestCase
 
-from salesforce.backend import driver
+from salesforce.dbapi import driver
 from salesforce.dbapi.test_helpers import LazyTestMixin, expectedFailureIf
 
 

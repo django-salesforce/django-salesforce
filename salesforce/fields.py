@@ -6,7 +6,7 @@
 #
 
 """
-Adds support for Salesforce primary keys.
+Customized fields for Salesforce, especially the primary key. (like django.db.models.fields)
 """
 
 import warnings
@@ -15,12 +15,11 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import ugettext_lazy as _
 from django.db.models import fields
-from django.db.models import PROTECT, DO_NOTHING  # NOQA
+from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-import
 from django.db import models
 from django.utils.encoding import smart_text
 from django.utils.six import string_types
 
-from salesforce import DJANGO_19_PLUS
 from salesforce.backend.operations import DefaultedOnCreate
 
 # None of field types defined in this module need a "deconstruct" method,
@@ -59,7 +58,7 @@ class SalesforceAutoField(fields.AutoField):
     def get_prep_value(self, value):
         return self.to_python(value)
 
-    def contribute_to_class(self, cls, name):
+    def contribute_to_class(self, cls, name, **kwargs):
         name = name if self.name is None else self.name
         # we can't require "self.auto_created==True" due to backward compatibility
         # with old migrations created before v0.6. Other conditions are enough.
@@ -68,13 +67,9 @@ class SalesforceAutoField(fields.AutoField):
                 "SalesforceAutoField must be a primary key"
                 "with the name '%s' (configurable by settings)." % SF_PK)
         if cls._meta.auto_field:
-            if (type(self) == type(cls._meta.auto_field) and self.model._meta.abstract and  # NOQA type eq
+            # pylint:disable=unidiomatic-typecheck
+            if not (type(self) == type(cls._meta.auto_field) and self.model._meta.abstract and  # NOQA type eq
                     cls._meta.auto_field.name == SF_PK):
-                # A model is created  that inherits fields from more abstract classes
-                # with the same default SalesforceAutoFieldy. Therefore the second should be
-                # ignored.
-                return
-            else:
                 raise ImproperlyConfigured(
                     "The model %s can not have more than one AutoField, "
                     "but currently: (%s=%s, %s=%s)" % (
@@ -83,7 +78,11 @@ class SalesforceAutoField(fields.AutoField):
                         name, self
                     )
                 )
-        super(SalesforceAutoField, self).contribute_to_class(cls, name)
+            # A model is created  that inherits fields from more abstract classes
+            # with the same default SalesforceAutoFieldy. Therefore the second should be
+            # ignored.
+            return
+        super(SalesforceAutoField, self).contribute_to_class(cls, name, **kwargs)
         cls._meta.auto_field = self
 
 
@@ -133,8 +132,10 @@ class SfField(models.Field):
                 column = self.sf_namespace + column + '__c'
         return attname, column
 
-    def contribute_to_class(self, cls, name, **kwargs):
-        super(SfField, self).contribute_to_class(cls, name, **kwargs)
+    def contribute_to_class(self, cls, name, private_only=False, **kwargs):
+        # Different arguments are in Django 1.11 vs. 2.0, therefore we use universal **kwargs
+        # pylint:disable=arguments-differ
+        super(SfField, self).contribute_to_class(cls, name, private_only=private_only, **kwargs)
         if self.sf_custom is None and hasattr(cls._meta, 'sf_custom'):
             # Only custom fields in models explicitly marked by
             # Meta custom=True are recognized automatically - for
@@ -143,6 +144,8 @@ class SfField(models.Field):
         if self.sf_custom and '__' in cls._meta.db_table[:-3]:
             self.sf_namespace = cls._meta.db_table.split('__')[0] + '__'
         self.set_attributes_from_name(name)
+
+# pylint:disable=unnecessary-pass,too-many-ancestors
 
 
 class CharField(SfField, models.CharField):
@@ -202,6 +205,14 @@ class DecimalField(SfField, models.DecimalField):
                 ret = Decimal(int(ret))
         return ret
 
+    # parameter "context" is for Django 1.11 and older  (the same is in more classes here)
+    def from_db_value(self, value, expression, connection, context=None):
+        # pylint:disable=unused-argument
+        # TODO refactor and move to the driver like in other backends
+        if isinstance(value, float):
+            value = str(value)
+        return self.to_python(value)
+
 
 class FloatField(SfField, models.FloatField):
     """FloatField for Salesforce.
@@ -219,8 +230,7 @@ class BooleanField(SfField, models.BooleanField):
     def to_python(self, value):
         if isinstance(value, DefaultedOnCreate):
             return value
-        else:
-            return super(BooleanField, self).to_python(value)
+        return super(BooleanField, self).to_python(value)
 
 
 class DateTimeField(SfField, models.DateTimeField):
@@ -232,36 +242,38 @@ class DateField(SfField, models.DateField):
     """DateField with sf_read_only attribute for Salesforce."""
     pass
 
+    def from_db_value(self, value, expression, connection, context=None):
+        # pylint:disable=unused-argument
+        return self.to_python(value)
+
 
 class TimeField(SfField, models.TimeField):
     """TimeField with sf_read_only attribute for Salesforce."""
-    pass
+
+    def from_db_value(self, value, expression, connection, context=None):
+        # pylint:disable=unused-argument
+        return self.to_python(value)
 
 
 class ForeignKey(SfField, models.ForeignKey):
     """ForeignKey with sf_read_only attribute and acceptable by Salesforce."""
-    def __init__(self, *args, **kwargs):
+    def __init__(self, to, on_delete, *args, **kwargs):
         # Checks parameters before call to ancestor.
-        if DJANGO_19_PLUS and args[1:2]:
-            on_delete = args[1].__name__
-        else:
-            on_delete = kwargs.get('on_delete', models.CASCADE).__name__
-        if on_delete not in ('PROTECT', 'DO_NOTHING'):
+        if on_delete.__name__ not in ('PROTECT', 'DO_NOTHING'):
             # The option CASCADE (currently fails) would be unsafe after a fix
             # of on_delete because Cascade delete is not usually enabled in SF
             # for safety reasons for most fields objects, namely for Owner,
             # CreatedBy etc. Some related objects are deleted automatically
             # by SF even with DO_NOTHING in Django, e.g. for
             # Campaign/CampaignMember
-            related_object = args[0]
             warnings.warn(
                 "Only foreign keys with on_delete = PROTECT or "
                 "DO_NOTHING are currently supported, not %s related to %s"
-                % (on_delete, related_object))
-        super(ForeignKey, self).__init__(*args, **kwargs)
+                % (on_delete, to))
+        super(ForeignKey, self).__init__(to, on_delete, *args, **kwargs)
 
     def get_attname(self):
-        if self.name.islower():
+        if self.name.islower():  # pylint:disable=no-else-return
             # the same as django.db.models.fields.related.ForeignKey.get_attname
             return '%s_id' % self.name
         else:

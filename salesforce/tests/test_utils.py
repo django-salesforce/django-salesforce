@@ -1,16 +1,15 @@
 """
 Tests for `salesforce.utils`
 """
-from django.test import TestCase
+# pylint:disable=protected-access
+
 from unittest import skipUnless
 
+from django.test import TestCase
+
+from salesforce.dbapi.driver import beatbox
 from salesforce.testrunner.example.models import Account, Lead
 from salesforce.utils import convert_lead
-
-try:
-    import beatbox
-except ImportError:
-    beatbox = None
 
 
 class UtilitiesTest(TestCase):
@@ -51,7 +50,7 @@ class UtilitiesTest(TestCase):
                 # and Opportunity objects.
                 try:
                     account = Account.objects.get(pk=ret['accountId'])
-                except Exception:
+                except Exception:  # pylint:disable=broad-except
                     # this allows to recycle the account even if the queryset code is broken
                     account = Account(pk=ret['accountId'])
                     account._state.db = lead._state.db

@@ -59,7 +59,11 @@ confidence=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=metaclass-assignment,cmp-builtin,raising-string,basestring-builtin,oct-method,reload-builtin,dict-view-method,execfile-builtin,coerce-builtin,next-method-called,raw_input-builtin,long-builtin,nonzero-method,hex-method,suppressed-message,using-cmp-argument,useless-suppression,import-star-module-level,old-octal-literal,backtick,old-raise-syntax,old-ne-operator,long-suffix,print-statement,unpacking-in-except,parameter-unpacking,reduce-builtin,standarderror-builtin,unicode-builtin,xrange-builtin,coerce-method,delslice-method,getslice-method,setslice-method,no-absolute-import,old-division,buffer-builtin,range-builtin-not-iterating,filter-builtin-not-iterating,indexing-exception,input-builtin,round-builtin,cmp-method,map-builtin-not-iterating,zip-builtin-not-iterating,intern-builtin,unichr-builtin,apply-builtin,file-builtin,dict-iter-method
+disable=
+    fixme,  # only the "TODO" word shoud be used here for easy grep
+    missing-docstring,
+    useless-object-inheritance,  # class ...(object):  due to Python2 compatibility
+    inconsistent-return-statements,  # similar style to Django
 
 
 [REPORTS]
@@ -92,7 +96,7 @@ evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / stateme
 [FORMAT]
 
 # Maximum number of characters on a single line.
-max-line-length=100
+max-line-length=119
 
 # Regexp for a line that is allowed to be longer than the limit.
 ignore-long-lines=^\s*(# )?<?https?://\S+>?$
@@ -105,7 +109,7 @@ single-line-if-stmt=no
 # separator` is used to allow tabulation in dicts, etc.: {1  : 1,\n222: 2}.
 # `trailing-comma` allows a space between comma and closing bracket: (a, ).
 # `empty-line` allows space-only lines.
-no-space-check=trailing-comma,dict-separator
+no-space-check=dict-separator
 
 # Maximum number of lines in a module
 max-module-lines=1000
@@ -213,7 +217,7 @@ spelling-store-unknown-words=no
 bad-functions=map,filter
 
 # Good variable names which should always be accepted, separated by a comma
-good-names=i,j,k,ex,Run,_,g,v,x,db,qs
+good-names=c,i,j,k,ex,r,Run,_,v,x,db,kw,ok,pk,q,qs,pk,tz,MyLazyField,expectedFailureIf
 
 # Bad variable names which should always be refused, separated by a comma
 bad-names=foo,bar,baz,toto,tutu,tata
@@ -268,13 +272,13 @@ variable-rgx=[a-z_][a-z0-9_]{2,30}$
 variable-name-hint=[a-z_][a-z0-9_]{2,30}$
 
 # Regular expression matching correct method names
-method-rgx=[a-z_][a-z0-9_]{2,30}$
+method-rgx=([a-z_][a-z0-9_]{2,30}|test_[a-z0-9_]+|assert[a-z_A-Z]+)$
 
 # Naming hint for method names
 method-name-hint=[a-z_][a-z0-9_]{2,30}$
 
 # Regular expression matching correct constant names
-const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__)|[a-z][a-z0-9_]{2,30})$
 
 # Naming hint for constant names
 const-name-hint=(([A-Z_][A-Z0-9_]*)|(__.*__))$
@@ -364,7 +368,7 @@ defining-attr-methods=__init__,__new__,setUp
 valid-classmethod-first-arg=cls
 
 # List of valid names for the first argument in a metaclass class method.
-valid-metaclass-classmethod-first-arg=mcs
+valid-metaclass-classmethod-first-arg=cls
 
 # List of member names, which should be excluded from the protected access
 # warning.

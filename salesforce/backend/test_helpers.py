@@ -3,14 +3,14 @@ Common helpers for tests, like test decorators
 """
 import sys
 import uuid
-from unittest import skip, skipUnless, expectedFailure, TestCase  # NOQA
+from unittest import skip, skipUnless, expectedFailure, TestCase  # NOQA pylint:disable=unused-import
 
 import django
 from django.conf import settings
 
 from salesforce import router
-from salesforce.dbapi.test_helpers import (LazyTestMixin, expectedFailureIf, no_soap_decorator,  # NOQA
-                                           QuietSalesforceErrors)
+from salesforce.dbapi.test_helpers import (  # NOQA pylint:disable=unused-import
+    LazyTestMixin, expectedFailureIf, QuietSalesforceErrors)
 
 # uid strings for tests that accidentally run concurrent
 uid_random = '-' + str(uuid.uuid4())[:7]

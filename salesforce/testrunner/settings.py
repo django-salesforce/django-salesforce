@@ -126,7 +126,6 @@ INSTALLED_APPS = (
     'django.contrib.admindocs',
     'salesforce',
     'salesforce.testrunner.example',
-    'salesforce.testrunner.dynamic_models',
 )
 
 SALESFORCE_DB_ALIAS = 'salesforce'
@@ -191,6 +190,6 @@ LOGGING = {
 # SF_PK = 'Id'
 
 try:
-    from salesforce.testrunner.local_settings import *  # NOQA
+    from salesforce.testrunner.local_settings import *  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 except ImportError:
     pass

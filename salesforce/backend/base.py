@@ -6,31 +6,26 @@
 #
 
 """
-Salesforce database backend for Django.
+Salesforce database backend for Django.  (like django,db.backends.*.base)
 """
-
-import requests
-import sys
-import threading
 
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
-from requests.adapters import HTTPAdapter
+from django.db.backends.base.base import BaseDatabaseWrapper
 
-from salesforce.auth import SalesforcePasswordAuth
+from salesforce.backend import DJANGO_111_PLUS
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
+from salesforce.backend.features import DatabaseFeatures
 from salesforce.backend.validation import DatabaseValidation
 from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.schema import DatabaseSchemaEditor
-from salesforce.backend.driver import IntegrityError, DatabaseError, SalesforceError, beatbox  # NOQA - TODO
-from salesforce.backend import driver as Database, get_max_retries
 # from django.db.backends.signals import connection_created
-from salesforce import DJANGO_111_PLUS
+from salesforce.backend.utils import CursorWrapper
+from salesforce.dbapi import driver as Database
+from salesforce.dbapi.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA pylint:disable=unused-import
 
-from django.db.backends.base.base import BaseDatabaseWrapper
-from django.db.backends.base.features import BaseDatabaseFeatures
 try:
     from urllib.parse import urlparse
 except ImportError:
@@ -38,37 +33,14 @@ except ImportError:
 
 __all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)
 
-connect_lock = threading.Lock()
-
-
-class DatabaseFeatures(BaseDatabaseFeatures):
-    """
-    Features this database provides.
-    """
-    allows_group_by_pk = True
-    supports_unspecified_pk = False
-    can_return_id_from_insert = True
-    can_return_ids_from_bulk_insert = beatbox is not None
-    has_bulk_insert = True
-    # TODO If the following would be True, it requires a good relation name resolution
-    supports_select_related = False
-    # Though Salesforce doesn't support transactions, the setting
-    # `supports_transactions` is used only for switching between rollback or
-    # cleaning the database in testrunner after every test and loading fixtures
-    # before it, however SF does not support any of these and all test data must
-    # be loaded and cleaned by the testcase code. From the viewpoint of SF it is
-    # irrelevant, but due to issue #28 (slow unit tests) it should be True.
-    supports_transactions = True
-
-    # Never use `interprets_empty_strings_as_nulls=True`. It is an opposite
-    # setting for Oracle, while Salesforce saves nulls as empty strings not vice
-    # versa.
-
 
 class DatabaseWrapper(BaseDatabaseWrapper):
     """
     Core class that provides all DB support.
     """
+    # pylint:disable=abstract-method,too-many-instance-attributes
+    #     undefined abstract methods: _start_transaction_under_autocommit, create_cursor, is_usable
+
     vendor = 'salesforce'
     # Operators [contains, startswithm, endswith] are incorrectly
     # case insensitive like sqlite3.
@@ -115,36 +87,13 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             self.creation = DatabaseCreation(self)
             self.introspection = DatabaseIntrospection(self)
             self.validation = DatabaseValidation(self)
-        self._sf_session = None
         self._is_sandbox = None
-        # debug attributes and test attributes
-        self.debug_silent = False
-        # The SFDC database is connected as late as possible if only tests
-        # are running. Some tests don't require a connection.
-        if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):
-            self.make_session()
-
-    def make_session(self):
-        """Authenticate and get the name of assigned SFDC data server"""
-        with connect_lock:
-            if self._sf_session is None:
-                sf_session = requests.Session()
-                # TODO configurable class Salesforce***Auth
-                sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
-                                                         settings_dict=self.settings_dict)
-                sf_instance_url = sf_session.auth.instance_url
-                sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
-                sf_session.mount(sf_instance_url, sf_requests_adapter)
-                # Additional header works, but the improvement is immeasurable for
-                # me. (less than SF speed fluctuation)
-                # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
-                self._sf_session = sf_session
 
     @property
     def sf_session(self):
-        if self._sf_session is None:
-            self.make_session()
-        return self._sf_session
+        if self.connection is None:
+            self.connect()
+        return self.connection.sf_session
 
     def get_connection_params(self):
         settings_dict = self.settings_dict
@@ -154,7 +103,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     def get_new_connection(self, conn_params):
         # only simulated a connection interface without connecting really
-        return Database.connect(**conn_params)
+        return Database.connect(settings_dict=conn_params, alias=self.alias)
 
     def init_connection_state(self):
         pass  # nothing to init
@@ -164,31 +113,30 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         # serious problem to ignore autocommit off
         pass
 
-    def validate_settings(self, d):
+    def validate_settings(self, settings_dict):
         for k in ('ENGINE', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD', 'HOST'):
-            if(k not in d):
+            if k not in settings_dict:
                 raise ImproperlyConfigured("Required '%s' key missing from '%s' database settings." % (k, self.alias))
-            elif not(d[k]):
+            elif not settings_dict[k]:
                 raise ImproperlyConfigured("'%s' key is the empty string in '%s' database settings." % (k, self.alias))
 
         try:
-            urlparse(d['HOST'])
-        except Exception as e:
+            urlparse(settings_dict['HOST'])
+        except Exception as exc:
             raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" %
-                                       (self.alias, e))
+                                       (self.alias, exc))
 
-    def cursor(self, query=None):
+    def cursor(self):
         """
         Return a fake cursor for accessing the Salesforce API with SOQL.
         """
-        from salesforce.backend.query import CursorWrapper
-        cursor = CursorWrapper(self, query)
-        return cursor
+        return CursorWrapper(self)
 
     def quote_name(self, name):
         """
         Do not quote column and table names in the SOQL dialect.
         """
+        # pylint:disable=no-self-use
         return name
 
     @property
@@ -196,5 +144,5 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         if self._is_sandbox is None:
             cur = self.cursor()
             cur.execute("SELECT IsSandbox FROM Organization")
-            self._is_sandbox = cur.fetchone()['IsSandbox']
+            self._is_sandbox = cur.fetchone()[0]
         return self._is_sandbox

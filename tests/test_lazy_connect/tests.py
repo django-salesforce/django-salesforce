@@ -20,5 +20,5 @@ class LazyTest(TestCase):
         exc = cm.exception
         self.assertTrue(isinstance(exc, (ConnectionError, LookupError)))
         # fix the host name and verify that the connection works now
-        sf_conn.settings_dict.update(settings.ORIG_SALESFORCE_DB)
+        sf_conn.connection.settings_dict.update(settings.ORIG_SALESFORCE_DB)
         self.assertGreater(len(users[:5]), 0)

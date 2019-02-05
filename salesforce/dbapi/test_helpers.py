@@ -1,35 +1,40 @@
 import sys
 import traceback
 from contextlib import contextmanager
-from functools import wraps
 from unittest import expectedFailure
 
-from django.db import connections
-from salesforce.backend import driver
+from salesforce.dbapi import connections, driver
+try:
+    from unittest import mock  # pylint:disable=unused-import
+except ImportError:
+    import mock  # NOQA
 
 
 def expectedFailureIf(condition):
     """Conditional 'expectedFailure' decorator for TestCase"""
     if condition:
         return expectedFailure
-    else:
-        return lambda func: func
+    return lambda func: func
 
 
 class QuietSalesforceErrors(object):
-    """Context manager that helps expected SalesforceErrors to be quiet"""
-    def __init__(self, alias):
+    """Context manager that helps expected SalesforceErrors to be not logged too verbose.
+
+    It works on the default Salesforce connection. It can be nested.
+    """
+    def __init__(self, alias, verbs=None):
         self.connection = connections[alias]
+        self.verbs = verbs
+        self.save_debug_verbs = None
 
     def __enter__(self):
-        if hasattr(self.connection, 'debug_silent'):
-            self.save_debug_silent = self.connection.debug_silent
-            self.connection.debug_silent = True
+        self.save_debug_verbs = self.connection.connection.debug_verbs
+        self.connection.connection.debug_verbs = self.verbs
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, exc_tb):
         try:
-            self.connection.debug_silent = self.save_debug_silent
+            self.connection.connection.debug_verbs = self.save_debug_verbs
         except AttributeError:
             pass
 
@@ -76,7 +81,7 @@ class LazyTestMixin(object):
             msg = original_exception.args[0]
             original_exception = self.LazyAssertionError(
                 '\n'.join((
-                    '(Use the next traceback, ignore the previous traceback):',
+                    '\nUse the first frame of this real traceback and ignore the previous lazy traceback:',
                     traceback_part_text,
                     '{}: {}'.format(exc_type.__name__, msg),
                 )),
@@ -101,19 +106,5 @@ class LazyTestMixin(object):
             request_count_1 = driver.request_count
             msg = (msg + '\n') if msg else ''
             msg += ('expected requests != real requests;  checked by:\n'
-                    'with self.lazy_assert_n_requests({}):'.format(expected_requests))
+                    '    with self.lazy_assert_n_requests({}):'.format(expected_requests))
             self.lazyAssertEqual(expected_requests, request_count_1 - request_count_0, msg=msg)
-
-
-def no_soap_decorator(f):
-    """Decorator to not temporarily use SOAP API (Beatbox)"""
-
-    @wraps(f)
-    def wrapper(*args, **kwds):
-        beatbox_orig = driver.beatbox
-        setattr(driver, 'beatbox', None)
-        try:
-            return f(*args, **kwds)
-        finally:
-            setattr(driver, 'beatbox', beatbox_orig)
-    return wrapper
