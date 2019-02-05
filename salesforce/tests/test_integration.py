@@ -893,27 +893,6 @@ class BasicSOQLRoTest(TestCase):
             oc.delete()
             oppo.delete()
 
-    def test_many2many_relationship_filter(self):
-        """Verify that ManyToMany relationship can be filtered by a condition on remote object
-
-        Test for PR #205
-        """
-        contact = Contact.objects.all()[0]
-        oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
-        oppo.save()
-        oc = OpportunityContactRole(opportunity=oppo, contact=contact, role='sponsor')
-        oc.save()
-        oc2 = OpportunityContactRole(opportunity=oppo, contact=contact, role='evaluator')
-        oc2.save()
-        try:
-            qs = Contact.objects.filter(opportunity_roles__opportunity__name='test op')
-            self.assertEqual(list(qs), 2 * [contact])
-            # self.assertEqual([x.pk for x in qs], 2 * [oppo.pk])
-        finally:
-            oc2.delete()
-            oc.delete()
-            oppo.delete()
-
     def test_filter_custom(self):
         """Verify that relations between custom and builtin objects
 
