@@ -34,6 +34,7 @@ sf = connections['salesforce']
 def run():
     start_name = sys.argv[1] if sys.argv[1:] else ''
     n_tables = n_read = n_no_data = n_read_errors = n_write = n_write_errors = 0
+    sf.cursor()  # this must connect manually  # TODO fix it automatically if reasonable
     for tab in sf.introspection.table_list_cache['sobjects']:
         if tab['retrieveable'] and not tab['name'] in (
                 # These require specific filters (descried in their error messages)
@@ -59,8 +60,8 @@ def run():
             try:
                 n_read += 1
                 obj = test_class.objects.all()[0]
-            except SalesforceError as e:
-                stderr.write("\n************** %s %s\n" % (tab['name'], e))
+            except SalesforceError as exc:
+                stderr.write("\n************** %s %s\n" % (tab['name'], exc))
                 n_read_errors += 1
             except IndexError:
                 n_no_data += 1
@@ -99,8 +100,8 @@ def run():
                 try:
                     n_write += 1
                     obj.save(force_update=True)
-                except SalesforceError as e:
-                    stderr.write("\n************** %s %s\n" % (tab['name'], e))
+                except SalesforceError as exc:
+                    stderr.write("\n************** %s %s\n" % (tab['name'], exc))
                     n_write_errors += 1
                 else:
                     # object 'Topic' doesn't have the attribute 'last_modified_date'

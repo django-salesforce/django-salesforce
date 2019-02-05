@@ -16,19 +16,17 @@ from django.conf import settings
 def is_sf_database(db, model=None):
     """The alias is a Salesforce database."""
     from django.db import connections
-    from salesforce.backend.base import DatabaseWrapper
     if db is None:
         return getattr(model, '_salesforce_object', False)
-    else:
-        engine = connections[db].settings_dict['ENGINE']
-        return (engine == 'salesforce.backend' or
-                isinstance(connections[db], DatabaseWrapper))
+    engine = connections[db].settings_dict['ENGINE']
+    return engine == 'salesforce.backend' or connections[db].vendor == 'salesforce'
 
 
 class ModelRouter(object):
     """
     Database router for Salesforce models.
     """
+    # pylint:disable=protected-access
     @property
     def sf_alias(self):
         return getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
@@ -65,13 +63,11 @@ class ModelRouter(object):
         """
         if model_name:
             model = apps.get_model(app_label, model_name)
-        elif 'model' in hints:
-            # hints are used with less priority, because many hints are dynamic
-            # models on a '__fake__' module which are not SalesforceModels
-            model = hints['model']
         else:
-            # in data migrations
-            model = None
+            # hints are used with less priority, because many hints are dynamic
+            # models made by migrations on a '__fake__' module which are not
+            # SalesforceModels
+            model = hints.get('model')
 
         if hasattr(model, '_salesforce_object'):
             # SF models can be migrated if SALESFORCE_DB_ALIAS is e.g.

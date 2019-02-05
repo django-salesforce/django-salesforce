@@ -4,25 +4,33 @@
 # (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 # See LICENSE.md for details
 #
-from decimal import Decimal
-from distutils.util import strtobool
-import datetime
-import os
-import pytz
+# pylint:disable=deprecated-method,invalid-name,protected-access,too-many-lines,unused-variable
 
+from decimal import Decimal
+from distutils.util import strtobool  # pylint: disable=no-name-in-module,import-error # venv inst pylint false positiv
+import datetime
+import logging
+import os
+import re
+import warnings
+
+import pytz
 from django.conf import settings
 from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
 from django.utils import timezone
+from django.utils.six import PY3, text_type
 
 import salesforce
-from salesforce import router, DJANGO_110_PLUS, DJANGO_20_PLUS
-from salesforce.backend.test_helpers import (  # NOQA test decorators
+from salesforce import router
+from salesforce.backend import DJANGO_20_PLUS
+from salesforce.backend.test_helpers import (  # NOQA pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless)
 from salesforce.backend.test_helpers import (
     current_user, default_is_sf, sf_alias, uid_version as uid,
-    no_soap_decorator, QuietSalesforceErrors, LazyTestMixin)
+    QuietSalesforceErrors, LazyTestMixin)
+from salesforce.dbapi.exceptions import SalesforceWarning
 from salesforce.testrunner.example.models import (
         Account, Contact, Lead, User,
         ApexEmailNotification, BusinessHours, Campaign, CronTrigger,
@@ -31,7 +39,6 @@ from salesforce.testrunner.example.models import (
         Organization, models_template,
         )
 
-import logging
 log = logging.getLogger(__name__)
 
 QUIET_KNOWN_BUGS = strtobool(os.getenv('QUIET_KNOWN_BUGS', 'false'))
@@ -57,6 +64,9 @@ def refresh(obj):
 
 class BasicSOQLRoTest(TestCase, LazyTestMixin):
     """Tests that need no setUp/tearDown"""
+    # pylint:disable=no-self-use,pointless-statement
+
+    databases = '__all__'
 
     @classmethod
     def setUpClass(cls):
@@ -73,28 +83,46 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_raw(self):
-        """Get the first two contact records.
+        """Read two contacts by raw.
 
         (At least 3 manually created Contacts must exist before these read-only tests.)
         """
-        contacts = Contact.objects.raw(
+        with self.lazy_assert_n_requests(1):
+            contacts = list(Contact.objects.raw(
                 "SELECT Id, LastName, FirstName FROM Contact "
-                "LIMIT 2", translation={'id': 'Id'})
-        self.assertEqual(len(contacts), 2)
-        # It had a side effect that the same assert failed second times.
-        self.assertEqual(len(contacts), 2)
-        '%s' % contacts[0].__dict__  # Check that all fields are accessible
+                "LIMIT 2"))
+        with self.lazy_assert_n_requests(0):
+            self.assertEqual(len(contacts), 2)
+            # It had a side effect that the same assert failed second times.
+            self.assertEqual(len(contacts), 2)
+            '%s' % contacts[0].__dict__  # Check that all fields are accessible
+        self.lazy_check()
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_raw_translations(self):
+        """Read a Contact raw and translate it to Lead fields."""
+        contact = Contact.objects.all()[0]
+        false_lead_raw = list(Lead.objects.raw(
+            "SELECT Id, LastName FROM Contact WHERE Id=%s", params=[contact.pk],
+            translations={'LastName': 'Company'}))
+        self.assertEqual(len(false_lead_raw), 1)
+        self.assertEqual(false_lead_raw[0].Company, contact.last_name)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_raw_foreignkey_id(self):
         """Get the first two contacts by raw query with a ForeignKey id field.
         """
-        contacts = Contact.objects.raw(
+        with self.lazy_assert_n_requests(1):
+            contacts = list(Contact.objects.raw(
                 "SELECT Id, LastName, FirstName, OwnerId FROM Contact "
-                "LIMIT 2")
+                "LIMIT 2"))
+        len(contacts)
         self.assertEqual(len(contacts), 2)
-        '%s' % contacts[0].__dict__  # Check that all fields are accessible
-        self.assertIn('@', contacts[0].owner.Email)
+        with self.lazy_assert_n_requests(0):
+            '%s' % contacts[0].__dict__  # Check that all fields are accessible
+        with self.lazy_assert_n_requests(1):
+            self.assertIn('@', contacts[0].owner.Email)
+        self.lazy_check()
 
     def test_select_all(self):
         """Get the first two contact records.
@@ -143,7 +171,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             with self.lazy_assert_n_requests(2):
                 qs = Contact.objects.filter(account__Name='sf_test account').simple_select_related('account')
                 contacts = list(qs)
-            with self.lazy_assert_n_requests(0):
+            with self.lazy_assert_n_requests(0):  # this fails in Django 2.0 - not cached
                 [x.account.Name for x in contacts]
             self.assertGreaterEqual(len(contacts), 1)
             self.lazy_check()
@@ -158,7 +186,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
         current_sf_user = User.objects.get(Username=current_user)
         orig_objects = list(ApexEmailNotification.objects.filter(
-                Q(user=current_sf_user) | Q(email='apex.bugs@example.com')))
+            Q(user=current_sf_user) | Q(email='apex.bugs@example.com')))
         _ = orig_objects  # NOQA
         try:
             notifier_u = current_sf_user.apex_email_notification
@@ -181,7 +209,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                 with QuietSalesforceErrors(sf_alias):
                     duplicate.save()
             except salesforce.backend.base.SalesforceError as exc:
-                self.assertEqual(exc.data['errorCode'], 'DUPLICATE_VALUE')
+                self.assertEqual(exc.data[0]['errorCode'], 'DUPLICATE_VALUE')
             else:
                 self.assertRaises(salesforce.backend.base.SalesforceError, duplicate.save)
 
@@ -224,10 +252,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test inserting a date.
         """
         now = timezone.now().replace(microsecond=0)
-        contact = Contact(
-                first_name='Joe',
-                last_name='Freelancer',
-                email_bounced_date=now)
+        contact = Contact(first_name='Joe', last_name='Freelancer', email_bounced_date=now)
         contact.save()
         try:
             self.assertEqual(refresh(contact).email_bounced_date, now)
@@ -255,8 +280,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                           owner=other_user_obj)
         contact.save()
         try:
-            self.assertEqual(
-                    refresh(contact).owner.Username, other_user_obj.Username)
+            self.assertEqual(refresh(contact).owner.Username, other_user_obj.Username)
         finally:
             contact.delete()
 
@@ -269,10 +293,10 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         test_contact.save()
         try:
             contacts = Contact.objects.filter(
-                    Q(account__isnull=True) | Q(account=None),
-                    account=None,
-                    account__isnull=True,
-                    first_name='sf_test'
+                Q(account__isnull=True) | Q(account=None),
+                account=None,
+                account__isnull=True,
+                first_name='sf_test'
             )
             self.assertEqual(len(contacts), 1)
         finally:
@@ -347,21 +371,23 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_decimal_precision(self):
-        """Verify the same precision of saved and retrived DecimalField
+        """Verify the exact precision of the saved and retrived DecimalField
         """
-        product = Product(Name="Test Product")
+        product = Product(Name="test Product")
         product.save()
 
         # The price for a product must be set in the standard price book.
         # http://www.salesforce.com/us/developer/docs/api/Content/sforce_api_objects_pricebookentry.htm
         pricebook = Pricebook.objects.get(Name="Standard Price Book")
+        unit_price = Decimal('1234.56')
         saved_pricebook_entry = PricebookEntry(Product2=product, Pricebook2=pricebook,
-                                               UnitPrice=Decimal('1234.56'), UseStandardPrice=False)
+                                               UnitPrice=unit_price, UseStandardPrice=False)
         saved_pricebook_entry.save()
         retrieved_pricebook_entry = PricebookEntry.objects.get(pk=saved_pricebook_entry.pk)
 
         try:
-            self.assertEqual(saved_pricebook_entry.UnitPrice, retrieved_pricebook_entry.UnitPrice)
+            self.assertEqual(saved_pricebook_entry.UnitPrice, unit_price)
+            self.assertEqual(retrieved_pricebook_entry.UnitPrice, unit_price)
         finally:
             retrieved_pricebook_entry.delete()
             product.delete()
@@ -471,8 +497,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         finally:
             account.delete()
 
-    test_bulk_create_no_soap = no_soap_decorator(test_bulk_create)
-
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_bulk_update(self):
         """Update two Accounts by one request, after searching them by one request.
@@ -496,24 +520,39 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             account_0.delete()
             account_1.delete()
 
-    test_bulk_update_no_soap = no_soap_decorator(test_bulk_update)
-
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    def test_bulk_delete(self):
+    def test_bulk_delete_and_all(self):
         """Delete two Accounts one request.
         """
         account_0, account_1 = [Account(Name='test' + uid), Account(Name='test' + uid)]
         account_0.save()
         account_1.save()
         try:
+            result_count = 2
             with self.lazy_assert_n_requests(2):
                 ret = Account.objects.filter(Name='test' + uid).delete()
             self.assertEqual(ret, (2, {'example.Account': 2}))
-            self.assertEqual(Account.objects.filter(Name='test' + uid).count(), 0)
+            result_count = Account.objects.filter(Name='test' + uid).count()
+            self.assertEqual(result_count, 0)
             self.lazy_check()
         finally:
-            account_0.delete()
-            account_1.delete()
+            if result_count:
+                account_0.delete()
+                account_1.delete()
+        try:
+            nn = 200
+            pks = []
+            objects = [Lead(Company='sf_test lead', LastName='name_{}'.format(i))
+                       for i in range(nn)]
+            with self.lazy_assert_n_requests(1):
+                ret = Lead.objects.bulk_create(objects)
+            pks = [x.pk for x in objects if x.pk]
+            with self.lazy_assert_n_requests(1):
+                ret = Lead.objects.filter(id__in=pks).update(Company='sf_test lead_2')
+        finally:
+            if pks:
+                with self.lazy_assert_n_requests(1):
+                    ret = Lead.objects.filter(id__in=pks).delete()
 
     def test_escape_single_quote(self):
         """Test single quotes in strings used in a filter
@@ -645,11 +684,19 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_z_big_query(self):
         """Test a big query that will be splitted to more requests.
 
-        Test it as late as possible when
+        Test it as late as possible.
         """
-        all_leads = Lead.objects.query_all()
-        leads_list = list(all_leads)
-        if all_leads.query.first_chunk_len == len(leads_list):
+        cur = connections[sf_alias].cursor()
+        cursor = cur.cursor
+        cursor.execute("SELECT Id, Name FROM Lead", query_all=True)
+        first_lead = cursor.fetchone()
+        if first_lead:
+            first_chunk_len = len(cursor._chunk)
+            leads_list = [first_lead] + cursor.fetchall()
+        else:
+            first_chunk_len = 0
+            leads_list = []
+        if first_chunk_len == len(leads_list):
             self.assertLessEqual(len(leads_list), 2000, "Obsoleted constants")
             log.info("Not enough Leads accumulated (currently %d including deleted) "
                      "in the last two weeks that are necessary for splitting the "
@@ -667,7 +714,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         cursor.execute(sql)
         contacts = cursor.fetchall()
         self.assertEqual(len(contacts), 2)
-        self.assertIn('OwnerId', contacts[0])
+        self.assertTrue(contacts[0][3].startswith('005'), "OwnerId must be an User.")
         cursor.execute(sql)
         self.assertEqual(cursor.fetchone(), contacts[0])
         self.assertEqual(cursor.fetchmany(), contacts[1:])
@@ -681,8 +728,9 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         cursor = connections[sf_alias].cursor()
         cursor.execute(sql)
         contact_aggregate = cursor.fetchone()
-        self.assertTrue('LastName' in contact_aggregate)
-        self.assertGreaterEqual(contact_aggregate['expr0'], 1)
+        self.assertEqual([x[0] for x in cursor.description], ['LastName', 'expr0'])
+        self.assertEqual([type(x) for x in contact_aggregate], [text_type, int])
+        self.assertGreaterEqual(contact_aggregate[1], 1)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_errors(self):
@@ -693,7 +741,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         with QuietSalesforceErrors(sf_alias):
             self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
 
-    @expectedFailureIf(QUIET_KNOWN_BUGS)
     def test_queryset_values(self):
         """Test list of dict qs.values() and list of tuples qs.values_list()
         """
@@ -715,7 +762,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         values_list = Contact.objects.values_list('pk', 'first_name', 'last_name')[:2]
         self.assertEqual(len(values_list), 2)
         v0 = values[0]
-        self.assertEqual(values_list[0], (v0['pk'], v0['first_name'], v0['last_name']))
+        # it is a list in Django 2.1, but a tuple in Django 2.0
+        self.assertEqual(list(values_list[0]), [v0['pk'], v0['first_name'], v0['last_name']])
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_double_delete(self):
@@ -728,15 +776,24 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         contact.save()
         contact_id = contact.pk
         Contact(pk=contact_id).delete()
+
         # Id of a deleted object or a too small valid Id shouldn't raise
-        Contact(pk=contact_id).delete()
+        with warnings.catch_warnings(record=True) as w:
+            Contact(pk=contact_id).delete()
+            self.assertIs(w[-1].category, SalesforceWarning)
+            self.assertIn('ENTITY_IS_DELETED', str(w[-1].message))
+        if not PY3:
+            return skip("Python 2.7 doesn't support assertWarns")
         # Simulate the same with obsoleted oauth session
         # It is not possible to use salesforce.auth.expire_token() to simulate
         # expiration because it forces reauhentication before the next request
         salesforce.auth.oauth_data[sf_alias]['access_token'] = 'something invalid/expired'
-        Contact(pk=contact_id).delete()
-        # Id of completely deleted item or fake but valid item.
-        Contact(pk='003000000000000AAA').delete()
+        with self.assertWarns(SalesforceWarning) as cm:
+            Contact(pk=contact_id).delete()
+            self.assertIn('ENTITY_IS_DELETED', cm.warnings[0].message.args[0])
+        with self.assertWarns(SalesforceWarning) as cm:
+            # Id of completely deleted item or fake but valid item.
+            Contact(pk='003000000000000AAA').delete()
         # bad_id = '003000000000000AAB' # Id with an incorrect uppercase mask
         # self.assertRaises(salesforce.backend.base.SalesforceError, Contact(pk=bad_id).delete)
 
@@ -794,7 +851,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     #    list(Contact.objects.raw("select Count() from Contact"))
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_only_fields(self):
         """Verify that access to "only" fields doesn't require a request, but others do.
         """
@@ -839,7 +895,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.lazy_check()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_defer_fields(self):
         """Verify that access to a deferred field requires a new request, but others don't.
         """
@@ -852,10 +907,21 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.lazy_check()
         _  # NOQA
 
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_110_PLUS)
     def test_incomplete_raw(self):
-        last_name = Contact.objects.raw("select id from Contact")[0].last_name
-        self.assertGreater(len(last_name), 0)
+        """Test that omitted model fields can be queried by dot."""
+        # with self.lazy_assert_n_requests(2):  # problem - Why too much requests?
+        # raw query must contain the primary key (with the right capitalization, currently)
+        with self.lazy_assert_n_requests(1):  # TODO why two requests?
+            ret = list(Contact.objects.raw("select Id from Contact"))
+        with self.lazy_assert_n_requests(1):
+            last_name = ret[0].last_name
+        self.assertTrue(last_name and 'last' not in last_name.lower())
+        with self.lazy_assert_n_requests(1):
+            first_name = ret[0].first_name
+        with self.lazy_assert_n_requests(0):
+            last_name = ret[0].last_name
+        assert first_name
+        self.lazy_check()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_filter_by_more_fk_to_the_same_model(self):
@@ -893,9 +959,12 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         test_task = Task(who=test_lead)
         test_task.save()
         try:
-            qs = Task.objects.filter(who__in=Lead.objects.filter(pk=test_lead.pk,
-                                     owner__Username=current_user,
-                                     last_modified_by__Username=current_user))
+            qs = Task.objects.filter(
+                who__in=Lead.objects.filter(
+                    pk=test_lead.pk,
+                    owner__Username=current_user,
+                    last_modified_by__Username=current_user)
+            )
             sql, params = qs.query.get_compiler('salesforce').as_sql()
             self.assertRegexpMatches(sql, r'SELECT Task.Id, .* FROM Task WHERE Task.WhoId IN \(SELECT ')
             self.assertIn('Lead.Owner.Username = %s', sql)
@@ -951,10 +1020,10 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
         self.assertEqual(Contact.objects.using(None)._db, alias)
 
-    @skipUnless(hasattr(models_template, 'Organization'), "Skipped because models_template.Organization doesn't exist")
     def test_dynamic_fields(self):
         """Test that fields can be copied dynamically from other model"""
-        self.assertGreater(Organization.objects.get().created_by.Username, '')
+        self.assertTrue(models_template)
+        self.assertIn('@', Organization.objects.get().created_by.Username)
 
 # ============= Tests that need setUp Lead ==================
 
@@ -1086,3 +1155,14 @@ class BasicLeadSOQLTest(TestCase):
             note_1.delete()
             note_2.delete()
             test_contact.delete()
+
+
+def clean_test_data():
+    """Clean test objects after an interrupted test.
+
+    All tests are written so that a failed test should not leave objects,
+    but a test interrupted by debugger or Ctrl-C could do it.
+    """
+    ids = [x for x in Product.objects.filter(Name__startswith='test ')
+           if re.match(r'test [a-z_0-9]+', x.Name)]
+    Product.objects.filter(id__in=ids).delete()

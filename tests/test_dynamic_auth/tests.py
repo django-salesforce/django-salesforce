@@ -1,7 +1,8 @@
-from django.test import TestCase
 from django.db import connections
-from salesforce.testrunner.example.models import User
+from django.test import TestCase
 from requests.exceptions import ConnectionError
+
+from salesforce.testrunner.example.models import User
 
 
 class DynamicAuthTest(TestCase):

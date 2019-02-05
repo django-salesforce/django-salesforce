@@ -1,4 +1,4 @@
-from salesforce.testrunner.settings import *  # NOQA
+from salesforce.testrunner.settings import *  # NOQA pylint: disable=unused-wildcard-import,wildcard-import
 from salesforce.testrunner.settings import DATABASES, INSTALLED_APPS
 
 SF_LAZY_CONNECT = True

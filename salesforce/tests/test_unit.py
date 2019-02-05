@@ -1,6 +1,7 @@
 """
 Tests that do not need to connect servers
 """
+# pylint:disable=deprecated-method,too-many-ancestors,unused-variable
 
 from django.apps.registry import Apps
 from django.test import TestCase
@@ -15,12 +16,12 @@ from salesforce.backend.test_helpers import LazyTestMixin
 
 class EasyCharField(models.CharField):
     def __init__(self, max_length=255, null=True, default='', **kwargs):
-        return super(EasyCharField, self).__init__(max_length=max_length, null=null, default=default, **kwargs)
+        super(EasyCharField, self).__init__(max_length=max_length, null=null, default=default, **kwargs)
 
 
 class EasyForeignKey(models.ForeignKey):
     def __init__(self, othermodel, on_delete=DO_NOTHING, **kwargs):
-        return super(EasyForeignKey, self).__init__(othermodel, on_delete=on_delete, **kwargs)
+        super(EasyForeignKey, self).__init__(othermodel, on_delete=on_delete, **kwargs)
 
 
 class TestField(TestCase):
@@ -103,8 +104,9 @@ class TestQueryCompiler(TestCase, LazyTestMixin):
         This test is very similar to the required example in PR #103.
         """
         qs = OpportunityContactRole.objects.filter(
-                role='abc',
-                opportunity__in=Opportunity.objects.filter(stage='Prospecting'))
+            role='abc',
+            opportunity__in=Opportunity.objects.filter(stage='Prospecting')
+        )
         sql, params = qs.query.get_compiler('salesforce').as_sql()
         self.assertRegexpMatches(sql,
                                  "WHERE Opportunity.StageName =",
@@ -135,7 +137,7 @@ class TestTopologyCompiler(TestCase):
     def test_topology_compiler(self):
         # Contact.objects.all()
         # SELECT Contact.Id FROM Contact
-        self.assertTopo([(None, 'Contact', None, 'Contact')],     {'Contact': 'Contact'})
+        self.assertTopo([(None, 'Contact', None, 'Contact')], {'Contact': 'Contact'})
         # Custom.objects.all()
         # SELECT Custom__c.Id FROM Custom__c
         self.assertTopo([(None, 'Custom__c', None, 'Custom__c')], {'Custom__c': 'Custom__c'})
@@ -161,7 +163,7 @@ class TestTopologyCompiler(TestCase):
     def test_many2many(self):
         # C (Id, AId, BId) - child,  A (Id) - first parent, B (Id) - second parent
         alias_map_items = [
-                (None, 'A', None, 'A'),
-                ('A', 'C', (('Id', 'AId'),), 'C'),
-                ('C', 'B', (('BId', 'Id'),), 'B')]
+            (None, 'A', None, 'A'),
+            ('A', 'C', (('Id', 'AId'),), 'C'),
+            ('C', 'B', (('BId', 'Id'),), 'B')]
         self.assertTopo(alias_map_items, {'C': 'C', 'A': 'C.A', 'B': 'C.B'})

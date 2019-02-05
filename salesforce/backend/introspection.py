@@ -6,24 +6,19 @@
 #
 
 """
-Salesforce introspection code.
+Salesforce introspection code.  (like django.db.backends.*.introspection)
 """
 
 import logging
 import re
-
-from salesforce.backend import driver
-import salesforce.fields
+from collections import OrderedDict
 
 from django.db.backends.base.introspection import BaseDatabaseIntrospection
-
-from salesforce.backend import query
-
-# require "simplejson" to ensure that it is available to "requests" hook.
-import simplejson  # NOQA
-
-from collections import OrderedDict
 from django.utils.text import camel_case_to_spaces
+# require "simplejson" to ensure that it is available to "requests" hook.
+import simplejson  # NOQA pylint:disable=unused-import
+
+import salesforce.fields
 
 log = logging.getLogger(__name__)
 
@@ -36,6 +31,12 @@ PROBLEMATIC_OBJECTS = [
     'PlatformStatusAlertEvent'  # new in API 45.0 Spring '19
 ]
 
+# these global variables are for `salesforce.management.commands.inspectdb`
+last_introspected_model = None
+last_with_important_related_name = None  # pylint:disable=invalid-name
+last_read_only = None
+last_refs = None
+
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
     """
@@ -46,6 +47,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
     Other methods are very customized with hooks for
     by django.core.management.commands.inspectdb
     """
+    # pylint:disable=abstract-method  # undefined: get_key_columns, get_sequences
+
     data_types_reverse = {
         'base64':                         'TextField',
         'boolean':                        'BooleanField',
@@ -85,9 +88,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
     @property
     def table_list_cache(self):
         if self._table_list_cache is None:
-            url = query.rest_api_url(self.connection.sf_session, 'sobjects')
-            log.debug('Request API URL: %s' % url)
-            response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
+            log.debug('Request API URL: GET sobjects')
+            response = self.connection.connection.handle_api_exceptions('GET', 'sobjects/')
             # charset is detected from headers by requests package
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
             self._table_list_cache['sobjects'] = [
@@ -98,9 +100,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def table_description_cache(self, table):
         if table not in self._table_description_cache:
-            url = query.rest_api_url(self.connection.sf_session, 'sobjects', table, 'describe/')
-            log.debug('Request API URL: %s' % url)
-            response = driver.handle_api_exceptions(url, self.connection.sf_session.get)
+            log.debug('Request API URL: GET sobjects/%s/describe', table)
+            response = self.connection.connection.handle_api_exceptions('GET', 'sobjects', table, 'describe/')
             self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
             assert self._table_description_cache[table]['fields'][0]['type'] == 'id', (
                 "Invalid type of the first field in the table '{}'".format(table))
@@ -119,6 +120,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def get_table_description(self, cursor, table_name):
         "Returns a description of the table, with the DB-API cursor.description interface."
+        # pylint:disable=too-many-locals,unused-argument
         result = []
         for field in self.table_description_cache(table_name)['fields']:
             params = OrderedDict()
@@ -164,15 +166,17 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         Returns a dictionary of {field_index: (field_index_other_table, other_table)}
         representing all relationships to the given table. Indexes are 0-based.
         """
+        # pylint:disable=global-statement,too-many-locals,too-many-nested-blocks,unused-argument
         def table2model(table_name):
             return SfProtectName(table_name).title().replace(' ', '').replace('-', '')
-        global last_introspected_model, last_with_important_related_name, last_read_only, last_refs
+        global last_introspected_model, last_read_only, last_refs
+        global last_with_important_related_name  # pylint:disable=invalid-name
         result = {}
         reverse = {}
         last_with_important_related_name = []
         last_read_only = {}
         last_refs = {}
-        for i, field in enumerate(self.table_description_cache(table_name)['fields']):
+        for _, field in enumerate(self.table_description_cache(table_name)['fields']):
             if field['type'] == 'reference' and field['referenceTo']:
                 reference_to_name = SfProtectName(field['referenceTo'][0])
                 relationship_order = field['relationshipOrder']
@@ -196,31 +200,14 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             # Example of back_collision: a class Aaa has a ForeignKey to a class
             # Bbb and the class Bbb has any field with the name 'aaa'.
             back_name_collisions = [
-                    x['name'] for x in self.table_description_cache(ref)['fields']
-                    if re.sub('Id$' if x['type'] == 'reference' else '', '',
-                              re.sub('__c$', '', x['name'])
-                              ).replace('_', '').lower() == table2model(table_name).lower()]
+                x['name'] for x in self.table_description_cache(ref)['fields']
+                if re.sub('Id$' if x['type'] == 'reference' else '', '',
+                          re.sub('__c$', '', x['name'])
+                          ).replace('_', '').lower() == table2model(table_name).lower()]
             # add `related_name` only if necessary
             if len(ilist) > 1 or back_name_collisions:
                 last_with_important_related_name.extend(ilist)
         last_introspected_model = table2model(table_name)
-        return result
-
-    def get_indexes(self, cursor, table_name):
-        """
-        DEPRECATED
-        Returns a dictionary of fieldname -> infodict for the given table,
-        where each infodict is in the format:
-            {'primary_key': boolean representing whether it's the primary key,
-             'unique': boolean representing whether it's a unique index}
-        """
-        result = {}
-        for field in self.table_description_cache(table_name)['fields']:
-            if field['type'] == 'id' or field['unique']:
-                result[field['name']] = dict(
-                        primary_key=(field['type'] == 'id'),
-                        unique=field['unique']
-                        )
         return result
 
     def get_constraints(self, cursor, table_name):
@@ -264,8 +251,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             cur = self.connection.cursor()
             cur.execute("SELECT MasterLabel FROM LeadStatus "
                         "WHERE IsConverted = True ORDER BY SortOrder LIMIT 1")
-            self._converted_lead_status = cur.fetchone()['MasterLabel']
+            self._converted_lead_status = cur.fetchone()[0]
         return self._converted_lead_status
+
+# pylint:disable=too-few-public-methods
 
 
 class SymbolicModelsName(object):
@@ -314,5 +303,5 @@ class SfProtectName(str):
 
 reverse_models_names = dict((obj.value, obj) for obj in
                             [SymbolicModelsName(name) for name in
-                                ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')
+                             ('NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')
                              ])
