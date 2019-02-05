@@ -548,11 +548,11 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                 ret = Lead.objects.bulk_create(objects)
             pks = [x.pk for x in objects if x.pk]
             with self.lazy_assert_n_requests(1):
-                ret = Lead.objects.filter(id__in=pks).update(Company='sf_test lead_2')
+                ret = Lead.objects.filter(pk__in=pks).update(Company='sf_test lead_2')
         finally:
             if pks:
                 with self.lazy_assert_n_requests(1):
-                    ret = Lead.objects.filter(id__in=pks).delete()
+                    ret = Lead.objects.filter(pk__in=pks).delete()
 
     def test_escape_single_quote(self):
         """Test single quotes in strings used in a filter
@@ -1165,4 +1165,4 @@ def clean_test_data():
     """
     ids = [x for x in Product.objects.filter(Name__startswith='test ')
            if re.match(r'test [a-z_0-9]+', x.Name)]
-    Product.objects.filter(id__in=ids).delete()
+    Product.objects.filter(pk__in=ids).delete()
