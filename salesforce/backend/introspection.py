@@ -11,16 +11,22 @@ Salesforce introspection code.  (like django.db.backends.*.introspection)
 
 import logging
 import re
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 
-from django.db.backends.base.introspection import BaseDatabaseIntrospection
+from django.db.backends.base.introspection import (
+    BaseDatabaseIntrospection, FieldInfo as BaseFieldInfo, TableInfo,
+)
 from django.utils.text import camel_case_to_spaces
 # require "simplejson" to ensure that it is available to "requests" hook.
 import simplejson  # NOQA pylint:disable=unused-import
 
 import salesforce.fields
+from salesforce.backend import DJANGO_111_PLUS
 
 log = logging.getLogger(__name__)
+
+field_info_fields = BaseFieldInfo._fields + (() if DJANGO_111_PLUS else ('default',)) + ('params',)
+FieldInfo = namedtuple('FieldInfo', field_info_fields)  # pylint:disable=invalid-name
 
 # these sObjects are not tables - ignore them
 # not queryable, not searchable, not retrieveable, only triggerable
@@ -115,7 +121,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def get_table_list(self, cursor):
         "Returns a list of table names in the current database."
-        result = [SfProtectName(x['name']) for x in self.table_list_cache['sobjects']]
+        result = [TableInfo(SfProtectName(x['name']), 't') for x in self.table_list_cache['sobjects']]
         return result
 
     def get_table_description(self, cursor, table_name):
@@ -149,7 +155,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 field['length'] = 1300
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
-            result.append((
+            result.append(FieldInfo(
                 field['name'],       # name,
                 field['type'],       # type_code,
                 field['length'],     # display_size,
@@ -157,6 +163,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 field['precision'],  # precision,
                 field['scale'],      # scale,
                 field['nillable'],   # null_ok,
+                params.get('default'),  # default
                 params,
             ))
         return result
