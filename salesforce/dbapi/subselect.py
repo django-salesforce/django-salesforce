@@ -180,7 +180,7 @@ TextType = type(u'')
 
 
 def fix_data_type(data, tzinfo=None):
-    # this is a simplified function. The data type shoud be finally read
+    # this is a simplified function. The data type should be finally read
     # from some reliable field mapping, not to guess by regexp like here.
     # Only a DateTime field has so specific regexp that the guess is
     # acceptable.

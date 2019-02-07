@@ -13,6 +13,8 @@ def refresh(obj):
 
 
 class MixinTest(TestCase):
+    databases = '__all__'
+
     def test_mixin(self):
         """Test that mixins from abstract classes work and also proxy models."""
         # create the object with one field from the second ancestor and one from the first

@@ -6,6 +6,8 @@ from salesforce.testrunner.example.models import User
 
 
 class DynamicAuthTest(TestCase):
+    databases = '__all__'
+
     def assertConnectionProblem(self, queryset):
         with self.assertRaises(Exception) as cm:
             len(queryset)

@@ -4,6 +4,8 @@ from salesforce.testrunner.example.models import Account
 
 
 class WebTest(TestCase):
+    databases = '__all__'
+
     def test_admin(self):
         """Test that mainly improves code coverage."""
 

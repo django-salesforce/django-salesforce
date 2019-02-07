@@ -235,12 +235,10 @@ class BooleanField(SfField, models.BooleanField):
 
 class DateTimeField(SfField, models.DateTimeField):
     """DateTimeField with sf_read_only attribute for Salesforce."""
-    pass
 
 
 class DateField(SfField, models.DateField):
     """DateField with sf_read_only attribute for Salesforce."""
-    pass
 
     def from_db_value(self, value, expression, connection, context=None):
         # pylint:disable=unused-argument

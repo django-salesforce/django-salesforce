@@ -13,6 +13,7 @@ from salesforce.utils import convert_lead
 
 
 class UtilitiesTest(TestCase):
+    databases = '__all__'
 
     @skipUnless(beatbox, "Beatbox needs to be installed in order to run this test.")
     def test_lead_conversion(self):

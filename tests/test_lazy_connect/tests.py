@@ -6,6 +6,8 @@ from requests.exceptions import ConnectionError
 
 
 class LazyTest(TestCase):
+    databases = '__all__'
+
     def test_lazy_connection(self):
         """
         Verify that the plain access to SF connection object does not raise
