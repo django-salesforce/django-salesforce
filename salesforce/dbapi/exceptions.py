@@ -9,7 +9,7 @@ text_type = str if PY3 else type(u'')
 
 
 class SalesforceWarning(Warning):
-    def __init__(self, messages, response=None, verbs=None):
+    def __init__(self, messages=None, response=None, verbs=None):
         self.data, self.response, self.verbs = (), None, None
         message = prepare_exception(self, messages, response, verbs)
         super(SalesforceWarning, self).__init__(message)
@@ -22,7 +22,7 @@ class Error(Exception if PY3 else StandardError):  # NOQA pylint:disable=undefin
 
     customized for aproriate information, not too much or too little.
     """
-    def __init__(self, messages, response=None, verbs=None):
+    def __init__(self, messages=None, response=None, verbs=None):
         self.data, self.response, self.verbs = (), None, None
         message = prepare_exception(self, messages, response, verbs)
         super(Error, self).__init__(message)
@@ -64,7 +64,7 @@ class NotSupportedError(SalesforceError):
     pass
 
 
-def prepare_exception(obj, messages, response=None, verbs=None):
+def prepare_exception(obj, messages=None, response=None, verbs=None):
     """Prepare excetion params or only an exception message
 
     parameters:
@@ -74,6 +74,8 @@ def prepare_exception(obj, messages, response=None, verbs=None):
     """
     verbs = set(verbs or [])
     known_options = ['method+url']
+    if messages is None:
+        messages = []
     if isinstance(messages, (text_type, str)):
         messages = [messages]
     assert isinstance(messages, list)

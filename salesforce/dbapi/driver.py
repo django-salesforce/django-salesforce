@@ -513,7 +513,7 @@ class Cursor(object):
             self.execute_select(soql, parameters, query_all=query_all)
         else:
             # INSERT UPDATE DELETE EXPLAIN
-            raise ProgrammingError
+            raise ProgrammingError("Unexpected command '{}'".format(sqltype))
 
     def executemany(self, operation, seq_of_parameters):
         self._clean()
