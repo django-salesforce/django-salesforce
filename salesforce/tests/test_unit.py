@@ -11,8 +11,6 @@ from salesforce.testrunner.example.models import (
         Contact, Opportunity, OpportunityContactRole, ChargentOrder)
 from salesforce.backend.test_helpers import LazyTestMixin
 
-# from salesforce.backend.subselect import TestSubSelectSearch
-
 
 class EasyCharField(models.CharField):
     def __init__(self, max_length=255, null=True, default='', **kwargs):

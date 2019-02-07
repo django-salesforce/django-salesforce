@@ -242,7 +242,7 @@ class CursorWrapper(object):
     def execute_select(self, soql, args):
         sqltype = soql.split(None, 1)[0].upper()
         if sqltype in ('SAVEPOINT', 'ROLLBACK', 'RELEASE') and DJANGO_22_PLUS:  # TODO
-            log.debug("Ignored SQL command '{}'".format(sqltype))
+            log.debug("Ignored SQL command '%s'", sqltype)
             return
         if soql != MIGRATIONS_QUERY_TO_BE_IGNORED:
             # normal query
