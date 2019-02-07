@@ -24,7 +24,7 @@ from django.utils.six import PY3, text_type
 
 import salesforce
 from salesforce import router
-from salesforce.backend import DJANGO_20_PLUS
+from salesforce.backend import DJANGO_20_PLUS, DJANGO_22_PLUS
 from salesforce.backend.test_helpers import (  # NOQA pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless)
 from salesforce.backend.test_helpers import (
@@ -1030,6 +1030,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
 class BasicLeadSOQLTest(TestCase):
     """Tests that use a test Lead"""
+    databases = '__all__'
 
     def setUp(self):
         """Create our test lead record.
@@ -1118,6 +1119,7 @@ class BasicLeadSOQLTest(TestCase):
         self.assertEqual(test_lead.FirstName, 'John')
         self.assertEqual(test_lead.Company, company_orig)
 
+    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_22_PLUS)
     def test_query_all_deleted(self):
         """Test query for deleted objects (queryAll resource).
         """
