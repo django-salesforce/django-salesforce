@@ -72,6 +72,7 @@ def prepare_exception(obj, messages=None, response=None, verbs=None):
         response: response from a request to SFDC REST API
         verbs: list of options about verbosity
     """
+    # pylint:disable=too-many-branches
     verbs = set(verbs or [])
     known_options = ['method+url']
     if messages is None:
