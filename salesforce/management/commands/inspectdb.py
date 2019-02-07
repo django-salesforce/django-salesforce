@@ -88,15 +88,13 @@ class Command(InspectDBCommand):
         else:
             super(Command, self).handle(**options)
 
-    def get_field_type(self, connection, table_name, row):  # pylint:disable=too-many-locals
+    def get_field_type(self, connection, table_name, row):
         field_type, field_params, field_notes = (super(Command, self)
                                                  .get_field_type(connection, table_name, row))
         if connection.vendor == 'salesforce':
-            # pylint:disable=unused-variable
-            name, type_code, display_size, internal_size, precision, scale, null_ok, sf_params = row
-            if 'ref_comment' in sf_params:
-                field_notes.append(sf_params.pop('ref_comment'))
-            field_params.update(sf_params)
+            if 'ref_comment' in row.params:
+                field_notes.append(row.params.pop('ref_comment'))
+            field_params.update(row.params)
         return field_type, fix_field_params_repr(field_params), field_notes
 
     def normalize_col_name(self, col_name, used_column_names, is_relation):
@@ -139,12 +137,14 @@ class Command(InspectDBCommand):
                                                    .normalize_col_name(col_name, used_column_names, is_relation))
         return new_name, fix_field_params_repr(field_params), field_notes
 
-    def get_meta(self, table_name, constraints=None, column_to_field_name=None, is_view=False):
+    # the parameter 'is_view' has been since Django 2.1 and 'is_partition' since Django 2.2
+    def get_meta(self, table_name, constraints=None, column_to_field_name=None, is_view=False, is_partition=None):
         """
         Return a sequence comprising the lines of code necessary
         to construct the inner Meta class for the model corresponding
         to the given database table name.
         """
+        # pylint:disable=arguments-differ,too-many-arguments,unused-argument
         meta = ["    class Meta(models.Model.Meta):",
                 "        db_table = '%s'" % table_name]
         if self.connection.vendor == 'salesforce':
