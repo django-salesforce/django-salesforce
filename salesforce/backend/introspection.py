@@ -116,9 +116,6 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             del self._table_description_cache[table]['fields'][0]
         return self._table_description_cache[table]
 
-    def table_name_converter(self, name):
-        return name
-
     def get_table_list(self, cursor):
         "Returns a list of table names in the current database."
         result = [TableInfo(SfProtectName(x['name']), 't') for x in self.table_list_cache['sobjects']]

@@ -3,6 +3,7 @@ Minimal code to support ignored makemigrations  (like django.db.backends.*.schem
 
 without interaction to SF (without migrate)
 """
+from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 
 from salesforce.backend import log
@@ -32,7 +33,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def execute(self, sql, params=()):
         if sql == 'CREATE TABLE django_migrations ()' and params is None:
             return
-        raise NotImplementedError("Migration SchemaEditor: %r, %r" % (sql, params))
+        raise NotSupportedError("Migration SchemaEditor: %r, %r" % (sql, params))
 
     def create_model(self, model):
         log.info("Skipped in SchemaEditor: create_model %s", model)
