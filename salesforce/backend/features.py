@@ -13,12 +13,27 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     can_return_id_from_insert = True
     can_return_ids_from_bulk_insert = True
     has_bulk_insert = True
-    # TODO If the following would be True, it requires a good relation name resolution
-    supports_select_related = False
+    uses_savepoints = False
+
+    can_introspect_duration_field = False
+    supports_partial_indexes = False
+    supports_ignore_conflicts = True
+
+    # features for Django 3.0
+    can_create_inline_fk = False
+    can_return_columns_from_insert = True
+    can_return_rows_from_bulk_insert = True  # pylint:disable=invalid-name
+
+    # TODO These options are the only from Django 2.2 that can be useful
+    #      for something implemented here in future: Atomic, SFDX, Explain
+    # autocommits_when_autocommit_is_off = True
+    # ignores_table_name_case = True
+    # supported_explain_formats = set()
+
     # Though Salesforce doesn't support transactions, the setting
     # `supports_transactions` is used only for switching between rollback or
     # cleaning the database in testrunner after every test and loading fixtures
-    # before it, however SF does not support any of these and all test data must
+    # before it, however SF does not support any of these. All test data must
     # be loaded and cleaned by the testcase code. From the viewpoint of SF it is
     # irrelevant, but due to issue #28 (slow unit tests) it should be True.
     supports_transactions = True

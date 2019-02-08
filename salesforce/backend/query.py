@@ -10,6 +10,7 @@ Salesforce object query and queryset customizations.  (like django.db.models.que
 """
 import warnings
 
+from django.db import NotSupportedError
 from django.db.models import query
 
 from salesforce.backend import DJANGO_20_PLUS
@@ -50,6 +51,6 @@ class SalesforceQuerySet(query.QuerySet):
 
     def simple_select_related(self, *fields):
         if DJANGO_20_PLUS:
-            raise NotImplementedError("Obsoleted method .simple_select_related(), use .select_related() instead")
+            raise NotSupportedError("Obsoleted method .simple_select_related(), use .select_related() instead")
         warnings.warn("Obsoleted method .simple_select_related(), use .select_related() instead")
         return self.select_related(*fields)

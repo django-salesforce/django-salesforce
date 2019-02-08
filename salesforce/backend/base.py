@@ -42,6 +42,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     #     undefined abstract methods: _start_transaction_under_autocommit, create_cursor, is_usable
 
     vendor = 'salesforce'
+    display_name = 'Salesforce'
+
     # Operators [contains, startswithm, endswith] are incorrectly
     # case insensitive like sqlite3.
     operators = {

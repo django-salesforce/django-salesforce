@@ -388,7 +388,7 @@ class RawConnection(object):
                     x.pop('type_')
                 post_data = {'records': records, 'allOrNone': all_or_none}
             else:
-                raise NotImplementedError("Method {} not implemended".format(method))
+                raise NotSupportedError("Method {} not implemended".format(method))
 
             resp = self.handle_api_exceptions(method, 'composite/sobjects', json=post_data)
         resp_data = resp.json()
@@ -719,7 +719,7 @@ def quoted_string_literal(txt):
     try:
         return "'%s'" % (txt.replace("\\", "\\\\").replace("'", "\\'"),)
     except TypeError:
-        raise NotImplementedError("Cannot quote %r objects: %r" % (type(txt), txt))
+        raise NotSupportedError("Cannot quote %r objects: %r" % (type(txt), txt))
 
 
 def date_literal(dat):

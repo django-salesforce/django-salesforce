@@ -9,6 +9,7 @@
 Generate queries using the SOQL dialect.  (like django.db.models.sql.compiler and  django.db.models.sql.where)
 """
 import re
+from django.db import NotSupportedError
 from django.db.models.sql import compiler as sql_compiler, where as sql_where, constants, AND
 from django.db.models.sql.datastructures import EmptyResultSet
 from django.db.transaction import TransactionManagementError
@@ -165,7 +166,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                 params.extend(g_params)
             if grouping:
                 if distinct_fields:
-                    raise NotImplementedError(
+                    raise NotSupportedError(
                         "annotate() + distinct(fields) is not implemented.")
                 if not order_by:
                     order_by = self.connection.ops.force_no_ordering()

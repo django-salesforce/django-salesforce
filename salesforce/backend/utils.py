@@ -8,12 +8,12 @@ import logging
 import pytz
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import models
+from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
 from django.utils.six import text_type
 
 import salesforce
-from salesforce.backend import DJANGO_111_PLUS, DJANGO_22_PLUS
+from salesforce.backend import DJANGO_111_PLUS
 from salesforce.backend.operations import DefaultedOnCreate
 from salesforce.dbapi.driver import (
     DatabaseError, merge_dict,
@@ -105,7 +105,7 @@ def extract_values(query):
         for row in query.objs:
             ret.append(extract_values_inner(row, query))
         return ret
-    raise NotImplementedError
+    raise NotSupportedError
 
 
 def extract_values_inner(row, query):
@@ -220,11 +220,12 @@ class CursorWrapper(object):
     def prepare_query(self, query):
         self.query = query
 
-    def execute_django(self, q, args=()):
+    def execute_django(self, soql, args=()):
         """
         Fixed execute for queries coming from Django query compilers
         """
         response = None
+        sqltype = soql.split(None, 1)[0].upper()
         if isinstance(self.query, subqueries.InsertQuery):
             response = self.execute_insert(self.query)
         elif isinstance(self.query, subqueries.UpdateQuery):
@@ -232,18 +233,17 @@ class CursorWrapper(object):
         elif isinstance(self.query, subqueries.DeleteQuery):
             response = self.execute_delete(self.query)
         elif isinstance(self.query, RawQuery):
-            self.execute_select(q, args)
+            self.execute_select(soql, args)
+        elif sqltype in ('SAVEPOINT', 'ROLLBACK', 'RELEASE'):
+            log.info("Ignored SQL command '%s'", sqltype)
+            return
         elif isinstance(self.query, Query):
-            self.execute_select(q, args)
+            self.execute_select(soql, args)
         else:
             raise DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
         return response
 
     def execute_select(self, soql, args):
-        sqltype = soql.split(None, 1)[0].upper()
-        if sqltype in ('SAVEPOINT', 'ROLLBACK', 'RELEASE') and DJANGO_22_PLUS:  # TODO
-            log.debug("Ignored SQL command '%s'", sqltype)
-            return
         if soql != MIGRATIONS_QUERY_TO_BE_IGNORED:
             # normal query
             is_query_all = self.query and self.query.is_query_all
