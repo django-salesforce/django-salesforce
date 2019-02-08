@@ -1118,7 +1118,6 @@ class BasicLeadSOQLTest(TestCase):
         self.assertEqual(test_lead.FirstName, 'John')
         self.assertEqual(test_lead.Company, company_orig)
 
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_22_PLUS)
     def test_query_all_deleted(self):
         """Test query for deleted objects (queryAll resource).
         """
@@ -1131,6 +1130,9 @@ class BasicLeadSOQLTest(TestCase):
         self.assertGreaterEqual(count_deleted, 1)
         count_deleted2 = Lead.objects.filter(IsDeleted=True, LastName="Unittest General").query_all().count()
         self.assertGreaterEqual(count_deleted2, count_deleted)
+
+        if DJANGO_22_PLUS:
+            self.test_lead.pk = None
         self.test_lead.save()  # save anything again to be cleaned finally
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
