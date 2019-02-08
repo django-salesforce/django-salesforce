@@ -24,7 +24,7 @@ from django.utils.six import PY3, text_type
 
 import salesforce
 from salesforce import router
-from salesforce.backend import DJANGO_20_PLUS, DJANGO_22_PLUS
+from salesforce.backend import DJANGO_22_PLUS
 from salesforce.backend.test_helpers import (  # NOQA pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless)
 from salesforce.backend.test_helpers import (
@@ -159,8 +159,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             test_contact.delete()
             test_account.delete()
 
-    @expectedFailureIf(QUIET_KNOWN_BUGS and DJANGO_20_PLUS)
-    def test_simple_select_related(self):
+    def test_select_related(self):
         """Verify that simple_selct_related does not require additional queries.
         """
         test_account = Account(Name='sf_test account')
@@ -168,8 +167,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         test_contact = Contact(first_name='sf_test', last_name='my', account=test_account)
         test_contact.save()
         try:
-            with self.lazy_assert_n_requests(2):
-                qs = Contact.objects.filter(account__Name='sf_test account').simple_select_related('account')
+            with self.lazy_assert_n_requests(1):
+                qs = Contact.objects.filter(account__Name='sf_test account').select_related('account')
                 contacts = list(qs)
             with self.lazy_assert_n_requests(0):  # this fails in Django 2.0 - not cached
                 [x.account.Name for x in contacts]
