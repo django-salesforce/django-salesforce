@@ -264,7 +264,7 @@ class RawConnection(object):
         if response.status_code == 401:  # Unauthorized
             # Reauthenticate and retry (expired or invalid session ID or OAuth)
             if ('json' in response.headers['content-type']
-                    or response.json()[0]['errorCode'] == 'INVALID_SESSION_ID'):
+                    and response.json()[0]['errorCode'] == 'INVALID_SESSION_ID'):
                 token = session.auth.reauthenticate()
                 if 'headers' in kwargs:
                     kwargs['headers'].update(Authorization='OAuth %s' % token)
