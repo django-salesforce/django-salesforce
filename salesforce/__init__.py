@@ -25,4 +25,4 @@ log = logging.getLogger(__name__)
 # >>> import salesforce
 # >>> setattr(salesforce, 'API_VERSION', '37.0')
 
-API_VERSION = '44.0'  # Winter '19
+API_VERSION = '45.0'  # Spring '19
