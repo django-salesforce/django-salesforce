@@ -19,7 +19,7 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 2.7.9+, 3.4 to 3.7, Django 1.10, 1.11, 2.0, 2.1.
+Python 2.7.9+, 3.4 to 3.7, Django 1.10, 1.11, 2.0, 2.1 and 2.2 (tested on beta 1).
 
 Pre-2.7.9 Python versions don't support the protocol TLS 1.1+ required
 by Salesforce. New PyPy versions compatible with TLS 1.1+ are supported also.
