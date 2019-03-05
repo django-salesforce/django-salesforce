@@ -1,10 +1,12 @@
 """
 Customized Query, RawQuery  (like django.db.models.sql.query)
 """
+from django.conf import settings
 from django.db.models import Count
 from django.db.models.sql import Query, RawQuery, constants
 
 from salesforce.backend import DJANGO_20_PLUS
+from salesforce.dbapi.driver import arg_to_soql
 
 
 class SalesforceRawQuery(RawQuery):
@@ -43,6 +45,17 @@ class SalesforceQuery(Query):
         super(SalesforceQuery, self).__init__(*args, **kwargs)
         self.is_query_all = False
         self.max_depth = 1
+
+    def __str__(self):
+        sql, params = self.sql_with_params()
+        return sql % tuple(arg_to_soql(x) for x in params)
+
+    def sql_with_params(self):
+        """
+        Return the query as an SOL string and the parameters.
+        """
+        sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
+        return self.get_compiler(sf_alias).as_sql()
 
     def clone(self, klass=None, memo=None):  # pylint: disable=arguments-differ
         if DJANGO_20_PLUS:
