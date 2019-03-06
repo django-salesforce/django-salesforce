@@ -272,6 +272,8 @@ Backwards-incompatible changes
    with normal databases. (a more backward compatible option can be added if
    it will be required)
 
+-  v0.7.2: This is the last code that supports old Django 1.8.4+ and 1.9
+
 -  v0.6.9: This is the last code that supports old Django 1.7 and 1.8.0 - 1.8.3
 
 -  v0.6.1: This is the last code that supports old Django 1.4, 1.5, 1.6.
