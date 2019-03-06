@@ -265,8 +265,12 @@ here are the potential pitfalls and unimplemented operations:
 Backwards-incompatible changes
 ------------------------------
 
--  v0.8 (future): The default Meta option if now ``managed = True``, which is an unimportant
+-  v0.8: The default Meta option if now ``managed = True``, which is an unimportant
    change for Salesforce databases (see about Migrations above).
+
+   Completely different implementation of raw queries and cursor that compatible
+   with normal databases. (a more backward compatible option can be added if
+   it will be required)
 
 -  v0.6.9: This is the last code that supports old Django 1.7 and 1.8.0 - 1.8.3
 
