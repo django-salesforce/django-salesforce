@@ -40,6 +40,9 @@ def autosetup():
     with open(relative_path('requirements.txt'), 'rU') as f:
         requirements_txt = f.read().split("\n")
 
+    with open(relative_path('README.rst'), 'rU') as f:
+        long_description = f.read()
+
     # check if installed with git data (not via PyPi)
     with_git = os.path.isdir(relative_path('.git'))
 
@@ -62,6 +65,8 @@ def autosetup():
         maintainer="Phil Christensen",
         maintainer_email="phil@bubblehouse.org",
         description="a Salesforce backend for Django's ORM",
+        long_description=long_description,
+        long_description_content_type="text/x-rst",
         license="MIT",
         keywords="django salesforce orm backend",
         url="https://github.com/django-salesforce/django-salesforce",
