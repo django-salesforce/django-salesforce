@@ -12,7 +12,7 @@ Allows access to all Salesforce objects accessible via the SOQL API.
 """
 import logging
 
-__version__ = "0.8.beta"
+__version__ = "0.8"
 
 log = logging.getLogger(__name__)
 
