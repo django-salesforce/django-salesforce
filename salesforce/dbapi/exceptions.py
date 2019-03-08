@@ -37,7 +37,18 @@ class DatabaseError(Error):
 
 
 class SalesforceError(DatabaseError):
-    pass
+    """Error reported by SFDC data instance in a REST API request.
+
+    This class is for messages with ExceptionCode that can be searched in
+    "SOAP API documentation"
+    https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_concepts_core_data_objects.htm#exception_code_topic
+    by the capitalized ExceptionCode: e.g. "DUPLICATE_VALUE \n some context about it"
+
+    Subclasses are for messages created by django-salesforce.
+
+    Timeout is also reported as a SalesforceError, because it can be frequently caused
+    by SFDC by a slow query. There is no ambiguity.
+    """
 
 
 class DataError(SalesforceError):
@@ -62,6 +73,16 @@ class ProgrammingError(SalesforceError):
 
 class NotSupportedError(SalesforceError):
     pass
+
+
+class SalesforceAuthError(SalesforceError):
+    """Error reported by SFDC in salesforce.auth at login request.
+
+    The messages are typically very cryptic. (probably intentionally,
+    to not disclosure more information to unathorized persons)
+
+    Repeated errors of this class can lock the user account temporarily.
+    """
 
 
 def prepare_exception(obj, messages=None, response=None, verbs=None):
