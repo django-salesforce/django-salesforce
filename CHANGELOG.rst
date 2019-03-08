@@ -21,6 +21,8 @@ Unreleased
 * Fix ``migrate`` command to ignore SalesforceModel migrations on the
   salesforce database.
 
+* Add a new more clear class SalesforceAuthError report instead of LookupError
+
 
 [0.8] 2019-03-06
 ----------------

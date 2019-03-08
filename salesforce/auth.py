@@ -26,7 +26,7 @@ from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
 from salesforce.dbapi import connections, get_max_retries
-from salesforce.dbapi.exceptions import DatabaseError, IntegrityError
+from salesforce.dbapi.exceptions import DatabaseError, IntegrityError, SalesforceAuthError
 
 # TODO hy: more advanced methods with ouathlib can be implemented, but
 #      the simple doesn't require a special package.
@@ -199,7 +199,7 @@ class SalesforcePasswordAuth(SalesforceAuth):
             else:
                 raise IntegrityError('Invalid auth signature received')
         else:
-            raise LookupError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
+            raise SalesforceAuthError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
         return response_data
 
 
