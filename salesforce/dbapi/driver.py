@@ -15,11 +15,13 @@ import re
 import socket
 import sys
 import threading
+import time
 import types
 import warnings
 import weakref
 from collections import namedtuple
 from itertools import islice
+from typing import Optional  # NOQA
 
 import pytz
 import requests
@@ -421,6 +423,20 @@ class RawConnection(object):
     def last_used_cursor(self, cursor):
         self._last_used_cursor = weakref.proxy(cursor)
 
+    def ping_connection(self, timeout=1.0):  # type: (float) -> Optional[float]
+        """Fast check the connection by an unimportant request
+
+        It is useful after a longer inactivity if a connection could
+        have been incorrectly terminated and can cause a timeout. This
+        simple command will recreate the connection after a short timeout
+        1 second, if necessary, while normal commands use a longer timeout,
+        typically 30 sec.
+        Returns the duration if the command succeded.
+        """
+        t_0 = time.time()
+        self.handle_api_exceptions('GET', '', api_ver='', timeout=timeout)
+        return round(time.time() - t_0, 3)
+
 
 class FakeReq(object):
     # pylint:disable=too-few-public-methods,too-many-arguments
@@ -724,7 +740,6 @@ def quoted_string_literal(txt):
 
 def date_literal(dat):
     if not dat.tzinfo:
-        import time
         tz = pytz.timezone(settings.TIME_ZONE)
         dat = tz.localize(dat, is_dst=time.daylight)
     # Format of `%z` is "+HHMM"
