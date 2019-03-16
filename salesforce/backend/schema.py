@@ -12,12 +12,12 @@ from salesforce.backend import log
 class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     # pylint:disable=abstract-method  # undefined: prepare_default, quote_value
 
-    def __init__(self, connection, collect_sql=False):
+    def __init__(self, connection, collect_sql=False, atomic=True):
         self.connection_orig = connection
         self.collect_sql = collect_sql
         # if self.collect_sql:
         #    self.collected_sql = []
-        super(DatabaseSchemaEditor, self).__init__(connection, collect_sql=collect_sql)
+        super(DatabaseSchemaEditor, self).__init__(connection, collect_sql=collect_sql, atomic=atomic)
 
     # State-managing methods
 
@@ -31,7 +31,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 self.execute(sql)
 
     def execute(self, sql, params=()):
-        if sql == 'CREATE TABLE django_migrations ()' and params is None:
+        if (sql == 'CREATE TABLE django_migrations ()'
+                or sql.startswith('DROP TABLE ')) and not params:
             return
         raise NotSupportedError("Migration SchemaEditor: %r, %r" % (sql, params))
 

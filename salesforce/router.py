@@ -62,7 +62,12 @@ class ModelRouter(object):
         Don't attempt to sync SF models to non SF databases and vice versa.
         """
         if model_name:
-            model = apps.get_model(app_label, model_name)
+            try:
+                model = apps.get_model(app_label, model_name)
+            except LookupError:
+                if 'model' in hints and hints['model'].__module__ == '__fake__':
+                    return
+                raise
         else:
             # hints are used with less priority, because many hints are dynamic
             # models made by migrations on a '__fake__' module which are not
@@ -83,6 +88,6 @@ class ModelRouter(object):
         if hasattr(model, '_salesforce_object'):
             # return False
             pass
-        # Nothing is said about non SF models with non SF databases, because
-        # it can be solved by other routers. By default it is enabled if all
-        # routers say "None".
+        # Nothing is decided about non SF models with non SF databases, because
+        # it can be solved by other routers. Migration is enabled by default if
+        # all routers return "None".

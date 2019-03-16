@@ -264,6 +264,8 @@ class CursorWrapper(object):
 
     def execute_insert(self, query):
         table = query.model._meta.db_table
+        if table == 'django_migrations':
+            return
         post_data = extract_values(query)
         obj_url = self.db.connection.rest_api_url('sobjects', table, relative=True)
         if len(post_data) == 1:
