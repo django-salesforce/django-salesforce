@@ -18,6 +18,9 @@ Unreleased
 * Added: The most useful custom exceptions are imported directly to
   ``salesfrorce`` module.
 
+* Fix ``migrate`` command to ignore SalesforceModel migrations on the
+  salesforce database.
+
 
 [0.8] 2019-03-06
 ----------------
