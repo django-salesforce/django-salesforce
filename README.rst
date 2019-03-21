@@ -169,7 +169,7 @@ Advanced usage
    that most apps require, so the default DB connection to use for Salesforce
    is defined by the ``SALESFORCE_DB_ALIAS`` settings variable. This behavior
    can be also configured by ``DATABASE_ROUTERS``, replacing the use of
-   salesforce.backend.router.ModelRouter.
+   salesforce.router.ModelRouter.
 
 -  **Non SF databases** - If ``SALESFORCE_DB_ALIAS`` is set to a conventional
    database, the tables defined by the SF models will be created by ``migrate``. This
