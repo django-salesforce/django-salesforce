@@ -225,6 +225,12 @@ Advanced usage
    Consequently, the setting ``managed = True`` is related only to an alternate
    non SFDC database configured by ``SF_ALIAS``.)
 
+-  **Exceptions** - Custom exceptions instead of standard Django database
+   exceptions are raised by Django-Salesforce to get more useful information.
+   General exceptions are ``SalesforceError`` or a more general custom
+   ``DatabaseError``. They can be imported from ``salesforce.dbapi.exceptions``
+   if database errors should be handled specifically in your app.
+
 Foreign Key Support
 -------------------
 Foreign key relationships should work as expected, but mapping
@@ -271,6 +277,8 @@ Backwards-incompatible changes
    Completely different implementation of raw queries and cursor that compatible
    with normal databases. (a more backward compatible option can be added if
    it will be required)
+
+   Custom exception classes has been moved to ``salesforce.dbapi.exceptions``.
 
 -  v0.7.2: This is the last code that supports old Django 1.8.4+ and 1.9
 
