@@ -18,7 +18,8 @@ experimental.
 ----------------
 
 * Suports: Python 2.7.9+, 3.4 - 3.7, Django 1.10 - 2.2
-  (tested up to 2.2 beta 1)
+  (Tested up to the newest 2.2 beta 1 at the release time.
+  It works also with Django 2.2 unchanged.)
 
 * Implemented a big part of Python DB API 2.0.
   Standard DB API is emulated for all ``select`` commands, because it is
