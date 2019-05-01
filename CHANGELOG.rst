@@ -46,9 +46,9 @@ experimental.
   by ``list(queryset)`` would require two full queries with all data,
   if ``__len__`` was not removed.)
 
-* New error reporting. Prepared also to a custom error handler to can
-  report more errors, if the block operations could be run without
-  AllOrNone transaction later.
+* New error reporting. Prepared also to a custom error handler to be possible
+  to report more errors by block operations, if the would be supported also
+  without AllOrNone transaction later.
 
 * Fixed: method ``QuerySet.select_related(...)`` (It never worked. Now
   it works completely.)
@@ -88,8 +88,8 @@ experimental.
 
 Internal:
 
-* Removed: Many internal SOAP API methods (because obsoleted for us by
-  recent REST API methods). Only Lead conversion is still done by SOAP
+* Removed: Many internal SOAP API methods (because they have obsoleted for
+  us by recent REST API methods). Only Lead conversion is still done by SOAP
   API (beatbox).
 
 * (Discussion: A part of backward compatibility in raw queries could be
@@ -98,7 +98,7 @@ Internal:
   is probably more important.)
 
 * Experimental undocumented feature "dynamic models" (started in v0.6.9)
-  can probably have some regressions. Its purpose is to can use Django,
+  can probably have some regressions. Its purpose is to use Django,
   mainly in development, if the model doesn't match exactly the SFDC
   structure with missing or added fields, especially with more databases.
   Migrations are not expected with it. (simple tests: test_dynamic_fields()
