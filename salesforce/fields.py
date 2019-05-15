@@ -46,6 +46,9 @@ class SalesforceAutoField(fields.AutoField):
     """
     description = _("Text")
 
+    def get_internal_type(self):
+        return "TextField"
+
     default_error_messages = {
         'invalid': _('This value must be a valid Salesforce ID.'),
     }
