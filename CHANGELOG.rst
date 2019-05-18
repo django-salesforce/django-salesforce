@@ -13,6 +13,11 @@ but a new feature can be referred by a test name if not documented yet.
 Some items here can be marked as "internal": not ready enough or
 experimental.
 
+Unreleased
+----------
+* Added: The most useful custom exceptions are imported directly to
+  ``salesfrorce`` module.
+
 
 [0.8] 2019-03-06
 ----------------
@@ -67,9 +72,9 @@ experimental.
   INVALID_CROSS_REFERENCE_KEY) if a record that has been deleted yet, was
   tried to be updated or deleted again) were previously intentionally
   ignored to be compatible with normal SQL. Update is now an error, delete
-  is now a warning, because it is important to easily to clean all objects
+  is now a warning, because it is important to easily clean all objects
   in tests finally without checking that they were succesfully created.
-  This behavious is open to discussion.
+  This behavior is open to discussion.
   (A warning can be easily silenced by configuration naturally.)
 
 * Fixed introspection to work on text formula fields in Salesforce API
@@ -88,7 +93,7 @@ experimental.
 
 Internal:
 
-* Removed: Many internal SOAP API methods (because they have obsoleted for
+* Removed: Many internal SOAP API methods (because they have been obsoleted for
   us by recent REST API methods). Only Lead conversion is still done by SOAP
   API (beatbox).
 
