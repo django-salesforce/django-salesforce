@@ -12,6 +12,10 @@ Allows access to all Salesforce objects accessible via the SOQL API.
 """
 import logging
 
+from salesforce.dbapi.exceptions import (  # NOQA pylint:disable=unused-import
+    IntegrityError as IntegrityError, DatabaseError as DatabaseError, SalesforceError as SalesforceError,
+)
+
 __version__ = "0.8"
 
 log = logging.getLogger(__name__)
