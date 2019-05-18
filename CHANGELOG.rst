@@ -13,15 +13,16 @@ but a new feature can be referred by a test name if not documented yet.
 Some items here can be marked as "internal": not ready enough or
 experimental.
 
-Unreleased
-----------
+
+[0.8.1] 2019-05-20
+------------------
 * Added: The most useful custom exceptions are imported directly to
   ``salesfrorce`` module.
 
 * Fix ``migrate`` command to ignore SalesforceModel migrations on the
   salesforce database.
 
-* Add a new more clear class SalesforceAuthError report instead of LookupError
+* Add a new more clear class SalesforceAuthError report instead of LookupError.
 
 
 [0.8] 2019-03-06
