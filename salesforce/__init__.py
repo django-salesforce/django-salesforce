@@ -16,7 +16,7 @@ from salesforce.dbapi.exceptions import (  # NOQA pylint:disable=unused-import
     IntegrityError as IntegrityError, DatabaseError as DatabaseError, SalesforceError as SalesforceError,
 )
 
-__version__ = "0.8"
+__version__ = "0.8.1"
 
 log = logging.getLogger(__name__)
 
