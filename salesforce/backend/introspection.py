@@ -34,7 +34,10 @@ PROBLEMATIC_OBJECTS = [
     'AssetTokenEvent',  # new in API 39.9 Spring '17
     'OrgLifecycleNotification',  # new in API 40.0 Summer '17
     'BatchApexErrorEvent',  # new in API 44.0 Winter '19
-    'PlatformStatusAlertEvent'  # new in API 45.0 Spring '19
+    'PlatformStatusAlertEvent',  # new in API 45.0 Spring '19
+    'LogoutEventStream',  # new in API 46.0 Summer '19
+    'AsyncOperationEvent',  # new in API 46.0 Summer '19
+    'AsyncOperationStatus',  # new in API 46.0 Summer '19
 ]
 
 # these global variables are for `salesforce.management.commands.inspectdb`
