@@ -19,6 +19,13 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_partial_indexes = False
     supports_ignore_conflicts = True
 
+    supports_select_for_update_with_limit = False  # since Django 1.7
+
+    # features new in Django 1.11
+    supports_select_union = False
+    supports_select_intersection = False
+    supports_select_difference = False
+
     # features for Django 3.0
     can_create_inline_fk = False
     can_return_columns_from_insert = True
