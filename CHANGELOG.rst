@@ -24,6 +24,8 @@ experimental.
 
 * Add a new more clear class SalesforceAuthError report instead of LookupError.
 
+* Fix select_related() with a subquery by children objects. #234
+
 
 [0.8] 2019-03-06
 ----------------
