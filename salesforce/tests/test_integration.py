@@ -160,7 +160,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             test_account.delete()
 
     def test_select_related(self):
-        """Verify that simple_selct_related does not require additional queries.
+        """Verify that select_related does not require additional queries.
         """
         test_account = Account(Name='sf_test account')
         test_account.save()
@@ -177,6 +177,17 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         finally:
             test_contact.delete()
             test_account.delete()
+
+    def test_select_related_child_subquery(self):
+        """Test select_related with a subquery by children objects.
+        """
+        with self.lazy_assert_n_requests(0):
+            subquery = Contact.objects.filter().values('account_id')
+            qs = Account.objects.filter(pk__in=subquery).select_related('Owner')  # or 'owner'
+        with self.lazy_assert_n_requests(1):
+            self.assertGreater(len(list(qs)), 0)
+        with self.lazy_assert_n_requests(0):
+            self.assertGreater(qs[0].Owner.Username, '')
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_one_to_one_field(self):
