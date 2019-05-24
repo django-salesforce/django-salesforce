@@ -14,17 +14,16 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[0.8.1] 2019-05-20
+[0.8.1] 2019-05-22
 ------------------
-* Added: The most useful custom exceptions are imported directly to
-  ``salesfrorce`` module.
+* Made custom exceptions importable from the top-level ``salesfrorce`` module.
 
-* Fix ``migrate`` command to ignore SalesforceModel migrations on the
+* Created SalesforceAuthError custom exception to replace LookupError.
+
+* Fixed #226: ``migrate`` command to ignore SalesforceModel migrations on the
   salesforce database.
 
-* Add a new more clear class SalesforceAuthError report instead of LookupError.
-
-* Fix select_related() with a subquery by children objects. #234
+* Fixed #234: select_related() when filtering by children objects.
 
 
 [0.8] 2019-03-06
