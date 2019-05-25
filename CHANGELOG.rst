@@ -14,6 +14,10 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
+Unreleased
+----------
+
+
 [0.8.1] 2019-05-22
 ------------------
 * Made custom exceptions importable from the top-level ``salesfrorce`` module.
