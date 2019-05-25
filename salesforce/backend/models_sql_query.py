@@ -47,12 +47,17 @@ class SalesforceQuery(Query):
         self.max_depth = 1
 
     def __str__(self):
+        """Return the query as merged SOQL for Salesforce"""
         sql, params = self.sql_with_params()
         return sql % tuple(arg_to_soql(x) for x in params)
 
     def sql_with_params(self):
         """
-        Return the query as an SOL string and the parameters.
+        Return the query as an SOQL string and the parameters for Salesforce.
+
+        It is a shortcut for debugging, unused by backends.
+        (It ignores "using(...)". because the exact alias is known only in
+        queryset, but not in a query.)
         """
         sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
         return self.get_compiler(sf_alias).as_sql()

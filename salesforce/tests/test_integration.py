@@ -188,6 +188,38 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             self.assertGreater(len(list(qs)), 0)
             self.assertGreater(qs[0].Owner.Username, '')
 
+    def test_select_related_child_filter(self):
+        """Test select_related with a subquery by children objects.
+        """
+        with self.lazy_assert_n_requests(1):
+            subquery = Contact.objects.filter().values('account_id')
+            qs = Account.objects.filter(pk__in=subquery).select_related('Owner')
+            self.assertGreater(len(qs), 0)
+            self.assertGreater(qs[0].Owner.Username, '')
+        soql = str(qs.query)
+        self.assertTrue(soql.endswith("FROM Account WHERE Account.Id IN (SELECT Contact.AccountId FROM Contact)"))
+
+    def test_select_related_child_exclude(self):
+        """Test select_related with a subquery by children objects.
+        """
+        # We use 'not_in' lookup, because this is not supported: 'exclude(pk__in=subsuery)'
+        #     Account.objects.exclude(contact__isnull=True)
+
+        with self.lazy_assert_n_requests(1):
+            subquery = Contact.objects.values('account_id')
+            qs = Account.objects.filter(pk__not_in=subquery).select_related('Owner')
+            list(qs)
+        soql = str(qs.query)
+        self.assertTrue(soql.endswith("FROM Account WHERE Account.Id NOT IN (SELECT Contact.AccountId FROM Contact)"))
+
+        # the same without 'not_in' lookup by two requests and exclude()
+        with self.lazy_assert_n_requests(2):
+            sub_ids = Contact.objects.values_list('account_id', flat=True)
+            qs = Account.objects.exclude(pk__in=list(sub_ids)).select_related('Owner')
+            list(qs)
+        soql = str(qs.query)
+        self.assertIn("FROM Account WHERE (NOT (Account.Id IN ('", soql)
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_one_to_one_field(self):
         # test 1a is unique field
