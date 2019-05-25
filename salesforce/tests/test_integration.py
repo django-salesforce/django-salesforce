@@ -72,14 +72,16 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def setUpClass(cls):
         """Add contact if less than 2 exist"""
         super(BasicSOQLRoTest, cls).setUpClass()
-        some_contacts = Contact.objects.all()[:2]
+        if User.objects.count() == 0:
+            User.objects.create(Username=current_user)
+        some_accounts = Account.objects.all()[:1]
+        if not some_accounts:
+            some_accounts = [Account.objects.create(Name='sf_test account_0')]
+        some_contacts = Contact.objects.filter(account_id__gt='', name__gt='A')[:2]
         if len(some_contacts) < 2:
             for i in range(2 - len(some_contacts)):
-                contact = Contact(first_name='sf_test demo', last_name='Test %d' % i)
-                contact.save()
-        if User.objects.count() == 0:
-            user = User(Username=current_user)
-            user.save()
+                Contact.objects.create(first_name='sf_test demo', last_name='Test %d' % i,
+                                       account=some_accounts[0])
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_raw(self):
@@ -181,12 +183,9 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_select_related_child_subquery(self):
         """Test select_related with a subquery by children objects.
         """
-        with self.lazy_assert_n_requests(0):
-            subquery = Contact.objects.filter().values('account_id')
-            qs = Account.objects.filter(pk__in=subquery).select_related('Owner')  # or 'owner'
         with self.lazy_assert_n_requests(1):
+            qs = Account.objects.filter(contact__isnull=False).select_related('Owner')
             self.assertGreater(len(list(qs)), 0)
-        with self.lazy_assert_n_requests(0):
             self.assertGreater(qs[0].Owner.Username, '')
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")

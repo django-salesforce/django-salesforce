@@ -6,7 +6,8 @@ from django.db import models
 
 class IsNull(models.lookups.IsNull):
     def override_as_sql(self, compiler, connection):  # pylint:disable=unused-argument
-        sql, params = compiler.compile(self.lhs)
+        # it must be relabeled if used for a children rows set
+        sql, params = compiler.compile(self.lhs.relabeled_clone(compiler.soql_trans))
         return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
 
     setattr(models.lookups.IsNull, 'as_salesforce', override_as_sql)

@@ -16,6 +16,7 @@ experimental.
 
 Unreleased
 ----------
+* Fixed: filter for objects with no chilren rows (missing test)
 
 
 [0.8.1] 2019-05-22
