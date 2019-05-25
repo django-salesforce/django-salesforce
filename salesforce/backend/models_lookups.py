@@ -2,6 +2,8 @@
 Lookups  (like django.db.models.lookups, django.db.models.aggregates.Count)
 """
 from django.db import models
+from django.db.models.fields import Field
+from django.db.models import lookups
 
 
 class IsNull(models.lookups.IsNull):
@@ -47,3 +49,15 @@ class Count(models.aggregates.Count):
         return sql, params
 
     setattr(models.aggregates.Count, 'as_salesforce', override_as_sql)
+
+
+@Field.register_lookup
+class NotIn(lookups.In):
+    lookup_name = 'not_in'
+
+    def get_rhs_op(self, connection, rhs):
+        return 'NOT IN %s' % rhs
+
+    def split_parameter_list_as_sql(self, compiler, connection):
+        max_size = connection.ops.max_in_list_size()
+        raise NotImplementedError("Lookup 'not_in' can't be used with lists longer then %d" % max_size)

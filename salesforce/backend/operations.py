@@ -61,6 +61,10 @@ class DatabaseOperations(BaseDatabaseOperations):
     def fetch_returned_insert_ids(self, cursor):
         return cursor.lastrowid
 
+    # A method max_in_list_size(self) would be not a solution, because it is
+    # restricted by a maximal size of SOQL.
+    # Splitting to more (... IN ...) OR (... IN ...) does not help.
+
     def adapt_datefield_value(self, value):
         return value
 
