@@ -29,7 +29,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
     def __init__(self, *args, **kwargs):
         super(SQLCompiler, self).__init__(*args, **kwargs)
         self.subquery = None
-        self.root_alias = None
+        self.root_aliases = []
 
     def get_from_clause(self):
         """
@@ -39,7 +39,13 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         child-to-parent relationships queries.
         """
         self.query_topology()
-        root_table = self.soql_trans[self.root_alias]
+        if len(self.root_aliases) == 1:
+            root_table = self.soql_trans[self.root_aliases[0]]
+        else:
+            sql_items, params = super(SQLCompiler, self).get_from_clause()
+            root_table, alias = sql_items[0].rsplit(' ', 1)
+            msg = "Only queries with one top child model are supported by Salesforce. Use a subquery."
+            assert len(sql_items) == 1 and self.soql_trans.get(alias) == root_table, msg
         return [root_table], []
 
     def quote_name_unless_alias(self, name):
@@ -257,14 +263,11 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         assert len(alias2table) == len(alias_map_items)
         # Recognize the top table
         assert len(side_l.union(side_r)) == len(alias_map_items)
-        top_lhs_set = set(side_l).difference(side_r)
-        assert len(top_lhs_set) == 1, ("Only queries with one top child model are "
-                                       "supported by Salesforce. Use a subquery.")
-        (top_lhs,) = top_lhs_set
-        self.root_alias = top_lhs
+        self.root_aliases = list(set(side_l).difference(side_r))
+        # self.root_aliases = [x for x in top_lhs_set if alias2table[x] == query.model._meta.db_table]
         # translation rules into SOQL
-        soql_trans = {top_lhs: alias2table[top_lhs]}
-        work_lhses = set([top_lhs])
+        soql_trans = {top_lhs: alias2table[top_lhs] for top_lhs in self.root_aliases}
+        work_lhses = set(self.root_aliases)
         while work_lhses:
             new_work = set()
             for (lhs, table, join_cols_, rhs) in alias_map_items:
