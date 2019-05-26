@@ -43,6 +43,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             root_table = self.soql_trans[self.root_aliases[0]]
         else:
             sql_items, params = super(SQLCompiler, self).get_from_clause()
+            assert not params
             root_table, alias = sql_items[0].rsplit(' ', 1)
             msg = "Only queries with one top child model are supported by Salesforce. Use a subquery."
             assert len(sql_items) == 1 and self.soql_trans.get(alias) == root_table, msg
@@ -295,7 +296,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
 class SalesforceWhereNode(sql_where.WhereNode):
 
     # patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.10, 1.11, 2.0, 2.1
-    # pylint:disable=no-else-return,too-many-branches,too-many-locals,unused-argument
+    # pylint:disable=no-else-return,no-else-raise,too-many-branches,too-many-locals,unused-argument
     def as_salesforce(self, compiler, connection):
         """
         Return the SQL version of the where clause and the value to be
