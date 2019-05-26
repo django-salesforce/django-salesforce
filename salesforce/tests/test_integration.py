@@ -220,6 +220,10 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         soql = str(qs.query)
         self.assertIn("FROM Account WHERE (NOT (Account.Id IN ('", soql)
 
+    def test_not_eq(self):
+        qs = Contact.objects.filter(email__not_eq='')
+        self.assertTrue(all(x.email > '' for x in qs))
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_one_to_one_field(self):
         # test 1a is unique field
