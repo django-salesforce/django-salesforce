@@ -61,3 +61,11 @@ class NotIn(lookups.In):
     def split_parameter_list_as_sql(self, compiler, connection):
         max_size = connection.ops.max_in_list_size()
         raise NotImplementedError("Lookup 'not_in' can't be used with lists longer then %d" % max_size)
+
+
+@Field.register_lookup
+class NotEqual(lookups.Exact):
+    lookup_name = 'not_eq'
+
+    def get_rhs_op(self, connection, rhs):
+        return '!= %s' % rhs
