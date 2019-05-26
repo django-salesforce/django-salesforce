@@ -116,10 +116,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         pass
 
     def validate_settings(self, settings_dict):
+        # pylint:disable=
         for k in ('ENGINE', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD', 'HOST'):
             if k not in settings_dict:
                 raise ImproperlyConfigured("Required '%s' key missing from '%s' database settings." % (k, self.alias))
-            elif not settings_dict[k]:
+            if not settings_dict[k]:
                 raise ImproperlyConfigured("'%s' key is the empty string in '%s' database settings." % (k, self.alias))
 
         try:
