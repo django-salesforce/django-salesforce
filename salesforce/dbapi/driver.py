@@ -260,6 +260,7 @@ class RawConnection(object):
         session = self.sf_session
 
         try:
+            time_statistics.update_callback(url, self.ping_connection)
             response = session.request(method, url, **kwargs_in)
         except requests.exceptions.Timeout:
             raise SalesforceError("Timeout, URL=%s" % url)
@@ -811,3 +812,28 @@ def merge_dict(dict_1, *other, **kw):
         tmp.update(x)
     tmp.update(kw)
     return tmp
+
+
+class TimeStatistics(object):
+
+    def __init__(self, expiration=300):
+        self.expiration = expiration
+        self.data = {}
+
+    def update_callback(self, url, callback=None):
+        """Update the statistics for the domain"""
+        domain = self.domain(url)
+        last_req = self.data.get(domain, 0)
+        t_new = time.time()
+        do_call = (t_new - last_req > self.expiration)
+        self.data[domain] = t_new
+        if do_call and callback:
+            callback()
+
+    @staticmethod
+    def domain(url):
+        match = re.match(r'^(?:https|mock)://([^/]+)/?', url)
+        return match.groups()[0]
+
+
+time_statistics = TimeStatistics(300)
