@@ -77,7 +77,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         some_accounts = Account.objects.all()[:1]
         if not some_accounts:
             some_accounts = [Account.objects.create(Name='sf_test account_0')]
-        some_contacts = Contact.objects.filter(account_id__gt='', name__gt='A')[:2]
+        some_contacts = Contact.objects.exclude(account__isnull=True).filter(name__gt='A')[:2]
         if len(some_contacts) < 2:
             for i in range(2 - len(some_contacts)):
                 Contact.objects.create(first_name='sf_test demo', last_name='Test %d' % i,
