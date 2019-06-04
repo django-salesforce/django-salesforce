@@ -29,7 +29,8 @@ class SalesforceManager(manager.Manager):
         Returns a QuerySet which access remote SF objects.
         """
         alias_is_sf = _alias and router.is_sf_database(_alias)
-        if router.is_sf_database(self.db) or alias_is_sf:
+        extended_model = getattr(self.model, '_salesforce_object', '') == 'extended'
+        if router.is_sf_database(self.db) or alias_is_sf or extended_model:
             q = models_sql_query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
             return query.SalesforceQuerySet(self.model, query=q, using=self.db)
         return super(SalesforceManager, self).get_queryset()

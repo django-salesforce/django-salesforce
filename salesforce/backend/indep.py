@@ -1,4 +1,7 @@
+import uuid
 from inspect import getcallargs
+
+from django.conf import settings
 
 
 class LazyField(object):
@@ -39,3 +42,11 @@ class LazyField(object):
         """Create a normal field from the lazy field"""
         assert not self.called
         return self.klass(*self.args, **self.kw)
+
+
+def uuid_pk():
+    return uuid.uuid4().hex
+
+
+def get_sf_alt_pk():
+    return getattr(settings, 'SF_ALT_PK', uuid_pk)()
