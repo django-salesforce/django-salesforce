@@ -17,7 +17,7 @@ def is_sf_database(db, model=None):
     """The alias is a Salesforce database."""
     from django.db import connections
     if db is None:
-        return getattr(model, '_salesforce_object', False)
+        return hasattr(model, '_salesforce_object')
     engine = connections[db].settings_dict['ENGINE']
     return engine == 'salesforce.backend' or connections[db].vendor == 'salesforce'
 
@@ -41,7 +41,7 @@ class ModelRouter(object):
             db = hints['instance']._state.db
             if db:
                 return db
-        if getattr(model, '_salesforce_object', False):
+        if hasattr(model, '_salesforce_object'):
             return self.sf_alias
 
     def db_for_write(self, model, **hints):
@@ -54,7 +54,7 @@ class ModelRouter(object):
             db = hints['instance']._state.db
             if db:
                 return db
-        if getattr(model, '_salesforce_object', False):
+        if hasattr(model, '_salesforce_object'):
             return self.sf_alias
 
     def allow_migrate(self, db, app_label, model_name=None, **hints):
