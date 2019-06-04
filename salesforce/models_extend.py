@@ -1,5 +1,5 @@
 from django.db import models, router
-from django.utils.six import string_types
+from six import string_types
 
 from salesforce.backend import manager, DJANGO_20_PLUS
 from salesforce.backend.indep import get_sf_alt_pk

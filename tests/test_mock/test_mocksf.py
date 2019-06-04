@@ -4,7 +4,7 @@ Test that MockTestCase works in all modes, including "record"
 """
 from django.db import connections
 from django.test.utils import override_settings
-from django.utils.six import text_type
+from six import text_type
 
 from salesforce.backend.test_helpers import sf_alias
 from tests.test_mock.mocksf import mock, MockJsonRequest, MockTestCase

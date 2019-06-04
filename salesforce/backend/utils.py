@@ -10,7 +10,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
-from django.utils.six import text_type
+from six import text_type
 
 import salesforce
 from salesforce.backend import DJANGO_111_PLUS

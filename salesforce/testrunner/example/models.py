@@ -9,7 +9,7 @@ from __future__ import absolute_import, unicode_literals
 
 import django
 from django.conf import settings
-from django.utils.encoding import python_2_unicode_compatible
+from six import python_2_unicode_compatible
 
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
