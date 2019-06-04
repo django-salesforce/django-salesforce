@@ -543,7 +543,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             account.delete()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    def test_bulk_update(self):
+    def test_queryset_update(self):
         """Update two Accounts by one request, after searching them by one request.
         """
         account_0, account_1 = [Account(Name='test' + uid), Account(Name='test' + uid)]

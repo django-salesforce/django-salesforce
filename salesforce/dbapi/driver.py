@@ -145,7 +145,7 @@ class RawConnection(object):
         pass
 
     def rollback(self):  # pylint:disable=no-self-use
-        log.info("Rollback is not implemented.")
+        log.info("Rollback is not implemented in Salesforce.")
 
     def cursor(self):
         return Cursor(self)

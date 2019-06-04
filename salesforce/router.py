@@ -70,7 +70,7 @@ class ModelRouter(object):
                 raise
         else:
             # hints are used with less priority, because many hints are dynamic
-            # models made by migrations on a '__fake__' module which are not
+            # models made by migrations in a '__fake__' module which are not
             # SalesforceModels
             model = hints.get('model')
 
