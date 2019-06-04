@@ -18,3 +18,9 @@ class DefaultDbTest(TestCase):
         finally:
             test_contact.delete()
             test_account.delete()
+
+    def test_using_salesforce_after_default(self):
+        """Test with .using('salesforce') after 'default' database queryset."""
+        self.assertGreater(Contact.objects.using('salesforce').count(), 1)
+        self.assertGreater(Contact.objects.all().using('salesforce').count(), 1)
+
