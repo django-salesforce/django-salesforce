@@ -215,7 +215,7 @@ Advanced usage
 
 -  **Migrations** - Migrations can be used for an alternate test database
    with SalesforceModel. Then all tables must have Meta options ``db_table``
-   and fields must have option ``db_column``, which can be get
+   and fields must have option ``db_column``, which can be got
    by ``inspectdb`` with ``--verbosity=2``. Models exported by introspection
    ``inspectdb`` do not specify the option ``managed`` because the
    default value True is considered safe.
@@ -223,7 +223,7 @@ Advanced usage
    be implemented after all, only explicitly clearly selected fields and models
    could be migrated in explicitly labeled SFDC databases.
    Consequently, the setting ``managed = True`` is related only to an alternate
-   non SFDC database configured by ``SF_ALIAS``.)
+   non SFDC database configured by ``SALESFORCE_DB_ALIAS``.)
 
 -  **Exceptions** - Custom exceptions instead of standard Django database
    exceptions are raised by Django-Salesforce to get more useful information.
