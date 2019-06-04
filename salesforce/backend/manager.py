@@ -35,7 +35,7 @@ class SalesforceManager(manager.Manager):
 
     def using(self, alias):
         if alias is None:
-            if getattr(self.model, '_salesforce_object', False):
+            if hasattr(self.model, '_salesforce_object'):
                 alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
             else:
                 alias = DEFAULT_DB_ALIAS

@@ -82,7 +82,7 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
     Abstract model class for Salesforce objects.
     """
     # pylint:disable=invalid-name
-    _salesforce_object = True
+    _salesforce_object = 'standard'
     objects = manager.SalesforceManager()
 
     class Meta:

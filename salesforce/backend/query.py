@@ -29,13 +29,6 @@ class SalesforceQuerySet(query.QuerySet):
     Use a custom SQL compiler to generate SOQL-compliant queries.
     """
 
-    def iterator(self, chunk_size=2000):
-        """
-        An iterator over the results from applying this QuerySet to the
-        database.
-        """
-        return iter(self._iterable_class(self))
-
     def query_all(self):
         """
         Allows querying for also deleted or merged records.
