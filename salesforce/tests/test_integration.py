@@ -20,7 +20,7 @@ from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
 from django.utils import timezone
-from django.utils.six import PY3, text_type
+from six import PY3, text_type
 
 import salesforce
 from salesforce import router

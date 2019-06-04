@@ -3,7 +3,7 @@ import re
 
 from django.core.management.commands.inspectdb import Command as InspectDBCommand
 from django.db import connections
-from django.utils.six import PY3, text_type
+from six import PY3, text_type
 from salesforce.backend import introspection as sf_introspection
 
 

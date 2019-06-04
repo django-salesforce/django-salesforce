@@ -7,7 +7,7 @@ import re
 import unittest
 from collections import OrderedDict
 
-from django.utils.six import assertRegex
+from six import assertRegex
 
 
 def relative_path(path):

@@ -18,7 +18,7 @@ from django.db.models import fields
 from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-import
 from django.db import models
 from django.utils.encoding import smart_text
-from django.utils.six import string_types
+from six import string_types
 
 from salesforce.backend.operations import DefaultedOnCreate
 
