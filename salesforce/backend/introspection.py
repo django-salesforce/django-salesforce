@@ -138,14 +138,17 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
                 # use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
                 params['sf_read_only'] = reverse_models_names[sf_read_only]
-            if field['defaultValue'] is not None:
+            if field['defaultedOnCreate']:
+                if field['defaultValue'] is None:
+                    params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
+                else:
+                    params['default'] = SymbolicModelsName('DefaultedOnCreate', field['defaultValue'])
+            elif field['defaultValue'] is not None:
                 params['default'] = field['defaultValue']
             if field['inlineHelpText']:
                 params['help_text'] = field['inlineHelpText']
             if field['picklistValues']:
                 params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
-            if field['defaultedOnCreate'] and field['createable']:
-                params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
             if field['type'] == 'reference' and not field['referenceTo']:
                 params['ref_comment'] = 'No Reference table'
                 field['type'] = 'string'
@@ -273,11 +276,14 @@ class SymbolicModelsName(object):
     >>> [SymbolicModelsName('READ_ONLY')]
     [models.READ_ONLY]
     """
-    def __init__(self, name):
+    def __init__(self, name, arg=None):
         self.name = 'models.%s' % name
         # it is imported from salesforce.fields due to dependencies,
         # but it is the same as in salesforce.models
         self.value = getattr(salesforce.fields, name)
+        if arg is not None:
+            self.name = '{}({})'.format(self.name, repr(arg))
+            self.value = self.value(arg)
 
     def __repr__(self):
         return self.name

@@ -110,5 +110,10 @@ class DefaultedOnCreate(object):
                 db_column='OwnerId')
     """
     # pylint:disable=too-few-public-methods
+    def __init__(self, arg=None):
+        self.arg = arg
+
     def __str__(self):
-        return 'DEFAULTED_ON_CREATE'
+        if self.arg is None:
+            return 'DEFAULTED_ON_CREATE'
+        return 'DefaultedOnCreate({})'.format(repr(self.arg))
