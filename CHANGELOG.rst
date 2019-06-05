@@ -17,7 +17,7 @@ experimental.
 Unreleased
 ----------
 
-* Fixed: filter for objects with no chilren rows (missing test)
+* Fixed: filter for objects with no children rows (missing test)
 
 * Added: lookup ``.filter(...__not_in=subquery)``' and 'not_eq',
   because of unsupported ``.exclude(...__in=subquery)``.
@@ -33,7 +33,7 @@ Unreleased
 * Added: ``salesforce.models_extend`` module with SalesforceModel with
   varchar primary key that works also with ``default`` databases.
   Fixed methods for it: save() and ``bulk_create()`` to can create a new
-  pk or to copy an object exacctly. Fixed #231
+  pk or to copy an object exactly. Fixed #231
 
 * Fixed: test setUpClass to can run tests on an empty Salesforce database.
 
