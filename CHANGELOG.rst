@@ -16,7 +16,26 @@ experimental.
 
 Unreleased
 ----------
+
 * Fixed: filter for objects with no chilren rows (missing test)
+
+* Added: lookup ``.filter(...__not_in=subquery)``' and 'not_eq',
+  because of unsupported ``.exclude(...__in=subquery)``.
+
+* Added: command ``ping_connection`` that automatic called after every
+  longer inactivity to minimize timeouts. Fixed #174
+
+* Fixed: ``makemigrations`` works now also without db_table name e.g. for
+  simple standard objects.
+
+* Fixed: bug ``.using('salesforce')`` in ``default`` database queryset.
+
+* Added: ``salesforce.models_extend`` module with SalesforceModel with
+  varchar primary key that works also with ``default`` databases.
+  Fixed methods for it: save() and ``bulk_create()`` to can create a new
+  pk or to copy an object exacctly. Fixed #231
+
+* Fixed: test setUpClass to can run tests on an empty Salesforce database.
 
 
 [0.8.1] 2019-05-22
