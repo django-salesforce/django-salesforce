@@ -124,7 +124,7 @@ class SalesforceAuth(AuthBase):
 
     def __call__(self, r):
         """Standard auth hook on the "requests" request r"""
-        access_token = self.get_auth()['access_token']
+        access_token = self.get_auth().get('access_token', '')
         r.headers['Authorization'] = 'OAuth %s' % access_token
         return r
 
@@ -135,7 +135,7 @@ class SalesforceAuth(AuthBase):
             # any password or permanent permission for it from the user.
             raise DatabaseError("Dynamically authenticated connection can never reauthenticate.")
         self.del_token()
-        return self.get_auth()['access_token']
+        return self.get_auth().get('access_token', '')
 
     @property
     def instance_url(self):
