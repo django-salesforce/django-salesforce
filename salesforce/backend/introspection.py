@@ -38,6 +38,8 @@ PROBLEMATIC_OBJECTS = [
     'LogoutEventStream',  # new in API 46.0 Summer '19
     'AsyncOperationEvent',  # new in API 46.0 Summer '19
     'AsyncOperationStatus',  # new in API 46.0 Summer '19
+    'DatasetExportEvent', 'VisibilityUpdateEvent',  # new in API 46.0 Summer '19 - missing 'Id'
+    'FlowExecutionErrorEvent',  # new in API 47.0 Winter '20 - missing 'Id'
 ]
 
 # these global variables are for `salesforce.management.commands.inspectdb`
@@ -103,7 +105,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
             self._table_list_cache['sobjects'] = [
                 x for x in self._table_list_cache['sobjects']
-                if x['name'] not in PROBLEMATIC_OBJECTS
+                if x['name'] not in PROBLEMATIC_OBJECTS and not x['name'].endswith('ChangeEvent')
             ]
         return self._table_list_cache
 
