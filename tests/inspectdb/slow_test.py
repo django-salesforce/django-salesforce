@@ -36,7 +36,7 @@ def run():
     n_tables = n_read = n_no_data = n_read_errors = n_write = n_write_errors = 0
     sf.cursor()  # this must connect manually  # TODO fix it automatically if reasonable
     for tab in sf.introspection.table_list_cache['sobjects']:
-        if tab['retrieveable'] and not tab['name'] in (
+        if tab['retrieveable'] and not tab['name'].endswith('ChangeEvent') and not tab['name'] in (
                 # These require specific filters (descried in their error messages)
                 'CollaborationGroupRecord', 'ContentFolderMember', 'ContentFolderItem',
                 'ContentDocumentLink', 'Idea', 'IdeaComment', 'UserProfileFeed',
@@ -94,7 +94,7 @@ def run():
                     # A special user of type user_type='AutomatedProcess' exists in Users
                     # since API 41.0 Winter'18.
                     # That user account can not be saved because it has an invalid email.
-                    'User',
+                    'User', 'UserLogin',
             ):
                 stdout.write('(write) ')
                 try:
