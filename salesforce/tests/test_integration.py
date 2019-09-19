@@ -957,7 +957,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         # with self.lazy_assert_n_requests(2):  # problem - Why too much requests?
         # raw query must contain the primary key (with the right capitalization, currently)
         with self.lazy_assert_n_requests(1):  # TODO why two requests?
-            ret = list(Contact.objects.raw("select Id from Contact"))
+            ret = list(Contact.objects.raw("select Id from Contact limit 2000"))
         with self.lazy_assert_n_requests(1):
             last_name = ret[0].last_name
         self.assertTrue(last_name and 'last' not in last_name.lower())

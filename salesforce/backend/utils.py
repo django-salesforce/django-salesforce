@@ -196,7 +196,7 @@ class CursorWrapper(object):
                 # SELECT
                 self.rowcount = data['totalSize']
             # a successful INSERT query, return after getting PK
-            elif('success' in data and 'id' in data):
+            elif 'success' in data and 'id' in data:
                 self.lastrowid = data['id']
                 return
             elif 'compositeResponse' in data:
