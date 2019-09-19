@@ -792,7 +792,7 @@ register_conversion(str,             json_conv=lambda o: o,             sql_conv
 register_conversion(bool,            json_conv=lambda s: str(s).lower())
 register_conversion(datetime.date,   json_conv=lambda d: datetime.date.strftime(d, "%Y-%m-%d"))
 register_conversion(datetime.datetime, json_conv=date_literal)
-register_conversion(datetime.time,   json_conv=lambda d: datetime.time.strftime(d, "%H:%M:%S.%f"))
+register_conversion(datetime.time,   json_conv=lambda d: datetime.time.strftime(d, "%H:%M:%S.%fZ"))
 register_conversion(decimal.Decimal, json_conv=float, subclass=True)
 # the type models.Model is registered from backend, because it is a Django type
 # pylint:enable=bad-whitespace
