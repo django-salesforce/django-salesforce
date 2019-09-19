@@ -12,6 +12,7 @@ import itertools
 import django.db.backends.utils
 from django.utils.deconstruct import deconstructible
 from django.db.backends.base.operations import BaseDatabaseOperations
+from salesforce.backend import DJANGO_30_PLUS
 
 BULK_BATCH_SIZE = 200
 
@@ -55,11 +56,24 @@ class DatabaseOperations(BaseDatabaseOperations):
     def last_insert_id(self, cursor, table_name, pk_name):
         return cursor.lastrowid
 
-    def fetch_returned_insert_id(self, cursor):
-        return cursor.lastrowid
+    if DJANGO_30_PLUS:
 
-    def fetch_returned_insert_ids(self, cursor):
-        return cursor.lastrowid
+        def fetch_returned_insert_columns(self, cursor):
+            return [cursor.lastrowid]
+
+        def fetch_returned_insert_rows(self, cursor):
+            return [[x] for x in cursor.lastrowid]
+
+        def return_insert_columns(self, fields):
+            return '', ()  # dummy result
+
+    else:
+
+        def fetch_returned_insert_id(self, cursor):
+            return cursor.lastrowid
+
+        def fetch_returned_insert_ids(self, cursor):
+            return cursor.lastrowid
 
     # A method max_in_list_size(self) would be not a solution, because it is
     # restricted by a maximal size of SOQL.

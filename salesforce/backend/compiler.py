@@ -15,6 +15,7 @@ from django.db.models.sql.datastructures import EmptyResultSet
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # required for activation of lookups
+from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.driver import DatabaseError
 
 # pylint:no-else-return,too-many-branches,too-many-locals
@@ -384,29 +385,63 @@ class SalesforceWhereNode(sql_where.WhereNode):
 
 
 class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):
-    def execute_sql(self, return_id=False):
-        # copied from Django 1.11, except one line patch
-        assert not (
-            return_id and len(self.query.objs) != 1 and
-            not self.connection.features.can_return_ids_from_bulk_insert
-        )
-        self.return_id = return_id
-        with self.connection.cursor() as cursor:
-            # this line is the adde patch:
-            cursor.query = self.query
-            for sql, params in self.as_sql():
-                cursor.execute(sql, params)
-            if not (return_id and cursor):
-                return
-            if self.connection.features.can_return_ids_from_bulk_insert and len(self.query.objs) > 1:
-                return self.connection.ops.fetch_returned_insert_ids(cursor)
-            if self.connection.features.can_return_id_from_insert:
-                assert len(self.query.objs) == 1
-                return self.connection.ops.fetch_returned_insert_id(cursor)
-            return self.connection.ops.last_insert_id(
-                cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column
+    if DJANGO_30_PLUS:
+
+        def execute_sql(self, returning_fields=None):
+            # copied from Django 3.0, with one line patch
+            assert not (
+                returning_fields and len(self.query.objs) != 1 and
+                not self.connection.features.can_return_rows_from_bulk_insert
             )
-        return super(SQLInsertCompiler, self).execute_sql(return_id)
+            self.returning_fields = returning_fields
+            with self.connection.cursor() as cursor:
+                # this line is the added patch:
+                cursor.query = self.query
+                for sql, params in self.as_sql():
+                    cursor.execute(sql, params)
+                if not self.returning_fields:
+                    return []
+                if self.connection.features.can_return_rows_from_bulk_insert and len(self.query.objs) > 1:
+                    return self.connection.ops.fetch_returned_insert_rows(cursor)
+                if self.connection.features.can_return_columns_from_insert:
+                    if (
+                        len(self.returning_fields) > 1 and
+                        not self.connection.features.can_return_multiple_columns_from_insert
+                    ):
+                        raise NotSupportedError(
+                            'Returning multiple columns from INSERT statements is '
+                            'not supported on this database backend.'
+                        )
+                    assert len(self.query.objs) == 1
+                    return self.connection.ops.fetch_returned_insert_columns(cursor)
+                return [self.connection.ops.last_insert_id(
+                    cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column
+                )]
+
+    else:
+
+        def execute_sql(self, return_id=False):
+            # copied from Django 1.11, with one line patch
+            assert not (
+                return_id and len(self.query.objs) != 1 and
+                not self.connection.features.can_return_ids_from_bulk_insert
+            )
+            self.return_id = return_id
+            with self.connection.cursor() as cursor:
+                # this line is the added patch:
+                cursor.query = self.query
+                for sql, params in self.as_sql():
+                    cursor.execute(sql, params)
+                if not (return_id and cursor):
+                    return
+                if self.connection.features.can_return_ids_from_bulk_insert and len(self.query.objs) > 1:
+                    return self.connection.ops.fetch_returned_insert_ids(cursor)
+                if self.connection.features.can_return_id_from_insert:
+                    assert len(self.query.objs) == 1
+                    return self.connection.ops.fetch_returned_insert_id(cursor)
+                return self.connection.ops.last_insert_id(
+                    cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column
+                )
 
 
 class SQLDeleteCompiler(sql_compiler.SQLDeleteCompiler, SQLCompiler):
