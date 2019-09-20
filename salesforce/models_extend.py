@@ -1,7 +1,29 @@
+"""
+Module for models for a combined storage with a Salesforce and normal database.
+
+usage e.g.:
+  - Backup salesforce objects including its primary keys.
+  - Use the backup in queries, including ForeignKeys related correctly to the same database.
+  - Update the object in Salesfoce to the original values from backup object
+    if the primary key still exists in salesforce.
+  - Create a new non-salesforce object with an automatic uuid pk.
+  - Use it as a much faster alternative than "data sandbox refresh".
+
+The non-salesforce database uses a default uuid() key or a provided salesforce Id value.
+
+The module less supported in future Django versions or unsupported.
+
+Interesting not yet implemented ideas are:
+  - Use a normal Salesforce backup zip like a read-only database (list
+    of Salesforce objects that can be filtered and fast saved to a non-salesforce database
+    by bulk_create().
+  - Could be useful for tests with realistic data on a database with rollback.
+"""
+
 from django.db import models, router
 from six import string_types
 
-from salesforce.backend import manager, DJANGO_20_PLUS
+from salesforce.backend import manager, DJANGO_20_PLUS, DJANGO_30_PLUS
 from salesforce.backend.indep import get_sf_alt_pk
 from salesforce.models import *  # NOQA; pylint:disable=wildcard-import,unused-wildcard-import
 from salesforce.models import SalesforceAutoField, SalesforceModelBase, SF_PK, with_metaclass
@@ -10,6 +32,9 @@ from salesforce.router import is_sf_database
 
 class SfCharAutoField(SalesforceAutoField):
     """Auto field that allows Salesforce ID or UUID in an alternate database"""
+
+    # db_returning = False  # this was a simple fix for Django >= 3.0,
+    #                       # but a fix by "_do_insert()" is better.
 
     def get_internal_type(self):
         return None
@@ -54,3 +79,11 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
                                           using=using, update_fields=update_fields)
         if not isinstance(self.pk, string_types):
             raise ValueError("The primary key value is not assigned correctly")
+
+    if DJANGO_30_PLUS:
+
+        def _do_insert(self, manager, using, fields, returning_fields, raw):
+            # the check "is_sf_database(using)" is used for something unexpected
+            if self.pk and not is_sf_database(using):
+                returning_fields = []
+            return super(SalesforceModel, self)._do_insert(manager, using, fields, returning_fields, raw)
