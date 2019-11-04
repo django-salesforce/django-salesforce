@@ -24,4 +24,4 @@ install:
 script:
   - rstcheck README.rst
   - echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
-  - tox -r -e py36-dj30a,py27-dj111,py36-dj20,py36-dj21,py35-dj110
+  - tox -r -e py36-dj30b,py27-dj111,py36-dj20,py36-dj21,py35-dj110
