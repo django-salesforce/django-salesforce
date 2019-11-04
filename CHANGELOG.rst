@@ -37,6 +37,15 @@ Unreleased
 
 * Fixed: test setUpClass to can run tests on an empty Salesforce database.
 
+* Fixed: ``TimeField.save()`` regression on BusinessHours object. (Salesforce 47.0
+  Winter '20 started to apply a default time shift by Organization time zone on
+  TimeField.)
+
+* Fixed inspectbd to ignore some new objects in Salesforce 47.0 Winter '20
+  that are not a table.
+
+* Updated for Django 3.0 beta 1.
+
 
 [0.8.1] 2019-05-22
 ------------------
