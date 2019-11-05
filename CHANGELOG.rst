@@ -14,8 +14,8 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-Unreleased
-----------
+[0.9] 2019-11-04
+----------------
 
 * Fixed: filter for objects with no children rows (missing test)
 
