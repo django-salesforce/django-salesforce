@@ -17,10 +17,10 @@ before_install:
  - pyenv install --list
  - pyenv install --skip-existing 2.7.15
  - pyenv install --skip-existing 3.5.4
- - pyenv install --skip-existing 3.6.3
+ - pyenv install --skip-existing 3.6.7
 install:
   - pip install rstcheck setuptools_git tox tox-pyenv
-  - pyenv local 2.7.15 3.5.4 3.6.3
+  - pyenv local 2.7.15 3.5.4 3.6.7
 script:
   - rstcheck README.rst
   - echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
