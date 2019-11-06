@@ -246,6 +246,7 @@ class ChargentOrder(SalesforceModel):
     class Meta(SalesforceModel.Meta):
         db_table = 'ChargentOrders__ChargentOrder__c'
         custom = True
+        managed = False  # can not be managed if it eventually could not exist
 
     Name = models.CharField(max_length=255, db_column='Name')
     # example of automatically recognized name  db_column='ChargentOrders__Balance_Due__c'

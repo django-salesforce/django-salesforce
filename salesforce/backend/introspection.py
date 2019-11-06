@@ -173,6 +173,29 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             ))
         return result
 
+    def get_sequences(self, cursor, table_name, table_fields=()):
+        pk_col = self.get_primary_key_column(cursor, table_name)
+        return [{'table': table_name, 'column': pk_col}]
+
+    def get_key_columns(self, cursor, table_name):
+        """
+            (column_name, referenced_table_name, referenced_column_name)
+        """
+        key_columns = []
+        for name, item in self.get_constraints(self, cursor, table_name):
+            if not item['primary_key']:
+                key_columns.append((name, ) + item['foreign_key'])
+        return key_columns
+
+    def get_primary_key_column(self, cursor, table_name):
+        """
+        Return the name of the primary key column for the given table.
+        """
+        for constraint in self.get_constraints(cursor, table_name).values():
+            if constraint['primary_key']:
+                return constraint['columns'][0]
+        return None
+
     def get_relations(self, cursor, table_name):
         """
         Returns a dictionary of {field_index: (field_index_other_table, other_table)}
