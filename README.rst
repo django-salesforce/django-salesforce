@@ -261,8 +261,6 @@ here are the potential pitfalls and unimplemented operations:
    types on Salesforce must extend salesforce.models.SalesforceModel. The
    model router checks for this to determine which models to handle through
    the Salesforce connection.
--  **Multiple Deletes** — Multiple delete support is not yet
-   implemented.
 -  **Database Migrations** — ``migrate`` will only create new tables; in non-SF
    databases (useful for unit tests); SFDC classes are assumed to already
    exist with the appropriate permissions.

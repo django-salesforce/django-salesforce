@@ -566,8 +566,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             account_1.delete()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    def test_bulk_delete_and_all(self):
-        """Delete two Accounts one request.
+    def test_bulk_delete_and_update(self):
+        """Delete two Accounts by one request.
         """
         account_0, account_1 = [Account(Name='test' + uid), Account(Name='test' + uid)]
         account_0.save()
@@ -598,6 +598,10 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             if pks:
                 with self.lazy_assert_n_requests(1):
                     ret = Lead.objects.filter(pk__in=pks).delete()
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_bulk_delete_all(self):
+        PricebookEntry.objects.filter(pk__gt='').delete()
 
     def test_escape_single_quote(self):
         """Test single quotes in strings used in a filter

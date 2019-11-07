@@ -14,6 +14,11 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
+Unreleased
+----------
+* Fixed: SomeModel.objects.all().delete()
+
+
 [0.9] 2019-11-04
 ----------------
 

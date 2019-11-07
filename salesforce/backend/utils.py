@@ -315,7 +315,9 @@ class CursorWrapper(object):
         if not sql:
             # a subquery is necessary in this case
             where_sql, params = where.as_sql(query.get_compiler('salesforce'), self.db.connection)
-            sql = "SELECT Id FROM {} WHERE {}".format(query.model._meta.db_table, where_sql)
+            sql = "SELECT Id FROM {}".format(query.model._meta.db_table)
+            if where_sql:
+                sql += " WHERE {}".format(where_sql)
         with self.db.cursor() as cur:
             cur.execute(sql, params)
             assert len(cur.description) == 1 and cur.description[0][0] == 'Id'
