@@ -396,7 +396,7 @@ class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):
             self.returning_fields = returning_fields
             with self.connection.cursor() as cursor:
                 # this line is the added patch:
-                cursor.query = self.query
+                cursor.prepare_query(self.query)
                 for sql, params in self.as_sql():
                     cursor.execute(sql, params)
                 if not self.returning_fields:
@@ -429,7 +429,7 @@ class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):
             self.return_id = return_id
             with self.connection.cursor() as cursor:
                 # this line is the added patch:
-                cursor.query = self.query
+                cursor.prepare_query(self.query)
                 for sql, params in self.as_sql():
                     cursor.execute(sql, params)
                 if not (return_id and cursor):
