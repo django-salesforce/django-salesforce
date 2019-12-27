@@ -119,19 +119,21 @@ class Command(InspectDBCommand):
             else:
                 field_params.pop('db_column', None)
             if is_relation:
-                if col_name in sf_introspection.last_with_important_related_name:
+                last_introspection = sf_introspection.last_introspection
+                if col_name in last_introspection.important_related_names:
                     field_params['related_name'] = '%s_%s_set' % (
-                        sf_introspection.last_introspected_model.lower(),
+                        last_introspection.model_name.lower(),
                         new_name.replace('_', '')
                     )
-                if col_name in sf_introspection.last_read_only:
-                    field_params['sf_read_only'] = sf_introspection.last_read_only[col_name]
-                reference_to, relationship_order = sf_introspection.last_refs[col_name]
+                fields_map = last_introspection.fields_map[col_name].copy()
+                reference_to, relationship_order = fields_map.pop('refs')
                 if len(reference_to) > 1:
                     field_notes.append('Reference to tables [%s]' % (', '.join(reference_to)))
                 if relationship_order is not None:
                     # 0 = primary relationship, 1 = secondary relationship, * = any cascade delete
                     field_notes.append('Master Detail Relationship %s' % relationship_order)
+                # restrict the full output from "fields_map" to demonstrate the original incomlete output
+                field_params.update({k: v for k, v in fields_map.items() if k == 'sf_read_only'})
         else:
             new_name, field_params, field_notes = (super(Command, self)
                                                    .normalize_col_name(col_name, used_column_names, is_relation))

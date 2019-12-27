@@ -42,11 +42,15 @@ PROBLEMATIC_OBJECTS = [
     'FlowExecutionErrorEvent',  # new in API 47.0 Winter '20 - missing 'Id'
 ]
 
-# these global variables are for `salesforce.management.commands.inspectdb`
-last_introspected_model = None
-last_with_important_related_name = None  # pylint:disable=invalid-name
-last_read_only = None
-last_refs = None
+# this global variable is for `salesforce.management.commands.inspectdb`
+last_introspection = None
+
+
+class LastIntrospection:
+    def __init__(self, model_name, important_related_names, fields_map):
+        self.model_name = model_name
+        self.important_related_names = important_related_names
+        self.fields_map = fields_map
 
 
 class DatabaseIntrospection(BaseDatabaseIntrospection):
@@ -126,33 +130,39 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         result = [TableInfo(SfProtectName(x['name']), 't') for x in self.table_list_cache['sobjects']]
         return result
 
+    @staticmethod
+    def get_field_params(field):
+        params = OrderedDict()
+        if field['label'] and field['label'] != camel_case_to_spaces(re.sub('__c$', '', field['name'])).title():
+            params['verbose_name'] = field['label']
+        if not field['updateable'] or not field['createable']:
+            # Fields that are result of a formula or system fields modified
+            # by triggers or by other apex code
+            # use symbolic names NOT_UPDATEABLE, NOT_CREATABLE, READ_ONLY instead of 1, 2, 3
+            sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
+            params['sf_read_only'] = reverse_models_names[sf_read_only]
+        if field['defaultedOnCreate']:
+            if field['defaultValue'] is None:
+                params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
+            else:
+                params['default'] = SymbolicModelsName('DefaultedOnCreate', field['defaultValue'])
+        elif field['defaultValue'] is not None:
+            params['default'] = field['defaultValue']
+        if field['inlineHelpText']:
+            params['help_text'] = field['inlineHelpText']
+        if field['picklistValues']:
+            params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
+        if field['type'] == 'reference' and not field['referenceTo']:
+            params['ref_comment'] = 'No Reference table'
+        return params
+
     def get_table_description(self, cursor, table_name):
         "Returns a description of the table, with the DB-API cursor.description interface."
         # pylint:disable=too-many-locals,unused-argument
         result = []
         for field in self.table_description_cache(table_name)['fields']:
-            params = OrderedDict()
-            if field['label'] and field['label'] != camel_case_to_spaces(re.sub('__c$', '', field['name'])).title():
-                params['verbose_name'] = field['label']
-            if not field['updateable'] or not field['createable']:
-                # Fields that are result of a formula or system fields modified
-                # by triggers or by other apex code
-                sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
-                # use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
-                params['sf_read_only'] = reverse_models_names[sf_read_only]
-            if field['defaultedOnCreate']:
-                if field['defaultValue'] is None:
-                    params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
-                else:
-                    params['default'] = SymbolicModelsName('DefaultedOnCreate', field['defaultValue'])
-            elif field['defaultValue'] is not None:
-                params['default'] = field['defaultValue']
-            if field['inlineHelpText']:
-                params['help_text'] = field['inlineHelpText']
-            if field['picklistValues']:
-                params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
+            params = self.get_field_params(field)
             if field['type'] == 'reference' and not field['referenceTo']:
-                params['ref_comment'] = 'No Reference table'
                 field['type'] = 'string'
             if field['calculatedFormula']:
                 # calculated formula field are without length in Salesforce 45 Spring '19,
@@ -184,7 +194,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         key_columns = []
         for name, item in self.get_constraints(self, cursor, table_name):
             if not item['primary_key']:
-                key_columns.append((name, ) + item['foreign_key'])
+                key_columns.append((name,) + item['foreign_key'])
         return key_columns
 
     def get_primary_key_column(self, cursor, table_name):
@@ -204,15 +214,14 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         # pylint:disable=global-statement,too-many-locals,too-many-nested-blocks,unused-argument
         def table2model(table_name):
             return SfProtectName(table_name).title().replace(' ', '').replace('-', '')
-        global last_introspected_model, last_read_only, last_refs
-        global last_with_important_related_name  # pylint:disable=invalid-name
+        global last_introspection
         result = {}
         reverse = {}
-        last_with_important_related_name = []
-        last_read_only = {}
-        last_refs = {}
+        important_related_names = []
+        fields_map = {}
         for _, field in enumerate(self.table_description_cache(table_name)['fields']):
             if field['type'] == 'reference' and field['referenceTo']:
+                params = OrderedDict()
                 reference_to_name = SfProtectName(field['referenceTo'][0])
                 relationship_order = field['relationshipOrder']
                 if relationship_order is None:
@@ -224,13 +233,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                     assert len(relationship_tmp) <= 1
                     if True in relationship_tmp:
                         relationship_order = '*'
-                last_refs[field['name']] = (field['referenceTo'], relationship_order)
+                params['refs'] = (field['referenceTo'], relationship_order)
                 result[field['name']] = ('Id', reference_to_name)
                 reverse.setdefault(reference_to_name, []).append(field['name'])
-                if not field['updateable'] or not field['createable']:
-                    sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
-                    # use symbolic names NOT_UPDATEABLE, NON_CREATABLE, READ_ONLY instead of 1, 2, 3
-                    last_read_only[field['name']] = reverse_models_names[sf_read_only]
+                params.update(self.get_field_params(field))
+                fields_map[field['name']] = params
         for ref, ilist in reverse.items():
             # Example of back_collision: a class Aaa has a ForeignKey to a class
             # Bbb and the class Bbb has any field with the name 'aaa'.
@@ -241,8 +248,12 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                           ).replace('_', '').lower() == table2model(table_name).lower()]
             # add `related_name` only if necessary
             if len(ilist) > 1 or back_name_collisions:
-                last_with_important_related_name.extend(ilist)
-        last_introspected_model = table2model(table_name)
+                important_related_names.extend(ilist)
+        last_introspection = LastIntrospection(
+                model_name=table2model(table_name),
+                important_related_names=important_related_names,
+                fields_map=fields_map,
+        )
         return result
 
     def get_constraints(self, cursor, table_name):
