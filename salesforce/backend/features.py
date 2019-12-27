@@ -36,10 +36,11 @@ class DatabaseFeatures(BaseDatabaseFeatures):
         can_return_ids_from_bulk_insert = True
 
     # TODO These options are the only from Django 2.2 that can be useful
-    #      for something implemented here in future: Atomic, SFDX, Explain
+    #      for something implemented here in future: Atomic, SFDX
     # autocommits_when_autocommit_is_off = True
     # ignores_table_name_case = True
-    # supported_explain_formats = set()
+
+    supported_explain_formats = set('JSON')
 
     # Though Salesforce doesn't support transactions, the setting
     # `supports_transactions` is used only for switching between rollback or

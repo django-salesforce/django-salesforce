@@ -11,6 +11,7 @@ import datetime
 import decimal
 import json
 import logging
+import pprint
 import re
 import socket
 import sys
@@ -396,7 +397,7 @@ class RawConnection(object):
             resp = self.handle_api_exceptions(method, 'composite/sobjects', json=post_data)
         resp_data = resp.json()
 
-        x_ok, x_err, x_roll = self._group_results(resp_data, records, all_or_none)
+        x_ok, x_err, x_roll = self._group_results(resp_data, records, all_or_none)  # pylint:disable=unused-variable
         is_ok = not x_err
         if is_ok:
             return [x['id'] for i, x in x_ok]  # for .lastrowid
@@ -528,6 +529,8 @@ class Cursor(object):
         sqltype = soql.split(None, 1)[0].upper()
         if sqltype == 'SELECT':
             self.execute_select(soql, parameters, query_all=query_all)
+        elif sqltype == 'EXPLAIN':
+            self.execute_explain(soql, parameters, query_all=query_all)
         else:
             # INSERT UPDATE DELETE EXPLAIN
             raise ProgrammingError("Unexpected command '{}'".format(sqltype))
@@ -623,6 +626,19 @@ class Cursor(object):
             self.handle = self._next_records_url.split('-')[0]
         self._iter = iter(self._gen())
 
+    def execute_explain(self, soql, parameters, query_all=False):
+        # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/dome_query_explain.htm
+        assert soql.startswith('EXPLAIN SELECT')
+        soql = soql.split(' ', 1)[1]
+        processed_sql = str(soql) % tuple(arg_to_soql(x) for x in parameters)
+        service = 'query' if not query_all else 'queryAll'
+
+        self.qquery = QQuery(soql)
+        self.description = [('detail', None, None, None, 'detail')]
+        url_part = '?'.join((service, urlencode(dict(explain=processed_sql))))
+        ret = self.handle_api_exceptions('GET', url_part)
+        self._iter = iter([[x] for x in pprint.pformat(ret.json(), indent=1, width=100).split('\n')])
+
     def query_more(self, nextRecordsUrl):  # pylint:disable=invalid-name
         self._check()
         ret = self.handle_api_exceptions('GET', nextRecordsUrl).json()
@@ -672,7 +688,6 @@ def standard_errorhandler(connection, cursor, errorclass, errorvalue):
 
 
 def verbose_error_handler(connection, cursor, errorclass, errorvalue):  # pylint:disable=unused-argument
-    import pprint
     pprint.pprint(errorvalue.__dict__)
 
 
