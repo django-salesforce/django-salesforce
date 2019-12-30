@@ -132,8 +132,7 @@ class Command(InspectDBCommand):
                 if relationship_order is not None:
                     # 0 = primary relationship, 1 = secondary relationship, * = any cascade delete
                     field_notes.append('Master Detail Relationship %s' % relationship_order)
-                # restrict the full output from "fields_map" to demonstrate the original incomlete output
-                field_params.update({k: v for k, v in fields_map.items() if k == 'sf_read_only'})
+                field_params.update(fields_map)
         else:
             new_name, field_params, field_notes = (super(Command, self)
                                                    .normalize_col_name(col_name, used_column_names, is_relation))
