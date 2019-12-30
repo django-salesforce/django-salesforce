@@ -141,7 +141,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             # use symbolic names NOT_UPDATEABLE, NOT_CREATABLE, READ_ONLY instead of 1, 2, 3
             sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
             params['sf_read_only'] = reverse_models_names[sf_read_only]
-        if field['defaultedOnCreate']:
+        if field['defaultedOnCreate'] and field['createable']:
             if field['defaultValue'] is None:
                 params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
             else:
