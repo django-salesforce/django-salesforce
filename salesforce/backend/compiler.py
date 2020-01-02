@@ -9,9 +9,9 @@
 Generate queries using the SOQL dialect.  (like django.db.models.sql.compiler and  django.db.models.sql.where)
 """
 import re
+from django.core.exceptions import EmptyResultSet
 from django.db import NotSupportedError
 from django.db.models.sql import compiler as sql_compiler, where as sql_where, constants, AND
-from django.db.models.sql.datastructures import EmptyResultSet
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # required for activation of lookups
