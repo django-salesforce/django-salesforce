@@ -13,12 +13,27 @@ from django.db.models.sql import subqueries, Query, RawQuery
 from six import text_type
 
 import salesforce
-from salesforce.backend import DJANGO_111_PLUS
+from salesforce.backend import DJANGO_111_PLUS, DJANGO_30_PLUS
 from salesforce.backend.operations import DefaultedOnCreate
 from salesforce.dbapi.driver import (
     DatabaseError, merge_dict,
     register_conversion, arg_to_json, SALESFORCE_DATETIME_FORMAT)
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
+
+if DJANGO_30_PLUS:
+    from django.utils.asyncio import async_unsafe
+else:
+    def async_unsafe(message):
+        def decorator(func):
+            return func
+
+        # If the message is actually a function, then be a no-arguments decorator.
+        if callable(message):
+            func = message
+            message = 'You cannot call this from an async context - use a thread or sync_to_async.'
+            return decorator(func)
+        else:
+            return decorator
 
 log = logging.getLogger(__name__)
 

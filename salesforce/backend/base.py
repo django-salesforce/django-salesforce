@@ -22,7 +22,7 @@ from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.schema import DatabaseSchemaEditor
 # from django.db.backends.signals import connection_created
-from salesforce.backend.utils import CursorWrapper
+from salesforce.backend.utils import CursorWrapper, async_unsafe
 from salesforce.dbapi import driver as Database
 from salesforce.dbapi.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA pylint:disable=unused-import
 
@@ -103,6 +103,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         params.update(settings_dict['OPTIONS'])
         return params
 
+    @async_unsafe
     def get_new_connection(self, conn_params):
         # only simulated a connection interface without connecting really
         return Database.connect(settings_dict=conn_params, alias=self.alias)
@@ -129,6 +130,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" %
                                        (self.alias, exc))
 
+    @async_unsafe
     def cursor(self):
         """
         Return a fake cursor for accessing the Salesforce API with SOQL.
