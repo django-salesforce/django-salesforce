@@ -205,7 +205,7 @@ class DecimalField(SfField, models.DecimalField):
                 ret = Decimal(int(ret))
         return ret
 
-    # parameter "context" is for Django 1.11 and older  (the same is in more classes here)
+    # parameter "context" is for Django <= 1.11, removed in Django 3.0 (the same is in more classes here)
     def from_db_value(self, value, expression, connection, context=None):
         # pylint:disable=unused-argument
         # TODO refactor and move to the driver like in other backends

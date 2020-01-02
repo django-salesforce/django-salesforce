@@ -58,7 +58,8 @@ class DatabaseOperations(BaseDatabaseOperations):
 
     if DJANGO_30_PLUS:
 
-        def fetch_returned_insert_columns(self, cursor):
+        def fetch_returned_insert_columns(self, cursor, returning_params=None):
+            # the parameter "returning_params" is for Django 3.1
             return [cursor.lastrowid]
 
         def fetch_returned_insert_rows(self, cursor):
@@ -74,6 +75,9 @@ class DatabaseOperations(BaseDatabaseOperations):
 
         def fetch_returned_insert_ids(self, cursor):
             return cursor.lastrowid
+
+        def return_insert_id(self):
+            return "", ()
 
     # A method max_in_list_size(self) would be not a solution, because it is
     # restricted by a maximal size of SOQL.
@@ -101,8 +105,12 @@ class DatabaseOperations(BaseDatabaseOperations):
     def bulk_insert_sql(self, fields, placeholder_rows):
         return "VALUES " + ", ".join(itertools.chain(*placeholder_rows))
 
-    def return_insert_id(self):
-        return "", ()
+    def conditional_expression_supported_in_where_clause(self, expression):
+        """
+        All filter elements in a WHERE clause must be a field compared with value.
+        The same is necessary for boolean fields, e.g. IsActive=true
+        """
+        False
 
 
 @deconstructible
