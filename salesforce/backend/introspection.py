@@ -21,11 +21,10 @@ from django.utils.text import camel_case_to_spaces
 import simplejson  # NOQA pylint:disable=unused-import
 
 import salesforce.fields
-from salesforce.backend import DJANGO_111_PLUS
 
 log = logging.getLogger(__name__)
 
-field_info_fields = BaseFieldInfo._fields + (() if DJANGO_111_PLUS else ('default',)) + ('params',)
+field_info_fields = BaseFieldInfo._fields + ('params',)
 FieldInfo = namedtuple('FieldInfo', field_info_fields)  # pylint:disable=invalid-name
 
 # these sObjects are not tables - ignore them

@@ -7,10 +7,10 @@ django-salesforce
 .. image:: https://badge.fury.io/py/django-salesforce.svg
    :target: https://pypi.python.org/pypi/django-salesforce
 
-.. image:: https://img.shields.io/badge/Python-2.7.9%2B%2C%203.4%2C%203.5%2C%203.6%2C%203.7-brightgreen.svg
+.. image:: https://img.shields.io/badge/Python-2.7.9%2B%2C%203.5%2C%203.6%2C%203.7-brightgreen.svg
    :target: https://www.python.org/
 
-.. image:: https://img.shields.io/badge/Django-1.10%2C%201.11%2C%202.0%2C%202.1-blue.svg
+.. image:: https://img.shields.io/badge/Django-1.11%2C%202.0%2C%202.1%2C%202.2%2C%203.0-blue.svg
    :target: https://www.djangoproject.com/
 
 This library allows you to load and edit the objects in any Salesforce instance
@@ -19,7 +19,7 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 2.7.9+, 3.4 to 3.8, Django 1.10, 1.11, 2.0 to 3.0.
+Python 2.7.9+, 3.5 to 3.8, Django 1.11, 2.0 to 3.0.
 
 Pre-2.7.9 Python versions don't support the protocol TLS 1.1+ required
 by Salesforce. New PyPy versions compatible with TLS 1.1+ are supported also.

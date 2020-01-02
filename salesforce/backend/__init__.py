@@ -33,19 +33,18 @@ import re
 
 import django
 
-DJANGO_111_PLUS = django.VERSION[:2] >= (1, 11)
 DJANGO_20_PLUS = django.VERSION[:2] >= (2, 0)
 DJANGO_21_PLUS = django.VERSION[:2] >= (2, 1)
 DJANGO_22_PLUS = django.VERSION[:2] >= (2, 2)
 DJANGO_30_PLUS = django.VERSION[:2] >= (3, 0)
 is_dev_version = django.VERSION[3:] and re.match('(alpha|beta|rc)', django.VERSION[3])
-if django.VERSION[:2] < (1, 10) or django.VERSION[:2] > (3, 0) and not is_dev_version:
+if django.VERSION[:2] < (1, 11) or django.VERSION[:2] > (3, 0) and not is_dev_version:
     # Usually three or more blocking issues can be expected by every
     # new major Django version. Strict check before support is better.
 
     # New Django development versions are enabled without any restriction, but
     # new stable Django versions must be verified before they can be enabled here.
-    raise ImportError("Django version between 1.10 and 2.2 is required "
+    raise ImportError("Django version between 1.11 and 2.2 is required "
                       "for this django-salesforce.")
 
 
