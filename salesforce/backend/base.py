@@ -13,7 +13,6 @@ from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.db.backends.base.base import BaseDatabaseWrapper
 
-from salesforce.backend import DJANGO_111_PLUS
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.features import DatabaseFeatures
@@ -66,14 +65,13 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     Database = Database
     SchemaEditorClass = DatabaseSchemaEditor
 
-    if DJANGO_111_PLUS:
-        # Classes instantiated in __init__().
-        client_class = DatabaseClient
-        creation_class = DatabaseCreation
-        features_class = DatabaseFeatures
-        introspection_class = DatabaseIntrospection
-        ops_class = DatabaseOperations
-        validation_class = DatabaseValidation
+    # Classes instantiated in __init__().
+    client_class = DatabaseClient
+    creation_class = DatabaseCreation
+    features_class = DatabaseFeatures
+    introspection_class = DatabaseIntrospection
+    ops_class = DatabaseOperations
+    validation_class = DatabaseValidation
 
     def __init__(self, settings_dict, alias=None):
         if alias is None:
@@ -82,13 +80,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
         self.validate_settings(settings_dict)
 
-        if not DJANGO_111_PLUS:
-            self.features = DatabaseFeatures(self)
-            self.ops = DatabaseOperations(self)
-            self.client = DatabaseClient(self)
-            self.creation = DatabaseCreation(self)
-            self.introspection = DatabaseIntrospection(self)
-            self.validation = DatabaseValidation(self)
         self._is_sandbox = None
 
     @property

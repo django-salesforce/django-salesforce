@@ -1,5 +1,5 @@
 # All error types described in DB API 2 are implemented the same way as in
-# Django (1.10 to 2.18)., otherwise some exceptions are not correctly reported in it.
+# Django (1.11 to 3.0)., otherwise some exceptions are not correctly reported in it.
 import json
 import sys
 import warnings

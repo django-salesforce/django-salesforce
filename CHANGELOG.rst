@@ -16,6 +16,8 @@ experimental.
 
 Unreleased
 ----------
+* Remove: Support for Django 1.10 (incompatible)
+* Remove: Support for Python 3.4 (not tested anymore)
 * Fixed: SomeModel.objects.all().delete()
 
 

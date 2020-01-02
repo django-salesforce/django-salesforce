@@ -29,7 +29,6 @@ class SQLCompiler(sql_compiler.SQLCompiler):
 
     def __init__(self, *args, **kwargs):
         super(SQLCompiler, self).__init__(*args, **kwargs)
-        self.subquery = None
         self.root_aliases = []
 
     def get_from_clause(self):
@@ -105,8 +104,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         return result
         # pylint:enable=no-else-return
 
-    def as_sql(self, with_limits=True, with_col_aliases=False, subquery=False):  # pylint:disable=arguments-differ
-        # the argument `subquery` is only for old Django 1.10
+    def as_sql(self, with_limits=True, with_col_aliases=False):  # pylint:disable=arguments-differ
         # pylint:disable=too-many-locals,too-many-branches,too-many-statements
         """
         Creates the SQL for this query. Returns the SQL string and list of
@@ -122,7 +120,6 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         # another run of it.
         if with_limits and self.query.low_mark == self.query.high_mark:
             return '', ()
-        self.subquery = subquery
         refcounts_before = self.query.alias_refcount.copy()
         try:
             extra_select, order_by, group_by = self.pre_sql_setup()
@@ -374,7 +371,7 @@ class SalesforceWhereNode(sql_where.WhereNode):
                 # *** patch 3 end
 
             # *** patch 4 (combine two versions into one compatible) begin
-            # elif len(result) > 1:                                    # Django 1.10, 1.11
+            # elif len(result) > 1:                                    # Django 1.11
             # elif len(result) > 1 or self.resolved:                   # Django 2.0, 2.1
             elif len(result) > 1 or getattr(self, 'resolved', False):  # compatible code
                 # *** patch 4 end

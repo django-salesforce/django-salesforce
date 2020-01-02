@@ -12,8 +12,7 @@ from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
 from six import text_type
 
-import salesforce
-from salesforce.backend import DJANGO_111_PLUS, DJANGO_30_PLUS
+from salesforce.backend import DJANGO_30_PLUS
 from salesforce.backend.operations import DefaultedOnCreate
 from salesforce.dbapi.driver import (
     DatabaseError, merge_dict,
@@ -318,15 +317,11 @@ class CursorWrapper(object):
                 assert not child.bilateral_transforms
                 if isinstance(pks, (tuple, list)):
                     return pks
-                if DJANGO_111_PLUS:
-                    assert isinstance(pks, Query) and type(pks).__name__ == 'SalesforceQuery'
-                    # # alternative solution:
-                    # return list(salesforce.backend.query.SalesforceQuerySet(pk.model, query=pk, using=pk._db))
+                assert isinstance(pks, Query) and type(pks).__name__ == 'SalesforceQuery'
+                # # alternative solution:
+                # return list(salesforce.backend.query.SalesforceQuerySet(pk.model, query=pk, using=pk._db))
 
-                    sql, params = pks.get_compiler('salesforce').as_sql()
-                else:
-                    assert isinstance(pks, salesforce.backend.query.SalesforceQuerySet)
-                    return [x.pk for x in pks]
+                sql, params = pks.get_compiler('salesforce').as_sql()
         if not sql:
             # a subquery is necessary in this case
             where_sql, params = where.as_sql(query.get_compiler('salesforce'), self.db.connection)

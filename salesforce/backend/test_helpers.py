@@ -14,7 +14,7 @@ from salesforce.dbapi.test_helpers import (  # NOQA pylint:disable=unused-import
 
 # uid strings for tests that accidentally run concurrent
 uid_random = '-' + str(uuid.uuid4())[:7]
-# this is the same as the name of tox test environment, e.g. 'py35-dj110'
+# this is the same as the name of tox test environment, e.g. 'py38-dj30'
 uid_version = 'py{0}{1}-dj{2}{3}'.format(*(sys.version_info[:2] + django.VERSION[:2]))
 
 sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
