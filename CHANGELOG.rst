@@ -18,6 +18,11 @@ Unreleased
 ----------
 * Remove: Support for Django 1.10 (incompatible)
 * Remove: Support for Python 3.4 (not tested anymore)
+* Fix: Support for Django Debug Toolbar - including EXPLAIN commend
+* Fix: Export attributes "verbose_name", "help_text" and "default=DEFAULTED_ON_CREATE"
+  also for ForeignKey by inspectdb.
+* Fix: Don't export DEFAULTED_ON_CREATE excessively for not createable fields.
+* Fix: Error handling in bulk delete
 * Fixed: SomeModel.objects.all().delete()
 
 
