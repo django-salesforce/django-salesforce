@@ -371,10 +371,14 @@ class RawConnection(object):
             elif x['errors'][0]['statusCode'] in ('PROCESSING_HALTED', 'ALL_OR_NONE_OPERATION_ROLLED_BACK'):
                 x_roll.append((i, x))
             else:
-                bad_id = [v for k, v in records[i].items() if k.lower() == 'id']
-                x_err.append((i, x['errors'], records[i]['attributes']['type'], bad_id[0] if bad_id else None))
+                if isinstance(records[i], dict):
+                    bad_id = [v for k, v in records[i].items() if k.lower() == 'id']
+                    x_err.append((i, x['errors'], records[i]['attributes']['type'], bad_id[0] if bad_id else None))
+                else:
+                    x_err.append((i, x['errors'], 'unknown_type', records[i]))
         if all_or_none:
-            assert not x_err and not x_roll or not x_ok and len(x_err) == 1
+            # more errors can be reported even with all_or_none, but sometimes only the first concrete error
+            assert not x_err and not x_roll or not x_ok and len(x_err) > 0
         else:
             assert not x_roll
         return x_ok, x_err, x_roll
