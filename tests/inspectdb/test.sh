@@ -30,12 +30,16 @@ if python manage.py inspectdb --database=salesforce --traceback >tests/inspectdb
     RESULT_3=$?
 
     echo "*** dependent dynamic model test ***"
+    sed 's/import models$/import models_template as models/' tests/inspectdb/models.py \
+        >tests/inspectdb/dependent_model/models_template.py
+    DJANGO_SETTINGS_MODULE=tests.inspectdb.dependent_model.settings python manage.py check
+    RESULT_4=$?
     DJANGO_SETTINGS_MODULE=tests.inspectdb.dependent_model.settings python -m unittest tests.inspectdb.dependent_model.test
     #python manage.py test --settings=tests.inspectdb.settings tests.inspectdb
-    RESULT_4=$?
+    RESULT_5=$?
 
     echo -en "\nSummary: "
-    if [ $RESULT_1 == 0 -a $RESULT_2 == 0 -a $RESULT_3 == 0 -a $RESULT_4 == 0 ]; then
+    if [ $RESULT_1 == 0 -a $RESULT_2 == 0 -a $RESULT_3 == 0 -a $RESULT_4 == 0 -a $RESULT_5 == 0 ]; then
         echo OK
     else
         echo ERROR

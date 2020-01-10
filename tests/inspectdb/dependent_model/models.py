@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from salesforce import models
 
-from tests.inspectdb import models as models_template
+from tests.inspectdb.dependent_model import models_template
 
 
 class User(models.Model):

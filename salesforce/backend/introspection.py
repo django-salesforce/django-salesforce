@@ -24,6 +24,7 @@ import salesforce.fields
 
 log = logging.getLogger(__name__)
 
+# the last element 'params' is our extension for Salesforce
 field_info_fields = BaseFieldInfo._fields + ('params',)
 FieldInfo = namedtuple('FieldInfo', field_info_fields)  # pylint:disable=invalid-name
 
@@ -167,6 +168,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 # calculated formula field are without length in Salesforce 45 Spring '19,
                 # but Django requires a length, though the field is read only and never written
                 field['length'] = 1300
+            elif field['name'] == 'Field' and table_name == 'FieldPermissions':
+                field['length'] = 255
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
             result.append(FieldInfo(
