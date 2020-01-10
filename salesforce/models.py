@@ -27,12 +27,13 @@ from six import with_metaclass
 
 from salesforce.backend import manager, DJANGO_20_PLUS
 from salesforce.fields import SalesforceAutoField, SF_PK, SfField, ForeignKey
-from salesforce.fields import DEFAULTED_ON_CREATE, NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
+from salesforce.fields import DefaultedOnCreate, DEFAULTED_ON_CREATE
+from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
 from salesforce.fields import *  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 from salesforce.backend.indep import LazyField
 
 __all__ = ('SalesforceModel', 'Model', 'DEFAULTED_ON_CREATE', 'PROTECT', 'DO_NOTHING', 'SF_PK', 'SfField',
-           'NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY')
+           'NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY', 'DefaultedOnCreate')
 
 log = logging.getLogger(__name__)
 

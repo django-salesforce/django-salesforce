@@ -18,6 +18,7 @@ htmlcov/
 coverage_html/
 log
 tests/inspectdb/models.py
+tests/inspectdb/dependent_model/models_template.py
 salesforce/packages/
 venv
 tests/x_*/
