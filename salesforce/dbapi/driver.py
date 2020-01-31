@@ -402,8 +402,13 @@ class RawConnection(object):
 
         width_type = max(len(type_) for i, errs, type_, id_ in x_err)
         width_type = max(width_type, len('sobject'))
-        messages = ['', 'index {} sobject{:{width}s}error_info'.format(
-            ('ID' + 16 * ' ' if x_err[0][3] else ''), '', width=(width_type + 2 - len('sobject')))]
+        messages = [
+            '(see details below)',
+            '',
+            'Error Summary: errors={}, rollback/cancel={}, success={}'.format(len(x_err), len(x_roll), len(x_ok)),
+            'index {} sobject{:{width}s}error_info'.format(
+                ('ID' + 16 * ' ' if x_err[0][3] else ''), '', width=(width_type + 2 - len('sobject')))
+        ]
         for i, errs, type_, id_ in x_err:
             field_info = 'FIELDS: {}'.format(errs[0]['fields']) if errs[0].get('fields') else ''
             msg = '{:5d} {} {:{width_type}s}  {}: {} {}'.format(
