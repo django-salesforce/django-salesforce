@@ -20,6 +20,7 @@ import django
 from salesforce.backend.indep import get_sf_alt_pk
 from salesforce.backend import compiler, DJANGO_22_PLUS, DJANGO_30_PLUS
 from salesforce.backend.models_sql_query import SalesforceQuery
+from salesforce.backend.operations import BULK_BATCH_SIZE
 from salesforce.router import is_sf_database
 import salesforce.backend.utils
 
@@ -84,6 +85,15 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
                 if x.pk is None:
                     x.pk = get_sf_alt_pk()
         return super().bulk_create(objs, batch_size=batch_size, **kwargs)
+
+    def bulk_update(self, objs: Iterable[Model], fields: 'typing.Collection[str]',  # pylint:disable=arguments-differ
+                    batch_size: Optional[int] = None, all_or_none: bool = None):
+        self.sf(all_or_none=all_or_none)
+        if batch_size is not None and batch_size < 0:
+            raise ValueError('Batch size must be a positive integer.')
+        batch_size = min(batch_size, BULK_BATCH_SIZE) if batch_size else BULK_BATCH_SIZE
+        for chunk in salesforce.backend.utils.chunked(objs, batch_size):
+            bulk_update_small(chunk, fields, all_or_none=all_or_none)
 
     def sf(self,
            query_all: Optional[bool] = None,
@@ -157,7 +167,7 @@ def bulk_update_small(objs: 'typing.Collection[models.Model]', fields: Iterable[
                       ) -> None:
     # simple implementation without "batch_size" parameter, but with "all_or_none"
     # and objects from mixed models can be updated by one request in the same transaction
-    assert len(objs) <= 200
+    assert len(objs) <= BULK_BATCH_SIZE
     records = []
     dbs = set()
     for item in objs:

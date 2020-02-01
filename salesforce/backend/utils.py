@@ -4,7 +4,8 @@ CursorWrapper (like django.db.backends.utils)
 import decimal
 import logging
 import warnings
-from typing import Any, Callable, Tuple, TypeVar, Union, overload
+from itertools import islice
+from typing import Any, Callable, Iterable, Iterator, List, Tuple, TypeVar, Union, overload
 
 from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
@@ -15,6 +16,7 @@ from salesforce.dbapi.driver import (
     register_conversion, arg_to_json)
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
+V = TypeVar('V')
 if not DJANGO_30_PLUS:
     # a "do nothing" stub for Django < 3.0, where is no decorator @async_unsafe
     F = TypeVar('F', bound=Callable)
@@ -396,6 +398,20 @@ class CursorWrapper:
 
     def handle_api_exceptions(self, method, *url_parts, **kwargs):
         return self.cursor.handle_api_exceptions(method, *url_parts, **kwargs)
+
+
+def chunked(iterable: Iterable[V], n: int) -> Iterator[List[V]]:
+    """
+    Break an iterable into lists of a given length::
+
+    >>> assert list(chunked([1, 2, 3, 4, 5], 3)) == [[1, 2, 3], [4,5]]
+    """
+    iterable = iter(iterable)
+    while True:
+        chunk = list(islice(iterable, n))
+        if not chunk:
+            return
+        yield chunk
 
 
 def sobj_id(obj):
