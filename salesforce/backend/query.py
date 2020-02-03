@@ -12,10 +12,12 @@ import warnings
 
 from django.db import NotSupportedError
 from django.db.models import query
-from salesforce.backend.indep import get_sf_alt_pk
+import django
 
+from salesforce.backend.indep import get_sf_alt_pk
 from salesforce.backend import DJANGO_20_PLUS
 from salesforce.router import is_sf_database
+import salesforce
 
 
 # class SalesforceRawQuerySet(query.RawQuerySet):
@@ -59,3 +61,24 @@ class SalesforceQuerySet(query.QuerySet):
                 if x.pk is None:
                     x.pk = get_sf_alt_pk()
         return super(SalesforceQuerySet, self).bulk_create(objs, batch_size=batch_size, **kwargs)
+
+
+def bulk_update_small(objs, fields, all_or_none=None):
+    # simple implementation without "batch_size" parameter, but with "all_or_none"
+    # and objects from mixed models can be updated by one request in the same transaction
+    assert len(objs) <= 200
+    records = []
+    dbs = set()
+    for item in objs:
+        query = django.db.models.sql.subqueries.UpdateQuery(item._meta.model)  # fake query
+        query.add_update_values({field: getattr(item, field) for field in fields})
+        values = salesforce.backend.utils.extract_values(query)
+        values['id'] = item.pk
+        values['type_'] = item._meta.db_table
+        records.append(values)
+        dbs.add(item._state.db)
+    db = dbs.pop()
+    if dbs or not is_sf_database(db):
+        raise ValueError("All updated objects must be from the same Salesforce database.")
+    connection = django.db.connections[db].connection
+    connection.sobject_collections_request('PATCH', records, all_or_none=all_or_none)
