@@ -102,6 +102,9 @@ class SfField(models.Field):
     """
     def __init__(self, *args, **kwargs):
         self.sf_read_only = kwargs.pop('sf_read_only', 0)
+        if 'custom' in kwargs:
+            # later used in self.deconstruct()
+            self._original_sf_custom = kwargs['custom']
         self.sf_custom = kwargs.pop('custom', None)
         self.sf_namespace = ''
         super(SfField, self).__init__(*args, **kwargs)
@@ -144,6 +147,24 @@ class SfField(models.Field):
         if self.sf_custom and '__' in cls._meta.db_table[:-3]:
             self.sf_namespace = cls._meta.db_table.split('__')[0] + '__'
         self.set_attributes_from_name(name)
+
+    def deconstruct(self):
+        deconstructed = super().deconstruct()
+        # Add the salesforce specific sf_custom param so it can be picked up by
+        # django migrations and have the same db field names in the local
+        # debug db as on salesforce.
+        keywords = deconstructed[3]
+        if hasattr(self, '_original_sf_custom'):
+            keywords["custom"] = self._original_sf_custom
+
+        # We are not handling sf_namespace here, because it currently can't be
+        # passed in to __init__ anyway. If a field subclass overrides
+        # sf_namespace the migration machinery can pick it up from there.
+
+        # We are not handling sf_read_only here because it can't be mapped
+        # directly to a django equivalent for the migrations and local db
+        # anyway.
+        return deconstructed
 
 # pylint:disable=unnecessary-pass,too-many-ancestors
 
