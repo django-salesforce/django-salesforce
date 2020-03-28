@@ -20,7 +20,7 @@ from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-i
 from django.db import models
 from django.utils.encoding import smart_text
 
-from salesforce.backend.operations import DefaultedOnCreate
+from salesforce.defaults import DEFAULTED_ON_CREATE, DefaultedOnCreate
 
 # None of field types defined in this module need a "deconstruct" method,
 # in Django 1.7+, because their parameters only describe fixed nature of SF
@@ -30,7 +30,6 @@ FULL_WRITABLE = 0
 NOT_UPDATEABLE = 1
 NOT_CREATEABLE = 2
 READ_ONLY = 3  # (NOT_UPDATEABLE & NOT_CREATEABLE)
-DEFAULTED_ON_CREATE = DefaultedOnCreate()
 
 SF_PK = getattr(settings, 'SF_PK', 'id')
 if SF_PK not in ('id', 'Id'):
@@ -104,6 +103,8 @@ class SfField(models.Field):
         self.sf_read_only = kwargs.pop('sf_read_only', 0)
         self.sf_custom = kwargs.pop('custom', None)
         self.sf_namespace = ''
+        if kwargs.get('default') is DEFAULTED_ON_CREATE:
+            kwargs['default'] = DefaultedOnCreate(internal_type=self.get_internal_type())
         super(SfField, self).__init__(*args, **kwargs)
 
     def get_attname_column(self):
@@ -196,7 +197,7 @@ class DecimalField(SfField, models.DecimalField):
     DecimalField is the default numeric type used by itrospection inspectdb.
     """
     def to_python(self, value):
-        if str(value) == 'DEFAULTED_ON_CREATE':
+        if str(value) == '':
             return value
         ret = super(DecimalField, self).to_python(value)
         if ret is not None and self.decimal_places == 0:
@@ -226,11 +227,6 @@ class BooleanField(SfField, models.BooleanField):
     """BooleanField with sf_read_only attribute for Salesforce."""
     def __init__(self, default=False, **kwargs):
         super(BooleanField, self).__init__(default=default, **kwargs)
-
-    def to_python(self, value):
-        if isinstance(value, DefaultedOnCreate):
-            return value
-        return super(BooleanField, self).to_python(value)
 
 
 class DateTimeField(SfField, models.DateTimeField):

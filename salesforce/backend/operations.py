@@ -10,9 +10,9 @@ DatabaseOperations  (like salesforce.db.backends.*.operations)
 import itertools
 
 import django.db.backends.utils
-from django.utils.deconstruct import deconstructible
 from django.db.backends.base.operations import BaseDatabaseOperations
 from salesforce.backend import DJANGO_30_PLUS
+from salesforce.defaults import DefaultedOnCreate
 
 BULK_BATCH_SIZE = 200
 
@@ -111,31 +111,3 @@ class DatabaseOperations(BaseDatabaseOperations):
         The same is necessary for boolean fields, e.g. IsActive=true
         """
         False
-
-
-@deconstructible
-class DefaultedOnCreate(object):
-    """
-    The default value which denotes that the value should skipped and
-    replaced later on the SFDC server.
-
-    It should not be replaced by Django, because SF can do it better or
-    even no real ralue neither None is accepted.
-    SFDC can set the correct value only if the field is omitted as the REST API.
-    (No normal soulution exists e.g. for some builtin foreign keys with
-    SF attributes 'defaultedOnCreate: true, nillable: false')
-
-    Example: `Owner` field is assigned to the current user if the field User is omitted.
-
-        Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                default=models.DefaultedOnCreate(),
-                db_column='OwnerId')
-    """
-    # pylint:disable=too-few-public-methods
-    def __init__(self, arg=None):
-        self.arg = arg
-
-    def __str__(self):
-        if self.arg is None:
-            return 'DEFAULTED_ON_CREATE'
-        return 'DefaultedOnCreate({})'.format(repr(self.arg))
