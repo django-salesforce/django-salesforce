@@ -13,7 +13,6 @@ from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
 
 from salesforce.backend import DJANGO_30_PLUS
-from salesforce.backend.operations import DefaultedOnCreate
 from salesforce.dbapi.driver import (
     DatabaseError, merge_dict,
     register_conversion, arg_to_json, SALESFORCE_DATETIME_FORMAT)
@@ -158,7 +157,7 @@ def extract_values_inner(row, query):
         if isinstance(field, (models.ForeignKey, models.BooleanField, models.DecimalField)):
             if value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
                 continue
-        if isinstance(value, DefaultedOnCreate):
+        if hasattr(value, 'default'):
             continue
         d[field.column] = arg_to_json(value)
     return d
