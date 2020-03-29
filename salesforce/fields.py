@@ -9,6 +9,7 @@
 Customized fields for Salesforce, especially the primary key. (like django.db.models.fields)
 """
 
+import typing
 import warnings
 from decimal import Decimal
 from django.conf import settings
@@ -252,8 +253,15 @@ class TimeField(SfField, models.TimeField):
         return self.to_python(value)
 
 
-class ForeignKey(SfField, models.ForeignKey):
-    """ForeignKey with sf_read_only attribute and acceptable by Salesforce."""
+if typing.TYPE_CHECKING:
+    # static typing of a mixin requires an additional base, that is not necessary
+    # at runtime
+    _MixinTypingBase = models.ForeignObject
+else:
+    _MixinTypingBase = object
+
+
+class SfForeignObjectMixin(SfField, _MixinTypingBase):
     def __init__(self, to, on_delete, *args, **kwargs):
         # Checks parameters before call to ancestor.
         if on_delete.__name__ not in ('PROTECT', 'DO_NOTHING'):
@@ -267,7 +275,7 @@ class ForeignKey(SfField, models.ForeignKey):
                 "Only foreign keys with on_delete = PROTECT or "
                 "DO_NOTHING are currently supported, not %s related to %s"
                 % (on_delete, to))
-        super(ForeignKey, self).__init__(to, on_delete, *args, **kwargs)
+        super().__init__(to, on_delete, *args, **kwargs)
 
     def get_attname(self):
         if self.name.islower():  # pylint:disable=no-else-return
@@ -277,15 +285,18 @@ class ForeignKey(SfField, models.ForeignKey):
             return '%sId' % self.name
 
     def get_attname_column(self):
-        attname, column = super(ForeignKey, self).get_attname_column()
+        attname, column = super().get_attname_column()
         if self.db_column is None and not self.sf_custom:
             column += 'Id'
         return attname, column
 
 
-class OneToOneField(ForeignKey, models.OneToOneField):
-    """OneToOneField with sf_read_only attribute and acceptable by Salesforce."""
-    pass
+class ForeignKey(SfForeignObjectMixin, models.ForeignKey):
+    """ForeignKey with sf_read_only attribute that is acceptable by Salesforce."""
+
+
+class OneToOneField(SfForeignObjectMixin, models.OneToOneField):
+    """OneToOneField with sf_read_only attribute that is acceptable by Salesforce."""
 
 
 AutoField = SalesforceAutoField

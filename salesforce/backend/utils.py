@@ -4,6 +4,7 @@ CursorWrapper (like django.db.backends.utils)
 import datetime
 import decimal
 import logging
+from typing import Callable, TypeVar, Union, overload
 
 import pytz
 from django.conf import settings
@@ -18,11 +19,20 @@ from salesforce.dbapi.driver import (
     register_conversion, arg_to_json, SALESFORCE_DATETIME_FORMAT)
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 
-if DJANGO_30_PLUS:
-    from django.utils.asyncio import async_unsafe
-else:
-    def async_unsafe(message):
-        def decorator(func):
+if not DJANGO_30_PLUS:
+    F = TypeVar('F', bound=Callable)
+    F2 = TypeVar('F2', bound=Callable)
+
+    @overload
+    def async_unsafe(message: F) -> F:
+        ...
+
+    @overload
+    def async_unsafe(message: str) -> Callable[[F2], F2]:
+        ...
+
+    def async_unsafe(message: Union[F, str]) -> Union[F, Callable[[F2], F2]]:
+        def decorator(func: F2) -> F2:
             return func
 
         # If the message is actually a function, then be a no-arguments decorator.
@@ -32,6 +42,8 @@ else:
             return decorator(func)
         else:
             return decorator
+else:
+    from django.utils.asyncio import async_unsafe  # type: ignore[import,no-redef]  # noqa
 
 log = logging.getLogger(__name__)
 

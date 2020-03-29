@@ -11,20 +11,30 @@ Salesforce object manager. (like django.db.models.manager)
 Use a custom QuerySet to generate SOQL queries and results.
 """
 
+from typing import Optional, TYPE_CHECKING, TypeVar, Union
 from django.conf import settings
-from django.db.models import manager
+from django.db.models import manager, Model
+from django.db.models.query import QuerySet
 from django.db.utils import DEFAULT_DB_ALIAS
 
 from salesforce import router
 from salesforce.backend import query, models_sql_query, compiler, DJANGO_20_PLUS
 
+_T = TypeVar("_T", bound=Model, covariant=True)
+if TYPE_CHECKING:
+    _BaseManager = manager.Manager[_T]
+    _QuerySet = QuerySet[_T]
+else:
+    _BaseManager = manager.Manager
+    _QuerySet = QuerySet
 
-class SalesforceManager(manager.Manager):
+
+class SalesforceManager(_BaseManager):
     if not DJANGO_20_PLUS:
         use_for_related_fields = True
         silence_use_for_related_fields_deprecation = True  # pylint:disable=invalid-name  # name from Django
 
-    def get_queryset(self, _alias=None):
+    def get_queryset(self, _alias: Optional[str] = None) -> _QuerySet:
         """
         Returns a QuerySet which access remote SF objects.
         """
@@ -35,7 +45,7 @@ class SalesforceManager(manager.Manager):
             return query.SalesforceQuerySet(self.model, query=q, using=self.db)
         return super(SalesforceManager, self).get_queryset()
 
-    def using(self, alias):
+    def using(self, alias: Optional[str]) -> 'Union[_BaseManager[_T], QuerySet[_T]]':  # type: ignore[override] # noqa
         if alias is None:
             if hasattr(self.model, '_salesforce_object'):
                 alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')

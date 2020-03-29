@@ -2,20 +2,21 @@
 
 test of a dependent module.
 """
+from collections import OrderedDict
+from typing import Dict
 import os
 import re
 import unittest
-from collections import OrderedDict
 
 
-def relative_path(path):
+def relative_path(path: str) -> str:
     """
     Return the given path relative to this file.
     """
     return os.path.join(os.path.dirname(__file__), path)
 
 
-def get_classes_texts():
+def get_classes_texts() -> Dict[str, str]:
     """
     Get classes texts as a dict.
     """
@@ -29,20 +30,22 @@ def get_classes_texts():
         for text in f.read().split('\n\n'):
             text = text.strip()
             if text and not excluded_pattern.match(text):
-                class_name = re.match(r'class (\w+)\(', text).groups()[0]
+                match = re.match(r'class (\w+)\(', text)
+                assert match
+                class_name = match.groups()[0]
                 result[class_name] = text
     return result
 
 
 class ExportedModelTest(unittest.TestCase):
 
-    def match_line(self, pattern, text):
+    def match_line(self, pattern, text) -> str:
         """requires the pattern and finds the line"""
         self.assertRegex(text, pattern)
         (ret,) = [line for line in text.split('\n') if re.match(pattern, line)]
         return ret
 
-    def test_nice_fields_names(self):
+    def test_nice_fields_names(self) -> None:
         """Test the typical nice field name 'last_modified_date'."""
         for text in classes_texts.values():
             if re.search(r' last_modified_date = ', text):
@@ -55,7 +58,7 @@ class ExportedModelTest(unittest.TestCase):
     def test_nice_standard_class_name(self):
         self.assertTrue('AccountContactRole' in classes_texts.keys())
 
-    def test_custom_test_class(self):
+    def test_custom_test_class(self) -> None:
         """Test the typical nice class name 'Test'."""
         for name, text in classes_texts.items():
             if re.search(r"        db_table = 'django_Test__c'", text):
@@ -71,7 +74,7 @@ class ExportedModelTest(unittest.TestCase):
         else:
             self.skipTest("The model for the table Test__c not exported.")
 
-    def test_master_detail_relationship(self):
+    def test_master_detail_relationship(self) -> None:
         """
         Verify that Contact is a master-detail relationship of Account,
         but Opportunity is not.

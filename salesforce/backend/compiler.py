@@ -382,7 +382,7 @@ class SalesforceWhereNode(sql_where.WhereNode):
     # pylint:enable=no-else-return,too-many-branches,too-many-locals,unused-argument
 
 
-class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):
+class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):  # type: ignore[misc] # noqa # as_sql
     if DJANGO_30_PLUS:
 
         def execute_sql(self, returning_fields=None):
@@ -418,7 +418,7 @@ class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):
 
     else:
 
-        def execute_sql(self, return_id=False):
+        def execute_sql(self, return_id=False):  # type: ignore[misc] # noqa # check typing only for Django >= 3.0
             # copied from Django 1.11, with one line patch
             assert not (
                 return_id and len(self.query.objs) != 1 and
@@ -442,13 +442,13 @@ class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):
                 )
 
 
-class SQLDeleteCompiler(sql_compiler.SQLDeleteCompiler, SQLCompiler):
+class SQLDeleteCompiler(sql_compiler.SQLDeleteCompiler, SQLCompiler):  # type: ignore[misc] # noqa # as_sql
     pass
 
 
-class SQLUpdateCompiler(sql_compiler.SQLUpdateCompiler, SQLCompiler):
+class SQLUpdateCompiler(sql_compiler.SQLUpdateCompiler, SQLCompiler):  # type: ignore[misc] # noqa # as_sql,execute_sql
     pass
 
 
-class SQLAggregateCompiler(sql_compiler.SQLAggregateCompiler, SQLCompiler):
+class SQLAggregateCompiler(sql_compiler.SQLAggregateCompiler, SQLCompiler):  # type: ignore[misc] # noqa # as_sql
     pass

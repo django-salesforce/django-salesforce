@@ -20,6 +20,7 @@ from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
 from django.utils import timezone
+from typing import List
 
 import salesforce
 from salesforce import router
@@ -44,7 +45,7 @@ QUIET_KNOWN_BUGS = strtobool(os.getenv('QUIET_KNOWN_BUGS', 'false'))
 test_email = 'test-djsf-unittests%s@example.com' % uid
 sf_databases = [db for db in connections if router.is_sf_database(db)]
 
-_sf_tables = []
+_sf_tables = []  # type: List[str]
 
 
 def sf_tables():

@@ -49,7 +49,7 @@ class SfCharAutoField(SalesforceAutoField):
 
 
 # pylint:disable=too-few-public-methods,function-redefined
-class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
+class SalesforceModel(models.Model, metaclass=SalesforceModelBase):  # type: ignore[no-redef] # noqa # redefined
     """
     Abstract model class for Salesforce objects that can be saved to other db.
 
