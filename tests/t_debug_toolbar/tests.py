@@ -1,5 +1,4 @@
 """Test with django-debug-toolbar."""
-from __future__ import absolute_import
 from django.test import TestCase, override_settings
 import django.contrib.auth
 from salesforce.backend.test_helpers import uid_version as uid

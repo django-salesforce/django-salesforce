@@ -40,6 +40,7 @@ Parameters
     json:  it is unused and will be probably deprecated.
            It can be replaced by "json.dumps(request_json)"
 """
+from unittest import mock  # pylint:disable=unused-import  # NOQA
 import json as json_mod
 import re
 
@@ -52,11 +53,6 @@ import salesforce
 # from salesforce.dbapi import settings
 from salesforce.auth import MockAuth
 from salesforce.backend.test_helpers import sf_alias
-
-try:
-    from unittest import mock  # pylint:disable=unused-import
-except ImportError:
-    import mock  # NOQA
 
 APPLICATION_JSON = 'application/json;charset=UTF-8'
 

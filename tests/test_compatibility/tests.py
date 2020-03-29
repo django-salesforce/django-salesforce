@@ -1,5 +1,4 @@
 """Backward compatible behaviour with primary key 'Id'."""
-from __future__ import absolute_import
 from django.test import TestCase
 from tests.test_compatibility.models import Lead
 from salesforce.backend.test_helpers import current_user, uid_version as uid

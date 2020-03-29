@@ -20,7 +20,6 @@ from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max
 from django.test import TestCase
 from django.utils import timezone
-from six import PY3, text_type
 
 import salesforce
 from salesforce import router
@@ -350,12 +349,12 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_unicode(self):
         """Make sure weird unicode breaks properly.
         """
-        test_lead = Lead(FirstName=u'\u2603', LastName="Unittest Unicode",
+        test_lead = Lead(FirstName='\u2603', LastName="Unittest Unicode",
                          Email='test-djsf-unicode-email@example.com',
                          Company="Some company")
         test_lead.save()
         try:
-            self.assertEqual(refresh(test_lead).FirstName, u'\u2603')
+            self.assertEqual(refresh(test_lead).FirstName, '\u2603')
         finally:
             test_lead.delete()
 
@@ -646,7 +645,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """
         qs = Contact.objects.filter(Q(name__range=('c', 'e')))
         soql = qs.query.get_compiler('salesforce').as_sql()[0]
-        self.assertIn(u"(Contact.Name >= %s AND Contact.Name <= %s)", soql)
+        self.assertIn("(Contact.Name >= %s AND Contact.Name <= %s)", soql)
         len(qs)
 
     def test_range_combined(self):
@@ -654,7 +653,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """
         qs = Contact.objects.filter(Q(name='a') | Q(name__range=('c', 'e')))
         soql = qs.query.get_compiler('salesforce').as_sql()[0]
-        self.assertIn(u"Contact.Name = %s OR (Contact.Name >= %s AND Contact.Name <= %s)", soql)
+        self.assertIn("Contact.Name = %s OR (Contact.Name >= %s AND Contact.Name <= %s)", soql)
         len(qs)
 
     def test_range_lookup(self):
@@ -700,9 +699,9 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test combined filters with international characters.
         """
         # This is OK for long time
-        len(Contact.objects.filter(Q(first_name=u'\xe1') & Q(last_name=u'\xe9')))
+        len(Contact.objects.filter(Q(first_name='\xe1') & Q(last_name='\xe9')))
         # This was recently fixed
-        len(Contact.objects.filter(Q(first_name=u'\xe1') | Q(last_name=u'\xe9')))
+        len(Contact.objects.filter(Q(first_name='\xe1') | Q(last_name='\xe9')))
         len(Contact.objects.filter(Q(first_name='\xc3\xa1') | Q(last_name='\xc3\xa9')))
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
@@ -778,7 +777,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         cursor.execute(sql)
         contact_aggregate = cursor.fetchone()
         self.assertEqual([x[0] for x in cursor.description], ['LastName', 'expr0'])
-        self.assertEqual([type(x) for x in contact_aggregate], [text_type, int])
+        self.assertEqual([type(x) for x in contact_aggregate], [str, int])
         self.assertGreaterEqual(contact_aggregate[1], 1)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
@@ -831,8 +830,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             Contact(pk=contact_id).delete()
             self.assertIs(w[-1].category, SalesforceWarning)
             self.assertIn('ENTITY_IS_DELETED', str(w[-1].message))
-        if not PY3:
-            return skip("Python 2.7 doesn't support assertWarns")
         # Simulate the same with obsoleted oauth session
         # It is not possible to use salesforce.auth.expire_token() to simulate
         # expiration because it forces reauhentication before the next request
