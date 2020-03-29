@@ -7,8 +7,6 @@ import re
 import unittest
 from collections import OrderedDict
 
-from six import assertRegex
-
 
 def relative_path(path):
     """
@@ -40,7 +38,7 @@ class ExportedModelTest(unittest.TestCase):
 
     def match_line(self, pattern, text):
         """requires the pattern and finds the line"""
-        assertRegex(self, text, pattern)
+        self.assertRegex(text, pattern)
         (ret,) = [line for line in text.split('\n') if re.match(pattern, line)]
         return ret
 
@@ -79,7 +77,7 @@ class ExportedModelTest(unittest.TestCase):
         but Opportunity is not.
         """
         line = self.match_line('    account = ', classes_texts['Contact'])
-        assertRegex(self, line, r'#.* Master Detail Relationship \*')
+        self.assertRegex(line, r'#.* Master Detail Relationship \*')
         line = self.match_line('    created_by = ', classes_texts['Opportunity'])
         self.assertNotIn('Master Detail Relationship', line)
 

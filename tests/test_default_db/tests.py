@@ -1,5 +1,4 @@
 """Test djangoBackward compatible behaviour with primary key 'Id'."""
-from __future__ import absolute_import
 from django.test import TestCase
 
 from .models import Account, Contact

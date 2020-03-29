@@ -18,7 +18,6 @@ from django.db.models import fields
 from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-import
 from django.db import models
 from django.utils.encoding import smart_text
-from six import string_types
 
 from salesforce.backend.operations import DefaultedOnCreate
 
@@ -51,7 +50,7 @@ class SalesforceAutoField(fields.AutoField):
     }
 
     def to_python(self, value):
-        if isinstance(value, string_types) or value is None:
+        if isinstance(value, str) or value is None:
             return value
         return smart_text(value)
 

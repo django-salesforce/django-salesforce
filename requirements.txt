@@ -1,6 +1,5 @@
 simplejson>=2.5.0
 pytz>=2012c
 requests>=2.4.0
-six
 # Django requirement is specified in setup.py,
 # because pip doesn't accept double requirement in tests.

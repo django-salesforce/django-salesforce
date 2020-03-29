@@ -176,7 +176,6 @@ class QQuery(object):
 
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 SF_DATETIME_PATTERN = re.compile(r'[1-3]\d{3}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-6]\d.\d{3}\+0000$')
-TextType = type(u'')
 
 
 def fix_data_type(data, tzinfo=None):
@@ -184,7 +183,7 @@ def fix_data_type(data, tzinfo=None):
     # from some reliable field mapping, not to guess by regexp like here.
     # Only a DateTime field has so specific regexp that the guess is
     # acceptable.
-    if isinstance(data, TextType) and SF_DATETIME_PATTERN.match(data):
+    if isinstance(data, str) and SF_DATETIME_PATTERN.match(data):
         datim = datetime.datetime.strptime(data, SALESFORCE_DATETIME_FORMAT)
         datim = datim.replace(tzinfo=tzinfo or pytz.utc)
         return datim

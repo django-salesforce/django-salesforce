@@ -9,6 +9,8 @@
 Salesforce database backend for Django.  (like django,db.backends.*.base)
 """
 
+from urllib.parse import urlparse
+
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.db.backends.base.base import BaseDatabaseWrapper
@@ -24,11 +26,6 @@ from salesforce.backend.schema import DatabaseSchemaEditor
 from salesforce.backend.utils import CursorWrapper, async_unsafe
 from salesforce.dbapi import driver as Database
 from salesforce.dbapi.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA pylint:disable=unused-import
-
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    from urlparse import urlparse
 
 __all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)
 
@@ -63,7 +60,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     }
 
     Database = Database
-    SchemaEditorClass = DatabaseSchemaEditor
+    SchemaEditorClass = DatabaseSchemaEditor  # type: ignore  # this is normal in Django
 
     # Classes instantiated in __init__().
     client_class = DatabaseClient

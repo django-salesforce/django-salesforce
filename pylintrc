@@ -62,7 +62,6 @@ confidence=
 disable=
     fixme,  # only the "TODO" word shoud be used here for easy grep
     missing-docstring,
-    useless-object-inheritance,  # class ...(object):  due to Python2 compatibility
     inconsistent-return-statements,  # similar style to Django
 
 

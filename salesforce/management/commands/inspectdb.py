@@ -3,66 +3,7 @@ import re
 
 from django.core.management.commands.inspectdb import Command as InspectDBCommand
 from django.db import connections
-from six import PY3, text_type
 from salesforce.backend import introspection as sf_introspection
-
-
-def fix_field_params_repr(params):
-    """
-    Fixes repr() of "field_params" for Python 2 with future text_type_literals.
-    """
-    class ReprUnicode(text_type):
-        def __new__(cls, text):
-            return text_type.__new__(cls, text)
-
-        def __repr__(self):
-            out = repr(text_type(self))
-            return out[1:] if out.startswith("u'") or out.startswith('u"') else out
-
-    class ReprChoices(list):
-        def __new__(cls, choices):
-            return list.__new__(cls, choices)
-
-        def __repr__(self):
-            out = []
-            for x_0, x_1 in self:
-                out.append('(%s, %s)' % (
-                    repr(ReprUnicode(x_0) if isinstance(x_0, text_type) else x_0),
-                    repr(ReprUnicode(x_1) if isinstance(x_1, text_type) else x_1)
-                ))
-            return '[%s]' % (', '.join(out))
-    if PY3:
-        return params
-    out = OrderedDict()
-    for k, v in params.items():
-        if k == 'choices' and v:
-            v = ReprChoices(v)
-        elif isinstance(v, text_type):
-            v = ReprUnicode(v)
-        out[k] = v
-    return out
-
-
-def fix_international(text):
-    "Fix excaped international characters back to utf-8"
-    class SmartInternational(str):
-        def __new__(cls, text):
-            return str.__new__(cls, text)
-
-        def endswith(self, string):
-            return super(SmartInternational, self).endswith(str(string))
-    if PY3:
-        return text
-    out = []
-    last = 0
-    for match in re.finditer(r'(?<=[^\\])(?:\\x[0-9a-f]{2}|\\u[0-9a-f]{4})', text):
-        start, end, group = match.start(), match.end(), match.group()
-        out.append(text[last:start])
-        c = group.decode('unicode_escape')
-        out.append(c if ord(c) > 160 and ord(c) != 173 else group)
-        last = end
-    out.append(text[last:])
-    return SmartInternational(''.join(out).encode('utf-8'))
 
 
 class Command(InspectDBCommand):
@@ -78,13 +19,11 @@ class Command(InspectDBCommand):
         self.verbosity = int(options['verbosity'])          # pylint:disable=attribute-defined-outside-init
         self.connection = connections[options['database']]  # pylint:disable=attribute-defined-outside-init
         if self.connection.vendor == 'salesforce':
-            if not PY3:
-                self.stdout.write("# coding: utf-8\n")
             self.db_module = 'salesforce'
             for line in self.handle_inspection(options):
                 line = line.replace(" Field renamed because it contained more than one '_' in a row.", "")
                 line = re.sub(' #$', '', line)
-                self.stdout.write(fix_international("%s\n" % line))
+                self.stdout.write("%s\n" % line)
         else:
             super(Command, self).handle(**options)
 
@@ -95,7 +34,7 @@ class Command(InspectDBCommand):
             if 'ref_comment' in row.params:
                 field_notes.append(row.params.pop('ref_comment'))
             field_params.update(row.params)
-        return field_type, fix_field_params_repr(field_params), field_notes
+        return field_type, field_params, field_notes
 
     def normalize_col_name(self, col_name, used_column_names, is_relation):
         if self.connection.vendor == 'salesforce':
@@ -136,7 +75,7 @@ class Command(InspectDBCommand):
         else:
             new_name, field_params, field_notes = (super(Command, self)
                                                    .normalize_col_name(col_name, used_column_names, is_relation))
-        return new_name, fix_field_params_repr(field_params), field_notes
+        return new_name, field_params, field_notes
 
     # the parameter 'is_view' has been since Django 2.1 and 'is_partition' since Django 2.2
     def get_meta(self, table_name, constraints=None, column_to_field_name=None, is_view=False, is_partition=None):
