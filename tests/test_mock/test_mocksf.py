@@ -4,7 +4,6 @@ Test that MockTestCase works in all modes, including "record"
 """
 from django.db import connections
 from django.test.utils import override_settings
-from six import text_type
 
 from salesforce.backend.test_helpers import sf_alias
 from tests.test_mock.mocksf import mock, MockJsonRequest, MockTestCase
@@ -45,7 +44,7 @@ class TestMock(MockTestCase):
         cur.execute("SELECT Name FROM Contact LIMIT 1")
         row, = cur.fetchall()
         self.assertEqual(len(row), 1)
-        self.assertIsInstance(row[0], text_type)
+        self.assertIsInstance(row[0], str)
 
     @override_settings(SF_MOCK_MODE='playback')
     def test_response_parser(self):

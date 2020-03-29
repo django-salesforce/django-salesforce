@@ -1,10 +1,7 @@
 # All error types described in DB API 2 are implemented the same way as in
 # Django (1.11 to 3.0)., otherwise some exceptions are not correctly reported in it.
 import json
-import sys
 import warnings
-PY3 = sys.version_info[0] == 3
-text_type = str if PY3 else type(u'')
 # pylint:disable=too-few-public-methods
 
 
@@ -15,8 +12,7 @@ class SalesforceWarning(Warning):
         super(SalesforceWarning, self).__init__(message)
 
 
-class Error(Exception if PY3 else StandardError):  # NOQA pylint:disable=undefined-variable
-    #                                              # StandardError is undefined in PY3
+class Error(Exception):
     """
     Database error that can get detailed error information from a SF REST API response.
 
@@ -98,7 +94,7 @@ def prepare_exception(obj, messages=None, response=None, verbs=None):
     known_options = ['method+url']
     if messages is None:
         messages = []
-    if isinstance(messages, (text_type, str)):
+    if isinstance(messages, str):
         messages = [messages]
     assert isinstance(messages, list)
     assert not verbs.difference(known_options)
@@ -129,8 +125,6 @@ def prepare_exception(obj, messages=None, response=None, verbs=None):
             data_info = ' (without json request data)'
         messages.append('in {} "{}"{}'.format(method, url, data_info))
     separ = '\n    '
-    if not PY3:
-        messages = [x if isinstance(x, str) else x.encode('utf-8') for x in messages]
     messages = [x.replace('\n', separ) for x in messages]
     message = separ.join(messages)
     if obj:

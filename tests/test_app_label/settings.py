@@ -1,5 +1,4 @@
 """Test that app config can override a directory name conflict (.e.g. "salesforce")"""
-from __future__ import absolute_import
 from salesforce.testrunner.settings import *  # NOQA pylint: disable=unused-wildcard-import,wildcard-import
 from salesforce.testrunner.settings import INSTALLED_APPS
 

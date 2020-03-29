@@ -13,7 +13,6 @@ column names are all in CamelCase. No attempt is made to work around this
 issue, but normal use of `db_column` and `db_table` parameters should work.
 """
 
-from __future__ import unicode_literals
 from inspect import isclass
 import logging
 import warnings
@@ -23,7 +22,6 @@ from django.db.models.base import ModelBase
 # Only these two `on_delete` options are currently supported
 from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 # from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
-from six import with_metaclass
 
 from salesforce.backend import manager, DJANGO_20_PLUS
 from salesforce.fields import SalesforceAutoField, SF_PK, SfField, ForeignKey
@@ -78,7 +76,7 @@ class SalesforceModelBase(ModelBase):
 
 
 # pylint:disable=too-few-public-methods
-class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
+class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
     """
     Abstract model class for Salesforce objects.
     """

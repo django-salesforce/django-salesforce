@@ -4,7 +4,6 @@ Shortened due to readability:
 removed very long choices, removed many long fields, reformated long
 lines, but still an example of a long model exported from Salesforce.
 """
-from __future__ import unicode_literals
 from salesforce import models_template as models
 
 

@@ -16,8 +16,8 @@ experimental.
 
 Unreleased
 ----------
-* Remove: Support for Django 1.10 (incompatible)
-* Remove: Support for Python 3.4 (not tested anymore)
+* Remove: Support for Django 1.10
+* Remove: Support for Python 2.7, 3.4
 * Fix: Support for Django Debug Toolbar - including EXPLAIN commend
 * Fix: Export attributes "verbose_name", "help_text" and "default=DEFAULTED_ON_CREATE"
   also for ForeignKey by inspectdb.
@@ -115,7 +115,7 @@ Unreleased
 
 * Removed: custom method ``simple_select_related()`` (obsoleted by
   select_related)
-  
+
 * Changed: All custom error classes has been moved from
   ``salesforce.backend.driver`` to ``salesforce.dbapi.exceptions``.
   Very useful class is ``SalesforceError``.

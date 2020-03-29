@@ -8,11 +8,7 @@
 """
 oauth login support for the Salesforce API
 
-All data are in ascii. Therefore the type str is good for both Python 2.7
-and 3.4+. (The type str ascii is automatically adjusted to unicode in
-Python 2, if necessary, but the unicode ascii could force an automatic
-faulting conversion of other non-ascii str to unicode.)
-Accepted parameters are both str or unicode in Python 2.
+All data are ascii str.
 """
 
 import base64
@@ -182,8 +178,7 @@ class SalesforcePasswordAuth(SalesforceAuth):
         }
         response = self._session.post(url, data=auth_params)
         if response.status_code == 200:
-            # prefer str in Python 2 due to other API
-            response_data = {str(k): str(v) for k, v in response.json().items()}
+            response_data = response.json()
             # Verify signature (not important for this auth mechanism)
             calc_signature = (
                 base64.b64encode(

@@ -5,11 +5,8 @@
 # See LICENSE.md for details
 #
 
-from __future__ import absolute_import, unicode_literals
-
 import django
 from django.conf import settings
-from six import python_2_unicode_compatible
 
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
@@ -45,7 +42,6 @@ class User(SalesforceModel):
     IsActive = models.BooleanField(default=False)
 
 
-@python_2_unicode_compatible
 class AbstractAccount(SalesforceModel):
     """
     Default Salesforce Account model.
@@ -119,7 +115,6 @@ else:
         pass
 
 
-@python_2_unicode_compatible
 class Contact(SalesforceModel):
     # Example that db_column is not necessary for most of fields even with
     # lower case names and for ForeignKey
@@ -142,7 +137,6 @@ class Contact(SalesforceModel):
         return self.name
 
 
-@python_2_unicode_compatible
 class Lead(SalesforceModel):
     """
     Default Salesforce Lead model.
@@ -203,7 +197,6 @@ class Lead(SalesforceModel):
         return self.Name
 
 
-@python_2_unicode_compatible
 class Product(SalesforceModel):
     Name = models.CharField(max_length=255)
 
@@ -214,7 +207,6 @@ class Product(SalesforceModel):
         return self.Name
 
 
-@python_2_unicode_compatible
 class Pricebook(SalesforceModel):
     Name = models.CharField(max_length=255)
 
@@ -225,7 +217,6 @@ class Pricebook(SalesforceModel):
         return self.Name
 
 
-@python_2_unicode_compatible
 class PricebookEntry(SalesforceModel):
     Name = models.CharField(max_length=255, db_column='Name', sf_read_only=models.READ_ONLY)
     Pricebook2 = models.ForeignKey('Pricebook', on_delete=models.DO_NOTHING)

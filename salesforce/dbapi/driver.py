@@ -17,7 +17,6 @@ import socket
 import sys
 import threading
 import time
-import types
 import warnings
 import weakref
 from collections import namedtuple
@@ -35,7 +34,7 @@ from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
     Error, InterfaceError, DatabaseError, DataError, OperationalError, IntegrityError,
     InternalError, ProgrammingError, NotSupportedError, SalesforceError, SalesforceWarning,
-    warn_sf, PY3, text_type)
+    warn_sf)
 from salesforce.dbapi.subselect import QQuery
 
 try:
@@ -594,8 +593,6 @@ class Cursor(object):
     def __next__(self):
         return next(self._iter)
 
-    next = __next__  # Python 2
-
     # -- private methods
 
     def __iter__(self):
@@ -681,7 +678,7 @@ class Cursor(object):
 #                              The first two items are mandatory. (name, type)
 CursorDescription = namedtuple('CursorDescription', 'name type_code '
                                'display_size internal_size precision scale null_ok')
-CursorDescription.__new__.func_defaults = 7 * (None,)
+CursorDescription.__new__.__defaults__ = 7 * (None,)
 
 
 def standard_errorhandler(connection, cursor, errorclass, errorvalue):
@@ -815,13 +812,6 @@ register_conversion(datetime.time,   json_conv=lambda d: datetime.time.strftime(
 register_conversion(decimal.Decimal, json_conv=float, subclass=True)
 # the type models.Model is registered from backend, because it is a Django type
 # pylint:enable=bad-whitespace
-
-if not PY3:
-    # pylint:disable=no-member
-    register_conversion(types.LongType, json_conv=str)
-    register_conversion(types.UnicodeType,
-                        json_conv=lambda s: s.encode('utf8'),
-                        sql_conv=lambda s: quoted_string_literal(s.encode('utf8')))
 
 
 def merge_dict(dict_1, *other, **kw):

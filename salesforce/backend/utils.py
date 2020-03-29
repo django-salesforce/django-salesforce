@@ -10,7 +10,6 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
-from six import text_type
 
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.backend.operations import DefaultedOnCreate
@@ -311,7 +310,7 @@ class CursorWrapper(object):
                     and not child.bilateral_transforms and child.lhs.target.model is self.query.model):
                 pks = child.rhs
                 if child.lookup_name == 'exact':
-                    assert isinstance(pks, text_type)
+                    assert isinstance(pks, str)
                     return [pks]
                 # lookup_name 'in'
                 assert not child.bilateral_transforms
@@ -401,7 +400,7 @@ class CursorWrapper(object):
         return str_dict(ret.json())
 
     def id_request(self):
-        """The Force.com Identity Service (return type dict of text_type)"""
+        """The Force.com Identity Service (return type dict of str)"""
         # https://developer.salesforce.com/page/Digging_Deeper_into_OAuth_2.0_at_Salesforce.com?language=en&language=en#The_Force.com_Identity_Service
 
         if 'id' in self.oauth:

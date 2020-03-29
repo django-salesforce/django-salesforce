@@ -21,12 +21,11 @@ Interesting not yet implemented ideas are:
 """
 
 from django.db import models, router
-from six import string_types
 
 from salesforce.backend import manager, DJANGO_20_PLUS, DJANGO_30_PLUS
 from salesforce.backend.indep import get_sf_alt_pk
 from salesforce.models import *  # NOQA; pylint:disable=wildcard-import,unused-wildcard-import
-from salesforce.models import SalesforceAutoField, SalesforceModelBase, SF_PK, with_metaclass
+from salesforce.models import SalesforceAutoField, SalesforceModelBase, SF_PK
 from salesforce.router import is_sf_database
 
 
@@ -50,7 +49,7 @@ class SfCharAutoField(SalesforceAutoField):
 
 
 # pylint:disable=too-few-public-methods,function-redefined
-class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
+class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
     """
     Abstract model class for Salesforce objects that can be saved to other db.
 
@@ -77,7 +76,7 @@ class SalesforceModel(with_metaclass(SalesforceModelBase, models.Model)):
             self.pk = get_sf_alt_pk()
         super(SalesforceModel, self).save(force_insert=force_insert, force_update=force_update,
                                           using=using, update_fields=update_fields)
-        if not isinstance(self.pk, string_types):
+        if not isinstance(self.pk, str):
             raise ValueError("The primary key value is not assigned correctly")
 
     if DJANGO_30_PLUS:
