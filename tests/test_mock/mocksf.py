@@ -40,6 +40,7 @@ Parameters
     json:  it is unused and will be probably deprecated.
            It can be replaced by "json.dumps(request_json)"
 """
+from typing import Optional
 from unittest import mock  # pylint:disable=unused-import  # NOQA
 import json as json_mod
 import re
@@ -151,7 +152,7 @@ class MockRequest(object):
     If the parameter 'request_type' is '*' then the request is not tested
     """
     # pylint:disable=too-few-public-methods,too-many-instance-attributes
-    default_type = None
+    default_type = None  # type: Optional[str]
 
     def __init__(self, method_url,  # pylint:disable=too-many-arguments
                  req=None, resp=None,
@@ -284,7 +285,7 @@ class MockTestCase(TestCase):
 
 class MockResponse(object):
     """Mock response for some unit tests offline"""
-    default_type = None
+    default_type = None  # type: Optional[str]
 
     def __init__(self, text, resp_content_type=None, status_code=200):
         self.text = text

@@ -24,9 +24,12 @@ import salesforce.fields
 
 log = logging.getLogger(__name__)
 
-# the last element 'params' is our extension for Salesforce
-field_info_fields = BaseFieldInfo._fields + ('params',)
-FieldInfo = namedtuple('FieldInfo', field_info_fields)  # pylint:disable=invalid-name
+FieldInfo = namedtuple(
+    'FieldInfo',
+    'name type_code display_size internal_size precision scale null_ok default'
+    ' params'  # the last name 'params' is our extension for Salesforce
+)  # pylint:disable=invalid-name
+assert FieldInfo._fields[:-1] == BaseFieldInfo._fields
 
 # these sObjects are not tables - ignore them
 # not queryable, not searchable, not retrieveable, only triggerable

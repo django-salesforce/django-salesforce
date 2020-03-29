@@ -11,6 +11,7 @@ oauth login support for the Salesforce API
 All data are ascii str.
 """
 
+from typing import Dict
 import base64
 import hashlib
 import hmac
@@ -33,7 +34,7 @@ oauth_lock = threading.Lock()
 # The static "oauth_data" is useful for efficient static authentication with
 # multithread server, whereas the thread local data in connection.sf_session.auth
 # are necessary if dynamic auth is used.
-oauth_data = {}
+oauth_data = {}  # type: Dict[str, Dict[str, str]]
 
 
 class SalesforceAuth(AuthBase):

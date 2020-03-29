@@ -1,4 +1,5 @@
 # Django settings for testrunner project.
+from typing import Any, Dict, Tuple, Union
 import os
 
 DEBUG = True
@@ -24,7 +25,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('SF_PASSWORD', ''),
         'HOST': 'https://login.salesforce.com',
     }
-}
+}  # type: Dict[str, Any]
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -131,7 +132,7 @@ INSTALLED_APPS = (
 
 SALESFORCE_DB_ALIAS = 'salesforce'
 # Timeouts tuple: (waiting for connection, waiting for data) in seconds
-SALESFORCE_QUERY_TIMEOUT = (4, 15)
+SALESFORCE_QUERY_TIMEOUT = (4, 15)  # type: Union[float, Tuple[float, float]]
 # Maximal number of retries after timeout.
 # REQUESTS_MAX_RETRIES = 1
 DATABASE_ROUTERS = [
