@@ -21,7 +21,8 @@ import warnings
 import weakref
 from collections import namedtuple
 from itertools import islice
-from typing import Optional  # NOQA
+from typing import Callable, Dict, List, Optional, Type, TypeVar, Union
+from urllib.parse import urlencode
 
 import pytz
 import requests
@@ -38,12 +39,7 @@ from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
 from salesforce.dbapi.subselect import QQuery
 
 try:
-    from urllib.parse import urlencode
-except ImportError:
-    from urllib import urlencode
-
-try:
-    import beatbox  # pylint: disable=unused-import
+    import beatbox  # type: ignore[import]  # pylint: disable=unused-import
 except ImportError:
     beatbox = None
 
@@ -248,7 +244,6 @@ class RawConnection(object):
         """The main (middle) part - it is enough if no error occurs."""
         global request_count  # used only in single thread tests - OK # pylint:disable=global-statement
         # log.info("request %s %s", method, '/'.join(url_parts))
-        # import pdb; pdb.set_trace()  # NOQA
         api_ver = kwargs.pop('api_ver', None)
         url = self.rest_api_url(*url_parts, api_ver=api_ver)
         # The 'verify' option is about verifying TLS certificates
@@ -428,7 +423,7 @@ class RawConnection(object):
     def last_used_cursor(self, cursor):
         self._last_used_cursor = weakref.proxy(cursor)
 
-    def ping_connection(self, timeout=1.0):  # type: (float) -> Optional[float]
+    def ping_connection(self, timeout: float = 1.0) -> Optional[float]:
         """Fast check the connection by an unimportant request
 
         It is useful after a longer inactivity if a connection could
@@ -678,7 +673,7 @@ class Cursor(object):
 #                              The first two items are mandatory. (name, type)
 CursorDescription = namedtuple('CursorDescription', 'name type_code '
                                'display_size internal_size precision scale null_ok')
-CursorDescription.__new__.__defaults__ = 7 * (None,)
+CursorDescription.__new__.__defaults__ = 7 * (None,)  # type: ignore[attr-defined]  # noqa
 
 
 def standard_errorhandler(connection, cursor, errorclass, errorvalue):
@@ -736,8 +731,12 @@ if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('
 
 # basic conversions
 
+T = TypeVar('T')
+ConversionFunc = Callable[[T], Optional[Union[str, float]]]
 
-def register_conversion(type_, json_conv, sql_conv=None, subclass=False):
+
+def register_conversion(type_: Type[T], json_conv: ConversionFunc, sql_conv: ConversionFunc = None,
+                        subclass: bool = False) -> None:
     json_conversions[type_] = json_conv
     sql_conversions[type_] = sql_conv or json_conv
     if subclass and type_ not in subclass_conversions:
@@ -755,10 +754,10 @@ def quoted_string_literal(txt):
         raise NotSupportedError("Cannot quote %r objects: %r" % (type(txt), txt))
 
 
-def date_literal(dat):
+def date_literal(dat) -> str:
     if not dat.tzinfo:
         tz = pytz.timezone(settings.TIME_ZONE)
-        dat = tz.localize(dat, is_dst=time.daylight)
+        dat = tz.localize(dat, is_dst=bool(time.daylight))
     # Format of `%z` is "+HHMM"
     tzname = datetime.datetime.strftime(dat, "%z")
     return datetime.datetime.strftime(dat, "%Y-%m-%dT%H:%M:%S.000") + tzname
@@ -793,12 +792,12 @@ def arg_to_json(arg):
 # supported types converted from Python to SFDC
 
 # conversion before conversion to json (for Insert and Update commands)
-json_conversions = {}
+json_conversions = {}  # type: Dict[Type, ConversionFunc]
 
 # conversion before formating a SOQL (for Select commands)
-sql_conversions = {}
+sql_conversions = {}  # type: Dict[Type, ConversionFunc]
 
-subclass_conversions = []
+subclass_conversions = []  # type: List[type]
 
 # pylint:disable=bad-whitespace
 register_conversion(int,             json_conv=str)

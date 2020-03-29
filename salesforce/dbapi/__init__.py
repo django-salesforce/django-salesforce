@@ -14,6 +14,7 @@ on Salesforce (but not on Django) has to be better for development,
 maintenance and testing.
 """
 
+from typing import Any
 import logging
 log = logging.getLogger(__name__)
 
@@ -21,6 +22,7 @@ log = logging.getLogger(__name__)
 # Dependencies of salesforce.dbapi on Django are tried to be minimalized.
 # The biggest challenges are django.conf.settings, django.db.connections and django.test.
 try:
+    settings = None  # type: Any
     from django.conf import settings
     from django.db import connections
 except ImportError:

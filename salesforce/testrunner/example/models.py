@@ -5,7 +5,9 @@
 # See LICENSE.md for details
 #
 
+from typing import Optional
 import django
+import types
 from django.conf import settings
 
 from salesforce import models
@@ -111,7 +113,7 @@ if getattr(settings, 'PERSON_ACCOUNT_ACTIVATED', False):
     class Account(PersonAccount):  # pylint:disable=model-no-explicit-unicode
         pass
 else:
-    class Account(CoreAccount):    # pylint:disable=model-no-explicit-unicode
+    class Account(CoreAccount):  # type: ignore[no-redef]  # noqa # pylint:disable=model-no-explicit-unicode
         pass
 
 
@@ -286,8 +288,9 @@ class Note(models.Model):
 
 class Opportunity(SalesforceModel):
     name = models.CharField(max_length=255)
-    contacts = django.db.models.ManyToManyField(Contact, through='example.OpportunityContactRole',
-                                                related_name='opportunities')
+    contacts = django.db.models.ManyToManyField(
+        Contact, through='example.OpportunityContactRole', related_name='opportunities'
+    )
     close_date = models.DateField()
     stage = models.CharField(max_length=255, db_column='StageName')  # e.g. "Prospecting"
     created_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
@@ -304,6 +307,7 @@ class OpportunityContactRole(SalesforceModel):
 
 
 try:
+    models_template = None  # type: Optional[types.ModuleType]
     from salesforce.testrunner.example import models_template
 except ImportError:
     # this is useful for the case that the model is being rewritten by inspectdb

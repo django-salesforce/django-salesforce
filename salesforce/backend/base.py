@@ -60,7 +60,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     }
 
     Database = Database
-    SchemaEditorClass = DatabaseSchemaEditor  # type: ignore  # this is normal in Django
+    SchemaEditorClass = DatabaseSchemaEditor  # type: ignore[assignment] # noqa # this is normal in Django
 
     # Classes instantiated in __init__().
     client_class = DatabaseClient

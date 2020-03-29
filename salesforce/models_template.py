@@ -25,7 +25,7 @@ from salesforce.models import *  # NOQA pylint:disable=unused-wildcard-import,wi
 from salesforce.backend.indep import LazyField
 import salesforce
 
-Model = salesforce.models.ModelTemplate
+Model = salesforce.models.ModelTemplate  # type: ignore[assignment,misc]  # noqa
 
 # pylint: disable=invalid-name
 CharField = LazyField(salesforce.models.CharField)
