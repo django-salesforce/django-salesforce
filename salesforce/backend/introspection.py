@@ -255,9 +255,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             if len(ilist) > 1 or back_name_collisions:
                 important_related_names.extend(ilist)
         last_introspection = LastIntrospection(
-                model_name=table2model(table_name),
-                important_related_names=important_related_names,
-                fields_map=fields_map,
+            model_name=table2model(table_name),
+            important_related_names=important_related_names,
+            fields_map=fields_map,
         )
         return result
 

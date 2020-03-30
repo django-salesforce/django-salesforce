@@ -414,8 +414,8 @@ class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):  # type: i
                     return self.connection.ops.fetch_returned_insert_rows(cursor)
                 if self.connection.features.can_return_columns_from_insert:
                     if (
-                        len(self.returning_fields) > 1 and
-                        not self.connection.features.can_return_multiple_columns_from_insert
+                            len(self.returning_fields) > 1 and
+                            not self.connection.features.can_return_multiple_columns_from_insert
                     ):
                         raise NotSupportedError(
                             'Returning multiple columns from INSERT statements is '
