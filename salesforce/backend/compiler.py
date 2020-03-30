@@ -16,7 +16,7 @@ from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # required for activation of lookups
-from salesforce.backend import DJANGO_30_PLUS
+from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS
 from salesforce.dbapi.driver import DatabaseError
 
 # pylint:no-else-return,too-many-branches,too-many-locals
@@ -127,7 +127,10 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             soql_trans = self.query_topology()
             if with_limits and self.query.low_mark == self.query.high_mark:
                 return '', ()
-            distinct_fields = self.get_distinct()
+            if DJANGO_21_PLUS:
+                distinct_fields, distinct_params = self.get_distinct()
+            else:
+                distinct_fields = self.get_distinct()
 
             # This must come after 'select', 'ordering', and 'distinct' -- see
             # docstring of get_from_clause() for details.
@@ -139,7 +142,15 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             result = ['SELECT']
 
             if self.query.distinct:
-                result.append(self.connection.ops.distinct_sql(distinct_fields))
+                if DJANGO_21_PLUS:
+                    distinct_result, distinct_params = self.connection.ops.distinct_sql(
+                        distinct_fields,
+                        distinct_params,
+                    )
+                    result += distinct_result
+                    params += distinct_params
+                else:
+                    result.append(self.connection.ops.distinct_sql(distinct_fields))
 
             out_cols = []
             col_idx = 1

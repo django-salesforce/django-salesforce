@@ -782,6 +782,21 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertGreaterEqual(contact_aggregate[1], 1)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_group_by_compile(self):
+        """Test that group annotations can be correctly compiled and executed"""
+        qs = (Contact.objects.filter(account__Name__gt='').order_by()
+              .values('account_id').annotate(cnt=Count('id'))
+              )
+        soql, params = qs.query.get_compiler('salesforce').as_sql()
+        expected_soql = (
+            'SELECT Contact.AccountId, COUNT(Contact.Id) cnt FROM Contact '
+            'WHERE Contact.Account.Name > %s GROUP BY Contact.AccountId'
+        )
+        self.assertEqual(soql, expected_soql)
+        self.assertEqual(params, ('',))
+        self.assertEqual(set(list(qs)[0].keys()), {'account_id', 'cnt'})
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_errors(self):
         """Test for improving code coverage.
         """
