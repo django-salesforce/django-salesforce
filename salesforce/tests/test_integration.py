@@ -184,7 +184,12 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test select_related with a subquery by children objects.
         """
         with self.lazy_assert_n_requests(1):
-            qs = Account.objects.filter(contact__isnull=False).select_related('Owner')
+            qs = Account.objects.filter(contact__isnull=False, Owner__isnull=False).select_related('Owner')
+            if 'AND Contact.Id' in str(qs.query):
+                sql_end = 'FROM Contact WHERE (Contact.Account.OwnerId != null AND Contact.Id != null)'
+            else:
+                sql_end = 'FROM Contact WHERE (Contact.Id != null AND Contact.Account.OwnerId != null)'
+            self.assertTrue(sql_end, str(qs.query))
             self.assertGreater(len(list(qs)), 0)
             self.assertGreater(qs[0].Owner.Username, '')
 
@@ -214,11 +219,11 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
         # the same without 'not_in' lookup by two requests and exclude()
         with self.lazy_assert_n_requests(2):
-            sub_ids = Contact.objects.values_list('account_id', flat=True)
+            sub_ids = Contact.objects.filter(account_id__gt='').values_list('account_id', flat=True)[:100]
             qs = Account.objects.exclude(pk__in=list(sub_ids)).select_related('Owner')
             list(qs)
         soql = str(qs.query)
-        self.assertIn("FROM Account WHERE (NOT (Account.Id IN ('", soql)
+        self.assertRegex(soql, r"FROM Account WHERE \(NOT \(Account.Id IN \((?:NULL, )?'001\w{15}'")
 
     def test_not_eq(self):
         qs = Contact.objects.filter(email__not_eq='')
@@ -974,7 +979,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         # with self.lazy_assert_n_requests(2):  # problem - Why too much requests?
         # raw query must contain the primary key (with the right capitalization, currently)
         with self.lazy_assert_n_requests(1):  # TODO why two requests?
-            ret = list(Contact.objects.raw("select Id from Contact limit 2000"))
+            ret = list(Contact.objects.raw("select Id from Contact where FirstName != '' limit 2000"))
         with self.lazy_assert_n_requests(1):
             last_name = ret[0].last_name
         self.assertTrue(last_name and 'last' not in last_name.lower())

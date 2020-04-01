@@ -123,7 +123,7 @@ class Contact(SalesforceModel):
     account = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
                                 blank=True, null=True)  # db_column: 'AccountId'
     last_name = models.CharField(max_length=80)
-    first_name = models.CharField(max_length=40, blank=True)
+    first_name = models.CharField(max_length=40, blank=True, null=True)
     name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY,
                             verbose_name='Full Name')
     email = models.EmailField(blank=True, null=True)
