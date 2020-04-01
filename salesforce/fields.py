@@ -21,9 +21,8 @@ from django.db import models
 
 from salesforce.defaults import DEFAULTED_ON_CREATE, DefaultedOnCreate
 
-# None of field types defined in this module need a "deconstruct" method,
-# in Django 1.7+, because their parameters only describe fixed nature of SF
-# standard objects that can not be modified no ways by no API or spell.
+# None of field types defined here don't need a "deconstruct" method.
+# Their parameters only describe the different, but stable nature of SF standard objects.
 
 FULL_WRITABLE = 0
 NOT_UPDATEABLE = 1
@@ -77,7 +76,7 @@ class SalesforceAutoField(fields.AutoField):
                     )
                 )
             # A model is created  that inherits fields from more abstract classes
-            # with the same default SalesforceAutoFieldy. Therefore the second should be
+            # with the same default SalesforceAutoField. Therefore the second should be
             # ignored.
             return
         super(SalesforceAutoField, self).contribute_to_class(cls, name, **kwargs)
@@ -133,7 +132,7 @@ class SfField(models.Field):
         return attname, column
 
     def contribute_to_class(self, cls, name, private_only=False, **kwargs):
-        # Different arguments are in Django 1.11 vs. 2.0, therefore we use universal **kwargs
+        # More arguments are in Django 1.11 than in Django 2.0, therefore we use the universal **kwargs
         # pylint:disable=arguments-differ
         super(SfField, self).contribute_to_class(cls, name, private_only=private_only, **kwargs)
         if self.sf_custom is None and hasattr(cls._meta, 'sf_custom'):
@@ -205,7 +204,7 @@ class DecimalField(SfField, models.DecimalField):
                 ret = Decimal(int(ret))
         return ret
 
-    # parameter "context" is for Django <= 1.11, removed in Django 3.0 (the same is in more classes here)
+    # parameter "context" is for Django <= 1.11 (the same is in more classes here)
     def from_db_value(self, value, expression, connection, context=None):
         # pylint:disable=unused-argument
         # TODO refactor and move to the driver like in other backends
@@ -223,7 +222,11 @@ class FloatField(SfField, models.FloatField):
 
 
 class BooleanField(SfField, models.BooleanField):
-    """BooleanField with sf_read_only attribute for Salesforce."""
+    """BooleanField with sf_read_only attribute for Salesforce.
+
+    No NullBooleanField exist for Salesforce and every BooleanField has
+    a default value. Implicit default is False if not specified.
+    """
     def __init__(self, default=False, **kwargs):
         super(BooleanField, self).__init__(default=default, **kwargs)
 

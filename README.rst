@@ -49,9 +49,14 @@ Quick Start
        New.
      - Click "Enable OAuth Settings" in API, then select "Access and manage
        your data (api)" from available OAuth Scopes.
-     - Other red marked fields must be filled, but are not relevant for Django.
+     - Other red marked fields must be filled, but are not relevant for Django
+       with password authentication. (For example a "Callback URL" can be an
+       URL that doesn't exist, but that is under your control, for the case that
+       you accidentally activate other OAuth mode later.)
    * ``USER`` is the username used to connect.
    * ``PASSWORD`` is a concatenation of the user's password and security token.
+     Security token can be set by My Settings / Personal / Reset My Security Token
+     or an new token is received by email after every password change.
      Security token can be omitted if the local IP address has been
      whitelisted in Security Controls / Network Access.
    * ``HOST`` is ``https://test.salesforce.com`` to access a sandbox, or
