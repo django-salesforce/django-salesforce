@@ -184,7 +184,9 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test select_related with a subquery by children objects.
         """
         with self.lazy_assert_n_requests(1):
-            qs = Account.objects.filter(contact__isnull=False).select_related('Owner')
+            qs = Account.objects.filter(contact__isnull=False, Owner__isnull=False).select_related('Owner')
+            sql_end = 'FROM Contact WHERE (Contact.Account.OwnerId != null AND Contact.Id != null)'
+            self.assertIn(sql_end, str(qs.query))
             self.assertGreater(len(list(qs)), 0)
             self.assertGreater(qs[0].Owner.Username, '')
 
@@ -214,7 +216,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
         # the same without 'not_in' lookup by two requests and exclude()
         with self.lazy_assert_n_requests(2):
-            sub_ids = Contact.objects.values_list('account_id', flat=True)
+            sub_ids = Contact.objects.filter(account_id__gt='').values_list('account_id', flat=True)
             qs = Account.objects.exclude(pk__in=list(sub_ids)).select_related('Owner')
             list(qs)
         soql = str(qs.query)
