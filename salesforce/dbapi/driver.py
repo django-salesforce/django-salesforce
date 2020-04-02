@@ -619,7 +619,7 @@ class Cursor(object):
         self.description = [(alias, None, None, None, name) for alias, name in
                             zip(self.qquery.aliases, self.qquery.fields)]
 
-        url_part = '?'.join((service, urlencode(dict(q=processed_sql))))
+        url_part = '/?'.join((service, urlencode(dict(q=processed_sql))))
         self.query_more(url_part)
         self._chunk_offset = 0
         self.rownumber = 0
@@ -636,7 +636,7 @@ class Cursor(object):
 
         self.qquery = QQuery(soql)
         self.description = [('detail', None, None, None, 'detail')]
-        url_part = '?'.join((service, urlencode(dict(explain=processed_sql))))
+        url_part = '/?'.join((service, urlencode(dict(explain=processed_sql))))
         ret = self.handle_api_exceptions('GET', url_part)
         self._iter = iter([[x] for x in pprint.pformat(ret.json(), indent=1, width=100).split('\n')])
 
@@ -845,7 +845,7 @@ class TimeStatistics(object):
 
     @staticmethod
     def domain(url):
-        match = re.match(r'^(?:https|mock)://([^/]+)/?', url)
+        match = re.match(r'^(?:https|mock)://([^/]*)/?', url)
         return match.groups()[0]
 
 
