@@ -38,6 +38,7 @@ class TestMock(MockTestCase):
         connections[sf_alias].connection._sf_session.index += 1  # mock a consumed request
 
     @override_settings(SF_MOCK_MODE='record')
+    @override_settings(SF_MOCK_VERBOSITY=0)
     def test_mock_record(self):
         # test
         cur = connections[sf_alias].cursor()

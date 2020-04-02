@@ -79,6 +79,9 @@ class SObjectCollectionsTest(MockTestCase):
 
     def test_create(self):
         "Create Multiple Records with Fewer Round-Trips"
+        # This test data were recorded from REST API documentation in August 2016
+
+        # Simulate a request and response call without all_or_none
         request_allornone_false = """
         {
            "allOrNone" : false,
@@ -115,11 +118,12 @@ class SObjectCollectionsTest(MockTestCase):
             dict(type_="Contact", LastName="Johnson", FirstName="Erica")
         ]
 
-        ret = self.cursor.db.connection.sobject_collections_request(data, all_or_none=False)
+        ret = self.cursor.db.connection.sobject_collections_request('POST', data, all_or_none=False)
+        # the primary keys start with '001' (Account) and '003' (Contact'
+        self.assertEqual([x[:3] for x in ret], ['001', '003'])
 
-        self.assertTrue(all(x['success'] is True and not x['errors'] for x in ret))
-        self.assertEqual(len(ret), 2)
-
+        # Simulate the same repeated request after the previous.
+        # Expect that duplicates are not allowed by SFDC instance configuration
         resp_2 = MockJsonRequest(
             "POST mock:///services/data/v42.0/composite/sobjects",
             request_allornone_false,
@@ -144,9 +148,10 @@ class SObjectCollectionsTest(MockTestCase):
         )
         self.mock_add_expected(resp_2)
         with self.assertRaises(SalesforceError) as cm:
-            ret = self.cursor.db.connection.sobject_collections_request(data, all_or_none=False)
+            ret = self.cursor.db.connection.sobject_collections_request('POST', data, all_or_none=False)
         self.assertIn('Account  DUPLICATES_DETECTED', cm.exception.args[0])
 
+        # simulate the same, but with all_or_none. (One error reported and one operation rollback)
         request_allornone_true = request_allornone_false.replace('"allOrNone" : false', '"allOrNone" : true')
         resp_3 = MockJsonRequest(
             "POST mock:///services/data/v42.0/composite/sobjects",
@@ -178,11 +183,11 @@ class SObjectCollectionsTest(MockTestCase):
         )
         self.mock_add_expected(resp_3)
         with self.assertRaises(SalesforceError) as cm:
-            ret = self.cursor.db.connection.sobject_collections_request(data, all_or_none=True)
+            ret = self.cursor.db.connection.sobject_collections_request('POST', data, all_or_none=True)
         self.assertIn('Account  DUPLICATES_DETECTED', cm.exception.args[0])
 
         # with mock.patch.object(self.cursor.db.connection, 'composite_type', 'composite'):
-        #    ret = self.cursor.db.connection.sobject_collections_request(data, all_or_none=True)
+        #    ret = self.cursor.db.connection.sobject_collections_request('POST', data, all_or_none=True)
 
 
 def parse_this():

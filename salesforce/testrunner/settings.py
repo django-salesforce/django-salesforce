@@ -24,6 +24,9 @@ DATABASES = {
         'USER': os.environ.get('SF_USER', ''),
         'PASSWORD': os.environ.get('SF_PASSWORD', ''),
         'HOST': 'https://login.salesforce.com',
+        'TEST': {
+            'DEPENDENCIES': [],
+        },
     }
 }  # type: Dict[str, Any]
 
