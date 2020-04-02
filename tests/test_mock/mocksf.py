@@ -46,13 +46,15 @@ import json as json_mod
 import re
 
 from django.db import connections
-from django.test import TestCase
+from django.test import SimpleTestCase
 
 from django.conf import settings
 
 import salesforce
 # from salesforce.dbapi import settings
 from salesforce.auth import MockAuth
+from salesforce.dbapi import driver
+from salesforce.backend import DJANGO_22_PLUS
 from salesforce.backend.test_helpers import sf_alias
 
 APPLICATION_JSON = 'application/json;charset=UTF-8'
@@ -105,6 +107,8 @@ class MockRequestsSession(object):
                 output.append('"%s %s"' % (method, url))
                 if data:
                     output.append("req=%r" % data)
+                if 'json' in kwargs:
+                    output.append("request_json=%r" % kwargs['json'])
                 if response.text:
                     output.append("resp=%r" % response.text)
 
@@ -121,11 +125,12 @@ class MockRequestsSession(object):
                     output.append("response_type=%r" % response_type)
                 if response.status_code != 200:
                     output.append("status_code=%d" % response.status_code)
-                print("=== MOCK RECORD {testcase}\n{class_name}(\n    {params})\n===".format(
-                    class_name=request_class.__name__,
-                    testcase=self.testcase,
-                    params=',\n    '.join(output)
-                    ))
+                if self.verbosity > 0:
+                    print("=== MOCK RECORD {testcase}\n{class_name}(\n    {params})\n===".format(
+                        class_name=request_class.__name__,
+                        testcase=self.testcase,
+                        params=',\n    '.join(output)
+                        ))
             return response
         raise NotImplementedError("Not implemented SF_MOCK_MODE=%s" % mode)
 
@@ -143,6 +148,10 @@ class MockRequestsSession(object):
 
     def mount(self, prefix, adapter):
         pass
+
+    @property
+    def verbosity(self):
+        return getattr(settings, 'SF_MOCK_VERBOSITY', 1)
 
 
 class MockRequest(object):
@@ -224,10 +233,15 @@ class MockJsonRequest(MockRequest):
     default_type = APPLICATION_JSON
 
 
-class MockTestCase(TestCase):
+class MockTestCase(SimpleTestCase):
     """
     Test case that uses recorded requests/responses instead of network
     """
+    if DJANGO_22_PLUS:
+        databases = {'salesforce'}
+    else:
+        allow_database_queries = True
+
     def setUp(self):
         # pylint:disable=protected-access
         mode = getattr(settings, 'SF_MOCK_MODE', 'playback')
@@ -247,6 +261,8 @@ class MockTestCase(TestCase):
 
         self.save_api_ver = connection.api_ver
         connection.api_ver = getattr(self, 'api_ver', salesforce.API_VERSION)
+        # simulate a recent request (to not run a check for broken conection in the test)
+        driver.time_statistics.expiration = 1E10
 
     def tearDown(self):
         if hasattr(self, '_outcome'):  # Python 3.4+
@@ -270,6 +286,7 @@ class MockTestCase(TestCase):
         # connection._sf_session, connection._sf_auth = self.save_session_auth
         connection._sf_session = self.save_session_auth  # pylint:disable=protected-access
         connection.api_ver = self.save_api_ver
+        driver.time_statistics.expiration = driver.TimeStatistics().expiration
         super(MockTestCase, self).tearDown()
 
     def list2reason(self, exc_list):
