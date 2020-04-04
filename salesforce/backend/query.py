@@ -15,7 +15,7 @@ from django.db.models import query
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
-from salesforce.backend import DJANGO_20_PLUS
+from salesforce.backend import DJANGO_20_PLUS, DJANGO_22_PLUS
 from salesforce.router import is_sf_database
 import salesforce
 
@@ -55,6 +55,7 @@ class SalesforceQuerySet(query.QuerySet):
     def bulk_create(self, objs, batch_size=None, ignore_conflicts=False, **kwargs):
         # pylint:disable=arguments-differ,unused-argument
         # parameter 'ignore_conflicts=False' is new in Django 2.2
+        kwargs = {'ignore_conflicts': ignore_conflicts} if DJANGO_22_PLUS else {}
         if getattr(self.model, '_salesforce_object', '') == 'extended' and not is_sf_database(self.db):
             objs = list(objs)
             for x in objs:
