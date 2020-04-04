@@ -11,7 +11,7 @@ oauth login support for the Salesforce API
 All data are ascii str.
 """
 
-from typing import Dict
+from typing import Dict, Optional
 import base64
 import hashlib
 import hmac
@@ -75,7 +75,7 @@ class SalesforceAuth(AuthBase):
     http://docs.python-requests.org/en/latest/user/advanced/#custom-authentication
     """
 
-    def __init__(self, db_alias, settings_dict=None, _session=None):
+    def __init__(self, db_alias: str, settings_dict: Dict = None, _session: requests.Session = None):
         """
         Set values for authentication
             Params:
@@ -85,12 +85,17 @@ class SalesforceAuth(AuthBase):
                         because it is not known initially in the connection.settings_dict.
                 _session: Only for tests
         """
+        if settings_dict:
+            self.settings_dict = settings_dict
+        else:
+            assert db_alias
+            self.settings_dict = connections[db_alias].settings_dict
+
         self.db_alias = db_alias
-        self.dynamic = None
-        self.settings_dict = settings_dict or connections[db_alias].settings_dict
+        self.dynamic = None   # type: Optional[Dict[str, str]]
         self._session = _session or requests.Session()
 
-    def authenticate(self):
+    def authenticate(self) -> Dict[str, str]:
         """
         Authenticate to the Salesforce API with the provided credentials.
 
@@ -98,7 +103,7 @@ class SalesforceAuth(AuthBase):
         """
         raise NotImplementedError("The authenticate method should be subclassed.")
 
-    def get_auth(self):
+    def get_auth(self) -> Dict[str, str]:
         """
         Cached value of authenticate() + the logic for the dynamic auth
         """
@@ -114,7 +119,7 @@ class SalesforceAuth(AuthBase):
                 oauth_data[db_alias] = self.authenticate()
             return oauth_data[db_alias]
 
-    def del_token(self):
+    def del_token(self) -> None:
         with oauth_lock:
             del oauth_data[self.db_alias]
         self.dynamic = None
@@ -125,7 +130,7 @@ class SalesforceAuth(AuthBase):
         r.headers['Authorization'] = 'OAuth %s' % access_token
         return r
 
-    def reauthenticate(self):
+    def reauthenticate(self) -> str:
         if self.dynamic is not None:
             # It is expected that with dynamic authentication we get a token that
             # is valid at least for a few future seconds, because we don't get
@@ -135,10 +140,10 @@ class SalesforceAuth(AuthBase):
         return self.get_auth()['access_token']
 
     @property
-    def instance_url(self):
+    def instance_url(self) -> str:
         return self.get_auth()['instance_url']
 
-    def dynamic_start(self, access_token, instance_url=None, **kw):
+    def dynamic_start(self, access_token: str, instance_url: str = None, **kw):
         """
         Set the access token dynamically according to the current user.
 
@@ -147,7 +152,7 @@ class SalesforceAuth(AuthBase):
         self.dynamic = {'access_token': str(access_token), 'instance_url': str(instance_url)}
         self.dynamic.update(kw)
 
-    def dynamic_end(self):
+    def dynamic_end(self) -> None:
         """
         Clear the dynamic access token.
         """
@@ -161,7 +166,7 @@ class SalesforcePasswordAuth(SalesforceAuth):
     Static auth data are cached thread safely between threads. Thread safety
     is provided by the ancestor class.
     """
-    def authenticate(self):
+    def authenticate(self) -> Dict[str, str]:
         """
         Authenticate to the Salesforce API with the provided credentials (password).
         """
@@ -199,9 +204,9 @@ class SalesforcePasswordAuth(SalesforceAuth):
 
 class MockAuth(SalesforceAuth):
     """Dummy authentication for offline Mock tests"""
-    def authenticate(self):
+    def authenticate(self) -> Dict[str, str]:
         return {'instance_url': 'mock://'}
 
-    def get_auth(self):
+    def get_auth(self) -> Dict[str, str]:
         # this is never cached
         return self.authenticate()

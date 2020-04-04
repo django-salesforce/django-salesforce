@@ -18,9 +18,11 @@ import sys
 import threading
 import time
 import warnings
-from collections import namedtuple
 from itertools import islice
-from typing import Callable, Dict, List, Optional, Type, TypeVar, Union
+from typing import (
+    Any, Callable, cast, Dict, Generic, Iterable, Iterator, List, NamedTuple, Optional,
+    overload, Sequence, Tuple, Type, TypeVar, Union,
+)
 from urllib.parse import urlencode
 
 import pytz
@@ -35,7 +37,7 @@ from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
     Error, InterfaceError, DatabaseError, DataError, OperationalError, IntegrityError,
     InternalError, ProgrammingError, NotSupportedError, SalesforceError, SalesforceWarning,
     warn_sf)
-from salesforce.dbapi.subselect import QQuery
+from salesforce.dbapi.subselect import QQuery, _TRow
 
 try:
     import beatbox  # type: ignore[import]  # pylint: disable=unused-import
@@ -83,12 +85,14 @@ request_count = 0  # global counter
 connect_lock = threading.Lock()
 thread_connections = threading.local()
 
+ErrInfo = Tuple[Type[Exception], Exception]
+
 
 class SfSession(requests.Session):
     auth = None  # type: SalesforceAuth
 
 
-class RawConnection(object):
+class RawConnection:
     """
     parameters:
         settings_dict:  like settings.SADABASES['salesforce'] in Django
@@ -109,21 +113,20 @@ class RawConnection(object):
     ProgrammingError = ProgrammingError
     NotSupportedError = NotSupportedError
 
-    def __init__(self, settings_dict, alias=None, errorhandler=None, use_introspection=None):
+    def __init__(self, settings_dict: Dict[str, Any], alias: Optional[str] = None,
+                 errorhandler: Optional[Callable] = None, use_introspection: Optional[bool] = None) -> None:
 
         # private members:
-        self.alias = alias
+        self.alias = cast(str, alias)
         self.errorhandler = errorhandler
         self.use_introspection = use_introspection if use_introspection is not None else True  # TODO
         self.settings_dict = settings_dict
-        self.messages = []
+        self.messages = []           # type: List[ErrInfo]
 
-        self._sf_session = None
+        self._sf_session = None      # type: Optional[SfSession]
         self.api_ver = salesforce.API_VERSION
-        self.debug_verbs = None
+        self.debug_verbs = None      # type: Optional[List[str]]
         self.composite_type = 'sobject-collections'  # 'sobject-collections' or 'composite'
-
-        self._last_used_cursor = None  # weakref.proxy for single thread debugging
 
         # The SFDC database is connected as late as possible if only tests
         # are running. Some tests don't require a connection.
@@ -135,29 +138,35 @@ class RawConnection(object):
     # Methods close() and commit() can be safely ignored, because everything is
     # committed automatically and the REST API is stateless.
 
-    def close(self):
+    def close(self) -> None:
         del self.messages[:]
 
-    def commit(self):  # pylint:disable=no-self-use
+    def commit(self) -> None:  # pylint:disable=no-self-use
         # "Database modules that do not support transactions should implement
         # this method with void functionality."
         pass
 
-    def rollback(self):  # pylint:disable=no-self-use
+    def rollback(self) -> None:  # pylint:disable=no-self-use
         log.info("Rollback is not implemented in Salesforce.")
 
-    def cursor(self):
-        return Cursor(self)
+    @overload
+    def cursor(self) -> 'Cursor[Dict]': ...
+    @overload  # noqa
+    def cursor(self, row_type: Type[_TRow]) -> 'Cursor[_TRow]': ...
+
+    def cursor(self, row_type=dict):  # noqa
+        return Cursor(self, row_type)
 
     # -- private attributes
 
     @property
-    def sf_session(self):
+    def sf_session(self) -> SfSession:
         if self._sf_session is None:
             self.make_session()
+            assert self._sf_session
         return self._sf_session
 
-    def make_session(self):
+    def make_session(self) -> None:
         """Authenticate and get the name of assigned SFDC data server"""
         with connect_lock:
             if self._sf_session is None:
@@ -172,7 +181,7 @@ class RawConnection(object):
                 # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'} # TODO
                 self._sf_session = sf_session
 
-    def rest_api_url(self, *url_parts_, **kwargs):
+    def rest_api_url(self, *url_parts_: str, **kwargs) -> str:
         """Join the URL of REST_API
 
         parameters:
@@ -199,8 +208,8 @@ class RawConnection(object):
         url_parts = list(url_parts_)
         if url_parts and re.match(r'^(?:https|mock)://', url_parts[0]):
             return '/'.join(url_parts)
-        relative = kwargs.pop('relative', False)
-        api_ver = kwargs.pop('api_ver', None)
+        relative = kwargs.pop('relative', False)  # type: bool
+        api_ver = kwargs.pop('api_ver', None)     # type: Optional[str]
         api_ver = api_ver if api_ver is not None else self.api_ver
         assert not kwargs
         if not relative:
@@ -216,7 +225,7 @@ class RawConnection(object):
                 prefix += ['v{api_ver}'.format(api_ver=api_ver)]
         return '/'.join(base + prefix + url_parts)
 
-    def handle_api_exceptions(self, method, *url_parts, **kwargs):
+    def handle_api_exceptions(self, method: str, *url_parts: str, **kwargs) -> requests.Response:
         """Call REST API and handle exceptions
         Params:
             method:  'HEAD', 'GET', 'POST', 'PATCH' or 'DELETE'
@@ -244,7 +253,7 @@ class RawConnection(object):
                 errorhandler(self, cursor_context, exc_class, exc_value)
                 raise
 
-    def handle_api_exceptions_inter(self, method, *url_parts, **kwargs):
+    def handle_api_exceptions_inter(self, method: str, *url_parts: str, **kwargs) -> requests.Response:
         """The main (middle) part - it is enough if no error occurs."""
         global request_count  # used only in single thread tests - OK # pylint:disable=global-statement
         # log.info("request %s %s", method, '/'.join(url_parts))
@@ -285,8 +294,9 @@ class RawConnection(object):
         # status codes docs (400, 403, 404, 405, 415, 500)
         # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/errorcodes.htm
         self.raise_errors(response)
+        return  # type: ignore[return-value]  # noqa
 
-    def raise_errors(self, response):
+    def raise_errors(self, response: requests.Response) -> None:
         """The innermost part - report errors by exceptions"""
         # Errors: 400, 403 permissions or REQUEST_LIMIT_EXCEEDED, 404, 405, 415, 500)
         # TODO extract a case ID for Salesforce support from code 500 messages
@@ -323,7 +333,7 @@ class RawConnection(object):
         # it is good e.g for these errorCode: ('INVALID_FIELD', 'MALFORMED_QUERY', 'INVALID_FIELD_FOR_INSERT_UPDATE')
         raise SalesforceError([err_msg], response)
 
-    def composite_request(self, data):
+    def composite_request(self, data: List[Dict[str, Any]]) -> requests.Response:
         """Call a 'composite' request with subrequests, error handling
 
         A fake object for request/response is created for a subrequest in case
@@ -356,12 +366,15 @@ class RawConnection(object):
         bad_resp_headers = bad_response['httpHeaders'].copy()
         bad_resp_headers.update({'Content-Type': resp.headers['Content-Type']})
 
-        bad_resp = FakeResp(bad_response['httpStatusCode'], json.dumps(body), bad_req, bad_resp_headers)
+        bad_resp = FakeResp(bad_response['httpStatusCode'], json.dumps(body), bad_req, bad_resp_headers
+                            ) # type: requests.Response # type: ignore[assignment]  # noqa
 
         self.raise_errors(bad_resp)
+        return  # type: ignore[return-value]  # noqa
 
     @staticmethod
-    def _group_results(resp_data, records, all_or_none):
+    def _group_results(resp_data: List[Dict[str, Any]], records: Sequence, all_or_none: bool
+                       ) -> Tuple[List[Tuple[int, Any]], List[Tuple[int, Any, Any, str]], List[Tuple[int, Any]]]:
         x_ok, x_err, x_roll = [], [], []
         for i, x in enumerate(resp_data):
             if x['success']:
@@ -381,7 +394,7 @@ class RawConnection(object):
             assert not x_roll
         return x_ok, x_err, x_roll
 
-    def sobject_collections_request(self, method, records, all_or_none=True):
+    def sobject_collections_request(self, method: str, records, all_or_none: bool = True) -> List[str]:
         # pylint:disable=too-many-locals
         assert method in ('GET', 'POST', 'PATCH', 'DELETE')
         if method == 'DELETE':
@@ -436,9 +449,9 @@ class RawConnection(object):
         return round(time.time() - t_0, 3)
 
 
-class FakeReq(object):
+class FakeReq:
     # pylint:disable=too-few-public-methods,too-many-arguments
-    def __init__(self, method, url, data, headers=None, context=None):
+    def __init__(self, method: str, url: str, data, headers=None, context=None):
         self.method = method
         self.url = url
         self.data = data
@@ -446,8 +459,8 @@ class FakeReq(object):
         self.context = context
 
 
-class FakeResp(object):  # pylint:disable=too-few-public-methods,too-many-instance-attributes
-    def __init__(self, status_code, headers, text, request):
+class FakeResp:  # pylint:disable=too-few-public-methods,too-many-instance-attributes
+    def __init__(self, status_code: int, headers, text, request):
         self.status_code = status_code
         self.text = text
         self.request = request
@@ -458,17 +471,17 @@ Connection = RawConnection
 
 
 # DB API function
-def connect(**params):
+def connect(**params) -> Connection:
     return Connection(**params)
 
 
-def get_connection(alias, **params):
+def get_connection(alias: str, **params) -> Connection:
     if not hasattr(thread_connections, alias):
         setattr(thread_connections, alias, connect(alias=alias, **params))
     return getattr(thread_connections, alias)
 
 
-class Cursor(object):
+class Cursor(Generic[_TRow]):
     """Cursor (local part is simple, remote part is stateless for small result sets)
 
     From SDFC documentation (combined from SOQL, REST, APEX)
@@ -491,38 +504,38 @@ class Cursor(object):
     """
 
     # pylint:disable=too-many-instance-attributes
-    def __init__(self, connection, row_type=None):
+    def __init__(self, connection: Connection, row_type: Type[_TRow] = None) -> None:
         # DB API attributes (public, ordered by documentation PEP 249)
-        self.description = None
+        self.description = None           # type: Optional[List[Tuple]]
         self.rowcount = -1  # set to non-negative by SELECT INSERT UPDATE DELETE
         self.arraysize = 1  # writable, but ignored finally
         # db api extensions
-        self.rownumber = None  # cursor position index
+        self.rownumber = None             # type: Optional[int]  # cursor position index
         self.connection = connection
-        self.messages = []
-        self.lastrowid = None  # used for INSERT id
+        self.messages = []                # type: List[ErrInfo]
+        self.lastrowid = None  # TODO to be used for INSERT id, but insert is not implemented by cursor
         self.errorhandler = connection.errorhandler
         # private
         if row_type and issubclass(row_type, list):
-            self.row_factory = lambda x: list(x.values())
+            self.row_factory = lambda x: list(x.values())  # type: Callable[[Dict], _TRow]
         else:
-            self.row_factory = lambda x: x
-        self._chunk = []
-        self._chunk_offset = None
-        self._next_records_url = None
-        self.handle = None
-        self.qquery = None
-        self._raw_iterator = None
-        self._iter = not_executed_yet()
+            self.row_factory = lambda x: x                 # type: ignore[assignment,return-value]  # noqa
+        self._chunk = []                  # type: List[_TRow]
+        self._chunk_offset = None         # type: Optional[int]
+        self._next_records_url = None     # type: Optional[str]
+        self.handle = None                # type: Optional[str]
+        self.qquery = None                # type: Optional[QQuery]
+        self._raw_iterator = None         # type: Optional[Iterator[_TRow]]
+        self._iter = not_executed_yet()   # type: Iterator[_TRow]
 
     # -- DB API methods
 
     # .callproc(...)  noit implemented
 
-    def close(self):
+    def close(self) -> None:
         self._clean()
 
-    def execute(self, soql, parameters=None, query_all=False):
+    def execute(self, soql: str, parameters: Optional[Iterable] = None, query_all: bool = False) -> None:
         self._clean()
         parameters = parameters or []
         sqltype = soql.split(None, 1)[0].upper()
@@ -534,26 +547,26 @@ class Cursor(object):
             # INSERT UPDATE DELETE EXPLAIN
             raise ProgrammingError("Unexpected command '{}'".format(sqltype))
 
-    def executemany(self, operation, seq_of_parameters):
+    def executemany(self, operation: str, seq_of_parameters: Iterable[Iterable]) -> None:
         self._clean()
         for param in seq_of_parameters:
             self.execute(operation, param)
 
-    def fetchone(self):
+    def fetchone(self) -> Optional[_TRow]:
         self._check_data()
         return next(self, None)
 
-    def fetchmany(self, size=None):
+    def fetchmany(self, size: Optional[int] = None) -> List[_TRow]:
         self._check_data()
         if size is None:
             size = self.arraysize
         return list(islice(self, size))
 
-    def fetchall(self):
+    def fetchall(self) -> List[_TRow]:
         self._check_data()
         return list(self)
 
-    def scroll(self, value, mode='relative'):
+    def scroll(self, value: int, mode: str = 'relative') -> None:
         # TODO It is a beta based on an undocumented information
         # The undocumented structure of 'nextRecordsUrl' is
         #     'query/{query_id}-{offset}'  e.g.
@@ -566,6 +579,7 @@ class Cursor(object):
         # but this will simply pass the original exception from SFDC:
         # "SalesforceError: INVALID_QUERY_LOCATOR"
 
+        assert self._chunk_offset is not None and self.rownumber is not None
         new_offset = int(value) + (0 if mode == 'absolute' else self.rownumber)
         if not self._chunk_offset <= new_offset < self._chunk_offset + len(self._chunk):
             url = '{}-{}'.format(self.handle, new_offset)
@@ -580,21 +594,23 @@ class Cursor(object):
 
     # .nextset()  not implemented
 
-    def setinputsizes(self, sizes):
+    def setinputsizes(self, sizes) -> None:
         pass  # this method is allowed to do nothing
 
-    def setoutputsize(self, size, column=None):
+    def setoutputsize(self, size, column=None) -> None:
         pass  # this method is allowed to do nothing
 
-    def __next__(self):
-        return next(self._iter)
+    def __next__(self) -> _TRow:
+        return self._iter.__next__()
 
     # -- private methods
 
-    def __iter__(self):
+    def __iter__(self) -> 'Cursor':
         return self
 
-    def _gen(self):
+    def _gen(self) -> Iterator[_TRow]:
+        assert self._chunk_offset is not None and self.rownumber is not None
+        assert self.qquery
         while True:
             self._raw_iterator = iter(self._chunk)
             for row in self.qquery.parse_rest_response(self._raw_iterator, self.rowcount):
@@ -606,14 +622,14 @@ class Cursor(object):
             self.query_more(self._next_records_url)
             self._chunk_offset = new_offset
 
-    def execute_select(self, soql, parameters, query_all=False):
+    def execute_select(self, soql, parameters: Iterable, query_all=False):
         processed_sql = str(soql) % tuple(arg_to_soql(x) for x in parameters)
         service = 'query' if not query_all else 'queryAll'
 
-        self.qquery = QQuery(soql)
+        self.qquery = qquery = QQuery(soql)
         # TODO better description
         self.description = [(alias, None, None, None, name) for alias, name in
-                            zip(self.qquery.aliases, self.qquery.fields)]
+                            zip(qquery.aliases, qquery.fields)]
 
         url_part = '/?'.join((service, urlencode(dict(q=processed_sql))))
         self.query_more(url_part)
@@ -623,7 +639,7 @@ class Cursor(object):
             self.handle = self._next_records_url.split('-')[0]
         self._iter = iter(self._gen())
 
-    def execute_explain(self, soql, parameters, query_all=False):
+    def execute_explain(self, soql: str, parameters: Iterable, query_all: bool = False) -> None:
         # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/dome_query_explain.htm
         assert soql.startswith('EXPLAIN SELECT')
         soql = soql.split(' ', 1)[1]
@@ -634,24 +650,25 @@ class Cursor(object):
         self.description = [('detail', None, None, None, 'detail')]
         url_part = '/?'.join((service, urlencode(dict(explain=processed_sql))))
         ret = self.handle_api_exceptions('GET', url_part)
-        self._iter = iter([[x] for x in pprint.pformat(ret.json(), indent=1, width=100).split('\n')])
+        self._iter = iter([[x]                    # type: ignore[misc]  # noqa
+                          for x in pprint.pformat(ret.json(), indent=1, width=100).split('\n')])
 
-    def query_more(self, nextRecordsUrl):  # pylint:disable=invalid-name
+    def query_more(self, nextRecordsUrl: str) -> None:  # pylint:disable=invalid-name
         self._check()
         ret = self.handle_api_exceptions('GET', nextRecordsUrl).json()
         self.rowcount = ret['totalSize']  # may be more accurate than the initial approximate value
         self._chunk = ret['records']
         self._next_records_url = ret.get('nextRecordsUrl')
 
-    def _check(self):
+    def _check(self) -> None:
         if not self.connection:
             raise InterfaceError("Cursor Closed")
 
-    def _check_data(self):
+    def _check_data(self) -> None:
         if not self._iter:
             raise ProgrammingError('No previous .execute("select...") before .fetch...()')
 
-    def _clean(self):
+    def _clean(self) -> None:
         self.description = None
         self.rowcount = -1
         self.rownumber = None
@@ -666,36 +683,48 @@ class Cursor(object):
         self._iter = not_executed_yet()
         self._check()
 
-    def handle_api_exceptions(self, method, *url_parts, **kwargs):
+    def handle_api_exceptions(self, method: str, *url_parts: str, **kwargs) -> requests.Response:
         return self.connection.handle_api_exceptions(method, *url_parts, cursor_context=self, **kwargs)
 
 
 #                              The first two items are mandatory. (name, type)
-CursorDescription = namedtuple('CursorDescription', 'name type_code '
-                               'display_size internal_size precision scale null_ok default params')
+CursorDescription = NamedTuple(
+    'CursorDescription', [
+        ('name', str),
+        ('type_code', Any),
+        ('display_size', bool),
+        ('internal_size', int),
+        ('precision', int),
+        ('scale', int),
+        ('null_ok', bool),
+        ('default', Any),
+        ('params', dict),
+    ])
 CursorDescription.__new__.__defaults__ = 7 * (None,)  # type: ignore[attr-defined]  # noqa
 
 
-def standard_errorhandler(connection, cursor, errorclass, errorvalue):
+def standard_errorhandler(connection: Connection, cursor: Optional[Cursor], errorclass: Type[Exception],
+                          errorvalue: Exception) -> None:
     if cursor:
         cursor.messages.append((errorclass, errorvalue))
     else:
         connection.messages.append((errorclass, errorvalue))
 
 
-def verbose_error_handler(connection, cursor, errorclass, errorvalue):  # pylint:disable=unused-argument
+def verbose_error_handler(connection: Connection, cursor: Optional[Cursor], errorclass: Type[Exception],
+                          errorvalue: Exception) -> None:  # pylint:disable=unused-argument
     pprint.pprint(errorvalue.__dict__)
 
 
 # --- private
 
 
-def not_executed_yet():
+def not_executed_yet() -> Iterator[_TRow]:
     raise Connection.InterfaceError("called fetch...() before execute()")
     yield  # pylint:disable=unreachable
 
 
-def signalize_extensions():
+def signalize_extensions() -> None:
     """DB API 2.0 extension are reported by warnings at run-time."""
     warnings.warn("DB-API extension cursor.rownumber used", SalesforceWarning)
     warnings.warn("DB-API extension connection.<exception> used", SalesforceWarning)  # TODO
@@ -732,18 +761,19 @@ if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('
 # basic conversions
 
 T = TypeVar('T')
-ConversionFunc = Callable[[T], Optional[Union[str, float]]]
+ConversionSqlFunc = Callable[[T], Union[str, float]]
+ConversionJsonFunc = Callable[[T], Optional[Union[str, float]]]
 
 
-def register_conversion(type_: Type[T], json_conv: ConversionFunc, sql_conv: ConversionFunc = None,
+def register_conversion(type_: Type[T], json_conv: ConversionJsonFunc, sql_conv: ConversionSqlFunc = None,
                         subclass: bool = False) -> None:
     json_conversions[type_] = json_conv
-    sql_conversions[type_] = sql_conv or json_conv
+    sql_conversions[type_] = sql_conv or json_conv  # type: ignore[assignment]  # noqa
     if subclass and type_ not in subclass_conversions:
         subclass_conversions.append(type_)
 
 
-def quoted_string_literal(txt):
+def quoted_string_literal(txt: str) -> str:
     """
     SOQL requires single quotes to be escaped.
     http://www.salesforce.com/us/developer/docs/soql_sosl/Content/sforce_api_calls_soql_select_quotedstringescapes.htm
@@ -754,7 +784,7 @@ def quoted_string_literal(txt):
         raise NotSupportedError("Cannot quote %r objects: %r" % (type(txt), txt))
 
 
-def date_literal(dat) -> str:
+def date_literal(dat: datetime.datetime) -> str:
     if not dat.tzinfo:
         tz = pytz.timezone(settings.TIME_ZONE)
         dat = tz.localize(dat, is_dst=bool(time.daylight))
@@ -763,7 +793,7 @@ def date_literal(dat) -> str:
     return datetime.datetime.strftime(dat, "%Y-%m-%dT%H:%M:%S.000") + tzname
 
 
-def arg_to_soql(arg):
+def arg_to_soql(arg: Any) -> Union[str, float]:
     """
     Perform necessary SOQL quoting on the arg.
     """
@@ -776,7 +806,7 @@ def arg_to_soql(arg):
     return sql_conversions[str](arg)
 
 
-def arg_to_json(arg):
+def arg_to_json(arg: Any) -> Optional[Union[str, float]]:
     """
     Perform necessary JSON conversion on the arg.
     """
@@ -792,10 +822,10 @@ def arg_to_json(arg):
 # supported types converted from Python to SFDC
 
 # conversion before conversion to json (for Insert and Update commands)
-json_conversions = {}  # type: Dict[Type, ConversionFunc]
+json_conversions = {}  # type: Dict[Type, ConversionJsonFunc]
 
 # conversion before formating a SOQL (for Select commands)
-sql_conversions = {}  # type: Dict[Type, ConversionFunc]
+sql_conversions = {}  # type: Dict[Type, ConversionSqlFunc]
 
 subclass_conversions = []  # type: List[type]
 
@@ -813,7 +843,7 @@ register_conversion(decimal.Decimal, json_conv=float, subclass=True)
 # pylint:enable=bad-whitespace
 
 
-def merge_dict(dict_1, *other, **kw):
+def merge_dict(dict_1: Dict, *other: Dict, **kw) -> Dict:
     """Merge two or more dict including kw into result dict."""
     tmp = dict_1.copy()
     for x in other:
@@ -822,13 +852,13 @@ def merge_dict(dict_1, *other, **kw):
     return tmp
 
 
-class TimeStatistics(object):
+class TimeStatistics:
 
-    def __init__(self, expiration=300):
+    def __init__(self, expiration: float = 300) -> None:
         self.expiration = expiration
-        self.data = {}
+        self.data = {}  # type: Dict[str, float]
 
-    def update_callback(self, url, callback=None):
+    def update_callback(self, url: str, callback: Optional[Callable] = None):
         """Update the statistics for the domain"""
         domain = self.domain(url)
         last_req = self.data.get(domain, 0)
@@ -839,8 +869,9 @@ class TimeStatistics(object):
             callback()
 
     @staticmethod
-    def domain(url):
+    def domain(url) -> str:
         match = re.match(r'^(?:https|mock)://([^/]*)/?', url)
+        assert match
         return match.groups()[0]
 
 

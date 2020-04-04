@@ -41,7 +41,7 @@ class SalesforceQuery(Query):
     """
     Override aggregates.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(SalesforceQuery, self).__init__(*args, **kwargs)
         self.is_query_all = False
         self.max_depth = 1
@@ -75,7 +75,7 @@ class SalesforceQuery(Query):
         compiler = q.get_compiler(using=using)  # pylint: disable=no-member
         return bool(compiler.execute_sql(constants.SINGLE))
 
-    def set_query_all(self):
+    def set_query_all(self) -> None:
         self.is_query_all = True
 
     def get_count(self, using):

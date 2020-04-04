@@ -15,11 +15,13 @@ require a combined parser for parentheses and commas.
 
 Unsupported GROUP BY ROLLUP and GROUP BY CUBE (their syntax for reports).
 """
+from typing import Any, Dict, List, Optional, TypeVar, Union
 import datetime
 import re
 import pytz
 from salesforce.dbapi.exceptions import ProgrammingError
 
+_TRow = TypeVar('_TRow', list, dict)
 # reserved wods can not be used as alias names
 RESERVED_WORDS = set((
     'AND, ASC, DESC, EXCLUDES, FIRST, FROM, GROUP, HAVING, '
@@ -53,12 +55,12 @@ class QQuery(object):
 
     # pylint:disable=too-few-public-methods,too-many-instance-attributes
 
-    def __init__(self, soql=None):
+    def __init__(self, soql: Optional[str] = None) -> None:
         self.soql = None
-        self.fields = []
+        self.fields = []                  # type: List[Union[str, QQuery]]
         # dictionary of chil to parent relationships - lowercase keys
-        self.subroots = {}
-        self.aliases = []
+        self.subroots = {}                # type: Dict[str, Any]  # recursive is Any
+        self.aliases = []                 # type: List[str]
         self.root_table = None
         # is_aggregation: only to know if aliases are relevant for output
         self.is_aggregation = False

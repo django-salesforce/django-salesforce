@@ -8,17 +8,21 @@
 """
 Salesforce object query and queryset customizations.  (like django.db.models.query)
 """
+from typing import Generic, Iterable, List, Optional, TypeVar
+import typing
 import warnings
 
-from django.db import NotSupportedError
+from django.db import NotSupportedError, models
 from django.db.models import query
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
 from salesforce.backend import DJANGO_20_PLUS, DJANGO_22_PLUS
+from salesforce.backend.models_sql_query import SalesforceQuery
 from salesforce.router import is_sf_database
-import salesforce
+import salesforce.backend.utils
 
+_T = TypeVar("_T", bound=models.Model, covariant=True)
 
 # class SalesforceRawQuerySet(query.RawQuerySet):
 #     def __len__(self):
@@ -28,12 +32,13 @@ import salesforce
 #         return self.query.cursor.rowcount
 
 
-class SalesforceQuerySet(query.QuerySet):
+class SalesforceQuerySet(query.QuerySet, Generic[_T]):
     """
     Use a custom SQL compiler to generate SOQL-compliant queries.
     """
+    query = None  # type: SalesforceQuery
 
-    def query_all(self):
+    def query_all(self) -> 'SalesforceQuerySet[_T]':
         """
         Allows querying for also deleted or merged records.
             Lead.objects.query_all().filter(IsDeleted=True,...)
@@ -45,14 +50,14 @@ class SalesforceQuerySet(query.QuerySet):
         clone.query.set_query_all()
         return clone
 
-    def simple_select_related(self, *fields):
+    def simple_select_related(self, *fields: str) -> 'SalesforceQuerySet[_T]':
         if DJANGO_20_PLUS:
             raise NotSupportedError("Obsoleted method .simple_select_related(), use .select_related() instead")
         warnings.warn("Obsoleted method .simple_select_related(), use .select_related() instead")
         return self.select_related(*fields)
 
-    def bulk_create(self, objs, batch_size=None, ignore_conflicts=False, **kwargs):
-        # pylint:disable=arguments-differ,unused-argument
+    def bulk_create(self, objs: Iterable[_T], batch_size: Optional[int] = None, ignore_conflicts: bool = False
+                    ) -> List[_T]:
         # parameter 'ignore_conflicts=False' is new in Django 2.2
         kwargs = {'ignore_conflicts': ignore_conflicts} if DJANGO_22_PLUS else {}
         if getattr(self.model, '_salesforce_object', '') == 'extended' and not is_sf_database(self.db):
@@ -63,11 +68,12 @@ class SalesforceQuerySet(query.QuerySet):
         return super(SalesforceQuerySet, self).bulk_create(objs, batch_size=batch_size, **kwargs)
 
     if not DJANGO_20_PLUS:
-        def _chain(self, **kwargs):
+        def _chain(self, **kwargs) -> 'SalesforceQuerySet[_T]':
             return self._clone()
 
 
-def bulk_update_small(objs, fields, all_or_none=None):
+def bulk_update_small(objs: 'typing.Collection[models.Model]', fields: Iterable[str], all_or_none: bool = None
+                      ) -> None:
     # simple implementation without "batch_size" parameter, but with "all_or_none"
     # and objects from mixed models can be updated by one request in the same transaction
     assert len(objs) <= 200
