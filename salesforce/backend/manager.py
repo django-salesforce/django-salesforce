@@ -34,7 +34,7 @@ class SalesforceManager(_BaseManager):
         use_for_related_fields = True
         silence_use_for_related_fields_deprecation = True  # pylint:disable=invalid-name  # name from Django
 
-    def get_queryset(self, _alias: Optional[str] = None) -> _QuerySet:
+    def get_queryset(self, _alias: Optional[str] = None) -> '_QuerySet':
         """
         Returns a QuerySet which access remote SF objects.
         """
@@ -62,7 +62,9 @@ class SalesforceManager(_BaseManager):
     #                                            params=params, using=self.db)
     #     return super(SalesforceManager, self).raw(raw_query, params=params, translations=translations)
 
-    def query_all(self):
+    def query_all(self) -> '_QuerySet[_T]':
         if router.is_sf_database(self.db):
-            return self.get_queryset().query_all()
+            qs = self.get_queryset()
+            assert isinstance(qs, query.SalesforceQuerySet)
+            return qs.query_all()
         return self.get_queryset()
