@@ -18,7 +18,6 @@ import sys
 import threading
 import time
 import warnings
-import weakref
 from collections import namedtuple
 from itertools import islice
 from typing import Callable, Dict, List, Optional, Type, TypeVar, Union
@@ -29,7 +28,7 @@ import requests
 from requests.adapters import HTTPAdapter
 
 import salesforce
-from salesforce.auth import SalesforcePasswordAuth
+from salesforce.auth import SalesforcePasswordAuth, SalesforceAuth
 from salesforce.dbapi import get_max_retries
 from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
@@ -83,6 +82,10 @@ request_count = 0  # global counter
 
 connect_lock = threading.Lock()
 thread_connections = threading.local()
+
+
+class SfSession(requests.Session):
+    auth = None  # type: SalesforceAuth
 
 
 class RawConnection(object):
@@ -158,7 +161,7 @@ class RawConnection(object):
         """Authenticate and get the name of assigned SFDC data server"""
         with connect_lock:
             if self._sf_session is None:
-                sf_session = requests.Session()
+                sf_session = SfSession()
                 # TODO configurable class Salesforce***Auth
                 sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
                                                          settings_dict=self.settings_dict)
@@ -169,7 +172,7 @@ class RawConnection(object):
                 # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'} # TODO
                 self._sf_session = sf_session
 
-    def rest_api_url(self, *url_parts, **kwargs):
+    def rest_api_url(self, *url_parts_, **kwargs):
         """Join the URL of REST_API
 
         parameters:
@@ -193,7 +196,7 @@ class RawConnection(object):
                   /services/data/v45.0
                   https://na1.salesforce.com/services/data/44.0
         """
-        url_parts = list(url_parts)
+        url_parts = list(url_parts_)
         if url_parts and re.match(r'^(?:https|mock)://', url_parts[0]):
             return '/'.join(url_parts)
         relative = kwargs.pop('relative', False)
@@ -230,15 +233,16 @@ class RawConnection(object):
         assert method in ('HEAD', 'GET', 'POST', 'PATCH', 'DELETE')
         cursor_context = kwargs.pop('cursor_context', None)
         errorhandler = cursor_context.errorhandler if cursor_context else self.errorhandler
-        catched_exceptions = (SalesforceError, requests.exceptions.RequestException) if errorhandler else ()
-        try:
+        if not errorhandler:
+            # nothing is caught usually and error handler not used
             return self.handle_api_exceptions_inter(method, *url_parts, **kwargs)
-
-        except catched_exceptions:
-            # nothing is catched usually and error handler not used
-            exc_class, exc_value, _ = sys.exc_info()
-            errorhandler(self, cursor_context, exc_class, exc_value)
-            raise
+        else:
+            try:
+                return self.handle_api_exceptions_inter(method, *url_parts, **kwargs)
+            except (SalesforceError, requests.exceptions.RequestException):
+                exc_class, exc_value, _ = sys.exc_info()
+                errorhandler(self, cursor_context, exc_class, exc_value)
+                raise
 
     def handle_api_exceptions_inter(self, method, *url_parts, **kwargs):
         """The main (middle) part - it is enough if no error occurs."""
@@ -417,17 +421,6 @@ class RawConnection(object):
             messages.append(msg)
         raise SalesforceError(messages)
 
-    @property
-    def last_used_cursor(self):
-        try:
-            return self._last_used_cursor()  # pylint:disable=not-callable
-        except NameError:
-            return None
-
-    @last_used_cursor.setter
-    def last_used_cursor(self, cursor):
-        self._last_used_cursor = weakref.proxy(cursor)
-
     def ping_connection(self, timeout: float = 1.0) -> Optional[float]:
         """Fast check the connection by an unimportant request
 
@@ -498,7 +491,7 @@ class Cursor(object):
     """
 
     # pylint:disable=too-many-instance-attributes
-    def __init__(self, connection):
+    def __init__(self, connection, row_type=None):
         # DB API attributes (public, ordered by documentation PEP 249)
         self.description = None
         self.rowcount = -1  # set to non-negative by SELECT INSERT UPDATE DELETE
@@ -510,14 +503,17 @@ class Cursor(object):
         self.lastrowid = None  # used for INSERT id
         self.errorhandler = connection.errorhandler
         # private
-        self.row_factory = lambda x: x  # standard dict
-        self._chunk = not_executed_yet()
+        if row_type and issubclass(row_type, list):
+            self.row_factory = lambda x: list(x.values())
+        else:
+            self.row_factory = lambda x: x
+        self._chunk = []
         self._chunk_offset = None
         self._next_records_url = None
         self.handle = None
         self.qquery = None
         self._raw_iterator = None
-        self._iter = None
+        self._iter = not_executed_yet()
 
     # -- DB API methods
 
@@ -650,7 +646,6 @@ class Cursor(object):
     def _check(self):
         if not self.connection:
             raise InterfaceError("Cursor Closed")
-        self.connection.last_used_cursor = self  # it is set into weakref
 
     def _check_data(self):
         if not self._iter:
@@ -663,12 +658,12 @@ class Cursor(object):
         del self.messages[:]
         self.lastrowid = None
         self._next_records_url = None
-        self._chunk = not_executed_yet()
+        self._chunk = []
         self._chunk_offset = None
         self.handle = None
         self.qquery = None
         self._raw_iterator = None
-        self._iter = None
+        self._iter = not_executed_yet()
         self._check()
 
     def handle_api_exceptions(self, method, *url_parts, **kwargs):
@@ -677,7 +672,7 @@ class Cursor(object):
 
 #                              The first two items are mandatory. (name, type)
 CursorDescription = namedtuple('CursorDescription', 'name type_code '
-                               'display_size internal_size precision scale null_ok')
+                               'display_size internal_size precision scale null_ok default params')
 CursorDescription.__new__.__defaults__ = 7 * (None,)  # type: ignore[attr-defined]  # noqa
 
 
