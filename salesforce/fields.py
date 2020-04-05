@@ -47,6 +47,12 @@ class SalesforceAutoField(fields.AutoField):
         'invalid': _('This value must be a valid Salesforce ID.'),
     }
 
+    def __init__(self, *args, **kwargs):
+        # The parameter 'sf_read_only' is not used normally, maybe only if someone
+        # added SalesforceAutoFields to the Model manually
+        kwargs.pop('sf_read_only', None)
+        super().__init__(*args, **kwargs)
+
     def to_python(self, value):
         if isinstance(value, str) or value is None:
             return value
