@@ -23,7 +23,6 @@ from django.db.backends.utils import CursorWrapper as _Cursor  # for typing
 import simplejson  # NOQA pylint:disable=unused-import
 
 import salesforce.fields
-from salesforce.dbapi import exceptions
 
 log = logging.getLogger(__name__)
 
@@ -192,7 +191,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         return result
 
     def get_sequences(self, cursor: _Cursor, table_name: str, table_fields=()) -> List[Dict[str, str]]:
-        pk_col = self.get_primary_key_column(cursor, table_name)
+        pk_col = self.get_primary_key_column(cursor, table_name) or 'Id'
         return [{'table': table_name, 'column': pk_col}]
 
     # never used until real migrations will be supported
@@ -205,15 +204,6 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             if not item['primary_key']:
                 key_columns.append((name,) + item['foreign_key'])
         return key_columns
-
-    def get_primary_key_column(self, cursor: _Cursor, table_name: str) -> str:
-        """
-        Return the name of the primary key column for the given table.
-        """
-        for constraint in self.get_constraints(cursor, table_name).values():
-            if constraint['primary_key']:
-                return constraint['columns'][0]
-        raise exceptions.IntegrityError("Missing primary key")
 
     def get_relations(self, cursor: _Cursor, table_name: str) -> Dict[str, Tuple[str, str]]:
         """
@@ -277,9 +267,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
          * unique: True if this is a unique constraint, False otherwise
          * foreign_key: (table, column) of target, or None
          * check: True if check constraint, False otherwise
-         * index: True if index, False otherwise.
-         * orders: The order (ASC/DESC) defined for the columns of indexes
-         * type: The type of the index (btree, hash, etc.)
+         * index: True if index, False otherwise.                            # unused
+         * orders: The order (ASC/DESC) defined for the columns of indexes   # unused
+         * type: The type of the index (btree, hash, etc.)                   # unused
         """
         result = {}
         for field in self.table_description_cache(table_name)['fields']:
