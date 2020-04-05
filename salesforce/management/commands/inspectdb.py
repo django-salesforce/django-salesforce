@@ -10,6 +10,9 @@ class Command(InspectDBCommand):
 
     def add_arguments(self, parser):
         super(Command, self).add_arguments(parser)
+        parser.add_argument('--concise-db-column', action='store_true', dest='concise_db_column',
+                            help="Export 'db_column' only if it is necessary and can not be reconstructed "
+                            "from the name or 'custom'")
         parser.add_argument('--table-filter', action='store', dest='table_name_filter',
                             help='Regular expression that filters API Names of SF tables to introspect.')
 
@@ -18,6 +21,7 @@ class Command(InspectDBCommand):
             options['table_name_filter'] = re.compile(options['table_name_filter']).match
         self.verbosity = int(options['verbosity'])          # pylint:disable=attribute-defined-outside-init
         self.connection = connections[options['database']]  # pylint:disable=attribute-defined-outside-init
+        self.concise_db_column = options['concise_db_column']  # pylint:disable=attribute-defined-outside-init
         if self.connection.vendor == 'salesforce':
             self.db_module = 'salesforce'
             for line in self.handle_inspection(options):
@@ -48,12 +52,13 @@ class Command(InspectDBCommand):
             reconstructed = new_name.title().replace('_', '')
             if col_name.endswith('__c'):
                 reconstructed += '__c'
-                field_params['custom'] = True
+                if self.concise_db_column:
+                    field_params['custom'] = True
             elif is_relation:
                 reconstructed += 'Id'
             # TODO: Discuss: Maybe 'db_column' can be compared case insensitive,
             #       but exact compare is safer.
-            if reconstructed != col_name or self.verbosity >= 2:
+            if reconstructed != col_name or not self.concise_db_column:
                 field_params['db_column'] = col_name
             else:
                 field_params.pop('db_column', None)

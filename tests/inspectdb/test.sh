@@ -9,7 +9,7 @@
 
 
 echo "python manage.py inspectdb --database=salesforce >tests/inspectdb/models.py"
-if python manage.py inspectdb --database=salesforce --traceback >tests/inspectdb/models.py; then
+if python manage.py inspectdb --database=salesforce --concise-db-column --traceback >tests/inspectdb/models.py; then
 
     # Run both tests even if the first test fails. With old Django versions can
     # the read/write test pass (useful information) though validation failed.
