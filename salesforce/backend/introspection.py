@@ -12,15 +12,18 @@ Salesforce introspection code.  (like django.db.backends.*.introspection)
 import logging
 import re
 from collections import OrderedDict, namedtuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from django.db.backends.base.introspection import (
     BaseDatabaseIntrospection, FieldInfo as BaseFieldInfo, TableInfo,
 )
 from django.utils.text import camel_case_to_spaces
+from django.db.backends.utils import CursorWrapper as _Cursor  # for typing
 # require "simplejson" to ensure that it is available to "requests" hook.
 import simplejson  # NOQA pylint:disable=unused-import
 
 import salesforce.fields
+from salesforce.dbapi import exceptions
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +53,8 @@ last_introspection = None
 
 
 class LastIntrospection:
-    def __init__(self, model_name, important_related_names, fields_map):
+    def __init__(self, model_name: str, important_related_names: List[str],
+                 fields_map: Dict[str, Dict[str, Any]]) -> None:
         self.model_name = model_name
         self.important_related_names = important_related_names
         self.fields_map = fields_map
@@ -65,7 +69,6 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
     Other methods are very customized with hooks for
     by django.core.management.commands.inspectdb
     """
-    # pylint:disable=abstract-method  # undefined: get_key_columns, get_sequences
 
     data_types_reverse = {
         'base64':                         'TextField',
@@ -97,14 +100,14 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         'url':                            'URLField',
     }
 
-    def __init__(self, conn):
+    def __init__(self, conn: Any) -> None:
         BaseDatabaseIntrospection.__init__(self, conn)
-        self._table_list_cache = None
-        self._table_description_cache = {}
-        self._converted_lead_status = None
+        self._table_list_cache = None  # type: Optional[Dict[str, Any]]
+        self._table_description_cache = {}  # type: Dict[str, Any]
+        self._converted_lead_status = None  # type: Optional[str]
 
     @property
-    def table_list_cache(self):
+    def table_list_cache(self) -> Dict[str, Any]:
         if self._table_list_cache is None:
             log.debug('Request API URL: GET sobjects')
             response = self.connection.connection.handle_api_exceptions('GET', 'sobjects/')
@@ -116,7 +119,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             ]
         return self._table_list_cache
 
-    def table_description_cache(self, table):
+    def table_description_cache(self, table: str) -> Dict[str, Any]:
         if table not in self._table_description_cache:
             log.debug('Request API URL: GET sobjects/%s/describe', table)
             response = self.connection.connection.handle_api_exceptions('GET', 'sobjects', table, 'describe/')
@@ -128,13 +131,13 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             del self._table_description_cache[table]['fields'][0]
         return self._table_description_cache[table]
 
-    def get_table_list(self, cursor):
+    def get_table_list(self, cursor: _Cursor) -> List[TableInfo]:
         "Returns a list of table names in the current database."
         result = [TableInfo(SfProtectName(x['name']), 't') for x in self.table_list_cache['sobjects']]
         return result
 
     @staticmethod
-    def get_field_params(field):
+    def get_field_params(field: Dict[str, Any]) -> Dict[str, Any]:
         params = OrderedDict()
         if field['label'] and field['label'] != camel_case_to_spaces(re.sub('__c$', '', field['name'])).title():
             params['verbose_name'] = field['label']
@@ -159,7 +162,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             params['ref_comment'] = 'No Reference table'
         return params
 
-    def get_table_description(self, cursor, table_name):
+    def get_table_description(self, cursor: _Cursor, table_name: str) -> List[FieldInfo]:
         "Returns a description of the table, with the DB-API cursor.description interface."
         # pylint:disable=too-many-locals,unused-argument
         result = []
@@ -188,30 +191,31 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             ))
         return result
 
-    def get_sequences(self, cursor, table_name, table_fields=()):
+    def get_sequences(self, cursor: _Cursor, table_name: str, table_fields=()) -> List[Dict[str, str]]:
         pk_col = self.get_primary_key_column(cursor, table_name)
         return [{'table': table_name, 'column': pk_col}]
 
-    def get_key_columns(self, cursor, table_name):
+    # never used until real migrations will be supported
+    def get_key_columns(self, cursor: _Cursor, table_name: str) -> List[Tuple[str, str, str]]:
         """
             (column_name, referenced_table_name, referenced_column_name)
         """
         key_columns = []
-        for name, item in self.get_constraints(self, cursor, table_name):
+        for name, item in self.get_constraints(cursor, table_name).items():
             if not item['primary_key']:
                 key_columns.append((name,) + item['foreign_key'])
         return key_columns
 
-    def get_primary_key_column(self, cursor, table_name):
+    def get_primary_key_column(self, cursor: _Cursor, table_name: str) -> str:
         """
         Return the name of the primary key column for the given table.
         """
         for constraint in self.get_constraints(cursor, table_name).values():
             if constraint['primary_key']:
                 return constraint['columns'][0]
-        return None
+        raise exceptions.IntegrityError("Missing primary key")
 
-    def get_relations(self, cursor, table_name):
+    def get_relations(self, cursor: _Cursor, table_name: str) -> Dict[str, Tuple[str, str]]:
         """
         Returns a dictionary of {field_index: (field_index_other_table, other_table)}
         representing all relationships to the given table. Indexes are 0-based.
@@ -221,13 +225,13 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             return SfProtectName(table_name).title().replace(' ', '').replace('-', '')
         global last_introspection
         result = {}
-        reverse = {}
+        reverse = {}  # type: Dict[str, List[str]]
         important_related_names = []
-        fields_map = {}
+        fields_map = {}  # type: Dict[str, Dict[str, Any]]
         for _, field in enumerate(self.table_description_cache(table_name)['fields']):
             if field['type'] == 'reference' and field['referenceTo']:
                 params = OrderedDict()
-                reference_to_name = SfProtectName(field['referenceTo'][0])
+                reference_to_name = SfProtectName(field['referenceTo'][0])  # type: str
                 relationship_order = field['relationshipOrder']
                 if relationship_order is None:
                     relationship_tmp = set()
@@ -261,7 +265,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         )
         return result
 
-    def get_constraints(self, cursor, table_name):
+    def get_constraints(self, cursor: _Cursor, table_name: str) -> Dict[str, Dict[str, Any]]:
         """
         Retrieves any constraints or keys (unique, pk, fk, check, index)
         across one or more columns.
@@ -289,7 +293,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 )
         return result
 
-    def get_additional_meta(self, table_name):
+    def get_additional_meta(self, table_name: str) -> List[str]:
         item = [x for x in self.table_list_cache['sobjects'] if x['name'] == table_name][0]
         return ["verbose_name = '%s'" % item['label'],
                 "verbose_name_plural = '%s'" % item['labelPlural'],
@@ -297,7 +301,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 ]
 
     @property
-    def converted_lead_status(self):
+    def converted_lead_status(self) -> str:
         if self._converted_lead_status is None:
             cur = self.connection.cursor()
             cur.execute("SELECT MasterLabel FROM LeadStatus "
@@ -317,7 +321,7 @@ class SymbolicModelsName(object):
     >>> [SymbolicModelsName('READ_ONLY')]
     [models.READ_ONLY]
     """
-    def __init__(self, name, arg=None):
+    def __init__(self, name: str, arg: Any = None) -> None:
         self.name = 'models.%s' % name
         # it is imported from salesforce.fields due to dependencies,
         # but it is the same as in salesforce.models
@@ -326,7 +330,7 @@ class SymbolicModelsName(object):
             self.name = '{}({})'.format(self.name, repr(arg))
             self.value = self.value(arg)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.name
 
 
@@ -346,12 +350,12 @@ class SfProtectName(str):
     # This better preserves the names. It is exact for all SF builtin tables,
     # though not perfect for names with more consecutive upper case characters,
     # e.g 'MyURLTable__c' -> 'MyUrltable' is still better than 'MyurltableC'.
-    def title(self):
+    def title(self) -> str:
         name = re.sub(r'__c$', '', self)   # fixed custom name
         return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
 
     @property
-    def name(self):
+    def name(self) -> 'SfProtectName':
         return self
 
 

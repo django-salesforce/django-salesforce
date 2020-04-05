@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Any, Container, Dict, List, Mapping, Tuple
 import re
 
 from django.core.management.commands.inspectdb import Command as InspectDBCommand
@@ -16,7 +17,7 @@ class Command(InspectDBCommand):
         parser.add_argument('--table-filter', action='store', dest='table_name_filter',
                             help='Regular expression that filters API Names of SF tables to introspect.')
 
-    def handle(self, **options):
+    def handle(self, **options: Any) -> None:  # type: ignore[override] # noqa # it is incompatible in Django
         if isinstance(options['table_name_filter'], str):
             options['table_name_filter'] = re.compile(options['table_name_filter']).match
         self.verbosity = int(options['verbosity'])          # pylint:disable=attribute-defined-outside-init
@@ -40,13 +41,15 @@ class Command(InspectDBCommand):
             field_params.update(row.params)
         return field_type, field_params, field_notes
 
-    def normalize_col_name(self, col_name, used_column_names, is_relation):
+    def normalize_col_name(self, col_name: str, used_column_names: Container[str], is_relation: bool
+                           ) -> Tuple[str, Mapping[str, Any], List[str]]:
         if self.connection.vendor == 'salesforce':
             beautified = re.sub('__c$', '', col_name)
             beautified = re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', beautified)
             beautified = beautified.lower()
-            new_name, field_params, field_notes = (super(Command, self)
-                                                   .normalize_col_name(beautified, used_column_names, is_relation))
+            new_name, field_params, field_notes = (
+                super().normalize_col_name(beautified, used_column_names, is_relation)
+            )
             # *reconstructed* : is what will SfField reconstruct to db column
             field_params = OrderedDict(sorted(field_params.items()))
             reconstructed = new_name.title().replace('_', '')
@@ -64,6 +67,7 @@ class Command(InspectDBCommand):
                 field_params.pop('db_column', None)
             if is_relation:
                 last_introspection = sf_introspection.last_introspection
+                assert last_introspection
                 if col_name in last_introspection.important_related_names:
                     field_params['related_name'] = '%s_%s_set' % (
                         last_introspection.model_name.lower(),
@@ -83,7 +87,8 @@ class Command(InspectDBCommand):
         return new_name, field_params, field_notes
 
     # the parameter 'is_view' has been since Django 2.1 and 'is_partition' since Django 2.2
-    def get_meta(self, table_name, constraints=None, column_to_field_name=None, is_view=False, is_partition=None):
+    def get_meta(self, table_name: str, constraints: Any = None, column_to_field_name: Dict[str, str] = None,
+                 is_view: bool = False, is_partition: bool = False) -> List[str]:
         """
         Return a sequence comprising the lines of code necessary
         to construct the inner Meta class for the model corresponding
