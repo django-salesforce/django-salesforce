@@ -43,3 +43,4 @@ DateField = LazyField(salesforce.models.DateField)
 TimeField = LazyField(salesforce.models.TimeField)
 ForeignKey = LazyField(salesforce.models.ForeignKey)
 OneToOneField = LazyField(salesforce.models.OneToOneField)
+AutoField = LazyField(salesforce.models.AutoField)  # not important
