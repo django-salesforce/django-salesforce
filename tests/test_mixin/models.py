@@ -17,7 +17,7 @@ class DefaultMixin(SalesforceModel):
     """Common fields used in the most of SFDC models."""
     last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY, auto_now=True)
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=lambda: User(pk='DEFAULT'))  # db_column='OwnerId'
+                              default=models.DEFAULTED_ON_CREATE)  # db_column='OwnerId'
 
     class Meta:
         abstract = True

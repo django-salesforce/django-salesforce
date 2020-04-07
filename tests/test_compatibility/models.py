@@ -13,4 +13,4 @@ class Lead(SalesforceModel):
     Company = models.CharField(max_length=255)
     LastName = models.CharField(max_length=80)
     Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=lambda: User(Id='DEFAULT'), db_column='OwnerId')
+                              default=models.DEFAULTED_ON_CREATE, db_column='OwnerId')
