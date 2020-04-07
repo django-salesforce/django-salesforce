@@ -402,8 +402,18 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         field should not cause a problem.
         """
         oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
-        oppo.save()
         try:
+            oppo.save()
+            with self.assertWarns(SalesforceWarning):
+                # should save a DEFAULTED_ON_CREATE field 'probability' on update, but with warning
+                oppo.save()
+
+            oppo.save(update_fields=['name', 'stage'])
+            with self.assertWarns(SalesforceWarning):
+                oppo.save(update_fields=['name', 'stage', 'probability'])
+
+            # a normal value can be saved on update
+            oppo.probability = '25'  # percent
             oppo.save()
         finally:
             oppo.delete()

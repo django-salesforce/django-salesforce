@@ -4,6 +4,7 @@ CursorWrapper (like django.db.backends.utils)
 import datetime
 import decimal
 import logging
+import warnings
 from typing import Callable, TypeVar, Union, overload
 
 import pytz
@@ -14,7 +15,7 @@ from django.db.models.sql import subqueries, Query, RawQuery
 
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.driver import (
-    DatabaseError, merge_dict,
+    DatabaseError, InternalError, SalesforceWarning, merge_dict,
     register_conversion, arg_to_json, SALESFORCE_DATETIME_FORMAT)
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
 
@@ -137,12 +138,11 @@ def extract_values_inner(row, query):
     fields = query.model._meta.fields
     for _, field in enumerate(fields):
         sf_read_only = getattr(field, 'sf_read_only', 0)
-        if (field.get_internal_type() == 'AutoField' or
-                isinstance(query, subqueries.UpdateQuery) and (sf_read_only & NOT_UPDATEABLE) != 0 or
-                isinstance(query, subqueries.InsertQuery) and (sf_read_only & NOT_CREATEABLE) != 0):
+        if field.get_internal_type() == 'AutoField':
             continue
         if isinstance(query, subqueries.UpdateQuery):
-            # update
+            if (sf_read_only & NOT_UPDATEABLE) != 0:
+                continue
             value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
             if value_or_empty:
                 [value] = value_or_empty
@@ -150,15 +150,20 @@ def extract_values_inner(row, query):
                 assert len(query.values) < len(fields), \
                     "Match name can miss only with an 'update_fields' argument."
                 continue
-        else:
-            # insert
+            if hasattr(value, 'default'):
+                warnings.warn(
+                    "The field '{}.{}' has not been saved again with DEFAULTED_ON_CREATE value. "
+                    "It is better to set a real value to it or to refresh it from the database "
+                    "or restrict updated fields explicitly by 'update_fields='."
+                    .format(field.model._meta.object_name, field.name),
+                    SalesforceWarning
+                )
+        elif isinstance(query, subqueries.InsertQuery):
             value = getattr(row, field.attname)
-        # The 'DEFAULT' is a backward compatibility name.
-        if isinstance(field, (models.ForeignKey, models.BooleanField, models.DecimalField)):
-            if value in ('DEFAULT', 'DEFAULTED_ON_CREATE'):
-                continue
-        if hasattr(value, 'default'):
-            continue
+            if (sf_read_only & NOT_CREATEABLE) != 0 or hasattr(value, 'default'):
+                continue  # skip not createable or DEFAULTED_ON_CREATE
+        else:
+            raise InternalError('invalid query type')
         d[field.column] = arg_to_json(value)
     return d
 
