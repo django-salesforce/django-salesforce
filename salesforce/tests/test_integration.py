@@ -836,7 +836,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertNotIn('attributes', values[0])
         self.assertEqual(len(values[0]), 3)
         if default_is_sf:
-            self.assertRegexpMatches(values[0]['pk'], '^003')
+            self.assertRegex(values[0]['pk'], '^003')
 
         values_list = Contact.objects.values_list('pk', 'first_name', 'last_name')[:2]
         self.assertEqual(len(values_list), 2)
@@ -1043,7 +1043,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                     last_modified_by__Username=current_user)
             )
             sql, params = qs.query.get_compiler('salesforce').as_sql()
-            self.assertRegexpMatches(sql, r'SELECT Task.Id, .* FROM Task WHERE Task.WhoId IN \(SELECT ')
+            self.assertRegex(sql, r'SELECT Task.Id, .* FROM Task WHERE Task.WhoId IN \(SELECT ')
             self.assertIn('Lead.Owner.Username = %s', sql)
             self.assertIn('Lead.LastModifiedBy.Username = %s', sql)
             refreshed_lead = qs[:1]
@@ -1067,9 +1067,9 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         try:
             qs = contact.opportunities.all()
             sql, params = qs.query.get_compiler('salesforce').as_sql()
-            self.assertRegexpMatches(sql,
-                                     r'SELECT .*OpportunityContactRole\.Opportunity\.StageName.* '
-                                     'FROM OpportunityContactRole WHERE OpportunityContactRole.ContactId =')
+            self.assertRegex(sql,
+                             r'SELECT .*OpportunityContactRole\.Opportunity\.StageName.* '
+                             'FROM OpportunityContactRole WHERE OpportunityContactRole.ContactId =')
             self.assertEqual([x.pk for x in qs], 2 * [oppo.pk])
         finally:
             oc2.delete()
