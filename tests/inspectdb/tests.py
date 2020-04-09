@@ -26,7 +26,7 @@ def get_classes_texts() -> Dict[str, str]:
                                   r'# This is an auto-generated Django model|'
                                   r'from salesforce import models$'
                                   r')')
-    with open(relative_path('models.py'), 'rU') as f:
+    with open(relative_path('models.py'), 'r', newline=None) as f:
         for text in f.read().split('\n\n'):
             text = text.strip()
             if text and not excluded_pattern.match(text):

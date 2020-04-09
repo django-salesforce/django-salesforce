@@ -37,10 +37,10 @@ def get_tagged_version():
 def autosetup():
     from setuptools import setup, find_packages
 
-    with open(relative_path('requirements.txt'), 'rU') as f:
+    with open(relative_path('requirements.txt'), 'r', newline=None) as f:
         requirements_txt = f.read().split("\n")
 
-    with open(relative_path('README.rst'), 'rU') as f:
+    with open(relative_path('README.rst'), 'r', newline=None) as f:
         long_description = f.read()
 
     # check if installed with git data (not via PyPi)
