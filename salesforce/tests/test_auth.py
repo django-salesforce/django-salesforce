@@ -48,3 +48,4 @@ class OAuthTest(TestCase):
         self.validate_oauth(auth.oauth_data[sf_alias])
 
         self.assertEqual(old_data[sf_alias]['access_token'], auth.oauth_data[sf_alias]['access_token'])
+        _session.close()

@@ -139,3 +139,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             cur.execute("SELECT IsSandbox FROM Organization")
             self._is_sandbox = cur.fetchone()[0]
         return self._is_sandbox
+
+    def close(self):
+        if self.connection:
+            self.connection.close()
