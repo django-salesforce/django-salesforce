@@ -140,6 +140,8 @@ class RawConnection:
 
     def close(self) -> None:
         del self.messages[:]
+        if self._sf_session:
+            self._sf_session.close()
 
     def commit(self) -> None:  # pylint:disable=no-self-use
         # "Database modules that do not support transactions should implement
@@ -175,8 +177,10 @@ class RawConnection:
                 sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
                                                          settings_dict=self.settings_dict)
                 sf_instance_url = sf_session.auth.instance_url
-                sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
-                sf_session.mount(sf_instance_url, sf_requests_adapter)
+                if sf_instance_url not in sf_session.adapters:
+                    # a repeated mount to the same prefix would cause a warning about unclosed SSL socket
+                    sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
+                    sf_session.mount(sf_instance_url, sf_requests_adapter)
                 # Additional headers work, but the same are added automatically by "requests' package.
                 # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'} # TODO
                 self._sf_session = sf_session

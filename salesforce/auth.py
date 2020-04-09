@@ -174,7 +174,9 @@ class SalesforcePasswordAuth(SalesforceAuth):
         url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
 
         log.info("authentication to %s as %s", settings_dict['HOST'], settings_dict['USER'])
-        self._session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=get_max_retries()))
+        if settings_dict['HOST'] not in self._session.adapters:
+            # a repeated mount to the same prefix would cause a warning about unclosed SSL socket
+            self._session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=get_max_retries()))
         auth_params = {
             'grant_type':    'password',
             'client_id':     settings_dict['CONSUMER_KEY'],
