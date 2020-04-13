@@ -120,7 +120,7 @@ TEMPLATES = [
     },
 ]
 
-INSTALLED_APPS = (
+INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -131,7 +131,7 @@ INSTALLED_APPS = (
     'django.contrib.admindocs',
     'salesforce',
     'salesforce.testrunner.example',
-)
+]
 
 SALESFORCE_DB_ALIAS = 'salesforce'
 # Timeouts tuple: (waiting for connection, waiting for data) in seconds
