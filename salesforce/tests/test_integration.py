@@ -264,8 +264,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                 self.assertRaises(salesforce.backend.base.SalesforceError, duplicate.save)
 
             # test 2: the reverse relation is a value, not a set
-            result = User.objects.exclude(apex_email_notification__user=None)
-            self.assertIn(current_user, [x.Username for x in result])
+            users = User.objects.exclude(apex_email_notification__user=None)
+            self.assertIn(current_user, [x.Username for x in users])
 
             # test 3: relation to the parent
             result = ApexEmailNotification.objects.filter(user__Username=notifier_u.user.Username)
@@ -821,15 +821,18 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             self.assertRaises(salesforce.backend.base.SalesforceError, list, bad_queryset)
 
     def test_queryset_values(self):
-        """Test list of dict qs.values() and list of tuples qs.values_list()
+        """Test list of dict qs.values()
         """
-        tmp = Contact.objects.values('pk', 'last_name')
-        tmp[0]
         values = Contact.objects.values()[:2]
         self.assertEqual(len(values), 2)
         self.assertIn('first_name', values[0])
         self.assertGreater(len(values[0]), 3)
 
+    def test_queryset_values_names(self):
+        """Test list of dict qs.values(*names) and list of tuples qs.values_list()
+        """
+        tmp = Contact.objects.values('pk', 'last_name')
+        tmp[0]
         values = Contact.objects.values('pk', 'first_name', 'last_name')[:2]
         self.assertEqual(len(values), 2)
         self.assertIn('first_name', values[0])
