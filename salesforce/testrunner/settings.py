@@ -1,5 +1,5 @@
 # Django settings for testrunner project.
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 import os
 
 DEBUG = True
@@ -101,7 +101,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'salesforce.testrunner.urls'
+ROOT_URLCONF = 'salesforce.testrunner.urls'  # type: Optional[str]
 
 TEMPLATES = [
     {
