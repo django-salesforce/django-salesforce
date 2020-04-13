@@ -52,11 +52,11 @@ class PersonAccount(SalesforceModel):
         abstract = True
 
 
-if getattr(settings, 'PERSON_ACCOUNT_ACTIVATED', False):
-    class Account(CommonAccount, PersonAccount):
+if not getattr(settings, 'PERSON_ACCOUNT_ACTIVATED', False):
+    class Account(CommonAccount, CoreAccount):
         pass
 else:
-    class Account(CommonAccount, CoreAccount):
+    class Account(CommonAccount, PersonAccount):  # type: ignore[no-redef] # noqa
         pass
 
 
