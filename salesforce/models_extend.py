@@ -48,41 +48,42 @@ class SfCharAutoField(SalesforceAutoField):
             return models.CharField(max_length=32).db_type(connection=connection)
 
 
-# pylint:disable=too-few-public-methods,function-redefined
-class SalesforceModel(models.Model, metaclass=SalesforceModelBase):  # type: ignore[no-redef] # noqa # redefined
-    """
-    Abstract model class for Salesforce objects that can be saved to other db.
+if True:
+    # pylint:disable=too-few-public-methods,function-redefined
+    class SalesforceModel(models.Model, metaclass=SalesforceModelBase):  # type: ignore[no-redef] # noqa # redefined
+        """
+        Abstract model class for Salesforce objects that can be saved to other db.
 
-    (It is not a subclass of salesforce.models.SalesforceModel. That is not
-    a big problem if we don't check inheritance but only the '_salesforce_object'
-    attribute or if we use only this or only the original implementation.)
-    """
-    # pylint:disable=invalid-name
-    _salesforce_object = 'extended'
-    objects = manager.SalesforceManager()
+        (It is not a subclass of salesforce.models.SalesforceModel. That is not
+        a big problem if we don't check inheritance but only the '_salesforce_object'
+        attribute or if we use only this or only the original implementation.)
+        """
+        # pylint:disable=invalid-name
+        _salesforce_object = 'extended'
+        objects = manager.SalesforceManager()
 
-    class Meta:
-        # pylint:disable=duplicate-code
-        abstract = True
-        base_manager_name = 'objects'
-        if not DJANGO_20_PLUS:
-            manager_inheritance_from_future = True
+        class Meta:
+            # pylint:disable=duplicate-code
+            abstract = True
+            base_manager_name = 'objects'
+            if not DJANGO_20_PLUS:
+                manager_inheritance_from_future = True
 
-    id = SfCharAutoField(primary_key=True, name=SF_PK, db_column='Id', verbose_name='ID', auto_created=True)
+        id = SfCharAutoField(primary_key=True, name=SF_PK, db_column='Id', verbose_name='ID', auto_created=True)
 
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        using = using or router.db_for_write(self.__class__, instance=self)
-        if self.pk is None and not force_update and not is_sf_database(using):
-            self.pk = get_sf_alt_pk()
-        super(SalesforceModel, self).save(force_insert=force_insert, force_update=force_update,
-                                          using=using, update_fields=update_fields)
-        if not isinstance(self.pk, str):
-            raise ValueError("The primary key value is not assigned correctly")
+        def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+            using = using or router.db_for_write(self.__class__, instance=self)
+            if self.pk is None and not force_update and not is_sf_database(using):
+                self.pk = get_sf_alt_pk()
+            super(SalesforceModel, self).save(force_insert=force_insert, force_update=force_update,
+                                              using=using, update_fields=update_fields)
+            if not isinstance(self.pk, str):
+                raise ValueError("The primary key value is not assigned correctly")
 
-    if DJANGO_30_PLUS:
+        if DJANGO_30_PLUS:
 
-        def _do_insert(self, manager, using, fields, returning_fields, raw):
-            # the check "is_sf_database(using)" is used for something unexpected
-            if self.pk and not is_sf_database(using):
-                returning_fields = []
-            return super(SalesforceModel, self)._do_insert(manager, using, fields, returning_fields, raw)
+            def _do_insert(self, manager, using, fields, returning_fields, raw):
+                # the check "is_sf_database(using)" is used for something unexpected
+                if self.pk and not is_sf_database(using):
+                    returning_fields = []
+                return super(SalesforceModel, self)._do_insert(manager, using, fields, returning_fields, raw)

@@ -66,34 +66,36 @@ class SalesforceModelBase(ModelBase):
             super(SalesforceModelBase, cls).add_to_class(name, value)  # pylint: disable=no-value-for-parameter
             setattr(cls._meta, 'sf_custom', sf_custom)
         else:
-            if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
-                # this is for better migrations because: obj._constructor_args = (args, kwargs)
-                _constructor_args = value._constructor_args
-                value = manager.SalesforceManager()
-                value._constructor_args = _constructor_args
+            if True:
+                if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
+                    # this is for better migrations because: obj._constructor_args = (args, kwargs)
+                    _constructor_args = value._constructor_args
+                    value = manager.SalesforceManager()
+                    value._constructor_args = _constructor_args
 
-            super(SalesforceModelBase, cls).add_to_class(name, value)  # pylint: disable=no-value-for-parameter
+                super(SalesforceModelBase, cls).add_to_class(name, value)  # pylint: disable=no-value-for-parameter
 
 
-# pylint:disable=too-few-public-methods
-class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
-    """
-    Abstract model class for Salesforce objects.
-    """
-    # pylint:disable=invalid-name
-    _salesforce_object = 'standard'
-    objects = manager.SalesforceManager()
+if True:
+    # pylint:disable=too-few-public-methods
+    class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
+        """
+        Abstract model class for Salesforce objects.
+        """
+        # pylint:disable=invalid-name
+        _salesforce_object = 'standard'
+        objects = manager.SalesforceManager()
 
-    class Meta:
-        abstract = True
-        base_manager_name = 'objects'
-        if not DJANGO_20_PLUS:
-            manager_inheritance_from_future = True
+        class Meta:
+            abstract = True
+            base_manager_name = 'objects'
+            if not DJANGO_20_PLUS:
+                manager_inheritance_from_future = True
 
-    # Name of primary key 'Id' can be easily changed to 'id'
-    # by "settings.SF_PK='id'".
-    id = SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
-                             verbose_name='ID', auto_created=True)
+        # Name of primary key 'Id' can be easily changed to 'id'
+        # by "settings.SF_PK='id'".
+        id = SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
+                                 verbose_name='ID', auto_created=True)
 
 
 class ModelTemplate(object):
