@@ -14,7 +14,9 @@ issue, but normal use of `db_column` and `db_table` parameters should work.
 """
 
 from inspect import isclass
+from typing import Any, Dict, Generic, Iterable, Type, TYPE_CHECKING, TypeVar  # noqa
 import logging
+import types
 import warnings
 
 from django.db import models
@@ -23,17 +25,24 @@ from django.db.models.base import ModelBase
 from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 # from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
 
-from salesforce.backend import manager, DJANGO_20_PLUS
+from salesforce.backend import DJANGO_20_PLUS
 from salesforce.fields import SalesforceAutoField, SF_PK, SfField, ForeignKey
 from salesforce.fields import DefaultedOnCreate, DEFAULTED_ON_CREATE
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
 from salesforce.fields import *  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 from salesforce.backend.indep import LazyField
+if not TYPE_CHECKING:
+    # the SalesforceManager and the module salesforce.backend.manager whould be imported
+    # at run-time because it breaks the generic mechanism in `django-stubs` v1.5,
+    # that assigns Manager[_T] (a Django manager for the model _T).
+    from salesforce.backend import manager
 
 __all__ = ('SalesforceModel', 'Model', 'DEFAULTED_ON_CREATE', 'PROTECT', 'DO_NOTHING', 'SF_PK', 'SfField',
            'NOT_UPDATEABLE', 'NOT_CREATEABLE', 'READ_ONLY', 'DefaultedOnCreate')
 
 log = logging.getLogger(__name__)
+
+_T = TypeVar('_T', bound="Model", covariant=True)
 
 
 class SalesforceModelBase(ModelBase):
@@ -66,17 +75,28 @@ class SalesforceModelBase(ModelBase):
             super(SalesforceModelBase, cls).add_to_class(name, value)  # pylint: disable=no-value-for-parameter
             setattr(cls._meta, 'sf_custom', sf_custom)
         else:
-            if True:
+            if not TYPE_CHECKING:
                 if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
                     # this is for better migrations because: obj._constructor_args = (args, kwargs)
                     _constructor_args = value._constructor_args
-                    value = manager.SalesforceManager()
+                    value = models.manager.Manager()
+                    # value = manager.SalesforceManager()
                     value._constructor_args = _constructor_args
 
                 super(SalesforceModelBase, cls).add_to_class(name, value)  # pylint: disable=no-value-for-parameter
 
 
-if True:
+if TYPE_CHECKING:
+    class SalesforceModel(models.Model, Generic[_T], metaclass=SalesforceModelBase):
+        _salesforce_object = ...
+
+        def __init__(self, *args, **kwargs) -> None:
+            tmp = models.manager.Manager()  # type: models.manager.Manager[_T]
+            self.objects = tmp
+
+        class Meta:
+            ...
+else:
     # pylint:disable=too-few-public-methods
     class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
         """
@@ -84,7 +104,8 @@ if True:
         """
         # pylint:disable=invalid-name
         _salesforce_object = 'standard'
-        objects = manager.SalesforceManager()
+
+        objects = manager.SalesforceManager()  # type: manager.SalesforceManager[_T]
 
         class Meta:
             abstract = True
@@ -102,7 +123,8 @@ class ModelTemplate(object):
     Meta = SalesforceModel.Meta
 
 
-def make_dynamic_fields(pattern_module, dynamic_field_patterns, attrs):
+def make_dynamic_fields(pattern_module: types.ModuleType, dynamic_field_patterns: Iterable[str],
+                        attrs: Dict[str, Any]) -> None:
     """Add some Salesforce fields from a pattern_module models.py
 
     Parameters:
@@ -186,8 +208,8 @@ def make_dynamic_fields(pattern_module, dynamic_field_patterns, attrs):
                    if isinstance(obj, LazyField) and issubclass(obj.klass, SfField)
                    ]
     for name, obj in sorted(lazy_fields, key=lambda name_obj: name_obj[1].counter):
-        for enabled, pat in patterns:
-            if pat.match(name):
+        for enabled, pattern in patterns:
+            if pattern.match(name):
                 break
         else:
             enabled = False

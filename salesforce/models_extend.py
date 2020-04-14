@@ -20,13 +20,16 @@ Interesting not yet implemented ideas are:
   - Could be useful for tests with realistic data on a database with rollback.
 """
 
+from typing import Generic, TYPE_CHECKING
 from django.db import models, router
 
-from salesforce.backend import manager, DJANGO_20_PLUS, DJANGO_30_PLUS
+from salesforce.backend import DJANGO_20_PLUS, DJANGO_30_PLUS
 from salesforce.backend.indep import get_sf_alt_pk
 from salesforce.models import *  # NOQA; pylint:disable=wildcard-import,unused-wildcard-import
-from salesforce.models import SalesforceAutoField, SalesforceModelBase, SF_PK
+from salesforce.models import SalesforceAutoField, SalesforceModelBase, SF_PK, _T
 from salesforce.router import is_sf_database
+if not TYPE_CHECKING:
+    from salesforce.backend import manager
 
 
 class SfCharAutoField(SalesforceAutoField):
@@ -48,9 +51,17 @@ class SfCharAutoField(SalesforceAutoField):
             return models.CharField(max_length=32).db_type(connection=connection)
 
 
-if True:
+if TYPE_CHECKING:
+    class SalesforceModel(models.Model, Generic[_T],  # type: ignore[no-redef] # noqa # redefined
+                          metaclass=SalesforceModelBase):
+        _salesforce_object = ...
+
+        def __init__(self, *args, **kwargs) -> None:
+            tmp = models.manager.Manager()  # type: models.manager.Manager[_T]
+            self.objects = tmp
+else:
     # pylint:disable=too-few-public-methods,function-redefined
-    class SalesforceModel(models.Model, metaclass=SalesforceModelBase):  # type: ignore[no-redef] # noqa # redefined
+    class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
         """
         Abstract model class for Salesforce objects that can be saved to other db.
 
@@ -60,7 +71,7 @@ if True:
         """
         # pylint:disable=invalid-name
         _salesforce_object = 'extended'
-        objects = manager.SalesforceManager()
+        objects = manager.SalesforceManager()  # type: manager.SalesforceManager[_T]
 
         class Meta:
             # pylint:disable=duplicate-code
