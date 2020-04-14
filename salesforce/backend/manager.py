@@ -9,51 +9,43 @@
 Salesforce object manager. (like django.db.models.manager)
 
 Use a custom QuerySet to generate SOQL queries and results.
+
+This module is important for run-time, ignored in type checking and
+correct results are made by by sustomized django-stubs (django-salesforce-stubs)
 """
 
-from typing import Optional, TYPE_CHECKING, TypeVar, Union
-from django.conf import settings
+import sys
+from typing import Generic, Optional, TypeVar
 from django.db.models import manager, Model
 from django.db.models.query import QuerySet
-from django.db.utils import DEFAULT_DB_ALIAS
 
 from salesforce import router
 from salesforce.backend import query, models_sql_query, compiler, DJANGO_20_PLUS
 
 _T = TypeVar("_T", bound=Model, covariant=True)
-if TYPE_CHECKING:
-    _BaseManager = manager.Manager[_T]
-    _QuerySet = QuerySet[_T]
-else:
-    _BaseManager = manager.Manager
-    _QuerySet = QuerySet
 
 
-class SalesforceManager(_BaseManager):
+class SalesforceManager(manager.Manager, Generic[_T]):
+
+    if sys.version_info[:2] < (3, 6):
+        # this is a fix for Generic type issue https://github.com/python/typing/issues/498
+        __copy__ = None
+
     if not DJANGO_20_PLUS:
         use_for_related_fields = True
         silence_use_for_related_fields_deprecation = True  # pylint:disable=invalid-name  # name from Django
 
-    def get_queryset(self, _alias: Optional[str] = None) -> '_QuerySet':
+    def get_queryset(self, _alias: Optional[str] = None) -> 'QuerySet[_T]':
         """
         Returns a QuerySet which access remote SF objects.
         """
         alias_is_sf = _alias and router.is_sf_database(_alias)
-        extended_model = getattr(self.model, '_salesforce_object', '') == 'extended'
-        if router.is_sf_database(self.db) or alias_is_sf or extended_model:
+        is_extended_model = getattr(self.model, '_salesforce_object', '') == 'extended'
+        if router.is_sf_database(self.db) or alias_is_sf or is_extended_model:
             q = models_sql_query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
-            return query.SalesforceQuerySet(self.model, query=q, using=self.db)
+            ret = query.SalesforceQuerySet(self.model, query=q, using=self.db)  # type: query.SalesforceQuerySet[_T]
+            return ret
         return super(SalesforceManager, self).get_queryset()
-
-    def using(self, alias: Optional[str]) -> 'Union[_BaseManager[_T], QuerySet[_T]]':  # type: ignore[override] # noqa
-        if alias is None:
-            if hasattr(self.model, '_salesforce_object'):
-                alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
-            else:
-                alias = DEFAULT_DB_ALIAS
-        if router.is_sf_database(alias, self.model):
-            return self.get_queryset(_alias=alias).using(alias)
-        return super(SalesforceManager, self).using(alias)
 
     # def raw(self, raw_query, params=None, translations=None):
     #     if router.is_sf_database(self.db):
@@ -62,9 +54,8 @@ class SalesforceManager(_BaseManager):
     #                                            params=params, using=self.db)
     #     return super(SalesforceManager, self).raw(raw_query, params=params, translations=translations)
 
-    def query_all(self) -> '_QuerySet[_T]':  # type: ignore[override] # noqa
-        if router.is_sf_database(self.db):
-            qs = self.get_queryset()
-            assert isinstance(qs, query.SalesforceQuerySet)
-            return qs.query_all()
-        return self.get_queryset()
+    def query_all(self) -> 'query.SalesforceQuerySet[_T]':  # type: ignore[override] # noqa
+        qs = self.get_queryset()
+        assert isinstance(qs, query.SalesforceQuerySet)
+        ret = qs.query_all()  # type: query.SalesforceQuerySet[_T]
+        return ret

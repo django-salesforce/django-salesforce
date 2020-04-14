@@ -12,8 +12,10 @@ from typing import Generic, Iterable, List, Optional, TypeVar
 import typing
 import warnings
 
+from django.conf import settings
 from django.db import NotSupportedError, models
 from django.db.models import query
+from django.db.utils import DEFAULT_DB_ALIAS
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
@@ -38,11 +40,21 @@ class SalesforceQuerySet(query.QuerySet, Generic[_T]):
     """
     query = None  # type: SalesforceQuery
 
+    def using(self, alias: Optional[str]) -> 'SalesforceQuerySet[_T]':
+        if alias is None:
+            if hasattr(self.model, '_salesforce_object'):
+                alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
+            else:
+                alias = DEFAULT_DB_ALIAS
+        return super().using(alias)
+
     def query_all(self) -> 'SalesforceQuerySet[_T]':
         """
         Allows querying for also deleted or merged records.
             Lead.objects.query_all().filter(IsDeleted=True,...)
         https://www.salesforce.com/us/developer/docs/api_rest/Content/resources_queryall.htm
+
+        It is ignored on non-salesforce databases.
         """
         if not is_sf_database(self.db):
             return self
