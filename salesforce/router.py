@@ -9,11 +9,13 @@
 Database router for SalesforceModel objects.
 """
 
+from typing import Optional
 from django.apps import apps
 from django.conf import settings
+from django.db import models
 
 
-def is_sf_database(db, model=None):
+def is_sf_database(db: Optional[str], model: models.Model = None) -> bool:
     """The alias is a Salesforce database."""
     from django.db import connections
     if db is None:

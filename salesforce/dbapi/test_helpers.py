@@ -1,13 +1,16 @@
 import sys
 import traceback
+import unittest
 from contextlib import contextmanager
 from unittest import expectedFailure
 from unittest import mock  # pylint:disable=unused-import  # NOQA
+from typing import Any, Callable, List, Iterator, Optional, Tuple, Type, TYPE_CHECKING
 
 from salesforce.dbapi import connections, driver
+TestMethod = Callable[..., None]
 
 
-def expectedFailureIf(condition):
+def expectedFailureIf(condition: bool) -> Callable[[TestMethod], TestMethod]:
     """Conditional 'expectedFailure' decorator for TestCase"""
     if condition:
         return expectedFailure
@@ -19,24 +22,31 @@ class QuietSalesforceErrors(object):
 
     It works on the default Salesforce connection. It can be nested.
     """
-    def __init__(self, alias, verbs=None):
+    def __init__(self, alias: Optional[str], verbs: Optional[List[str]] = None):
         self.connection = connections[alias]
         self.verbs = verbs
         self.save_debug_verbs = None
 
-    def __enter__(self):
+    def __enter__(self) -> 'QuietSalesforceErrors':
         self.save_debug_verbs = self.connection.connection.debug_verbs
         self.connection.connection.debug_verbs = self.verbs
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_tb):
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], exc_tb: Any
+                 ) -> None:
         try:
             self.connection.connection.debug_verbs = self.save_debug_verbs
         except AttributeError:
             pass
 
 
-class LazyTestMixin(object):
+if TYPE_CHECKING:
+    BaseLazyTestMixin = unittest.TestCase
+else:
+    BaseLazyTestMixin = object
+
+
+class LazyTestMixin(BaseLazyTestMixin):
     """Report less important asserts lazily, only if no more important failure occurs.
 
     Only the first lazy_assert(...) failure is reported at the end of test at "lazy_check()"
@@ -55,10 +65,10 @@ class LazyTestMixin(object):
     class LazyAssertionError(AssertionError):
         pass
 
-    def setUp(self):  # pylint:disable=invalid-name
-        self.lazy_failure = None
+    def setUp(self) -> None:  # pylint:disable=invalid-name
+        self.lazy_failure = None  # type: Optional[Tuple[Type[BaseException], BaseException, str]]
 
-    def _lazy_assert(self, assert_method, *args, **kwargs):
+    def _lazy_assert(self, assert_method: TestMethod, *args: Any, **kwargs: Any) -> None:
         if not getattr(self, 'lazy_failure', None):
             skip_frames = kwargs.pop('skip_frames', 2)
             # the name is like in unittests due to more readable test tracebacks
@@ -69,12 +79,14 @@ class LazyTestMixin(object):
                 exc_type, exc_value, _ = sys.exc_info()
                 stack = traceback.format_list(traceback.extract_stack())
                 stack = stack[1 + max(i for i, x in enumerate(stack) if x.endswith(' testMethod()\n')):-skip_frames]
+                assert exc_type and exc_value
                 self.lazy_failure = exc_type, exc_value, ''.join(stack).strip()
 
-    def lazy_check(self):
+    def lazy_check(self) -> None:
         """Check all previous `lazy_assert_*`"""
-        if getattr(self, 'lazy_failure', None):
-            exc_type, original_exception, traceback_part_text = self.lazy_failure
+        lazy_failure = getattr(self, 'lazy_failure', None)
+        if lazy_failure:
+            exc_type, original_exception, traceback_part_text = lazy_failure
             msg = original_exception.args[0]
             original_exception = self.LazyAssertionError(
                 '\n'.join((
@@ -87,14 +99,14 @@ class LazyTestMixin(object):
             raise original_exception
 
     # pylint:disable=invalid-name
-    def lazyAssertTrue(self, expr, msg=None):
+    def lazyAssertTrue(self, expr: Any, msg: Optional[str] = None) -> None:
         self._lazy_assert(self.assertTrue, expr, msg=msg)
 
-    def lazyAssertEqual(self, expr_1, expr_2, msg=None):
+    def lazyAssertEqual(self, expr_1: Any, expr_2: Any, msg: Optional[str] = None) -> None:
         self._lazy_assert(self.assertEqual, expr_1, expr_2, msg=msg)
 
     @contextmanager
-    def lazy_assert_n_requests(self, expected_requests, msg=None):
+    def lazy_assert_n_requests(self, expected_requests: int, msg: Optional[str] = None) -> Iterator[None]:
         """Assert that the inner block requires expected_requests, evaluated lazily."""
         request_count_0 = driver.request_count
         try:

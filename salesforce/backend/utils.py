@@ -5,7 +5,7 @@ import datetime
 import decimal
 import logging
 import warnings
-from typing import Callable, TypeVar, Union, overload
+from typing import Any, Callable, Tuple, TypeVar, Union, overload
 
 import pytz
 from django.conf import settings
@@ -249,7 +249,7 @@ class CursorWrapper(object):
     def prepare_query(self, query):
         self.query = query
 
-    def execute_django(self, soql, args=()):
+    def execute_django(self, soql: str, args: Tuple[Any, ...] = ()):
         """
         Fixed execute for queries coming from Django query compilers
         """
@@ -272,7 +272,7 @@ class CursorWrapper(object):
             raise DatabaseError("Unsupported query: type %s: %s" % (type(self.query), self.query))
         return response
 
-    def execute_select(self, soql, args):
+    def execute_select(self, soql: str, args) -> None:
         if soql != MIGRATIONS_QUERY_TO_BE_IGNORED:
             # normal query
             is_query_all = self.query and self.query.is_query_all
@@ -288,7 +288,7 @@ class CursorWrapper(object):
             self.cursor.rowcount = 0
         self.rowcount = self.cursor.rowcount
 
-    def query_more(self, nextRecordsUrl):
+    def query_more(self, nextRecordsUrl: str):
         return self.handle_api_exceptions('GET', nextRecordsUrl)
 
     def execute_insert(self, query):

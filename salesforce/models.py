@@ -26,8 +26,8 @@ from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-w
 # from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
 
 from salesforce.backend import DJANGO_20_PLUS
+from salesforce.defaults import DefaultedOnCreate, DEFAULTED_ON_CREATE
 from salesforce.fields import SalesforceAutoField, SF_PK, SfField, ForeignKey
-from salesforce.fields import DefaultedOnCreate, DEFAULTED_ON_CREATE
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
 from salesforce.fields import *  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 from salesforce.backend.indep import LazyField
@@ -42,7 +42,7 @@ __all__ = ('SalesforceModel', 'Model', 'DEFAULTED_ON_CREATE', 'PROTECT', 'DO_NOT
 
 log = logging.getLogger(__name__)
 
-_T = TypeVar('_T', bound="Model", covariant=True)
+_T = TypeVar('_T', bound="models.Model", covariant=True)
 
 
 class SalesforceModelBase(ModelBase):
@@ -52,28 +52,30 @@ class SalesforceModelBase(ModelBase):
     This metaclass overrides the default table-guessing behavior of Django
     and replaces it with code that defaults to the model name.
     """
-    def __new__(cls, name, bases, attrs, **kwargs):
+    # pylint: disable=no-value-for-parameter
+    def __new__(cls, name, bases, attrs, **kwargs):  # type: ignore [no-untyped-def] # noqa
         attr_meta = attrs.get('Meta', None)
         supplied_db_table = getattr(attr_meta, 'db_table', None)
         if getattr(attr_meta, 'dynamic_field_patterns', None):
             pattern_module, dynamic_field_patterns = getattr(attr_meta, 'dynamic_field_patterns')
             make_dynamic_fields(pattern_module, dynamic_field_patterns, attrs)
             delattr(attr_meta, 'dynamic_field_patterns')
-        result = super(SalesforceModelBase, cls).__new__(cls, name, bases, attrs, **kwargs)
+        result = super(SalesforceModelBase, cls     # type: ignore [call-overload] # noqa
+                       ).__new__(cls, name, bases, attrs, **kwargs)
         if models.Model not in bases and supplied_db_table is None:
             result._meta.db_table = result._meta.concrete_model._meta.object_name
             result._meta.original_attrs['db_table'] = result._meta.db_table
         return result
 
-    def add_to_class(cls, name, value):
+    def add_to_class(cls, name, value):  # type: ignore[no-untyped-def] # noqa
         # pylint:disable=protected-access
         if name == '_meta':
             sf_custom = False
             if hasattr(value.meta, 'custom'):
                 sf_custom = value.meta.custom
                 delattr(value.meta, 'custom')
-            super(SalesforceModelBase, cls).add_to_class(name, value)  # pylint: disable=no-value-for-parameter
-            setattr(cls._meta, 'sf_custom', sf_custom)
+            super(SalesforceModelBase, cls).add_to_class(name, value)  # type: ignore[misc] # noqa
+            setattr(cls._meta, 'sf_custom', sf_custom)  # type: ignore[attr-defined] # noqa
         else:
             if not TYPE_CHECKING:
                 if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
@@ -83,14 +85,14 @@ class SalesforceModelBase(ModelBase):
                     # value = manager.SalesforceManager()
                     value._constructor_args = _constructor_args
 
-                super(SalesforceModelBase, cls).add_to_class(name, value)  # pylint: disable=no-value-for-parameter
+                super(SalesforceModelBase, cls).add_to_class(name, value)
 
 
 if TYPE_CHECKING:
     class SalesforceModel(models.Model, Generic[_T], metaclass=SalesforceModelBase):
         _salesforce_object = ...
 
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             tmp = models.manager.Manager()  # type: models.manager.Manager[_T]
             self.objects = tmp
 

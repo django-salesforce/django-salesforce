@@ -1,7 +1,9 @@
 import uuid
 from inspect import getcallargs
+from typing import Any, Callable, Dict, Type
 
 from django.conf import settings
+from django.db.models import Field
 
 
 class LazyField(object):
@@ -11,15 +13,15 @@ class LazyField(object):
 
     counter = 0
 
-    def __init__(self, klass):
+    def __init__(self, klass: 'Type[Field[Any, Any]]') -> None:
         """Instantiate the field type"""
         self.klass = klass
-        self.kw = {}
+        self.kw = {}  # type: Dict[str, Any]
         self.args = ()
         self.called = False
         self.counter = self.counter
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> 'LazyField':
         """Instantiate a new field with options"""
         assert not self.called
         obj = type(self)(self.klass)
@@ -32,21 +34,21 @@ class LazyField(object):
         setattr(type(self), 'counter', getattr(type(self), 'counter') + 1)
         return obj
 
-    def update(self, **kwargs):
+    def update(self, **kwargs: Any) -> 'LazyField':
         """Customize the lazy field"""
         assert not self.called
         self.kw.update(kwargs)
         return self
 
-    def create(self):
+    def create(self) -> 'Field[Any, Any]':
         """Create a normal field from the lazy field"""
         assert not self.called
         return self.klass(*self.args, **self.kw)
 
 
-def uuid_pk():
+def uuid_pk() -> str:
     return uuid.uuid4().hex
 
 
-def get_sf_alt_pk():
-    return getattr(settings, 'SF_ALT_PK', uuid_pk)()
+def get_sf_alt_pk() -> Callable[[], str]:
+    return getattr(settings, 'SF_ALT_PK', uuid_pk)()  # type: ignore[no-any-return] # noqa
