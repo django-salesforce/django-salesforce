@@ -186,7 +186,7 @@ class SalesforcePasswordAuth(SalesforceAuth):
         }
         response = self._session.post(url, data=auth_params)
         if response.status_code == 200:
-            response_data = response.json()
+            response_data = response.json()  # type: Dict[str, str]
             # Verify signature (not important for this auth mechanism)
             calc_signature = (
                 base64.b64encode(

@@ -17,10 +17,10 @@ import warnings
 import pytz
 from django.conf import settings
 from django.db import connections
-from django.db.models import Q, Avg, Count, Sum, Min, Max
+from django.db.models import Q, Avg, Count, Sum, Min, Max, Model, query as models_query
 from django.test import TestCase
 from django.utils import timezone
-from typing import List
+from typing import List, TypeVar
 
 import salesforce
 from salesforce import router
@@ -41,6 +41,8 @@ from salesforce.testrunner.example.models import (
 
 log = logging.getLogger(__name__)
 
+_M = TypeVar('_M', bound=Model)
+
 QUIET_KNOWN_BUGS = strtobool(os.getenv('QUIET_KNOWN_BUGS', 'false'))
 test_email = 'test-djsf-unittests%s@example.com' % uid
 sf_databases = [db for db in connections if router.is_sf_database(db)]
@@ -59,7 +61,8 @@ def refresh(obj):
     """Get the same object refreshed from the same db.
     """
     db = obj._state.db
-    return type(obj).objects.using(db).get(pk=obj.pk)
+    qs = type(obj).objects.using(db)  # type: models_query.QuerySet[_M]
+    return qs.get(pk=obj.pk)
 
 
 class BasicSOQLRoTest(TestCase, LazyTestMixin):
