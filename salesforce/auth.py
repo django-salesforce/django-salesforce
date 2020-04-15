@@ -11,7 +11,7 @@ oauth login support for the Salesforce API
 All data are ascii str.
 """
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 import base64
 import hashlib
 import hmac
@@ -75,7 +75,8 @@ class SalesforceAuth(AuthBase):
     http://docs.python-requests.org/en/latest/user/advanced/#custom-authentication
     """
 
-    def __init__(self, db_alias: str, settings_dict: Dict = None, _session: requests.Session = None):
+    def __init__(self, db_alias: str, settings_dict: Optional[Dict[str, Any]] = None,
+                 _session: Optional[requests.Session] = None) -> None:
         """
         Set values for authentication
             Params:
@@ -124,7 +125,7 @@ class SalesforceAuth(AuthBase):
             del oauth_data[self.db_alias]
         self.dynamic = None
 
-    def __call__(self, r):
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
         """Standard auth hook on the "requests" request r"""
         access_token = self.get_auth()['access_token']
         r.headers['Authorization'] = 'OAuth %s' % access_token
@@ -143,7 +144,7 @@ class SalesforceAuth(AuthBase):
     def instance_url(self) -> str:
         return self.get_auth()['instance_url']
 
-    def dynamic_start(self, access_token: str, instance_url: str = None, **kw):
+    def dynamic_start(self, access_token: str, instance_url: str = '', **kw: Any) -> None:
         """
         Set the access token dynamically according to the current user.
 

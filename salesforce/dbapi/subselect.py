@@ -15,13 +15,22 @@ require a combined parser for parentheses and commas.
 
 Unsupported GROUP BY ROLLUP and GROUP BY CUBE (their syntax for reports).
 """
-from typing import Any, Dict, List, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, overload, Sequence, Type, TypeVar, Tuple, Union
 import datetime
 import re
 import pytz
 from salesforce.dbapi.exceptions import ProgrammingError
 
-_TRow = TypeVar('_TRow', list, dict)
+_TRow = TypeVar('_TRow', List[Any], Dict[str, Any])
+_T = TypeVar('_T')
+
+
+def nz(x: Optional[_T]) -> _T:
+    """Not Zero type assert"""
+    assert x is not None
+    return x
+
+
 # reserved wods can not be used as alias names
 RESERVED_WORDS = set((
     'AND, ASC, DESC, EXCLUDES, FIRST, FROM, GROUP, HAVING, '
@@ -56,24 +65,23 @@ class QQuery(object):
     # pylint:disable=too-few-public-methods,too-many-instance-attributes
 
     def __init__(self, soql: Optional[str] = None) -> None:
-        self.soql = None
+        self.soql = None                  # type: Optional[str]
         self.fields = []                  # type: List[Union[str, QQuery]]
         # dictionary of chil to parent relationships - lowercase keys
         self.subroots = {}                # type: Dict[str, Any]  # recursive is Any
         self.aliases = []                 # type: List[str]
-        self.root_table = None
+        self.root_table = None            # type: Optional[str]
         # is_aggregation: only to know if aliases are relevant for output
         self.is_aggregation = False
-        self.is_count_query = False
         self.has_child_rel_field = False
         # extra_soql: everything what is after the root table name (and
         # after optional alias), usually WHERE...
-        self.extra_soql = None
-        self.subqueries = None
+        self.extra_soql = None            # type: Optional[str]
+        self.subqueries = None            # type: Optional[List[Tuple[str, Any]]]
         if soql:
             self._from_sql(soql)
 
-    def _from_sql(self, soql):
+    def _from_sql(self, soql: str) -> None:
         """Create Force.com SOQL tree structure from SOQL"""
         # pylint:disable=too-many-branches,too-many-nested-blocks
         assert not self.soql, "Don't use _from_sql method directly"
@@ -91,6 +99,7 @@ class QQuery(object):
         expr_alias_counter = 0
         #
         if not self.is_plain_count:
+            out_field = ''  # type: Union[str, QQuery]
             for field in fields:
                 if self.is_aggregation:
                     match = re.search(r'\b\w+$', field)
@@ -98,7 +107,7 @@ class QQuery(object):
                         alias = match.group()
                         assert alias not in RESERVED_WORDS, "invalid alias name"
                         if match.start() > 0 and field[match.start() - 1] == ' ':
-                            field = field[match.start() - 1]
+                            out_field = field = field[match.start() - 1]
                     else:
                         alias = 'expr{}'.format(expr_alias_counter)
                         expr_alias_counter += 1
@@ -108,11 +117,11 @@ class QQuery(object):
                     subquery = QQuery(self.subqueries[consumed_subqueries][0])
                     consumed_subqueries += 1
                     self.has_child_rel_field = True
-                    field = subquery
+                    out_field = subquery
                     # TODO more child relationships to the same table
-                    alias = subquery.root_table
+                    alias = nz(subquery.root_table)
                 else:
-                    alias = field
+                    alias = out_field = field
                     if '.' in alias:
                         if alias.split('.', 1)[0].lower() == self.root_table.lower():
                             alias = alias.split('.', 1)[1]
@@ -124,10 +133,11 @@ class QQuery(object):
                                 subroots.setdefault(scrumb, {})
                                 subroots = subroots[scrumb]
                 self.aliases.append(alias)
-                self.fields.append(field)
+                self.fields.append(out_field)
         # TODO it is not currently necessary to parse the exta_soql
 
-    def _make_flat(self, row_dict, path, subroots):
+    def _make_flat(self, row_dict: Dict[str, Any], path: Tuple[str, ...], subroots: Dict[str, Dict[str, Any]]
+                   ) -> Dict[str, Any]:
         """Replace the nested dict objects by a flat dict with keys "object.object.name"."""
         # can get a cursor parameter, if introspection should be possible on the fly
         out = {}
@@ -150,12 +160,26 @@ class QQuery(object):
                     out[k.lower() + '.' + sub_k] = sub_v
         return out
 
-    def parse_rest_response(self, records, rowcount, row_type=list):
+    @overload                   # noqa
+    def parse_rest_response(self, records: Iterable[Dict[str, Any]], rowcount: int, row_type: Type[Dict[Any, Any]]
+                            ) -> Iterable[Dict[str, Any]]: ...
+    @overload                   # noqa
+    def parse_rest_response(self, records: Iterable[Dict[str, Any]], rowcount: int, row_type: Type[List[Any]]
+                            ) -> Iterable[List[Any]]: ...
+    @overload                   # noqa
+    def parse_rest_response(self, records: Iterable[Dict[str, Any]], rowcount: int,
+                            ) -> Iterable[Dict[str, Any]]: ...
+    def parse_rest_response(self, records: Iterable[Dict[str, Any]], # type: ignore[no-untyped-def] # noqa
+                            rowcount: int, row_type=list) -> Iterable[Any]:
         """Parse the REST API response to DB API cursor flat response"""
+        assert row_type in (dict, list)
         if self.is_plain_count:
             # result of "SELECT COUNT() FROM ... WHERE ..."
             assert list(records) == []
-            yield rowcount  # originally [resp.json()['totalSize']]
+            if issubclass(row_type, dict):
+                yield {'count': rowcount}
+            elif issubclass(row_type, list):
+                yield [rowcount]  # originally [resp.json()['totalSize']]
         else:
             while True:
                 for row_deep in records:
@@ -165,7 +189,7 @@ class QQuery(object):
                     assert all(not isinstance(x, dict) or x['done'] for x in row_flat)
                     if issubclass(row_type, dict):
                         yield {k: fix_data_type(row_flat[k.lower()]) for k in self.aliases}
-                    else:
+                    elif issubclass(row_type, list):
                         yield [fix_data_type(row_flat[k.lower()]) for k in self.aliases]
                 # if not resp['done']:
                 #     if not cursor:
@@ -180,7 +204,7 @@ SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 SF_DATETIME_PATTERN = re.compile(r'[1-3]\d{3}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-6]\d.\d{3}\+0000$')
 
 
-def fix_data_type(data, tzinfo=None):
+def fix_data_type(data: Any, tzinfo: Optional[datetime.timezone] = None) -> Any:
     # this is a simplified function. The data type should be finally read
     # from some reliable field mapping, not to guess by regexp like here.
     # Only a DateTime field has so specific regexp that the guess is
@@ -192,7 +216,7 @@ def fix_data_type(data, tzinfo=None):
     return data
 
 
-def mark_quoted_strings(sql):
+def mark_quoted_strings(sql: str) -> Tuple[str, List[str]]:
     """Mark all quoted strings in the SOQL by '@' and get them as params,
     with respect to all escaped backslashes and quotes.
     """
@@ -215,7 +239,7 @@ def mark_quoted_strings(sql):
     return '@'.join(out), params
 
 
-def subst_quoted_strings(sql, params):
+def subst_quoted_strings(sql: str, params: Sequence[str]) -> str:
     """Reverse operation to mark_quoted_strings - substitutes '@' by params.
     """
     parts = sql.split('@')
@@ -229,7 +253,7 @@ def subst_quoted_strings(sql, params):
     return ''.join(out)
 
 
-def find_closing_parenthesis(sql, startpos):
+def find_closing_parenthesis(sql: str, startpos: int) -> Optional[Tuple[int, int]]:
     """Find the pair of opening and closing parentheses.
 
     Starts search at the position startpos.
@@ -237,7 +261,7 @@ def find_closing_parenthesis(sql, startpos):
     """
     pattern = re.compile(r'[()]')
     level = 0
-    opening = []
+    opening = []  # type: Union[int, List[None]]
     for match in pattern.finditer(sql, startpos):
         par = match.group()
         if par == '(':
@@ -248,37 +272,39 @@ def find_closing_parenthesis(sql, startpos):
             assert level > 0, "missing '(' before ')'"
             level -= 1
             if level == 0:
+                assert isinstance(opening, int)
                 closing = match.end()
                 return opening, closing
+    return None
 
 
-def transform_except_subquery(sql, func):
+def transform_except_subquery(sql: str, func: Callable[[str], str]) -> str:
     """Call a func on every part of SOQL query except nested (SELECT ...)"""
     start = 0
     out = []
     while sql.find('(SELECT', start) > -1:
         pos = sql.find('(SELECT', start)
         out.append(func(sql[start:pos]))
-        start, pos = find_closing_parenthesis(sql, pos)
+        start, pos = nz(find_closing_parenthesis(sql, pos))
         out.append(sql[start:pos])
         start = pos
     out.append(func(sql[start:len(sql)]))
     return ''.join(out)
 
 
-def split_subquery(sql):
+def split_subquery(sql: str) -> Tuple[str, List[Tuple[str, Any]]]:
     """Split on subqueries and replace them by '&'."""
     sql, params = mark_quoted_strings(sql)
     sql = simplify_expression(sql)
     _ = params  # NOQA
     start = 0
     out = []
-    subqueries = []
+    subqueries = []  # List[Tuple[str, Any]]
     pattern = re.compile(r'\(SELECT\b', re.I)
     match = pattern.search(sql, start)
     while match:
         out.append(sql[start:match.start() + 1] + '&')
-        start, pos = find_closing_parenthesis(sql, match.start())
+        start, pos = nz(find_closing_parenthesis(sql, match.start()))
         start, pos = start + 1, pos - 1
         subqueries.append(split_subquery(sql[start:pos]))
         start = pos
@@ -287,7 +313,7 @@ def split_subquery(sql):
     return ''.join(out), subqueries
 
 
-def simplify_expression(txt):
+def simplify_expression(txt: str) -> str:
     """Remove all unecessary whitespace and some very usual space"""
     minimal = re.sub(r'\s', ' ',
                      re.sub(r'\s(?=\W)', '',

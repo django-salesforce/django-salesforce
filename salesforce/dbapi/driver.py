@@ -152,7 +152,7 @@ class RawConnection:
         log.info("Rollback is not implemented in Salesforce.")
 
     @overload
-    def cursor(self) -> 'Cursor[Dict]': ...
+    def cursor(self) -> 'Cursor[Dict[str, Any]]': ...
     @overload  # noqa
     def cursor(self, row_type: Type[_TRow]) -> 'Cursor[_TRow]': ...
 
@@ -508,7 +508,7 @@ class Cursor(Generic[_TRow]):
     """
 
     # pylint:disable=too-many-instance-attributes
-    def __init__(self, connection: Connection, row_type: Type[_TRow] = None) -> None:
+    def __init__(self, connection: Connection, row_type: Optional[Type[_TRow]] = None) -> None:
         # DB API attributes (public, ordered by documentation PEP 249)
         self.description = None           # type: Optional[List[Tuple]]
         self.rowcount = -1  # set to non-negative by SELECT INSERT UPDATE DELETE
@@ -520,16 +520,16 @@ class Cursor(Generic[_TRow]):
         self.lastrowid = None  # TODO to be used for INSERT id, but insert is not implemented by cursor
         self.errorhandler = connection.errorhandler
         # private
-        if row_type and issubclass(row_type, list):
-            self.row_factory = lambda x: list(x.values())  # type: Callable[[Dict], _TRow]
-        else:
-            self.row_factory = lambda x: x                 # type: ignore[assignment,return-value]  # noqa
-        self._chunk = []                  # type: List[_TRow]
+        if row_type is None or issubclass(row_type, dict):
+            self.row_type = cast(Type[Dict[str, Any]], dict)     # type: Union[Type[Dict[str, Any]], Type[List[Any]]]
+        elif issubclass(row_type, list):
+            self.row_type = list
+        self._chunk = []                  # type: List[Dict[str, Any]]  # it is in the native JSON format
         self._chunk_offset = None         # type: Optional[int]
         self._next_records_url = None     # type: Optional[str]
         self.handle = None                # type: Optional[str]
         self.qquery = None                # type: Optional[QQuery]
-        self._raw_iterator = None         # type: Optional[Iterator[_TRow]]
+        self._raw_iterator = None         # type: Optional[Iterator[Dict[str, Any]]]
         self._iter = not_executed_yet()   # type: Iterator[_TRow]
 
     # -- DB API methods
@@ -609,16 +609,18 @@ class Cursor(Generic[_TRow]):
 
     # -- private methods
 
-    def __iter__(self) -> 'Cursor':
+    def __iter__(self) -> 'Cursor[_TRow]':
         return self
 
     def _gen(self) -> Iterator[_TRow]:
         assert self._chunk_offset is not None and self.rownumber is not None
         assert self.qquery
+
         while True:
             self._raw_iterator = iter(self._chunk)
-            for row in self.qquery.parse_rest_response(self._raw_iterator, self.rowcount):
-                yield self.row_factory(row)
+            for row in self.qquery.parse_rest_response(self._raw_iterator, self.rowcount,
+                                                       row_type=list):
+                yield cast(_TRow, row)
                 self.rownumber += 1
             if not self._next_records_url:
                 break
@@ -626,7 +628,7 @@ class Cursor(Generic[_TRow]):
             self.query_more(self._next_records_url)
             self._chunk_offset = new_offset
 
-    def execute_select(self, soql, parameters: Iterable, query_all=False):
+    def execute_select(self, soql: str, parameters: Iterable[Any], query_all: bool = False) -> None:
         processed_sql = str(soql) % tuple(arg_to_soql(x) for x in parameters)
         service = 'query' if not query_all else 'queryAll'
 
@@ -772,7 +774,7 @@ ConversionJsonFunc = Callable[[T], Optional[Union[str, float]]]
 def register_conversion(type_: Type[T], json_conv: ConversionJsonFunc, sql_conv: ConversionSqlFunc = None,
                         subclass: bool = False) -> None:
     json_conversions[type_] = json_conv
-    sql_conversions[type_] = sql_conv or json_conv  # type: ignore[assignment]  # noqa
+    sql_conversions[type_] = cast(ConversionSqlFunc, sql_conv or json_conv)
     if subclass and type_ not in subclass_conversions:
         subclass_conversions.append(type_)
 

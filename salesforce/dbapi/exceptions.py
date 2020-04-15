@@ -1,13 +1,21 @@
 # All error types described in DB API 2 are implemented the same way as in
 # Django (1.11 to 3.0)., otherwise some exceptions are not correctly reported in it.
+from typing import Any, Dict, Iterable, List, Optional, Set, Type, Union
 import json
+import requests
 import warnings
 # pylint:disable=too-few-public-methods
 
 
 class SalesforceWarning(Warning):
-    def __init__(self, messages=None, response=None, verbs=None):
-        self.data, self.response, self.verbs = (), None, None
+    def __init__(self,
+                 messages: Optional[Union[str, List[str]]] = None,
+                 response: Optional[requests.Response] = None,
+                 verbs: Optional[Iterable[str]] = None
+                 ) -> None:
+        self.data = []  # type: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]
+        self.response = None  # type: Optional[requests.Response]
+        self.verbs = None  # type: Optional[Set[str]]
         message = prepare_exception(self, messages, response, verbs)
         super(SalesforceWarning, self).__init__(message)
 
@@ -18,8 +26,14 @@ class Error(Exception):
 
     customized for aproriate information, not too much or too little.
     """
-    def __init__(self, messages=None, response=None, verbs=None):
-        self.data, self.response, self.verbs = (), None, None
+    def __init__(self,
+                 messages: Optional[Union[str, List[str]]] = None,
+                 response: Optional[requests.Response] = None,
+                 verbs: Optional[Iterable[str]] = None
+                 ) -> None:
+        self.data = []  # type: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]
+        self.response = None  # type: Optional[requests.Response]
+        self.verbs = None  # type: Optional[Set[str]]
         message = prepare_exception(self, messages, response, verbs)
         super(Error, self).__init__(message)
 
@@ -81,7 +95,11 @@ class SalesforceAuthError(SalesforceError):
     """
 
 
-def prepare_exception(obj, messages=None, response=None, verbs=None):
+def prepare_exception(obj: Union[Error, SalesforceWarning],
+                      messages: Optional[Union[str, List[str]]] = None,
+                      response: Optional[requests.Response] = None,
+                      verbs: Optional[Iterable[str]] = None
+                      ) -> str:
     """Prepare excetion params or only an exception message
 
     parameters:
@@ -90,14 +108,14 @@ def prepare_exception(obj, messages=None, response=None, verbs=None):
         verbs: list of options about verbosity
     """
     # pylint:disable=too-many-branches
-    verbs = set(verbs or [])
+    verbs_ = set(verbs or [])
     known_options = ['method+url']
     if messages is None:
         messages = []
     if isinstance(messages, str):
         messages = [messages]
     assert isinstance(messages, list)
-    assert not verbs.difference(known_options)
+    assert not verbs_.difference(known_options)
 
     data = None
     # a boolean from a failed response is False, though error messages in json should be decoded
@@ -114,7 +132,8 @@ def prepare_exception(obj, messages=None, response=None, verbs=None):
                 messages.append('FIELDS: {}'.format(data_0['fields']))
             if len(data) > 1:
                 messages.append('MORE_ERRORS ({})'.format(len(data)))
-    if 'method+url' in verbs:
+    if 'method+url' in verbs_:
+        assert response is not None and response.request.url
         method = response.request.method
         url = response.request.url
         if len(url) > 100:
@@ -130,10 +149,14 @@ def prepare_exception(obj, messages=None, response=None, verbs=None):
     if obj:
         obj.data = data
         obj.response = response
-        obj.verbs = verbs
+        obj.verbs = verbs_
     return message
 
 
-def warn_sf(messages, response, verbs=None, klass=SalesforceWarning):
+def warn_sf(messages: Union[str, List[str]],
+            response: Optional[requests.Response],
+            verbs: Optional[Iterable[str]] = None,
+            klass: Type[SalesforceWarning] = SalesforceWarning
+            ) -> None:
     """Issue a warning SalesforceWarning, with message combined from message and data from SFDC response"""
     warnings.warn(klass(messages, response, verbs), stacklevel=2)

@@ -9,6 +9,7 @@
 Customized fields for Salesforce, especially the primary key. (like django.db.models.fields)
 """
 
+from typing import Tuple
 import typing
 import warnings
 from decimal import Decimal
@@ -111,7 +112,7 @@ class SfField(models.Field):
             kwargs['default'] = DefaultedOnCreate(internal_type=self.get_internal_type())
         super(SfField, self).__init__(*args, **kwargs)
 
-    def get_attname_column(self):
+    def get_attname_column(self) -> Tuple[str, str]:
         """
         Get the database column name automatically in most cases.
         """
@@ -281,14 +282,14 @@ class SfForeignObjectMixin(SfField, _MixinTypingBase):
                 % (on_delete, to))
         super().__init__(to, on_delete, *args, **kwargs)
 
-    def get_attname(self):
+    def get_attname(self) -> str:
         if self.name.islower():  # pylint:disable=no-else-return
             # the same as django.db.models.fields.related.ForeignKey.get_attname
             return '%s_id' % self.name
         else:
             return '%sId' % self.name
 
-    def get_attname_column(self):
+    def get_attname_column(self) -> Tuple[str, str]:
         attname, column = super().get_attname_column()
         if self.db_column is None and not self.sf_custom:
             column += 'Id'

@@ -17,15 +17,15 @@ class BaseDefault:
 
     default = None  # type: Any
 
-    def __init__(self, *args):
+    def __init__(self, *args: Any) -> None:
         self.args = args
 
     def __str__(self) -> str:
         return StrDefault(super().__str__())
 
-    def deconstruct(self) -> Tuple[str, List[Any], Dict]:
+    def deconstruct(self) -> Tuple[str, Tuple[Any, ...], Dict[str, Any]]:
         if self == self.default:
-            return ('salesforce.fields.DefaultedOnCreate', [], {})
+            return ('salesforce.fields.DefaultedOnCreate', (), {})
         else:
             return ('salesforce.fields.DefaultedOnCreate', self.args, {})
 
@@ -64,10 +64,10 @@ class StrDefault(BaseDefault, str):
 class DateDefault(BaseDefault, datetime.date):
     default = datetime.date(1700, 1, 1)
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'DateDefault':
         if len(args) == 1 and not kwargs:
             args = args[0].timetuple()[:3]
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return] # noqa
 
     def isoformat(self) -> str:
         return StrDefault(super().isoformat())
@@ -76,12 +76,12 @@ class DateDefault(BaseDefault, datetime.date):
 class DateTimeDefault(BaseDefault, datetime.datetime):
     default = datetime.datetime(1700, 1, 1, 12, 0, 0, tzinfo=utc)
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls: Type['DateTimeDefault'], *args: Any, **kwargs: Any) -> 'DateTimeDefault':
         if len(args) == 1 and not kwargs:
             arg = args[0]
             args = arg.timetuple()[:6] + (arg.microsecond,)
             kwargs = {'tzinfo': arg.tzinfo}
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return] # noqa
 
     def isoformat(self, sep: str = 'T', timecspec: str = 'auto') -> str:
         return StrDefault(super().isoformat())
@@ -90,12 +90,12 @@ class DateTimeDefault(BaseDefault, datetime.datetime):
 class TimeDefault(BaseDefault, datetime.time):
     default = datetime.time(0, 0, 0)
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> 'TimeDefault':
         if len(args) == 1 and not kwargs:
             arg = args[0]
             args = (arg.hour, arg.minute, arg.second, arg.microsecond)
             kwargs = {'tzinfo': arg.tzinfo}
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return] # noqa
 
     def isoformat(self, timecspec: str = 'auto') -> str:
         return StrDefault(super().isoformat())
@@ -155,7 +155,7 @@ class DefaultedOnCreate:
         'AutoField': StrDefault,
         'BigAutoField': StrDefault,
         'SmallAutoField': StrDefault,
-    }  # type: Dict[str, Type]
+    }  # type: Dict[str, Type[BaseDefault]]
 
     value_type_map = {type(klass.default): klass for klass in field_type_map.values()}
 
@@ -175,7 +175,7 @@ class DefaultedOnCreate:
             # only one instance without parameters make sense, that is in DEFAULTED_ON_CREATE
             return super(DefaultedOnCreate, cls).__new__(cls)
 
-    def deconstruct(self) -> Tuple[str, List[Any], Dict]:
+    def deconstruct(self) -> Tuple[str, List[Any], Dict[str, Any]]:
         return ('salesforce.fields.DefaultedOnCreate', [], {})
 
 

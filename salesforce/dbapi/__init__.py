@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 try:
     settings = None  # type: Any
     from django.conf import settings
-    from django.db import connections
+    from django.db import connections as connections
 except ImportError:
     # mock for some tests without a real Django
     import importlib
@@ -39,7 +39,7 @@ except ImportError:
     connections = local()
 
 
-def get_max_retries():
+def get_max_retries() -> int:
     """Get the maximal number of requests retries
 
     The maximal number of retries for timeouts in requests to Force.com API.
@@ -48,4 +48,4 @@ def get_max_retries():
     0: no retry
     1: one retry
     """
-    return getattr(settings, 'REQUESTS_MAX_RETRIES', 1)
+    return getattr(settings, 'REQUESTS_MAX_RETRIES', 1)  # type: ignore[no-any-return] # noqa
