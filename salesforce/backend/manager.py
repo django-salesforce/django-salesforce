@@ -41,6 +41,7 @@ class SalesforceManager(manager.Manager, Generic[_T]):
         """
         alias_is_sf = _alias and router.is_sf_database(_alias)
         is_extended_model = getattr(self.model, '_salesforce_object', '') == 'extended'
+        assert self.model is not None
         if router.is_sf_database(self.db) or alias_is_sf or is_extended_model:
             q = models_sql_query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
             ret = query.SalesforceQuerySet(self.model, query=q, using=self.db)  # type: query.SalesforceQuerySet[_T]

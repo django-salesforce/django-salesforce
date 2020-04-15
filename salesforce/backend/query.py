@@ -14,7 +14,7 @@ import warnings
 
 from django.conf import settings
 from django.db import NotSupportedError, models
-from django.db.models import query
+from django.db.models import query as models_query
 from django.db.utils import DEFAULT_DB_ALIAS
 import django
 
@@ -34,11 +34,11 @@ _T = TypeVar("_T", bound=models.Model, covariant=True)
 #         return self.query.cursor.rowcount
 
 
-class SalesforceQuerySet(query.QuerySet, Generic[_T]):
+class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
     """
     Use a custom SQL compiler to generate SOQL-compliant queries.
     """
-    query = None  # type: SalesforceQuery
+    query = None  # type: SalesforceQuery[_T]
 
     def using(self, alias: Optional[str]) -> 'SalesforceQuerySet[_T]':
         if alias is None:
@@ -78,6 +78,17 @@ class SalesforceQuerySet(query.QuerySet, Generic[_T]):
                 if x.pk is None:
                     x.pk = get_sf_alt_pk()
         return super(SalesforceQuerySet, self).bulk_create(objs, batch_size=batch_size, **kwargs)
+
+    def sf(self, **kwargs) -> 'SalesforceQuerySet[_T]':
+        """Set Salesforce parameters for a queryset methods
+
+        Example:
+        >>> Contact.objects.sf(all_or_none=True).bulk_create([Contact(last_name='a')])
+        """
+        if not is_sf_database(self.db):
+            return self
+        clone = self._chain()
+        return clone
 
     if not DJANGO_20_PLUS:
         def _chain(self, **kwargs) -> 'SalesforceQuerySet[_T]':

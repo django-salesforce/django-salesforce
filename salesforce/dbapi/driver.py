@@ -482,7 +482,7 @@ def connect(**params) -> Connection:
 def get_connection(alias: str, **params) -> Connection:
     if not hasattr(thread_connections, alias):
         setattr(thread_connections, alias, connect(alias=alias, **params))
-    return getattr(thread_connections, alias)
+    return cast(Connection, getattr(thread_connections, alias))
 
 
 class Cursor(Generic[_TRow]):
@@ -837,7 +837,7 @@ subclass_conversions = []  # type: List[type]
 register_conversion(int,             json_conv=str)
 register_conversion(float,           json_conv=lambda o: '%.15g' % o)
 register_conversion(type(None),      json_conv=lambda s: None,          sql_conv=lambda s: 'NULL')
-register_conversion(str,             json_conv=lambda o: o,             sql_conv=quoted_string_literal)  # default
+register_conversion(str,             json_conv=lambda o: cast(str, o),  sql_conv=quoted_string_literal)  # default
 register_conversion(bool,            json_conv=lambda s: str(s).lower())
 register_conversion(datetime.date,   json_conv=lambda d: datetime.date.strftime(d, "%Y-%m-%d"))
 register_conversion(datetime.datetime, json_conv=date_literal)
@@ -876,7 +876,7 @@ class TimeStatistics:
     def domain(url) -> str:
         match = re.match(r'^(?:https|mock)://([^/]*)/?', url)
         assert match
-        return match.groups()[0]
+        return cast(str, match.groups()[0])
 
 
 time_statistics = TimeStatistics(300)

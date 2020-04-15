@@ -102,7 +102,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
     def __init__(self, conn: Any) -> None:
         BaseDatabaseIntrospection.__init__(self, conn)
         self._table_list_cache = None  # type: Optional[Dict[str, Any]]
-        self._table_description_cache = {}  # type: Dict[str, Any]
+        self._table_description_cache = {}  # type: Dict[str, Dict[str, Any]]
         self._converted_lead_status = None  # type: Optional[str]
 
     @property
@@ -205,7 +205,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 key_columns.append((name,) + item['foreign_key'])
         return key_columns
 
-    def get_relations(self, cursor: _Cursor, table_name: str) -> Dict[str, Tuple[str, str]]:
+    def get_relations(self, cursor: _Cursor, table_name: str) -> Dict[str, Tuple[str, 'SfProtectName']]:
         """
         Returns a dictionary of {field_index: (field_index_other_table, other_table)}
         representing all relationships to the given table. Indexes are 0-based.
@@ -221,7 +221,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         for _, field in enumerate(self.table_description_cache(table_name)['fields']):
             if field['type'] == 'reference' and field['referenceTo']:
                 params = OrderedDict()
-                reference_to_name = SfProtectName(field['referenceTo'][0])  # type: str
+                reference_to_name = SfProtectName(field['referenceTo'][0])
                 relationship_order = field['relationshipOrder']
                 if relationship_order is None:
                     relationship_tmp = set()

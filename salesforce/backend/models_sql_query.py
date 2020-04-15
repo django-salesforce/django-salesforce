@@ -1,12 +1,15 @@
 """
 Customized Query, RawQuery  (like django.db.models.sql.query)
 """
+from typing import Any, cast, Generic, Optional, Tuple, Type, TypeVar
 from django.conf import settings
-from django.db.models import Count
+from django.db.models import Count, Model
 from django.db.models.sql import Query, RawQuery, constants
 
 from salesforce.backend import DJANGO_20_PLUS
 from salesforce.dbapi.driver import arg_to_soql
+
+_T = TypeVar("_T", bound=Model, covariant=True)
 
 
 class SalesforceRawQuery(RawQuery):
@@ -37,21 +40,21 @@ class SalesforceRawQuery(RawQuery):
 #             yield [row[k] for k in self.get_columns()]
 
 
-class SalesforceQuery(Query):
+class SalesforceQuery(Query, Generic[_T]):
     """
     Override aggregates.
     """
-    def __init__(self, *args, **kwargs) -> None:
-        super(SalesforceQuery, self).__init__(*args, **kwargs)
+    def __init__(self, model: Type[_T], *args, **kwargs) -> None:
+        super(SalesforceQuery, self).__init__(model, *args, **kwargs)
         self.is_query_all = False
         self.max_depth = 1
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return the query as merged SOQL for Salesforce"""
         sql, params = self.sql_with_params()
         return sql % tuple(arg_to_soql(x) for x in params)
 
-    def sql_with_params(self):
+    def sql_with_params(self) -> Tuple[str, Tuple[Any, ...]]:
         """
         Return the query as an SOQL string and the parameters for Salesforce.
 
@@ -62,15 +65,16 @@ class SalesforceQuery(Query):
         sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
         return self.get_compiler(sf_alias).as_sql()
 
-    def clone(self, klass=None, memo=None):  # pylint: disable=arguments-differ
+    def clone(self, klass=None, memo=None) -> 'SalesforceQuery[_T]':  # pylint: disable=arguments-differ
         if DJANGO_20_PLUS:
-            query = Query.clone(self)
+            query = cast(SalesforceQuery, Query.clone(self))
         else:
-            query = Query.clone(self, klass, memo)  # pylint: disable=too-many-function-args
+            # pylint: disable=too-many-function-args
+            query = cast(SalesforceQuery, Query.clone(self, klass, memo))  # type: ignore[call-arg]  # noqa
         query.is_query_all = self.is_query_all
         return query
 
-    def has_results(self, using):
+    def has_results(self, using: Optional[str]) -> bool:
         q = self.clone()
         compiler = q.get_compiler(using=using)  # pylint: disable=no-member
         return bool(compiler.execute_sql(constants.SINGLE))
@@ -78,14 +82,14 @@ class SalesforceQuery(Query):
     def set_query_all(self) -> None:
         self.is_query_all = True
 
-    def get_count(self, using):
+    def get_count(self, using: str) -> int:
         # TODO maybe can be removed soon
         """
         Performs a COUNT() query using the current filter constraints.
         """
         obj = self.clone()
         obj.add_annotation(Count('pk'), alias='x_sf_count', is_summary=True)  # pylint: disable=no-member
-        number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']  # pylint: disable=no-member
+        number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']  # type: Optional[int] # pylint: disable=no-member # noqa
         if number is None:
             number = 0
         return number
