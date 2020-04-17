@@ -1,20 +1,57 @@
 # All error types described in DB API 2 are implemented the same way as in
 # Django (1.11 to 3.0)., otherwise some exceptions are not correctly reported in it.
-from typing import Any, Dict, Iterable, List, Optional, Set, Type, Union
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Set, Type, Union
 import json
-import requests
+import requests  # noqa
 import warnings
 # pylint:disable=too-few-public-methods
+
+
+class FakeReq:
+    """A Fake Request is used for compatible error reporting in "composite" subrequests."""
+    # pylint:disable=too-few-public-methods,too-many-arguments
+    def __init__(self,
+                 method: str,
+                 url: str,
+                 data: str,        # ?? Union[str, List[Any], Dict[str, Any]],
+                 headers: Optional[Dict[str, str]] = None,
+                 context: Optional[Dict[Any, Any]] = None
+                 ) -> None:
+        self.method = method
+        self.url = url
+        self.data = data
+        self.headers = headers or {}  # type: Dict[str, str]
+        self.context = context or {}  # type: Dict[Any, Any]  # the key is Union[str, int]
+
+    @property
+    def body(self) -> str:
+        if isinstance(self.data, str):
+            return self.data
+        return json.dumps(self.data)
+
+
+class FakeResp:  # pylint:disable=too-few-public-methods,too-many-instance-attributes
+    """A Fake Response is used for compatible error reporting in "composite" subrequests."""
+    def __init__(self, status_code: int, headers: Mapping[str, str], text: str, request: FakeReq) -> None:
+        self.status_code = status_code
+        self.text = text
+        self.request = request
+        self.headers = headers
+
+        self.reason = None
+
+
+GenResponse = requests.Response  # (requests.Response, 'FakeResp')
 
 
 class SalesforceWarning(Warning):
     def __init__(self,
                  messages: Optional[Union[str, List[str]]] = None,
-                 response: Optional[requests.Response] = None,
+                 response: Optional[GenResponse] = None,
                  verbs: Optional[Iterable[str]] = None
                  ) -> None:
         self.data = []  # type: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]
-        self.response = None  # type: Optional[requests.Response]
+        self.response = None  # type: Optional[GenResponse]
         self.verbs = None  # type: Optional[Set[str]]
         message = prepare_exception(self, messages, response, verbs)
         super(SalesforceWarning, self).__init__(message)
@@ -28,11 +65,11 @@ class Error(Exception):
     """
     def __init__(self,
                  messages: Optional[Union[str, List[str]]] = None,
-                 response: Optional[requests.Response] = None,
+                 response: Optional[GenResponse] = None,
                  verbs: Optional[Iterable[str]] = None
                  ) -> None:
         self.data = []  # type: Optional[Union[List[Dict[str, Any]], Dict[str, Any]]]
-        self.response = None  # type: Optional[requests.Response]
+        self.response = None  # type: Optional[GenResponse]
         self.verbs = None  # type: Optional[Set[str]]
         message = prepare_exception(self, messages, response, verbs)
         super(Error, self).__init__(message)
@@ -97,7 +134,7 @@ class SalesforceAuthError(SalesforceError):
 
 def prepare_exception(obj: Union[Error, SalesforceWarning],
                       messages: Optional[Union[str, List[str]]] = None,
-                      response: Optional[requests.Response] = None,
+                      response: Optional[GenResponse] = None,
                       verbs: Optional[Iterable[str]] = None
                       ) -> str:
     """Prepare excetion params or only an exception message
@@ -140,7 +177,7 @@ def prepare_exception(obj: Union[Error, SalesforceWarning],
             url = url[:100] + '...'
         data_info = ''
         if (method in ('POST', 'PATCH') and
-                (not response.request.body or 'json' not in response.request.headers['content-type'])):
+                (not response.request.body or 'json' not in response.request.headers.get('content-type', ''))):
             data_info = ' (without json request data)'
         messages.append('in {} "{}"{}'.format(method, url, data_info))
     separ = '\n    '
@@ -154,7 +191,7 @@ def prepare_exception(obj: Union[Error, SalesforceWarning],
 
 
 def warn_sf(messages: Union[str, List[str]],
-            response: Optional[requests.Response],
+            response: Optional[GenResponse],
             verbs: Optional[Iterable[str]] = None,
             klass: Type[SalesforceWarning] = SalesforceWarning
             ) -> None:

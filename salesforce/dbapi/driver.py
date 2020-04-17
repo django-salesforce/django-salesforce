@@ -36,8 +36,9 @@ from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
     Error, InterfaceError, DatabaseError, DataError, OperationalError, IntegrityError,
     InternalError, ProgrammingError, NotSupportedError, SalesforceError, SalesforceWarning,
-    warn_sf)
-from salesforce.dbapi.subselect import QQuery, _TRow
+    warn_sf,
+    FakeReq, FakeResp, GenResponse)
+from salesforce.dbapi.subselect import nz, QQuery, _TRow
 
 try:
     import beatbox  # type: ignore[import]  # pylint: disable=unused-import
@@ -87,6 +88,8 @@ thread_connections = threading.local()
 
 ErrInfo = Tuple[Type[Exception], Exception]
 
+ErrorHandler = Callable[['RawConnection', Optional['Cursor[Any]'], Type[BaseException], BaseException], None]
+
 
 class SfSession(requests.Session):
     auth = None  # type: SalesforceAuth
@@ -114,7 +117,7 @@ class RawConnection:
     NotSupportedError = NotSupportedError
 
     def __init__(self, settings_dict: Dict[str, Any], alias: Optional[str] = None,
-                 errorhandler: Optional[Callable] = None, use_introspection: Optional[bool] = None) -> None:
+                 errorhandler: Optional[ErrorHandler] = None, use_introspection: Optional[bool] = None) -> None:
 
         # private members:
         self.alias = cast(str, alias)
@@ -156,7 +159,7 @@ class RawConnection:
     @overload  # noqa
     def cursor(self, row_type: Type[_TRow]) -> 'Cursor[_TRow]': ...
 
-    def cursor(self, row_type=dict):  # noqa
+    def cursor(self, row_type=dict):  # type: ignore[no-untyped-def] # noqa
         return Cursor(self, row_type)
 
     # -- private attributes
@@ -185,7 +188,7 @@ class RawConnection:
                 # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'} # TODO
                 self._sf_session = sf_session
 
-    def rest_api_url(self, *url_parts_: str, **kwargs) -> str:
+    def rest_api_url(self, *url_parts_: str, **kwargs: Any) -> str:
         """Join the URL of REST_API
 
         parameters:
@@ -229,7 +232,7 @@ class RawConnection:
                 prefix += ['v{api_ver}'.format(api_ver=api_ver)]
         return '/'.join(base + prefix + url_parts)
 
-    def handle_api_exceptions(self, method: str, *url_parts: str, **kwargs) -> requests.Response:
+    def handle_api_exceptions(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
         """Call REST API and handle exceptions
         Params:
             method:  'HEAD', 'GET', 'POST', 'PATCH' or 'DELETE'
@@ -257,7 +260,7 @@ class RawConnection:
                 errorhandler(self, cursor_context, exc_class, exc_value)
                 raise
 
-    def handle_api_exceptions_inter(self, method: str, *url_parts: str, **kwargs) -> requests.Response:
+    def handle_api_exceptions_inter(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
         """The main (middle) part - it is enough if no error occurs."""
         global request_count  # used only in single thread tests - OK # pylint:disable=global-statement
         # log.info("request %s %s", method, '/'.join(url_parts))
@@ -300,7 +303,7 @@ class RawConnection:
         self.raise_errors(response)
         return  # type: ignore[return-value]  # noqa
 
-    def raise_errors(self, response: requests.Response) -> None:
+    def raise_errors(self, response: GenResponse) -> None:
         """The innermost part - report errors by exceptions"""
         # Errors: 400, 403 permissions or REQUEST_LIMIT_EXCEEDED, 404, 405, 415, 500)
         # TODO extract a case ID for Salesforce support from code 500 messages
@@ -362,7 +365,7 @@ class RawConnection:
         bad_i, bad_response = bad_responses.popitem()
         bad_request = data[bad_i]
 
-        bad_req = FakeReq(bad_request['method'], bad_request['url'], bad_request.get('body'),
+        bad_req = FakeReq(bad_request['method'], bad_request['url'], bad_request.get('body', ''),
                           bad_request.get('httpHeaders', {}), context={bad_i: bad_request['referenceId']})
 
         body = [merge_dict(x, referenceId=bad_response['referenceId'])
@@ -370,14 +373,14 @@ class RawConnection:
         bad_resp_headers = bad_response['httpHeaders'].copy()
         bad_resp_headers.update({'Content-Type': resp.headers['Content-Type']})
 
-        bad_resp = FakeResp(bad_response['httpStatusCode'], json.dumps(body), bad_req, bad_resp_headers
+        bad_resp = FakeResp(bad_response['httpStatusCode'], bad_resp_headers, json.dumps(body), bad_req
                             ) # type: requests.Response # type: ignore[assignment]  # noqa
 
         self.raise_errors(bad_resp)
         return  # type: ignore[return-value]  # noqa
 
     @staticmethod
-    def _group_results(resp_data: List[Dict[str, Any]], records: Sequence, all_or_none: bool
+    def _group_results(resp_data: List[Dict[str, Any]], records: Sequence[Dict[str, Any]], all_or_none: bool
                        ) -> Tuple[List[Tuple[int, Any]], List[Tuple[int, Any, Any, str]], List[Tuple[int, Any]]]:
         x_ok, x_err, x_roll = [], [], []
         for i, x in enumerate(resp_data):
@@ -398,13 +401,20 @@ class RawConnection:
             assert not x_roll
         return x_ok, x_err, x_roll
 
-    def sobject_collections_request(self, method: str, records, all_or_none: bool = True) -> List[str]:
+    def sobject_collections_request(self,
+                                    method: str,
+                                    records: Sequence[Dict[str, Any]],
+                                    all_or_none: bool = True
+                                    ) -> List[str]:
         # pylint:disable=too-many-locals
         assert method in ('GET', 'POST', 'PATCH', 'DELETE')
         if method == 'DELETE':
-            params = dict(ids=','.join(records), allOrNone=str(bool(all_or_none)).lower())
+            assert all(isinstance(x, str) for x in records)
+            ids = cast(Sequence[str], records)
+            params = dict(ids=','.join(ids), allOrNone=str(bool(all_or_none)).lower())
             resp = self.handle_api_exceptions(method, 'composite/sobjects', params=params)
         else:
+            assert all(isinstance(x, dict) for x in records)
             if method in ('POST', 'PATCH'):
                 records = [merge_dict(x, attributes={'type': x['type_']}) for x in records]
                 for x in records:
@@ -438,7 +448,7 @@ class RawConnection:
             messages.append(msg)
         raise SalesforceError(messages)
 
-    def ping_connection(self, timeout: float = 1.0) -> Optional[float]:
+    def ping_connection(self, timeout: float = 1.0) -> float:
         """Fast check the connection by an unimportant request
 
         It is useful after a longer inactivity if a connection could
@@ -453,33 +463,15 @@ class RawConnection:
         return round(time.time() - t_0, 3)
 
 
-class FakeReq:
-    # pylint:disable=too-few-public-methods,too-many-arguments
-    def __init__(self, method: str, url: str, data, headers=None, context=None):
-        self.method = method
-        self.url = url
-        self.data = data
-        self.headers = headers
-        self.context = context
-
-
-class FakeResp:  # pylint:disable=too-few-public-methods,too-many-instance-attributes
-    def __init__(self, status_code: int, headers, text, request):
-        self.status_code = status_code
-        self.text = text
-        self.request = request
-        self.headers = headers
-
-
 Connection = RawConnection
 
 
 # DB API function
-def connect(**params) -> Connection:
+def connect(**params: Any) -> Connection:
     return Connection(**params)
 
 
-def get_connection(alias: str, **params) -> Connection:
+def get_connection(alias: str, **params: Any) -> Connection:
     if not hasattr(thread_connections, alias):
         setattr(thread_connections, alias, connect(alias=alias, **params))
     return cast(Connection, getattr(thread_connections, alias))
@@ -510,7 +502,7 @@ class Cursor(Generic[_TRow]):
     # pylint:disable=too-many-instance-attributes
     def __init__(self, connection: Connection, row_type: Optional[Type[_TRow]] = None) -> None:
         # DB API attributes (public, ordered by documentation PEP 249)
-        self.description = None           # type: Optional[List[Tuple]]
+        self.description = None           # type: Optional[List[Tuple[Any, ...]]]
         self.rowcount = -1  # set to non-negative by SELECT INSERT UPDATE DELETE
         self.arraysize = 1  # writable, but ignored finally
         # db api extensions
@@ -539,7 +531,7 @@ class Cursor(Generic[_TRow]):
     def close(self) -> None:
         self._clean()
 
-    def execute(self, soql: str, parameters: Optional[Iterable] = None, query_all: bool = False) -> None:
+    def execute(self, soql: str, parameters: Optional[Iterable[Any]] = None, query_all: bool = False) -> None:
         self._clean()
         parameters = parameters or []
         sqltype = soql.split(None, 1)[0].upper()
@@ -551,7 +543,7 @@ class Cursor(Generic[_TRow]):
             # INSERT UPDATE DELETE EXPLAIN
             raise ProgrammingError("Unexpected command '{}'".format(sqltype))
 
-    def executemany(self, operation: str, seq_of_parameters: Iterable[Iterable]) -> None:
+    def executemany(self, operation: str, seq_of_parameters: Iterable[Iterable[Any]]) -> None:
         self._clean()
         for param in seq_of_parameters:
             self.execute(operation, param)
@@ -598,10 +590,10 @@ class Cursor(Generic[_TRow]):
 
     # .nextset()  not implemented
 
-    def setinputsizes(self, sizes) -> None:
+    def setinputsizes(self, sizes: Any) -> None:
         pass  # this method is allowed to do nothing
 
-    def setoutputsize(self, size, column=None) -> None:
+    def setoutputsize(self, size: int, column: Any = None) -> None:
         pass  # this method is allowed to do nothing
 
     def __next__(self) -> _TRow:
@@ -620,7 +612,7 @@ class Cursor(Generic[_TRow]):
             self._raw_iterator = iter(self._chunk)
             for row in self.qquery.parse_rest_response(self._raw_iterator, self.rowcount,
                                                        row_type=list):
-                yield cast(_TRow, row)
+                yield cast(_TRow, row)  # type: ignore[redundant-cast] # noqa
                 self.rownumber += 1
             if not self._next_records_url:
                 break
@@ -645,8 +637,9 @@ class Cursor(Generic[_TRow]):
             self.handle = self._next_records_url.split('-')[0]
         self._iter = iter(self._gen())
 
-    def execute_explain(self, soql: str, parameters: Iterable, query_all: bool = False) -> None:
+    def execute_explain(self, soql: str, parameters: Iterable[Any], query_all: bool = False) -> None:
         # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/dome_query_explain.htm
+        self._clean()
         assert soql.startswith('EXPLAIN SELECT')
         soql = soql.split(' ', 1)[1]
         processed_sql = str(soql) % tuple(arg_to_soql(x) for x in parameters)
@@ -656,8 +649,11 @@ class Cursor(Generic[_TRow]):
         self.description = [('detail', None, None, None, 'detail')]
         url_part = '/?'.join((service, urlencode(dict(explain=processed_sql))))
         ret = self.handle_api_exceptions('GET', url_part)
-        self._iter = iter([[x]                    # type: ignore[misc]  # noqa
-                          for x in pprint.pformat(ret.json(), indent=1, width=100).split('\n')])
+
+        self._chunk = [{'explain': x} for x in pprint.pformat(ret.json(), indent=1, width=100).split('\n')]
+        self._chunk_offset = 0
+        self.rownumber = 0
+        self._iter = iter(self._gen())
 
     def query_more(self, nextRecordsUrl: str) -> None:  # pylint:disable=invalid-name
         self._check()
@@ -689,7 +685,7 @@ class Cursor(Generic[_TRow]):
         self._iter = not_executed_yet()
         self._check()
 
-    def handle_api_exceptions(self, method: str, *url_parts: str, **kwargs) -> requests.Response:
+    def handle_api_exceptions(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
         return self.connection.handle_api_exceptions(method, *url_parts, cursor_context=self, **kwargs)
 
 
@@ -704,12 +700,12 @@ CursorDescription = NamedTuple(
         ('scale', int),
         ('null_ok', bool),
         ('default', Any),
-        ('params', dict),
+        ('params', dict),  # type: ignore[type-arg] # noqa
     ])
 CursorDescription.__new__.__defaults__ = 7 * (None,)  # type: ignore[attr-defined]  # noqa
 
 
-def standard_errorhandler(connection: Connection, cursor: Optional[Cursor], errorclass: Type[Exception],
+def standard_errorhandler(connection: Connection, cursor: Optional[Cursor[Any]], errorclass: Type[Exception],
                           errorvalue: Exception) -> None:
     if cursor:
         cursor.messages.append((errorclass, errorvalue))
@@ -717,7 +713,7 @@ def standard_errorhandler(connection: Connection, cursor: Optional[Cursor], erro
         connection.messages.append((errorclass, errorvalue))
 
 
-def verbose_error_handler(connection: Connection, cursor: Optional[Cursor], errorclass: Type[Exception],
+def verbose_error_handler(connection: Connection, cursor: Optional[Cursor[Any]], errorclass: Type[Exception],
                           errorvalue: Exception) -> None:  # pylint:disable=unused-argument
     pprint.pprint(errorvalue.__dict__)
 
@@ -748,7 +744,8 @@ def signalize_extensions() -> None:
 
 
 # pylint:disable=too-many-arguments
-def getaddrinfo_wrapper(host, port, family=socket.AF_INET, socktype=0, proto=0, flags=0):
+def getaddrinfo_wrapper(host: Any, port: Any, family: int = socket.AF_INET,
+                        socktype: int = 0, proto: int = 0, flags: int = 0) -> Any:
     """Patched 'getaddrinfo' with default family IPv4 (enabled by settings IPV4_ONLY=True)"""
     return orig_getaddrinfo(host, port, family, socktype, proto, flags)
 # pylint:enable=too-many-arguments
@@ -759,7 +756,7 @@ if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('
     log.info("Patched socket to IPv4 only")
     orig_getaddrinfo = socket.getaddrinfo
     # replace the original socket.getaddrinfo by our version
-    socket.getaddrinfo = getaddrinfo_wrapper
+    socket.getaddrinfo = cast(Any, getaddrinfo_wrapper)
 
 
 # ----
@@ -771,10 +768,13 @@ ConversionSqlFunc = Callable[[T], Union[str, float]]
 ConversionJsonFunc = Callable[[T], Optional[Union[str, float]]]
 
 
-def register_conversion(type_: Type[T], json_conv: ConversionJsonFunc, sql_conv: ConversionSqlFunc = None,
-                        subclass: bool = False) -> None:
+def register_conversion(type_: Type[T],
+                        json_conv: ConversionJsonFunc[Any],
+                        sql_conv: Optional[ConversionSqlFunc[Any]] = None,
+                        subclass: bool = False
+                        ) -> None:
     json_conversions[type_] = json_conv
-    sql_conversions[type_] = cast(ConversionSqlFunc, sql_conv or json_conv)
+    sql_conversions[type_] = cast(ConversionSqlFunc[Any], sql_conv or json_conv)
     if subclass and type_ not in subclass_conversions:
         subclass_conversions.append(type_)
 
@@ -828,10 +828,10 @@ def arg_to_json(arg: Any) -> Optional[Union[str, float]]:
 # supported types converted from Python to SFDC
 
 # conversion before conversion to json (for Insert and Update commands)
-json_conversions = {}  # type: Dict[Type, ConversionJsonFunc]
+json_conversions = {}  # type: Dict[Type[Any], ConversionJsonFunc[Any]]
 
 # conversion before formating a SOQL (for Select commands)
-sql_conversions = {}  # type: Dict[Type, ConversionSqlFunc]
+sql_conversions = {}  # type: Dict[Type[Any], ConversionSqlFunc[Any]]
 
 subclass_conversions = []  # type: List[type]
 
@@ -849,7 +849,7 @@ register_conversion(decimal.Decimal, json_conv=float, subclass=True)
 # pylint:enable=bad-whitespace
 
 
-def merge_dict(dict_1: Dict, *other: Dict, **kw) -> Dict:
+def merge_dict(dict_1: Dict[Any, Any], *other: Dict[Any, Any], **kw: Any) -> Dict[Any, Any]:
     """Merge two or more dict including kw into result dict."""
     tmp = dict_1.copy()
     for x in other:
@@ -864,7 +864,7 @@ class TimeStatistics:
         self.expiration = expiration
         self.data = {}  # type: Dict[str, float]
 
-    def update_callback(self, url: str, callback: Optional[Callable] = None):
+    def update_callback(self, url: str, callback: Optional[Callable[[], Any]] = None) -> None:
         """Update the statistics for the domain"""
         domain = self.domain(url)
         last_req = self.data.get(domain, 0)
@@ -875,10 +875,8 @@ class TimeStatistics:
             callback()
 
     @staticmethod
-    def domain(url) -> str:
-        match = re.match(r'^(?:https|mock)://([^/]*)/?', url)
-        assert match
-        return cast(str, match.groups()[0])
+    def domain(url: str) -> str:
+        return nz(re.match(r'^(?:https|mock)://([^/]*)/?', url)).groups()[0]
 
 
 time_statistics = TimeStatistics(300)
