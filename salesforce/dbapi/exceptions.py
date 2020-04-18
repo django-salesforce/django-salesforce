@@ -7,6 +7,8 @@ import warnings
 # pylint:disable=too-few-public-methods
 
 
+# === Forward defs  (they are first due to dependency)
+
 class FakeReq:
     """A Fake Request is used for compatible error reporting in "composite" subrequests."""
     # pylint:disable=too-few-public-methods,too-many-arguments
@@ -43,6 +45,8 @@ class FakeResp:  # pylint:disable=too-few-public-methods,too-many-instance-attri
 
 GenResponse = requests.Response  # (requests.Response, 'FakeResp')
 
+
+# === Exception defs
 
 class SalesforceWarning(Warning):
     def __init__(self,

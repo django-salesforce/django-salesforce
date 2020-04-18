@@ -322,7 +322,8 @@ class CursorWrapper(object):
             # simple cases are optimized, especially because a suboptimal
             # nested query based on the same table is not allowed by SF
             child = where.children[0]
-            if (child.lookup_name in ('exact', 'in') and child.lhs.target.column == 'Id'
+            if (hasattr(child, 'lookup_name') and child.lookup_name in ('exact', 'in')
+                    and child.lhs.target.column == 'Id'
                     and not child.bilateral_transforms and child.lhs.target.model is self.query.model):
                 pks = child.rhs
                 if child.lookup_name == 'exact':
