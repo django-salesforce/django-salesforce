@@ -640,11 +640,11 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_escape_single_quote_in_raw_query(self) -> None:
         """Test that manual escaping within a raw query is not double escaped.
         """
-        account_name = '''Dr. Evil's Giant\\' "Laser", LLC'''
+        account_name = '''test Dr. Evil's Giant\\' "Laser", LLC'''
         account = Account(Name=account_name)
         account.save()
 
-        manually_escaped = '''Dr. Evil\\'s Giant\\\\\\' "Laser", LLC'''
+        manually_escaped = '''test Dr. Evil\\'s Giant\\\\\\' "Laser", LLC'''
         try:
             retrieved_account = Account.objects.raw(
                 "SELECT Id, Name FROM Account WHERE Name = '%s'" % manually_escaped)[0]
@@ -800,6 +800,28 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertEqual([x[0] for x in cursor.description], ['LastName', 'expr0'])
         self.assertEqual([type(x) for x in contact_aggregate], [str, int])
         self.assertGreaterEqual(contact_aggregate[1], 1)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_cursor_list_plain_count(self) -> None:
+        """Test that a plain COUNT() works with a list cursor.
+        """
+        cur = connections[sf_alias].cursor()
+        cursor = cur.cursor
+        cursor.execute("SELECT COUNT() FROM Contact")
+        ret = cursor.fetchall()
+        count = ret[0][0]
+        self.assertTrue(isinstance(count, int))
+        self.assertEqual(ret,  [[count]])
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_cursor_dict_plain_count(self) -> None:
+        """Test that a plain COUNT() works with a dict cursor.
+        """
+        cur = connections[sf_alias]._cursor(name='dict')
+        cursor = cur.cursor
+        cursor.execute("SELECT COUNT() FROM Contact")
+        ret = cursor.fetchall()
+        self.assertEqual(ret,  [{'count': ret[0]['count']}])
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_group_by_compile(self) -> None:

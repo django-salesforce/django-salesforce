@@ -155,11 +155,11 @@ class RawConnection:
         log.info("Rollback is not implemented in Salesforce.")
 
     @overload
-    def cursor(self) -> 'Cursor[Dict[str, Any]]': ...
+    def cursor(self) -> 'Cursor[List[Any]]': ...
     @overload  # noqa
     def cursor(self, row_type: Type[_TRow]) -> 'Cursor[_TRow]': ...
 
-    def cursor(self, row_type=dict):  # type: ignore[no-untyped-def] # noqa
+    def cursor(self, row_type=list):  # type: ignore[no-untyped-def] # noqa
         return Cursor(self, row_type)
 
     # -- private attributes
@@ -512,10 +512,11 @@ class Cursor(Generic[_TRow]):
         self.lastrowid = None  # TODO to be used for INSERT id, but insert is not implemented by cursor
         self.errorhandler = connection.errorhandler
         # private
-        if row_type is None or issubclass(row_type, dict):
-            self.row_type = cast(Type[Dict[str, Any]], dict)     # type: Union[Type[Dict[str, Any]], Type[List[Any]]]
-        elif issubclass(row_type, list):
-            self.row_type = list
+        assert row_type in (list, dict, None)
+        if row_type is None or issubclass(row_type, list):
+            self.row_type = list          # type: Union[Type[Dict[str, Any]], Type[List[Any]]]
+        else:
+            self.row_type = row_type      # dict
         self._chunk = []                  # type: List[Dict[str, Any]]  # it is in the native JSON format
         self._chunk_offset = None         # type: Optional[int]
         self._next_records_url = None     # type: Optional[str]
@@ -611,8 +612,8 @@ class Cursor(Generic[_TRow]):
         while True:
             self._raw_iterator = iter(self._chunk)
             for row in self.qquery.parse_rest_response(self._raw_iterator, self.rowcount,
-                                                       row_type=list):
-                yield cast(_TRow, row)  # type: ignore[redundant-cast] # noqa
+                                                       row_type=self.row_type):
+                yield cast(_TRow, row)
                 self.rownumber += 1
             if not self._next_records_url:
                 break

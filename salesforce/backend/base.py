@@ -125,6 +125,10 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         """
         return CursorWrapper(self)
 
+    def create_cursor(self, name=None):
+        row_type = {'dict': dict, 'list': list, None: None}[name]
+        return self.connection.cursor(row_type=row_type)
+
     def quote_name(self, name):
         """
         Do not quote column and table names in the SOQL dialect.

@@ -87,6 +87,7 @@ class SalesforceQuery(Query, Generic[_T]):
         """
         Performs a COUNT() query using the current filter constraints.
         """
+        # customized because "Count('*')" is not possbel wit Salesforce and also not "__" in an alias
         obj = self.clone()
         obj.add_annotation(Count('pk'), alias='x_sf_count', is_summary=True)  # pylint: disable=no-member
         number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']  # type: Optional[int] # pylint: disable=no-member # noqa
