@@ -39,12 +39,11 @@ class SalesforceQuerySet(query.QuerySet):
             Lead.objects.query_all().filter(IsDeleted=True,...)
         https://www.salesforce.com/us/developer/docs/api_rest/Content/resources_queryall.htm
         """
-        if DJANGO_20_PLUS:
-            obj = self._clone()
-        else:
-            obj = self._clone(klass=SalesforceQuerySet)  # pylint: disable=unexpected-keyword-arg
-        obj.query.set_query_all()
-        return obj
+        if not is_sf_database(self.db):
+            return self
+        clone = self._chain()
+        clone.query.set_query_all()
+        return clone
 
     def simple_select_related(self, *fields):
         if DJANGO_20_PLUS:
@@ -61,6 +60,10 @@ class SalesforceQuerySet(query.QuerySet):
                 if x.pk is None:
                     x.pk = get_sf_alt_pk()
         return super(SalesforceQuerySet, self).bulk_create(objs, batch_size=batch_size, **kwargs)
+
+    if not DJANGO_20_PLUS:
+        def _chain(self, **kwargs):
+            return self._clone()
 
 
 def bulk_update_small(objs, fields, all_or_none=None):
