@@ -8,11 +8,13 @@
 DatabaseOperations  (like salesforce.db.backends.*.operations)
 """
 import itertools
+import warnings
 
 import django.db.backends.utils
 from django.db.backends.base.operations import BaseDatabaseOperations
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.defaults import DefaultedOnCreate
+from salesforce.dbapi.exceptions import SalesforceWarning
 
 BULK_BATCH_SIZE = 200
 
@@ -111,3 +113,11 @@ class DatabaseOperations(BaseDatabaseOperations):
         The same is necessary for boolean fields, e.g. IsActive=true
         """
         False
+
+    def prep_for_like_query(self, x):
+        """Prepare a value for use in a LIKE query."""
+        if '\\' in x:
+            warnings.warn("Backslash not allowed in LIKE expressions for Salesforce", SalesforceWarning)
+        # A wildcard search is better than a search of '\\%' or '\\_', see #254
+        return str(x)
+        # return str(x).replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
