@@ -20,7 +20,7 @@ from django.db.models import manager, Model
 from django.db.models.query import QuerySet
 
 from salesforce import router
-from salesforce.backend import query, models_sql_query, compiler, DJANGO_20_PLUS
+from salesforce.backend import query, DJANGO_20_PLUS
 
 _T = TypeVar("_T", bound=Model, covariant=True)
 
@@ -43,9 +43,7 @@ class SalesforceManager(manager.Manager, Generic[_T]):
         is_extended_model = getattr(self.model, '_salesforce_object', '') == 'extended'
         assert self.model is not None
         if router.is_sf_database(self.db) or alias_is_sf or is_extended_model:
-            q = models_sql_query.SalesforceQuery(self.model, where=compiler.SalesforceWhereNode)
-            ret = query.SalesforceQuerySet(self.model, query=q, using=self.db)  # type: query.SalesforceQuerySet[_T]
-            return ret
+            return query.SalesforceQuerySet(self.model, using=self.db)
         return super(SalesforceManager, self).get_queryset()
 
     # def raw(self, raw_query, params=None, translations=None):

@@ -44,7 +44,7 @@ class SalesforceQuery(Query, Generic[_T]):
     """
     Override aggregates.
     """
-    def __init__(self, model: Type[_T], *args, **kwargs) -> None:
+    def __init__(self, model: Optional[Type[_T]], *args, **kwargs) -> None:
         super(SalesforceQuery, self).__init__(model, *args, **kwargs)
         self.is_query_all = False
         self.max_depth = 1

@@ -8,23 +8,25 @@
 """
 Salesforce object query and queryset customizations.  (like django.db.models.query)
 """
-from typing import Generic, Iterable, List, Optional, TYPE_CHECKING, TypeVar
+from typing import Dict, Generic, Iterable, List, Optional, TYPE_CHECKING, Type, TypeVar
 import typing
 import warnings
 
 from django.conf import settings
 from django.db import NotSupportedError, models
-from django.db.models import query as models_query
+from django.db.models import query as models_query, Model
 from django.db.utils import DEFAULT_DB_ALIAS
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
-from salesforce.backend import DJANGO_20_PLUS, DJANGO_22_PLUS
+from salesforce.backend import compiler, DJANGO_20_PLUS, DJANGO_22_PLUS
 from salesforce.backend.models_sql_query import SalesforceQuery
 from salesforce.router import is_sf_database
 import salesforce.backend.utils
 
 _T = TypeVar("_T", bound=models.Model, covariant=True)
+if TYPE_CHECKING:
+    from salesforce.models import SalesforceModel  # noqa
 
 # class SalesforceRawQuerySet(query.RawQuerySet):
 #     def __len__(self):
@@ -40,6 +42,16 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
     """
     if TYPE_CHECKING:
         query = None  # type: SalesforceQuery[_T]
+
+    def __init__(self,
+                 model: Optional[Type[_T]] = None,
+                 query: Optional['SalesforceQuery[_T]'] = None,
+                 using: Optional[str] = None,
+                 hints: Optional[Dict[str, Model]] = None
+                 ) -> None:
+        if query is None:
+            query = SalesforceQuery(model, where=compiler.SalesforceWhereNode)
+        super().__init__(model=model, query=query, using=using, hints=hints)
 
     def using(self, alias: Optional[str]) -> 'SalesforceQuerySet[_T]':
         if alias is None:
