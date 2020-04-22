@@ -827,7 +827,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_group_by_compile(self) -> None:
         """Test that group annotations can be correctly compiled and executed"""
         qs = (Contact.objects.filter(account__Name__gt='').order_by()
-              .values('account_id').annotate(cnt=Count('id'))
+              .values('account_id').annotate(cnt=Count('pk'))
               )
         soql, params = qs.query.get_compiler('salesforce').as_sql()
         expected_soql = (
