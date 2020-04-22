@@ -18,12 +18,39 @@ Unreleased
 ----------
 * Remove: Support for Django 1.10
 * Remove: Support for Python 2.7, 3.4
+* Add: Support for Python 3.9 (alpha 5)
+* Add: Preliminary support for Django 3.1-dev (development snaphot 2020-04-21)
+* Fix: Fixed all hidden deprecation warnings. (related removed old versions)
+* Fix: .annotate() method can use GROUP BY if Django >= 2.1
+       example queryset.order_by().values('account_id').annotate(cnt=Count('id'))
+* Fix: DefaultedOnCreate() and DEFAULTED_ON_CREATE is now transparent for
+       other code. It has a surrogate normal value and it is never saved #213
+* Add: Warning if a value DEFAULTED_ON_CREATE is tried to be saved again without
+       refreshing the real value.
 * Fix: Support for Django Debug Toolbar - including EXPLAIN commend
+* Fix: Consistent output of inspectdb with db_column on every field.
+       The old behavior with ``custom=`` parameter and minimalistic db_column
+       can be turn on by ``--concise-db-column`` option. #250
 * Fix: Export attributes "verbose_name", "help_text" and "default=DEFAULTED_ON_CREATE"
-  also for ForeignKey by inspectdb.
-* Fix: Don't export DEFAULTED_ON_CREATE excessively for not createable fields.
-* Fix: Error handling in bulk delete
-* Fixed: SomeModel.objects.all().delete()
+       also for ForeignKey by inspectdb.
+* Fix: Not to export DEFAULTED_ON_CREATE excessively for not createable fields.
+* Fix: Error handling in bulk delete()
+* Fix: SomeModel.objects.all().delete()
+* Fix: Wildcard search with characters "_" and "%". #254
+* Fix: Accept a manually added AutoField in models.
+* Fix: Close correctly all SSL sockets before dropped. (minor)
+* Fix: Lazy test helper fixed for Python >= 3.8 (lazy: exception can be tested later
+       then the fail was detected. It uses two tracebacks.
+       e.g. ``with lazy_assert_n_requests(n)``: check that the optimal number
+       of requests was used if everything critical was OK and show the first
+       suboptimal command-line.)
+* Add: Bulk update limited to 200 objects: bulk_update_small()
+* Add: Static typing by Mypy. Can validate user code that correspondd to the user data model.
+        with SalesforceModel (requires also installed django-salesforce-stubs)
+* Update: Salesforce 48.0 Spring '20 (no fix)
+* Add: Raw cursor with fields dict: ``connection.cursor(name='dict')``
+* Add: Internal module mocksf is used in tests/debugging for record or replay of
+       raw Salesforce requests/responses.
 
 
 [0.9] 2019-11-04
