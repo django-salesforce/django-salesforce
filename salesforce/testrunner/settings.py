@@ -26,6 +26,7 @@ DATABASES = {
         'HOST': 'https://login.salesforce.com',
         'TEST': {
             'DEPENDENCIES': [],
+            'MIGRATE': False,   # to run tests without migrations in Django 3.1+
         },
     }
 }  # type: Dict[str, Any]

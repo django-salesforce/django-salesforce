@@ -16,7 +16,7 @@ from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # required for activation of lookups
-from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS
+from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
 from salesforce.dbapi.driver import DatabaseError
 
 # pylint:no-else-return,too-many-branches,too-many-locals
@@ -394,7 +394,32 @@ class SalesforceWhereNode(sql_where.WhereNode):
 
 
 class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):  # type: ignore[misc] # noqa # as_sql
-    if DJANGO_30_PLUS:
+    if DJANGO_31_PLUS:
+
+        def execute_sql(self, returning_fields=None):
+            # copied from Django 3.1, with one line patch
+            assert not (
+                returning_fields and len(self.query.objs) != 1 and
+                not self.connection.features.can_return_rows_from_bulk_insert
+            )
+            self.returning_fields = returning_fields
+            with self.connection.cursor() as cursor:
+                # this line is the added patch:
+                cursor.prepare_query(self.query)
+                for sql, params in self.as_sql():
+                    cursor.execute(sql, params)
+                if not self.returning_fields:
+                    return []
+                if self.connection.features.can_return_rows_from_bulk_insert and len(self.query.objs) > 1:
+                    return self.connection.ops.fetch_returned_insert_rows(cursor)
+                if self.connection.features.can_return_columns_from_insert:
+                    assert len(self.query.objs) == 1
+                    return [self.connection.ops.fetch_returned_insert_columns(cursor, self.returning_params)]
+                return [(self.connection.ops.last_insert_id(
+                    cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column
+                ),)]
+
+    elif DJANGO_30_PLUS:
 
         def execute_sql(self, returning_fields=None):
             # copied from Django 3.0, with one line patch
