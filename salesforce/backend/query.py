@@ -8,7 +8,7 @@
 """
 Salesforce object query and queryset customizations.  (like django.db.models.query)
 """
-from typing import Generic, Iterable, List, Optional, TypeVar
+from typing import Generic, Iterable, List, Optional, TYPE_CHECKING, TypeVar
 import typing
 import warnings
 
@@ -38,7 +38,8 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
     """
     Use a custom SQL compiler to generate SOQL-compliant queries.
     """
-    query = None  # type: SalesforceQuery[_T]
+    if TYPE_CHECKING:
+        query = None  # type: SalesforceQuery[_T]
 
     def using(self, alias: Optional[str]) -> 'SalesforceQuerySet[_T]':
         if alias is None:
