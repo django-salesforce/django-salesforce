@@ -69,6 +69,15 @@ class LazyTestMixin(BaseLazyTestMixin):
         self.lazy_failure = None  # type: Optional[Tuple[Type[BaseException], BaseException, str]]
 
     def _lazy_assert(self, assert_method: TestMethod, *args: Any, **kwargs: Any) -> None:
+        def stack_of_test_method(raw_stack: List[Any]) -> List[str]:
+            stack = traceback.format_list(raw_stack)
+            parent_frame = max((i for i, x in enumerate(stack) if x.endswith(' testMethod()\n')), default=0)
+            if not parent_frame:
+                # this is for Python >= 3.8
+                parent_frame = 1 + max(
+                    (i for i, x in enumerate(stack) if x.endswith('_callTestMethod(testMethod)\n')), default=-1)
+            return stack[1 + parent_frame:-skip_frames]
+
         if not getattr(self, 'lazy_failure', None):
             skip_frames = kwargs.pop('skip_frames', 2)
             # the name is like in unittests due to more readable test tracebacks
@@ -77,8 +86,7 @@ class LazyTestMixin(BaseLazyTestMixin):
                 lazyAssertMethod(*args, **kwargs)
             except self.failureException:
                 exc_type, exc_value, _ = sys.exc_info()
-                stack = traceback.format_list(traceback.extract_stack())
-                stack = stack[1 + max(i for i, x in enumerate(stack) if x.endswith(' testMethod()\n')):-skip_frames]
+                stack = stack_of_test_method(traceback.extract_stack())
                 assert exc_type and exc_value
                 self.lazy_failure = exc_type, exc_value, ''.join(stack).strip()
 
