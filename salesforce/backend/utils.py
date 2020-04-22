@@ -158,6 +158,7 @@ def extract_values_inner(row, query):
                     .format(field.model._meta.object_name, field.name),
                     SalesforceWarning
                 )
+                continue
         elif isinstance(query, subqueries.InsertQuery):
             value = getattr(row, field.attname)
             if (sf_read_only & NOT_CREATEABLE) != 0 or hasattr(value, 'default'):
