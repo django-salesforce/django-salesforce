@@ -1,7 +1,7 @@
 import datetime
 import decimal
 from pytz import utc
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, Optional, overload, Tuple, Type
 
 # from django.utils.deconstruct import deconstructible
 
@@ -107,10 +107,67 @@ class CallableDefault(BaseDefault):
     def __call__(self) -> Any:
         assert len(self.args) == 1
         out = self.args[0]()
-        return DefaultedOnCreate.value_type_map[type(out)](out)
+        return value_type_map[type(out)](out)
 
 
-class DefaultedOnCreate:
+field_type_map = {
+    'BooleanField': BoolDefault,
+    'CharField': StrDefault,
+    'DateField': DateDefault,
+    'DateTimeField': DateTimeDefault,
+    'DecimalField': DecimalDefault,
+    'DurationField': TimeDefault,
+    'FilePathField': StrDefault,
+    'FloatField': FloatDefault,
+    'IntegerField': IntDefault,
+    'BigIntegerField': IntDefault,
+    'IPAddressField': StrDefault,
+    'GenericIPAddressField': StrDefault,
+    'NullBooleanField': BoolDefault,
+    'PositiveIntegerField': IntDefault,
+    'PositiveSmallIntegerField': IntDefault,
+    'SlugField': StrDefault,
+    'SmallIntegerField': IntDefault,
+    'TextField': StrDefault,
+    'TimeField': TimeDefault,
+
+    'ForeignKey': StrDefault,
+
+    'BinaryField': StrDefault,
+    'UUIDField': StrDefault,
+    'AutoField': StrDefault,
+    'BigAutoField': StrDefault,
+    'SmallAutoField': StrDefault,
+}  # type: Dict[str, Type[BaseDefault]]
+
+value_type_map = {type(klass.default): klass for klass in field_type_map.values()}
+
+
+@overload
+def DefaultedOnCreate(value: str) -> StrDefault:
+    ...
+@overload  # noqa
+def DefaultedOnCreate(value: int) -> IntDefault:
+    ...
+@overload  # noqa
+def DefaultedOnCreate(value: float) -> FloatDefault:
+    ...
+@overload  # noqa
+def DefaultedOnCreate(value: decimal.Decimal) -> DecimalDefault:
+    ...
+@overload  # noqa
+def DefaultedOnCreate(value: datetime.datetime) -> DateTimeDefault:
+    ...
+@overload  # noqa
+def DefaultedOnCreate(value: datetime.time) -> TimeDefault:
+    ...
+@overload  # noqa
+def DefaultedOnCreate() -> BaseDefault:
+    ...
+@overload  # noqa
+def DefaultedOnCreate(*, internal_type: str) -> BaseDefault:
+    ...
+def DefaultedOnCreate(value: Any = None, internal_type: Optional[str] = None) -> Any:  # noqa
     """
     The default value which denotes that the value should be skipped and
     replaced on the SFDC server later.
@@ -127,56 +184,20 @@ class DefaultedOnCreate:
                 default=models.DefaultedOnCreate(),
                 db_column='OwnerId')
     """
-    field_type_map = {
-        'BooleanField': BoolDefault,
-        'CharField': StrDefault,
-        'DateField': DateDefault,
-        'DateTimeField': DateTimeDefault,
-        'DecimalField': DecimalDefault,
-        'DurationField': TimeDefault,
-        'FilePathField': StrDefault,
-        'FloatField': FloatDefault,
-        'IntegerField': IntDefault,
-        'BigIntegerField': IntDefault,
-        'IPAddressField': StrDefault,
-        'GenericIPAddressField': StrDefault,
-        'NullBooleanField': BoolDefault,
-        'PositiveIntegerField': IntDefault,
-        'PositiveSmallIntegerField': IntDefault,
-        'SlugField': StrDefault,
-        'SmallIntegerField': IntDefault,
-        'TextField': StrDefault,
-        'TimeField': TimeDefault,
-
-        'ForeignKey': StrDefault,
-
-        'BinaryField': StrDefault,
-        'UUIDField': StrDefault,
-        'AutoField': StrDefault,
-        'BigAutoField': StrDefault,
-        'SmallAutoField': StrDefault,
-    }  # type: Dict[str, Type[BaseDefault]]
-
-    value_type_map = {type(klass.default): klass for klass in field_type_map.values()}
-
-    def __new__(cls, value: Any = None, internal_type: Optional[str] = None) -> Any:
-        if internal_type:
-            klass = cls.field_type_map[internal_type]
-            return klass(klass.default)
-        elif value is not None:
-            if callable(value):
-                return CallableDefault(value)
-            klass2 = cls.value_type_map.get(type(value))
-            if klass2:
-                return klass2(value)
-            else:
-                raise ValueError("The type of object '{}' not found for DefaultedOnCreate".format(value))
+    if internal_type:
+        klass = field_type_map[internal_type]
+        return klass(klass.default)
+    elif value is not None:
+        if callable(value):
+            return CallableDefault(value)
+        klass2 = value_type_map.get(type(value))
+        if klass2:
+            return klass2(value)
         else:
-            # only one instance without parameters make sense, that is in DEFAULTED_ON_CREATE
-            return super(DefaultedOnCreate, cls).__new__(cls)
-
-    def deconstruct(self) -> Tuple[str, List[Any], Dict[str, Any]]:
-        return ('salesforce.fields.DefaultedOnCreate', [], {})
+            raise ValueError("The type of object '{}' not found for DefaultedOnCreate".format(value))
+    else:
+        # only one instance without parameters make sense, that is in DEFAULTED_ON_CREATE
+        return BaseDefault()
 
 
 DEFAULTED_ON_CREATE = DefaultedOnCreate()

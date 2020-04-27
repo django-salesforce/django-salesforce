@@ -54,7 +54,7 @@ class AbstractAccount(SalesforceModel):
     ]
 
     Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=User(pk=models.DefaultedOnCreate('')),  # type: ignore
+                              default=User(pk=models.DefaultedOnCreate('')),
                               db_column='OwnerId')
     Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
                             null=True)
@@ -132,7 +132,7 @@ class Contact(SalesforceModel):
     # problematic with migrations in the future because it is not serializable.
     # It can be replaced by normal function.
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=User(pk=models.DefaultedOnCreate('')),  # type: ignore
+                              default=User(pk=models.DefaultedOnCreate('')),
                               related_name='contact_owner_set')
 
     def __str__(self):
