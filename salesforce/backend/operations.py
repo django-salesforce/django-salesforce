@@ -13,7 +13,6 @@ import warnings
 import django.db.backends.utils
 from django.db.backends.base.operations import BaseDatabaseOperations
 from salesforce.backend import DJANGO_30_PLUS
-from salesforce.defaults import DefaultedOnCreate
 from salesforce.dbapi.exceptions import SalesforceWarning
 
 BULK_BATCH_SIZE = 200
@@ -95,7 +94,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         return value
 
     def adapt_decimalfield_value(self, value, max_digits=None, decimal_places=None):
-        if isinstance(value, DefaultedOnCreate):
+        if hasattr(value, 'default'):  # DefaultedOnCreate
             return value
         return django.db.backends.utils.format_number(value, max_digits, decimal_places)
 
