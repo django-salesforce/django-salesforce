@@ -334,7 +334,9 @@ class CursorWrapper(object):
                 assert not child.bilateral_transforms
                 if isinstance(pks, (tuple, list)):
                     return pks
-                assert isinstance(pks, Query) and type(pks).__name__ == 'SalesforceQuery'
+                assert isinstance(pks, Query) and type(pks).__name__ == 'SalesforceQuery', (
+                    "Too complicated queryset.update(). Rewrite it by two querysets. "
+                    "See docs wiki/error-messages")
                 # # alternative solution:
                 # return list(salesforce.backend.query.SalesforceQuerySet(pk.model, query=pk, using=pk._db))
 
