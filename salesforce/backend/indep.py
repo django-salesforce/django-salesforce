@@ -1,3 +1,5 @@
+# indep - optional functions and classes that should be independent on the
+#         rest of salesforce to not make dependency graphs complicated
 import uuid
 from inspect import getcallargs
 from typing import Any, Callable, Dict, Type
@@ -7,7 +9,7 @@ from django.db.models import Field
 
 
 class LazyField(object):
-    """A Field that can be later customized until binded to the final Model"""
+    """A Field that can be later customized until it is binded to the final Model"""
     # It does not need a deserializer for migrations because it is never passed
     # to migration tracking before before activation to a normal field
 

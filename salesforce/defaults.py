@@ -2,8 +2,8 @@ import datetime
 import decimal
 from pytz import utc
 from typing import Any, Dict, Optional, overload, Tuple, Type
-
 # from django.utils.deconstruct import deconstructible
+import salesforce.models
 
 
 # --- DefaultedOnCreate ---
@@ -110,6 +110,18 @@ class CallableDefault(BaseDefault):
         return value_type_map[type(out)](out)
 
 
+def foreign_key_factory_default(model: 'Type[salesforce.models.Model[Any]]') -> 'salesforce.models.Model[Any]':
+    def deconstruct() -> Tuple[Any, ...]:
+        # return ('{}.{}'.format(model.__module__, model.__name__), (), {'pk': pk})
+        return ('salesforce.fields.DefaultedOnCreate', (model,), {})
+
+    pk = StrDefault('')
+    instance = model(pk=pk)  # type: ignore[misc] # noqa
+    setattr(instance, 'deconstruct', deconstruct)
+    setattr(instance, 'default', None)
+    return instance
+
+
 field_type_map = {
     'BooleanField': BoolDefault,
     'CharField': StrDefault,
@@ -162,6 +174,9 @@ def DefaultedOnCreate(value: datetime.datetime) -> DateTimeDefault:
 def DefaultedOnCreate(value: datetime.time) -> TimeDefault:
     ...
 @overload  # noqa
+def DefaultedOnCreate(value: 'Type[salesforce.models.Model[Any]]') -> 'salesforce.models.Model[Any]':
+    ...
+@overload  # noqa
 def DefaultedOnCreate() -> BaseDefault:
     ...
 @overload  # noqa
@@ -175,7 +190,7 @@ def DefaultedOnCreate(value: Any = None, internal_type: Optional[str] = None) ->
     It should not be replaced by Django, because SF can do it better or
     even no real value is accepted, neither None.
     SFDC can set the correct value only if the field is omitted in the REST API.
-    (No normal soulution exists e.g. for some builtin foreign keys with
+    (No normal solution exists e.g. for some builtin foreign keys with
     SF attributes 'defaultedOnCreate: true, nillable: false')
 
     Example: `Owner` field is assigned to the current user if the field User is omitted.
@@ -184,10 +199,13 @@ def DefaultedOnCreate(value: Any = None, internal_type: Optional[str] = None) ->
                 default=models.DefaultedOnCreate(),
                 db_column='OwnerId')
     """
+
     if internal_type:
         klass = field_type_map[internal_type]
         return klass(klass.default)
     elif value is not None:
+        if isinstance(value, type) and issubclass(value, salesforce.models.Model):
+            return foreign_key_factory_default(value)
         if callable(value):
             return CallableDefault(value)
         klass2 = value_type_map.get(type(value))
