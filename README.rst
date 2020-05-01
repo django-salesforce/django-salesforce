@@ -7,7 +7,7 @@ django-salesforce
 .. image:: https://badge.fury.io/py/django-salesforce.svg
    :target: https://pypi.python.org/pypi/django-salesforce
 
-.. image:: https://img.shields.io/badge/Python-3.5%2C%203.6%2C%203.7-%2C%203.8-brightgreen.svg
+.. image:: https://img.shields.io/badge/Python-3.5%3C%203.6%2C%203.7-%2C%203.8-brightgreen.svg
    :target: https://www.python.org/
 
 .. image:: https://img.shields.io/badge/Django-1.11%2C%202.0%2C%202.1%2C%202.2%2C%203.0-blue.svg
@@ -19,7 +19,7 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 3.5.2 to 3.8, Django 1.11, 2.0 to 2.2 and 3.0.
+Python 3.5.3 to 3.8, Django 1.11, 2.0 to 2.2 and 3.0.
 (Tested also with Python 3.9.0a5)
 
 
