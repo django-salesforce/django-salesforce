@@ -54,7 +54,7 @@ class AbstractAccount(SalesforceModel):
     ]
 
     Owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=User(pk=models.DefaultedOnCreate('')),
+                              default=models.DefaultedOnCreate(User),
                               db_column='OwnerId')
     Type = models.CharField(max_length=100, choices=[(x, x) for x in TYPES],
                             null=True)
@@ -132,7 +132,7 @@ class Contact(SalesforceModel):
     # problematic with migrations in the future because it is not serializable.
     # It can be replaced by normal function.
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=User(pk=models.DefaultedOnCreate('')),
+                              default=models.DefaultedOnCreate(User),
                               related_name='contact_owner_set')
 
     def __str__(self):
@@ -186,7 +186,7 @@ class Lead(SalesforceModel):
     # Deleted object can be found only in querysets with "query_all" SF method.
     IsDeleted = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=models.DEFAULTED_ON_CREATE,
+                              default=models.DefaultedOnCreate(User),
                               related_name='lead_owner_set')
     last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, null=True,
                                          sf_read_only=models.READ_ONLY,
