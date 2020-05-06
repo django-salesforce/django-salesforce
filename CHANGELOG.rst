@@ -14,8 +14,8 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-Unreleased
-----------
+[1.0] 2020-05-07
+----------------
 * Remove: Support for Django 1.10
 * Remove: Support for Python 2.7, 3.4
 * Add: Support for Python 3.9 (alpha 5)
