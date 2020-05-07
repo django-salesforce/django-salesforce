@@ -1,6 +1,7 @@
 """
 Customized Query, RawQuery  (like django.db.models.sql.query)
 """
+import copy
 from typing import Any, cast, Generic, Optional, Tuple, Type, TypeVar
 from django.conf import settings
 from django.db.models import Count, Model
@@ -40,14 +41,19 @@ class SalesforceRawQuery(RawQuery):
 #             yield [row[k] for k in self.get_columns()]
 
 
+class SfParams:  # like an immutable DataClass: clone when updating
+    def __init__(self):
+        self.query_all = False
+
+
 class SalesforceQuery(Query, Generic[_T]):
     """
     Override aggregates.
     """
     def __init__(self, model: Optional[Type[_T]], *args, **kwargs) -> None:
         super(SalesforceQuery, self).__init__(model, *args, **kwargs)
-        self.is_query_all = False
         self.max_depth = 1
+        self.sf_params = SfParams()  # paramaters for Salesforce query instead of transaction control
 
     def __str__(self) -> str:
         """Return the query as merged SOQL for Salesforce"""
@@ -71,16 +77,28 @@ class SalesforceQuery(Query, Generic[_T]):
         else:
             # pylint: disable=too-many-function-args
             query = cast(SalesforceQuery, Query.clone(self, klass, memo))  # type: ignore[call-arg]  # noqa
-        query.is_query_all = self.is_query_all
+            query.sf_params = self.sf_params
         return query
+
+    def sf(self,
+           query_all: Optional[bool] = None,
+           ) -> 'SalesforceQuery[_T]':
+        """
+        Set additional parameters for a queryset
+
+            `query_all`: True: Also deleted objects from the trash bin can be selected by this.
+                These can be selected exclusively after that by `.filter(is_deleted=True)`
+        """
+        clone = self.clone()
+        clone.sf_params = copy.copy(self.sf_params)
+        if query_all is not None:
+            clone.sf_params.query_all = query_all
+        return clone
 
     def has_results(self, using: Optional[str]) -> bool:
         q = self.clone()
         compiler = q.get_compiler(using=using)  # pylint: disable=no-member
         return bool(compiler.execute_sql(constants.SINGLE))
-
-    def set_query_all(self) -> None:
-        self.is_query_all = True
 
     def get_count(self, using: str) -> int:
         # TODO maybe can be removed soon

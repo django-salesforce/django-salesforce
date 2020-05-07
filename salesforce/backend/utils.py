@@ -276,8 +276,8 @@ class CursorWrapper(object):
     def execute_select(self, soql: str, args) -> None:
         if soql != MIGRATIONS_QUERY_TO_BE_IGNORED:
             # normal query
-            is_query_all = self.query and self.query.is_query_all
-            self.cursor.execute(soql, args, query_all=is_query_all)
+            query_all = self.query and self.query.sf_params.query_all
+            self.cursor.execute(soql, args, query_all=query_all)
         else:
             # Nothing queried about django_migrations to SFDC and immediately responded that
             # nothing about migration status is recorded in SFDC.
