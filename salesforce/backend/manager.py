@@ -53,8 +53,20 @@ class SalesforceManager(manager.Manager, Generic[_T]):
     #                                            params=params, using=self.db)
     #     return super(SalesforceManager, self).raw(raw_query, params=params, translations=translations)
 
+    # methods of SalesforceQuerySet on a SalesfroceManager
+
     def query_all(self) -> 'query.SalesforceQuerySet[_T]':  # type: ignore[override] # noqa
         qs = self.get_queryset()
         assert isinstance(qs, query.SalesforceQuerySet)
-        ret = qs.query_all()  # type: query.SalesforceQuerySet[_T]
+        ret = qs.query_all()
         return ret
+
+    def sf(self,
+           query_all: Optional[bool] = None,
+           ) -> 'query.SalesforceQuerySet[_T]':
+        # not dry, but explicit due to preferring type check of user code
+        qs = self.get_queryset()
+        assert isinstance(qs, query.SalesforceQuerySet)
+        return qs.sf(
+            query_all=query_all,
+        )

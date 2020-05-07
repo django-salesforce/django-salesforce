@@ -165,3 +165,16 @@ class TestTopologyCompiler(TestCase):
             ('A', 'C', (('Id', 'AId'),), 'C'),
             ('C', 'B', (('BId', 'Id'),), 'B')]
         self.assertTopo(alias_map_items, {'C': 'C', 'A': 'C.A', 'B': 'C.B'})
+
+
+class SfParamsTest(TestCase):
+    def test_params_handover_and_isolation(self):
+        """Test that sp_params are propagated to the rest of the queryset chain
+        but isolated from the previous part.
+        """
+        qs_1 = Contact.objects.all()
+        qs_2 = qs_1.sf(query_all=True)
+        qs_3 = qs_2.filter(first_name__gt='A')
+        # a valua is propagated to the next level, but not to the previous
+        self.assertTrue(qs_3.query.sf_params.query_all)
+        self.assertFalse(qs_1.query.sf_params.query_all)

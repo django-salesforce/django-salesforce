@@ -69,11 +69,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
 
         It is ignored on non-salesforce databases.
         """
-        if not is_sf_database(self.db):
-            return self
-        clone = self._chain()
-        clone.query.set_query_all()
-        return clone
+        return self.sf(query_all=True)
 
     def simple_select_related(self, *fields: str) -> 'SalesforceQuerySet[_T]':
         if DJANGO_20_PLUS:
@@ -92,8 +88,14 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
                     x.pk = get_sf_alt_pk()
         return super(SalesforceQuerySet, self).bulk_create(objs, batch_size=batch_size, **kwargs)
 
-    def sf(self, **kwargs) -> 'SalesforceQuerySet[_T]':
-        """Set Salesforce parameters for a queryset methods
+    def sf(self,
+           query_all: Optional[bool] = None,
+           ) -> 'SalesforceQuerySet[_T]':
+        """Set additional parameters for queryset methods with Salesforce.
+
+        see details about these parameters in `salesforce.backend.models_sql_query.SalesforceQuery.sf(...)`
+
+        It is better to put this method near the beginning of the chain of queryset methods.
 
         Example:
         >>> Contact.objects.sf(all_or_none=True).bulk_create([Contact(last_name='a')])
@@ -101,11 +103,16 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
         if not is_sf_database(self.db):
             return self
         clone = self._chain()
+        clone.query = clone.query.sf(
+            query_all=query_all,
+        )
         return clone
 
-    if not DJANGO_20_PLUS:
-        def _chain(self, **kwargs) -> 'SalesforceQuerySet[_T]':
-            return self._clone()
+    def _chain(self, **kwargs) -> 'SalesforceQuerySet[_T]':
+        if DJANGO_20_PLUS:
+            return super()._chain(**kwargs)
+        else:
+            return self._clone(**kwargs)  # type: ignore[call-arg] # noqa
 
 
 def bulk_update_small(objs: 'typing.Collection[models.Model]', fields: Iterable[str], all_or_none: bool = None
