@@ -305,7 +305,8 @@ class CursorWrapper(object):
         if self.db.connection.composite_type == 'sobject-collections':
             # SObject Collections
             records = [merge_dict(x, type_=table) for x in post_data]
-            ret = self.db.connection.sobject_collections_request('POST', records)
+            all_or_none = query.sf_params.all_or_none
+            ret = self.db.connection.sobject_collections_request('POST', records, all_or_none=all_or_none)
             self.lastrowid = ret
             self.rowcount = len(ret)
             return
@@ -368,7 +369,8 @@ class CursorWrapper(object):
         if self.db.connection.composite_type == 'sobject-collections':
             # SObject Collections
             records = [merge_dict(post_data, id=pk, type_=table) for pk in pks]
-            ret = self.db.connection.sobject_collections_request('PATCH', records)
+            all_or_none = query.sf_params.all_or_none
+            ret = self.db.connection.sobject_collections_request('PATCH', records, all_or_none=all_or_none)
             self.lastrowid = ret
             self.rowcount = len(ret)
             return
@@ -394,7 +396,8 @@ class CursorWrapper(object):
         if self.db.connection.composite_type == 'sobject-collections':
             # SObject Collections
             records = pks
-            ret = self.db.connection.sobject_collections_request('DELETE', records)
+            all_or_none = None  # sf_params not supported by DeleteQuery
+            ret = self.db.connection.sobject_collections_request('DELETE', records, all_or_none=all_or_none)
             self.lastrowid = ret
             self.rowcount = len(ret)
             return

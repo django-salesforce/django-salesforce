@@ -63,10 +63,12 @@ class SalesforceManager(manager.Manager, Generic[_T]):
 
     def sf(self,
            query_all: Optional[bool] = None,
+           all_or_none: Optional[bool] = None,
            ) -> 'query.SalesforceQuerySet[_T]':
         # not dry, but explicit due to preferring type check of user code
         qs = self.get_queryset()
         assert isinstance(qs, query.SalesforceQuerySet)
         return qs.sf(
             query_all=query_all,
+            all_or_none=all_or_none,
         )
