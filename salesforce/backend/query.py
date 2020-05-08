@@ -19,7 +19,7 @@ from django.db.utils import DEFAULT_DB_ALIAS
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
-from salesforce.backend import compiler, DJANGO_20_PLUS, DJANGO_22_PLUS
+from salesforce.backend import compiler, DJANGO_20_PLUS, DJANGO_22_PLUS, DJANGO_30_PLUS
 from salesforce.backend.models_sql_query import SalesforceQuery
 from salesforce.router import is_sf_database
 import salesforce.backend.utils
@@ -90,6 +90,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
 
     def sf(self,
            query_all: Optional[bool] = None,
+           all_or_none: Optional[bool] = None,
            ) -> 'SalesforceQuerySet[_T]':
         """Set additional parameters for queryset methods with Salesforce.
 
@@ -105,6 +106,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
         clone = self._chain()
         clone.query = clone.query.sf(
             query_all=query_all,
+            all_or_none=all_or_none,
         )
         return clone
 
@@ -113,6 +115,44 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             return super()._chain(**kwargs)
         else:
             return self._clone(**kwargs)  # type: ignore[call-arg] # noqa
+
+    def patch_insert_query(self, query: models.sql.Query) -> None:
+        setattr(query, 'sf_params', self.query.sf_params)
+
+    # original Django method '._insert(...)' patched by .patch_insert_query(...)
+    if DJANGO_30_PLUS:
+        def _insert(self, objs, fields, returning_fields=None, raw=False, using=None, ignore_conflicts=False):
+            self._for_write = True
+            if using is None:
+                using = self.db
+            query = models.sql.InsertQuery(self.model, ignore_conflicts=ignore_conflicts)
+            self.patch_insert_query(query)  # patch
+            query.insert_values(fields, objs, raw=raw)
+            return query.get_compiler(using=using).execute_sql(returning_fields)
+    elif DJANGO_22_PLUS:
+        def _insert(self, objs, fields, return_id=False, raw=False, using=None, ignore_conflicts=False):  # type: ignore[misc] # noqa
+            """
+            Insert a new record for the given model. This provides an interface to
+            the InsertQuery class and is how Model.save() is implemented.
+            """
+            self._for_write = True
+            if using is None:
+                using = self.db
+            query = models.sql.InsertQuery(self.model, ignore_conflicts=ignore_conflicts)
+            self.patch_insert_query(query)  # patch
+            query.insert_values(fields, objs, raw=raw)
+            return query.get_compiler(using=using).execute_sql(return_id)
+    else:
+        def _insert(self, objs, fields, return_id=False, raw=False, using=None):  # type: ignore[misc] # noqa
+            self._for_write = True
+            if using is None:
+                using = self.db
+            query = models.sql.InsertQuery(self.model)
+            self.patch_insert_query(query)  # patch
+            query.insert_values(fields, objs, raw=raw)
+            return query.get_compiler(using=using).execute_sql(return_id)
+    _insert.alters_data = True  # type: ignore[attr-defined]  # noqa
+    _insert.queryset_only = False  # type: ignore[attr-defined]  # noqa
 
 
 def bulk_update_small(objs: 'typing.Collection[models.Model]', fields: Iterable[str], all_or_none: bool = None

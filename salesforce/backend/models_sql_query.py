@@ -44,6 +44,7 @@ class SalesforceRawQuery(RawQuery):
 class SfParams:  # like an immutable DataClass: clone when updating
     def __init__(self):
         self.query_all = False
+        self.all_or_none = None  # type: Optional[bool]
 
 
 class SalesforceQuery(Query, Generic[_T]):
@@ -82,17 +83,29 @@ class SalesforceQuery(Query, Generic[_T]):
 
     def sf(self,
            query_all: Optional[bool] = None,
+           all_or_none: Optional[bool] = None,
            ) -> 'SalesforceQuery[_T]':
         """
         Set additional parameters for a queryset
 
             `query_all`: True: Also deleted objects from the trash bin can be selected by this.
                 These can be selected exclusively after that by `.filter(is_deleted=True)`
+
+            `all_or_none`: This affects `bulk_create` and `bulk_update` methods. These methods
+                         work by blocks of 200 items and it is a biggest possible transacion.
+                True: All records in blocks are updated or no record is updated in a block with
+                    the first error and no following block is tried. (small rolback and stop)
+                False: All possible records in all blocks are updated.
+                Default: No following block after an error is tried, but also no rollback is done
+                    in a block with some errors. (This neutral behavior can not be set back after
+                    True or False.)
         """
         clone = self.clone()
         clone.sf_params = copy.copy(self.sf_params)
         if query_all is not None:
             clone.sf_params.query_all = query_all
+        if all_or_none is not None:
+            clone.sf_params.all_or_none = all_or_none
         return clone
 
     def has_results(self, using: Optional[str]) -> bool:
