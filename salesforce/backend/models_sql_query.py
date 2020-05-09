@@ -45,6 +45,7 @@ class SfParams:  # like an immutable DataClass: clone when updating
     def __init__(self):
         self.query_all = False
         self.all_or_none = None  # type: Optional[bool]
+        self.edge_updates = False
 
 
 class SalesforceQuery(Query, Generic[_T]):
@@ -84,6 +85,7 @@ class SalesforceQuery(Query, Generic[_T]):
     def sf(self,
            query_all: Optional[bool] = None,
            all_or_none: Optional[bool] = None,
+           edge_updates: Optional[bool] = None,
            ) -> 'SalesforceQuery[_T]':
         """
         Set additional parameters for a queryset
@@ -99,6 +101,11 @@ class SalesforceQuery(Query, Generic[_T]):
                 Default: No following block after an error is tried, but also no rollback is done
                     in a block with some errors. (This neutral behavior can not be set back after
                     True or False.)
+
+            `edge_updates`: methods update() and delete() on querysets with related tables
+                could be unsafe if the queryset is not checked. It safe to rewrite it to two
+                nested querysets or if it is correct then if can be allowed by `edge_updates`.
+                default is False.
         """
         clone = self.clone()
         clone.sf_params = copy.copy(self.sf_params)
@@ -106,6 +113,8 @@ class SalesforceQuery(Query, Generic[_T]):
             clone.sf_params.query_all = query_all
         if all_or_none is not None:
             clone.sf_params.all_or_none = all_or_none
+        if edge_updates is not None:
+            clone.sf_params.edge_updates = edge_updates
         return clone
 
     def has_results(self, using: Optional[str]) -> bool:

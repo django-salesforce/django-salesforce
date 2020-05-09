@@ -27,8 +27,8 @@ class CompatibilityTest(TestCase, LazyTestMixin):
             # check that the default queryset is not empty
             _ = Contact.objects.all()[0]
 
-            # with self.lazy_assert_n_requests(2):
-            #     Contact.objects.update(last_name='sf_test')
+            with self.lazy_assert_n_requests(2):
+                Contact.objects.sf(edge_updates=True).update(last_name='sf_test')
 
             self.lazy_check()
         finally:

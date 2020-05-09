@@ -335,7 +335,9 @@ class CursorWrapper(object):
                 assert not child.bilateral_transforms
                 if isinstance(pks, (tuple, list)):
                     return pks
-                assert isinstance(pks, Query) and type(pks).__name__ == 'SalesforceQuery', (
+                # 'sf_params' are also in 'pks' only in Django >= 2.0, therefore check query.sf_params
+                assert (isinstance(pks, Query) and type(pks).__name__ == 'SalesforceQuery' or
+                        query.sf_params.edge_updates), (
                     "Too complicated queryset.update(). Rewrite it by two querysets. "
                     "See docs wiki/error-messages")
                 # # alternative solution:
