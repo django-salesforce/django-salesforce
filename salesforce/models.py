@@ -107,11 +107,13 @@ else:
         # pylint:disable=invalid-name
         _salesforce_object = 'standard'
 
+        # if both managers are spedified they must be different objects in Python <= 3.5.x
+        base_manager = manager.SalesforceManager()  # type: manager.SalesforceManager[_T]
         objects = manager.SalesforceManager()  # type: manager.SalesforceManager[_T]
 
         class Meta:
             abstract = True
-            base_manager_name = 'objects'
+            base_manager_name = 'base_manager'
             if not DJANGO_20_PLUS:
                 manager_inheritance_from_future = True
 
