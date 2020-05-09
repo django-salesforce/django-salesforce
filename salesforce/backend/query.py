@@ -91,6 +91,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
     def sf(self,
            query_all: Optional[bool] = None,
            all_or_none: Optional[bool] = None,
+           edge_updates: Optional[bool] = None,
            ) -> 'SalesforceQuerySet[_T]':
         """Set additional parameters for queryset methods with Salesforce.
 
@@ -107,6 +108,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
         clone.query = clone.query.sf(
             query_all=query_all,
             all_or_none=all_or_none,
+            edge_updates=edge_updates,
         )
         return clone
 
