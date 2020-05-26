@@ -23,4 +23,5 @@ install:
 script:
   - rstcheck README.rst
   - echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
+  - echo -e "DATABASES = {}" >> salesforce/testrunner/local_settings.py
   - tox -r -e py36-dj30,py36-dj22,py35-dj111,debug_toolbar
