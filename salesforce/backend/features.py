@@ -18,7 +18,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_partial_indexes = False
     supports_ignore_conflicts = True
 
-    supports_select_for_update_with_limit = False  # since Django 1.7
+    supports_select_for_update_with_limit = False
 
     # features new in Django 1.11
     supports_select_union = False
@@ -53,3 +53,5 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # Never use `interprets_empty_strings_as_nulls=True`. It is an opposite
     # setting for Oracle, while Salesforce saves nulls as empty strings not vice
     # versa.
+
+    can_introspect_json_field = False  # Django 3.1+
