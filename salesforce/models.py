@@ -107,7 +107,9 @@ else:
         # pylint:disable=invalid-name
         _salesforce_object = 'standard'
 
-        # if both managers are spedified they must be different objects in Python <= 3.5.x
+        # If both managers are specified in this class, they should be different objects,
+        # otherwse the name of the base manager must be passed to the mataclass before
+        # the name of default manager, but that order is randomized by Python <= 3.5.x
         base_manager = manager.SalesforceManager()  # type: manager.SalesforceManager[_T]
         objects = manager.SalesforceManager()  # type: manager.SalesforceManager[_T]
 
