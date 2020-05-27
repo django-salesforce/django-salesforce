@@ -7,7 +7,7 @@ django-salesforce
 .. image:: https://badge.fury.io/py/django-salesforce.svg
    :target: https://pypi.python.org/pypi/django-salesforce
 
-.. image:: https://img.shields.io/badge/Python-3.5%3C%203.6%2C%203.7-%2C%203.8-brightgreen.svg
+.. image:: https://img.shields.io/badge/python-3.5%20%7C%203.6%20%7C%203.7%20%7C%203.8-blue
    :target: https://www.python.org/
 
 .. image:: https://img.shields.io/badge/Django-1.11%2C%202.0%2C%202.1%2C%202.2%2C%203.0-blue.svg
