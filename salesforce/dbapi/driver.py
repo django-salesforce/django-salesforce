@@ -340,6 +340,13 @@ class RawConnection:
         # it is good e.g for these errorCode: ('INVALID_FIELD', 'MALFORMED_QUERY', 'INVALID_FIELD_FOR_INSERT_UPDATE')
         raise SalesforceError([err_msg], response)
 
+    def handle_api_exceptions_big(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
+        api_ver = kwargs.pop('api_ver', None)
+        url = self.rest_api_url(*url_parts, api_ver=api_ver)
+        url = re.sub(r'^\w+://[^/]+', '', url)
+        data = [{'method': 'GET', 'url': url, 'referenceId': 'subrequest_0'}]
+        return self.composite_request(data)
+
     def composite_request(self, data: List[Dict[str, Any]]) -> requests.Response:
         """Call a 'composite' request with subrequests, error handling
 
@@ -658,7 +665,11 @@ class Cursor(Generic[_TRow]):
 
     def query_more(self, nextRecordsUrl: str) -> None:  # pylint:disable=invalid-name
         self._check()
-        ret = self.handle_api_exceptions('GET', nextRecordsUrl).json()
+        if len(nextRecordsUrl) < 15500:
+            ret = self.handle_api_exceptions('GET', nextRecordsUrl).json()
+        else:
+            ret = self.connection.handle_api_exceptions_big('GET', nextRecordsUrl).json()
+            ret = ret['compositeResponse'][0]['body']
         self.rowcount = ret['totalSize']  # may be more accurate than the initial approximate value
         self._chunk = ret['records']
         self._next_records_url = ret.get('nextRecordsUrl')
