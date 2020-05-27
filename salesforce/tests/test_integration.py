@@ -1153,6 +1153,13 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertTrue(models_template)
         self.assertIn('@', Organization.objects.get().created_by.Username)
 
+    def test_big_soql(self):
+        """Test that a query of length almost 100000 is possible"""
+        contact = Contact.objects.all()[0]
+        # 4750 items * 21 characters == 99750
+        qs = Contact.objects.filter(pk__in=4750 * [contact.pk])
+        self.assertEqual(list(qs.values_list('pk', flat=True)), [contact.pk])
+
 # ============= Tests that need setUp Lead ==================
 
 
