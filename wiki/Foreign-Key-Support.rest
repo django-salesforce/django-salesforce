@@ -1,10 +1,10 @@
 Foreign Key Support
--------------------
+===================
 
 **Foreign key filters** are possible from child to parent without any known restriction,
-   in many levels, including foreign keys between custom models or mixed builtin
-   and custom models, also filters where the same model is used multiple times,
-   e.g. filter Account objects by a field of their parent Account.
+in many levels, including foreign keys between custom models or mixed builtin
+and custom models, also filters where the same model is used multiple times,
+e.g. filter Account objects by a field of their parent Account.
 
 Example::
 
@@ -25,6 +25,8 @@ Querysets can be easily inspected whether they are correctly compiled to SOQL.
 You can compare the the query compiled to SOQL and to SQL::
 
     my_qs = Contact.objects.filter(my__little_more__complicated='queryset')
+    print(str(my_qs.query))       # that recognizes that the query should be compiled to SOQL
+
     print(my_qs.query.get_compiler('salesforce').as_sql())   # SOQL
     print(my_qs.query.get_compiler('default').as_sql())      # SQL
 
@@ -54,4 +56,4 @@ type is supported::
     parent_object = parent_model.objects.get(pk=note.parent_id)
     assert note.parent_type == 'Contact'
 
-Example of ``Note`` model is in `salesforce.testrunner.example.models.Note`.
+Example of ``Note`` model is in ``salesforce.testrunner.example.models.Note``.

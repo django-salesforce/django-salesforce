@@ -1,32 +1,58 @@
-Some Salesforce fields can not be fully used without special attributes. You
-can see the most complete form in the output of ``inspectdb``.
+Special Attributes of Fields
+----------------------------
 
--  **sf_read_only** - Some fields require this special attributes to make the
-   model writable. Some fields are completely read only (``READ_ONLY``)
-   or insertable only but can not be later updated (``NOT_UPDATEABLE``) or
-   updateable only but can not be specified on insert (``NOT_CREATEABLE``).
+Some Salesforce fields can not be fully used without special attributes. You
+can see the most complete form in the output of ``inspectdb --database=salesforce``.
+The following examples expect that they are located in a module ``models.py`` of your application and that it starts with
+a line ``from salesforce import models`` and it is created by ``inspectdb`` or written manually. 
+
+-  **sf_read_only=...** - Some fields require this special attributes to make the
+   model writable:
+
+   - ``models.READ_ONLY`` Field is completely read only
+   - ``models.NOT_UPDATEABLE`` Filed is insertable only but can not be later updated
+   - ``models.NOT_CREATEABLE`` Field is updateable only but can not be specified on insert.
    Examples of such fields are: automatically updated fields "last_modified_by" and
    "last_modified_date" or fields defined by a formula like "name" of contact,
-   given by "first_name" and "last_name". Example::
+   given by fields "first_name" and "last_name". Example::
 
      last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
 
--  **Defaulted on create** - Some Salesforce fields have a dynamic default value
-   that is not exported by API and assigned by SF only if the field is
-   omitted when a new object is inserted. This mechanism is not used by SF
-   if the value is ``None``. It is even not accepted for not *nillable* fields
-   by Salesforce, while the missing
-   value is ok. Django-salesforce supports it by a special default value
-   ``model.BooleanField(default=models.DEFAULTED_ON_CREATE)``. That means "let
-   it to Salesforce". This is useful for all fields marked by attribute
-   *defaultedOnCreate* in Salesforce. For example the current user of
-   Salesforce is assigned to ``owner`` field if no concrete user is  assigned,
-   but ``None`` would be rejected. All boolean fields have different default values
-   according to current ``Checked/Unchecked`` preferences.
+-  **default=models.DEFAULTED_ON_CREATE**
+   "If no other value is specified when created, a default value is supplied." `[1] <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/access_for_fields.htm>`_
+   This default value can depend on many circumstances in Salesforce that can not be predicted exactly by Python
+   code. Therefore an object ``models.DEFAULTED_ON_CREATE`` is used that is replaced by a surrogate object of correct type
+   and suitable value that will be finally also replaced by a real value be assigned by Salesforce. If the model is saved
+   to a default non-salesforce database or if the new model is edited first by a web form then a value from the surrogate
+   object is used as a normal default.
 
--  **Comments fo fields**
+   For example an ``owner`` field of an ``Account`` is assigned to the current Salesforce user or other user configured
+   by Salesforce. The field ``OwnerId`` is completely omitted in API request if the new object should be created
+   with that smart unknown default value. It doesn't work this way with a ``None`` value.::
 
-   - **``# Reference to tables [...]``**
+      owner = models.ForeignKey(User, on_delete=..., default=models.DEFAULTED_ON_CREATE)
+
+   Internal values created with a plain DEFAULTED_ON_CREATE are 0, 0., Decimal('0'), False, '' or date(1700, 1, 1),
+   the one that is right by the Field type. If these values are not suitable or if the right value is
+   known by introspection than a value is assigned by a class ``models.DefaultedOnCreate``::
+
+      is_active = models.BooleanField(default=models.DefaultedOnCreate(True))
+
+   The value can be also a callable, similarly to a callable used as a normal default in Django.::
+
+      from django.utils.timezone import now
+      class SomeModel(...):
+          timestamp = models.DateTimeField(default=models.DefaultedOnCreate(now))
+      
+   
+   It all works with all fields. It seems very useful with Text field (CharField in Django) and similar fields, Picklist
+   (CharField with a "choice=") Lookup field (ForeignKey), all numeric fields and Checkbox (BooleanField).
+
+   DefaultedOnCreate(...) never works better with web forms than a normal default value because the special object is converted by web through a normal string to a normal value.
+
+-  **A comment from inspectdb after a field**
+
+   - **# Reference to tables [...]**
      Some builtin foreign keys are references to more tables. The class of first
      table is used in the exported ``ForeignKey`` and all tables are listed in
      the comment. Any of them can be used instead.::
@@ -34,69 +60,69 @@ can see the most complete form in the output of ``inspectdb``.
        class AccountHistory(SalesforceModel):
            created_by = models.ForeignKey(User) # Reference to tables [SelfServiceUser, User]
 
-   - **``# Master Detail Relationship *``** The asterisk denotes a master-detail
-         relationship recognized only by cascade delete attribute as it is usual between bultin
-         SF objects. Relations from custom objects are marked explicitely as primary
-         or secondary master-detail by ``'0'`` or ``'1'`` instead of ``'*'``.
-         All cascade delete is done on the SFDC side, therefore they are exported with
-         ``on_delete=models.DO_NOTHING``.
+   - **# Master Detail Relationship** **\***
+     (The asterisk can be replaced by **0** for a *primary* master-detail and **1** for a *secondary* master-detail field.)
+
+     This relationship is recognized only by cascade delete attribute as it is usual between builtin
+     SF objects. Relations from custom objects are marked explicitly as primary
+     or secondary master-detail by ``'0'`` or ``'1'`` instead of ``'*'``.
+     All cascade delete is done on the SFDC side, therefore they are exported with
+     ``on_delete=models.DO_NOTHING``.
+
+
+-  **ForeignKey(unique=True)** SFDC doesn't allow to create a custom one-to-one
+   relationship field. SFDC uses it currently only in six internal objects whose structure
+   is not accessible through the SF user interface. A warning that OneToOneField
+   would be better for such fields is reported in Django <= 2.2 if
+   a ForeignKey(... unique=True) field is in a model. In Django => 3.0 it is correctly recognized as a OneToOneField.
+   It is expected that most of developers don't need these models until Salesforce allows to create such custom fields.
+   The OneToOneField is not tested and probably doesn't work.
+
+
+Running inspectdb
+-----------------
 
 -  **Partial Database Introspection with inspectdb** Tables that are exported into a
-   Python model can be restricted by regular expression::
+   Python model can be restricted by a regular expression or by a list of table names::
 
-     python manage.py inspectdb --table-filter="Contact$|Account" --database=salesforce
+     python manage.py inspectdb --database=salesforce --table-filter="Contact$|Account"
+     python manage.py inspectdb --database=salesforce Account AccountHistory Contact 
 
    In this example, inspectdb will only export models for tables with exact
    name ``Contact`` and all tables that are prefixed with ``Account``. This
    filter works with all supported database types.
 
--  **Verbosity** - This package can set correct column names for Salesforce
-   without explicit attribute ``db_column`` for many objects automatically.
-   These attributes are not exported if a default verbosity is used. This is
-   intended for use only with SFDC. If an alternate non SFDC test database
-   is also expected and migrations of any SalesforceModel will be created then
-   explicit names in the code are better: ``--verbosity=2``.
+   **Explicit db_column** - It is preferred now that all fields use a ``db_column`` parameter, even if django-salesforce
+   can reconstruct the Salesforce column name from the Django field name for the most of builtin objects. This is better
+   for more consistent work with Salesforce data in local databases and for cooperation with tools that don't use Django.
+   The older less verbose mode can be selected by the option ``--concise-db-column``.
 
 
--  **ForeignKey(unique=True)** SFDC doesn't allow to create a custom one-to-one
-   relationship field. SFDC uses it currently only in three internal objects whose structure
-   is not accessible through the SF user interface. A warning that OneToOneField
-   would be better for such fields is reported by Django 1.9 if
-   a ForeignKey(... unique=True) field is in a model. It is expected that
-   most of developers don't need these models or can use a ForeignKey and ignore the warning.
-   The OneToOneField will be not not implemented until Salesforce allows to create
-   such custom fields.
+Compatibility with a local database and with web forms
+------------------------------------------------------
 
+Models exported by ``inspectdb`` are optimized for the best compatibility with standard Salesforce. If you prefer more a compatibility with local non-Salesforce database then the following is important:
 
-SOAP API
---------
+Nothing is customized in django.forms for Salesforce, because many simple workarounds exist.
 
--  **Accessing the Salesforce SOAP API** - There are some Salesforce actions that cannot or can hardly
-   be implemented using the generic relational database abstraction and the REST API.
-   For some of these actions there is an available endpoint in the old Salesforce API
-   (SOAP) that can be accessed using our utility module. In order to use that module,
-   you will need to install an additional dependency ::
+* The parameter ``sf_read_only=models.READ_ONLY`` can work easily with local databases. The field is set not editable for forms. A code to fill the field is necessary and the value is finally ignored if the object is saved to Salesforce. A Django implementation is well known for time-stamp fields like ``created_date``  and ``last_modified_date``.
 
-     pip install beatbox    # depends on Python 2.7
+* The parameters ``NOT_UPDATEABLE`` and ``NOT_CREATEABLE`` are less frequent and more complicated than READ_ONLY. In a web for they can be probably used like full editable or completely read-only.
 
-   Here is an example of usage with ``Lead`` conversion ::
+* Defaulted on create: It can be frequently simplified to a known normal default value that can be set by Django or a value evaluated by formula.
 
-     from salesforce.utils import convert_lead
+* If you only read the field, you can set ``sf_read_only=models.READ_ONLY``
+* If you don't need a "super-smart" Salesforce default value, you can set a normal ``default=some_value`` or
+  ``default=your_function_for_default_value`` or set ``null=False`` and a meaningful value must be provided for every new
+  object.
+* If you don't need to set the value in a new object, but it is useful to can change it later, you can set
+  ``sf_read_only=models.NOT_CREATEABLE`` and ``null=True``, and the initial null will be not passed to Salesforce.
 
-     lead = Lead.objects.all()[0]
-     response = convert_lead(lead)
+The default date and time-stamp January 1, 1700 12:00 UTC is really strange if it would be saved into a local database.
+(It is the smallest possible time-stamp that is on the same valid date in all time zones)
 
-   All usual
-   `additional parameters <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm>`__
-   are supported in the original mixed letter case. It allows e.g. merging a Lead
-   with an existing Account or Contact and to control much more.::
+----
 
-     response = convert_lead(lead, accountId=account_id)
+Links:
 
-   For the particular case of ``Lead`` conversion, beware that having
-   some *custom* and *required* fields in either ``Contact``, ``Account`` or
-   ``Opportunity`` can be more complicated. A mapping from custom fields in your
-   ``Lead`` to these fields must be defined in the system and these Lead fields
-   should not be empty at the time of conversion. Follow the
-   `instructions <http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`__
-   for more details.
+[1] `Field properties in Salesfroce API <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/access_for_fields.htm>`_: ``defaultedOnCreate`` and ``nillable``
