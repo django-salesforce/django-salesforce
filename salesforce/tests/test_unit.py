@@ -5,7 +5,7 @@ Tests that do not need to connect servers
 
 from django.apps.registry import Apps
 from django.test import TestCase
-from django.db.models import DO_NOTHING
+from django.db.models import DO_NOTHING, Subquery
 from salesforce import fields, models
 from salesforce.testrunner.example.models import (
         Contact, Opportunity, OpportunityContactRole, ChargentOrder)
@@ -96,7 +96,7 @@ class TestQueryCompiler(TestCase, LazyTestMixin):
         self.assertEqual(tested_field.sf_custom, True)
         self.assertEqual(tested_field.column, 'ChargentOrders__Balance_Due__c')
 
-    def test_subquery_condition(self):
+    def test_subquery_filter_on_parent(self):
         """Regression test with a filter based on subquery.
 
         This test is very similar to the required example in PR #103.
@@ -116,6 +116,22 @@ class TestQueryCompiler(TestCase, LazyTestMixin):
                          r'OpportunityContactRole.OpportunityId IN '
                          r'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
         self.assertRegex(sql, 'OpportunityContactRole.Role = %s')
+
+    def test_subquery_filter_on_child(self):
+        """Filter with a Subquery() on a child object.
+
+        Especially useful with ManyToMany field relationships.
+        """
+        associations = OpportunityContactRole.objects.filter(contact__email='a@example.com')
+        soql = ("SELECT Opportunity.Name FROM Opportunity WHERE Opportunity.Id IN ("
+                "SELECT OpportunityContactRole.OpportunityId FROM OpportunityContactRole "
+                "WHERE OpportunityContactRole.Contact.Email = 'a@example.com')")
+        qs = Opportunity.objects.filter(pk__in=associations.values('opportunity'))
+        self.assertEqual(str(qs.values('name').query), soql)
+        qs = Opportunity.objects.filter(pk__in=associations.values('opportunity_id'))
+        self.assertEqual(str(qs.values('name').query), soql)
+        qs = Opportunity.objects.filter(pk__in=Subquery(associations.values('opportunity')))
+        self.assertEqual(str(qs.values('name').query), soql)
 
     def test_none_method_queryset(self):
         """Test that none() method in the queryset returns [], not error"""

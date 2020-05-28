@@ -341,6 +341,8 @@ class RawConnection:
         raise SalesforceError([err_msg], response)
 
     def handle_api_exceptions_big(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
+        """Call REST API with the query encapsulated into the body if the query is big"""
+        assert method == 'GET'
         api_ver = kwargs.pop('api_ver', None)
         url = self.rest_api_url(*url_parts, api_ver=api_ver)
         url = re.sub(r'^\w+://[^/]+', '', url)
