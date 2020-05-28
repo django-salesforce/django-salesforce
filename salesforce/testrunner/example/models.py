@@ -306,6 +306,19 @@ class OpportunityContactRole(SalesforceModel):
     role = models.CharField(max_length=40, blank=True, null=True)  # e.g. "Business User"
 
 
+class OpportunityLineItem(SalesforceModel):
+    opportunity = models.ForeignKey(Opportunity, on_delete=models.DO_NOTHING)
+    pricebook_entry = models.ForeignKey('PricebookEntry', models.DO_NOTHING, verbose_name='Price Book Entry ID',
+                                        sf_read_only=models.NOT_UPDATEABLE)
+    product2 = models.ForeignKey('Product', models.DO_NOTHING, verbose_name='Product ID',
+                                 sf_read_only=models.NOT_UPDATEABLE)
+    name = models.CharField(max_length=376, verbose_name='Opportunity Product Name', sf_read_only=models.READ_ONLY)
+    quantity = models.DecimalField(max_digits=12, decimal_places=2)
+    total_price = models.DecimalField(max_digits=18, decimal_places=2, default=models.DEFAULTED_ON_CREATE)
+    unit_price = models.DecimalField(max_digits=18, decimal_places=2, verbose_name='Sales Price',
+                                     default=models.DEFAULTED_ON_CREATE)
+
+
 try:
     models_template = None  # type: Optional[types.ModuleType]
     from salesforce.testrunner.example import models_template
