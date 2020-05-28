@@ -1,34 +1,53 @@
-**Django-Admin Support** - If you use multiple Salesforce databases or multiple instances of AdminSite, you'll
-probably want to extend ``salesforce.admin.RoutedModelAdmin``" in your admin.py
+Models template
+---------------
+It is useful to can update the latest field by introspection and still to restrict which fields are in the mode.
+One possible solution are "models template". It is a models file from introspection by ``inspectdb`` where the line ``from salesforce import models`` is replaced by ``from salesforce import models_template as models`` and that file is usually renamed to ``models_template.py``. Then a very simple ``models.py`` can be created. ::
 
-**Dynamic authorization** - The original use-case for django-salesforce assumed
-use of a single set of credentials with read-write access to all necessary objects.
-It's now possible to write applications that use OAuth to interact with a Salesforce
-instance's data on your end user's behalf. You simply need to know or request the
-`Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`
-for the user in question. In this situation, it's not necessary to save any credentials
-for SFDC in Django settings. The manner in which you request or transmit this token
-(e.g., in the ``Authorization:`` header) is left up to the developer at this time.
+    from salesforce import models
+    from . import models_template
 
-Configure your ``DATABASES`` setting as follows::
+    class Organization(models.Model):
+        # all fields are copied dynamically
+        class Meta:
+            db_table = 'Organization'
+            dynamic_field_patterns = models_template, [
+                'last_modified_date',
+                '-last_.*',
+                '.*'
+            ]
+
+This will create a model Organization with the field 'last_modified_date' and all fields except other fields that
+start with string "last\_" like "last_modified_by_id" or "last_viewed_date" etc. The patterns must match from the beginning to the end of field name and therefore a wild card at the end must be explicit ``.*``. All patterns that starts with minus will disable the pattern and stop the search. A very short example is in ``salesforce/testrunner/example/models.py`` and a more complete example with a full models template is in ``tests/inspectdb/dependent_model/`` directory.
+The line ``dynamic_field_patterns = ...`` can be used also as a hotfix to add some new fields without writing.
+
+
+Configurable authentication/authorization methods
+-------------------------------------------------
+The same user can get a token for access restricted for different scopes. It is configured in the control panel and selected by client_id (CONSUMER_KEY in this package). The necessary selected scopes are "api" or "full". There is currently no known difference between these scopes for django-salesforce, only by the user and all authorization is done on the Salesforce side. Therefore the term "authorization" is used here and "authentication" would be also correct.
+
+Username and Password (default method)
+......................................
+``salesforcce.auth.SalesforcePasswordAuth`` It is described in README.
+The original use-case for django-salesforce assumed use of a single set of credentials with read-write access to all necessary objects. It requires the necessary CONSUMER_KEY and CONSUMER_SECRET and frequently also the security token appended to the PASSWORD.
+
+Authentication by a token from Force.com CLI
+............................................
+``salesforcce.auth.ForceComCliAuth`` The open source command-line development tool `Force.com CLI <http://force-cli.herokuapp.com/>`__ is very useful e.g. for extending the database schema. It also saves the access tokens to the user profile. These tokens expire after two hours of inactivity or after a shorter expiration time configured in the control panel. This is much better than to save a huge amount of passwords and other security sensitive information if more sandboxes and production instances are temporarily used with different user profiles. It is unpleasant, if the passwords are not deleted before a backup or if an obsoleted password or security token is left in settings in some virtual environment and it has caused a locked account temporarily, if a strict password policy is configured in the control panel. The administrator profile access is usually necessary only for a short time. Example of database settings::
 
  'salesforce': {
      'ENGINE': 'salesforce.backend',
-     'HOST': 'https://your-site.salesforce.com',
-     'CONSUMER_KEY': '.',
-     'CONSUMER_SECRET': '.',
-     'USER': 'dynamic auth',
-     'PASSWORD': '.',
+     'AUTH': 'salesforce.auth.ForceComCliAuth',
+     'USER': 'me@email.example.com',
  }
 
-A static SFDC connection can be specified with the data server URL in "HOST"
-Note that in this case we're not using the URL of the login server — the data
-server URL can be also used for login.
 
-Items with ``'.'`` value are ignored when using dynamic auth, but cannot be left
-empty.
-
-The last step is to enable the feature in your project in some way, probably by
+Dynamic authorization
+.....................
+It's now possible to write applications that use OAuth to interact with a Salesforce
+instance's data on your end user's behalf. You simply need to know or request the
+`Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`__
+for the user in question and you can start and terminate the dynamic authorization. 
+It can be combined with any type of static authentication, that is valid before the start and after the end of dynamic authentication this way, probably by
 creating a Django middleware component. Then at the beginning of each request::
 
    from django.db import connections
@@ -41,7 +60,31 @@ creating a Django middleware component. Then at the beginning of each request::
 
 Make sure to purge the access token at end of request::
 
-     connections['salesforce'].sf_session.auth.dynamic_end()
+   connections['salesforce'].sf_session.auth.dynamic_end()
 
-You can continue to supply static credentials in your project settings, but they will
-only be used before calling dynamic_start() and/or after calling dynamic_end().
+
+In this situation, if you don't need a static authorization at all, you can use only the
+``DynamicAuth`` replacement instead and to configure your ``DATABASES`` setting as follows::
+
+ 'salesforce': {
+     'ENGINE': 'salesforce.backend',
+     'AUTH': 'salesforce.auth.DynamicAuth',
+     # optional if "instance_url" is a part of "dynamic_start" call
+     'HOST': 'https://your-site.salesforce.com',
+ }
+
+A production web server usually doesn't require a static account, because it is not required for ``runserver`` and for ``migrate`` of the default non-salesforce database.
+
+Additionally a static SFDC connection (``USER`` and ``PASSWORD``) should be specified on a development machine, because it is required for ``inspectdb`` and ``makemigrations`` commands. The URL of the data server is good enough as ``HOST`` also for login and it should not be replaced by "https://login.salesforce.com" or "test.salesforce.com".
+
+An example is `Canvas Signed Request Authentication <https://developer.salesforce.com/docs/atlas.en-us.platform_connect.meta/platform_connect/canvas_app_signed_req_authentication.htm>`__ that is out of this scope. That allows to insert a frame related to the object displayed or edited on Salesforce web instance, restricted by permissions of the current user.
+
+Customized Auth
+...............
+Many auth classes are so simple that they can be easily extended by inheritance. Only ``authenticate()`` method, ``required_fields`` attribute and maybe ``can_reauthenticate=True`` need to be modified.
+
+
+Django-Admin Support
+--------------------
+If you use multiple Salesforce databases or multiple instances of AdminSite, you'll
+probably want to extend ``salesforce.admin.RoutedModelAdmin``" in your admin.py

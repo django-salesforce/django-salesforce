@@ -1,0 +1,35 @@
+Lead conversion
+---------------
+
+Lead conversion is currently implemented by SOAP API. It requires a package `beatbox`.
+The preferred version can be installed by the command: ::
+
+    pip install git+https://github.com/hynekcer/beatbox-davisagli.git@7f628a789cba#egg=beatbox
+
+This source is a clone compatible with Python 2.7 and Python >= 3.4, thread safe and with support for multiple databases.
+
+The minimal example of ``Lead`` conversion: ::
+
+    from salesforce.utils import convert_lead
+
+    lead = Lead.objects.all()[0]
+    response = convert_lead(lead)
+
+It accepts all optional parameters: ``accountId``, ``contactId``, ``doNotCreateOpportunity``, ``opportunityName``,
+``overwriteLeadSource``, ``ownerId``, ``sendNotificationEmail`` that are described in Salesforce
+SOAP API documentation `convertLead() <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm>`__. The output object dictrionary keys are described in `LeadConvertResult <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead_leadconvertresult.htm#topic-title>`__. Two examples with django-salesforce can be found in a `test for convert_lead() <https://github.com/django-salesforce/django-salesforce/blob/master/salesforce/tests/test_utils.py>`__.
+
+All usual
+`additional parameters <https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm>`__
+are supported in the original mixed letter case. It allows e.g. merging a Lead
+with an existing Account or Contact and to control much more.::
+
+    response = convert_lead(lead, accountId=account_id)
+
+For the particular case of ``Lead`` conversion, beware that having
+some *custom* and *required* fields in either ``Contact``, ``Account`` or
+``Opportunity`` can be more complicated. A mapping from custom fields in your
+``Lead`` to these fields must be defined in the system and these Lead fields
+should not be empty at the time of conversion. Follow the
+`instructions <http://www.python.org/https://help.salesforce.com/apex/HTViewHelpDoc?id=customize_mapleads.htm>`__
+for more details.
