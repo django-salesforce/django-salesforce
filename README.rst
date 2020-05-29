@@ -13,7 +13,7 @@ django-salesforce
 .. image:: https://img.shields.io/badge/Django-1.11%2C%202.0%2C%202.1%2C%202.2%2C%203.0-blue.svg
    :target: https://www.djangoproject.com/
 
-This library allows you to load and edit the objects in any Salesforce instance
+This library allows you to load, edit and query the objects in any Salesforce instance
 using Django models. The integration is fairly complete, and generally seamless
 for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
@@ -25,6 +25,8 @@ Python 3.5.3 to 3.8, Django 1.11, 2.0 to 2.2 and 3.0.
 
 Quick Start
 -----------
+
+Install, configure a Salesforce connection, create a Salesforce model and run.
 
 1. Install django-salesforce: ``pip install django-salesforce``
 
@@ -63,22 +65,18 @@ Quick Start
    * ``HOST`` is ``https://test.salesforce.com`` to access a sandbox, or
      ``https://login.salesforce.com`` to access production.
 
-   If an error message is received while connecting, review the error received.
-   Everything in the error message between ``{...}`` is exactly copied from the
-   Salesforce error message to assist debugging.
+   If an error occurs in a request to Salesforce, review the received error message
+   that is exactly copied between braces ``{...}`` from the
+   Salesforce response to a Python exception to assist debugging.
 
    See also: `Information on settings up Salesforce connected apps
-   <https://help.salesforce.com/apex/HTViewHelpDoc?id=connected_app_create.htm>`_.
+   <https://help.salesforce.com/apex/HTViewHelpDoc?id=connected_app_create.htm>`_
+   if necessary.
 
-   **Note about permissions**: Everything for a project can work under
-   restricted Salesforce user account if it has access to objects in your
-   models. Introspection (inspectdb) doesn't require any permissions. Running
-   tests for django_salesforce requires many permissions or Administrator
-   account for sandbox.
-   
    **Note about permissions**: Administrator rights are only required to run
    the full suite of unit tests; otherwise, as long as the account has rights to
    read or modify the chosen object, everything should work properly.
+   Introspection by ``inspectdb`` doesn't require any object permissions.
 
 3. Add ``salesforce.router.ModelRouter`` to your ``DATABASE_ROUTERS``
    setting::
@@ -106,15 +104,19 @@ Quick Start
    not important.)
 
 
-5. Define a model that extends ``salesforce.models.Model`` (alias SalesforceModel) or export the
-   complete SF schema by ``python manage.py inspectdb --database=salesforce``
-   and simplify it to what you need.
+5. Define a model that extends ``salesforce.models.Model`` (alias ``SalesforceModel``)
+   or export the complete SF schema by ``python manage.py inspectdb --database=salesforce``
+   and simplify it to what you need. The full models file is about 2 MB with 500 models
+   and the export takes 2 minutes, but it is a valid models module that works without
+   modification. The output of command ``inspectdb`` can be restricted by a list
+   of table_names on the command line, but also ForeignKey fields to omitted models
+   must be pruned to get a valid complete small model.
 
 6. **(optional)** To override the default timeout of 15 seconds,
    define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file.
    It can be one number or better a tuple with a short value for connection
-   timeout and a longer value that includes time for running a query,
-   but never need be longer than 30 seconds::
+   timeout and a longer value that includes time for running a query.
+   It never need be longer than 30 seconds::
 
     SALESFORCE_QUERY_TIMEOUT = (4, 15)  # default (connect timeout, data timeout)
 
@@ -125,7 +127,8 @@ Quick Start
 
 8. You're all done! Just use your model like a normal Django model.
 
-9. **(optional)** Create a normal Django ``admin.py`` module for your Salesforce model::
+9. **(optional)** Create a normal Django ``admin.py`` module for your Salesforce models
+   and you can register a minimalistic admin for all omitted Admin classes::
 
     from salesforce.testrunner.example.universal_admin import register_omitted_classes
     # some admin classes that you wrote manually yet
@@ -133,9 +136,9 @@ Quick Start
     # end of file
     register_omitted_classes(your_application.models)
 
-   This is a rudimentary way to verify that every model works in sandbox, before
+   This is a rudimentary way to verify that every model works in a sandbox, before
    hand-writing all admin classes. (Foreign keys to huge tables in the production
-   require customized admins e.g. with search widgets.)
+   require a customized admin e.g. with search widgets.)
     
 10. **(optional)** By default, the Django ORM connects to all DBs at startup. To delay
     SFDC connections until they are actually required, define ``SF_LAZY_CONNECT=True``
@@ -146,10 +149,10 @@ Quick Start
 Primary Key
 -----------
 Salesforce doesn't allow you to define custom primary keys, so django-salesforce
-will add them automatically in all cases. You can override capitalization and use
-primary key ``id`` by configuring ``SF_PK='id'`` in your project settings. The previous
-capitalization of ``Id`` is only for old projects, but it will stay as the default
-variant until ``django-salesforce>=0.5``.
+will add them automatically in all cases. You can override only capitalization and use
+a primary key ``Id`` by configuring ``SF_PK='Id'`` in your project settings
+if you prefer Salesforce capitalized field name conventions instead of Django
+default ``id``.
 
 Advanced usage
 --------------
@@ -162,7 +165,7 @@ Advanced usage
 
    One way to speed this up is to change the SALESFORCE_DB_ALIAS to point to
    another DB connection (preferably SQLite) during testing using the
-   ``TEST_*`` settings variables. Such simple tests can run without any network
+   ``TEST`` settings variable. Such simple tests can run without any network
    access. Django unit tests without SalesforceModel
    are fast everytimes. Special read only fields that are updated only by SFDC
    e.g. ``last_modified_date`` need more parameters to be possible to save them
@@ -192,22 +195,12 @@ Advanced usage
 
      last_name = models.CharField(max_length=80)     # db_column='LastName'
      FirstName = models.CharField(max_length=80)     # db_column='FirstName'
-     custom_bool = models.BooleanField(custom=True)  # db_column='CustomBool__c'
+     my_bool = models.BooleanField(custom=True)      # db_column='MyBool__c'
    
    Fields named with an upper case character are never modified, except for the
    addition of the namespace prefix or the '__c' suffix for custom fields.
-
--  **Custom SF Objects and Fields** - Custom SF class objects are indicated by
-   adding a Meta class with parameter 'custom=True'. All child fields are
-   assumed to be custom as well, unless marked otherwise with a field parameter
-   marked "custom=False".
-
-   Similarly, custom fields on standard objects can be indicated by "custom=True",
-   or they can be defined in an standard parent model (the ``custom`` Meta
-   parameter is not inherited). 
-
-   Also namespace prefixes of managed packages (prefixed with "PackageName\__"
-   can be automatically applied to custom fields without db_column.
+   If you want models with minimal db_column then read
+   `Running inspectdb <https://github.com/django-salesforce/django-salesforce/wiki/Introspection-and-Special-Attributes-of-Fields#running-inspectdb>`__.
 
 -  **Query deleted objects** - Deleted objects that are in trash bin are
    not selected by a normal queryset, but if a special method ``query_all``
@@ -219,11 +212,10 @@ Advanced usage
 
 -  **Migrations** - Migrations can be used for an alternate test database
    with SalesforceModel. Then all tables must have Meta options ``db_table``
-   and fields must have option ``db_column``, which can be got
-   by ``inspectdb`` with ``--verbosity=2``. Models exported by introspection
-   ``inspectdb`` do not specify the option ``managed`` because the
-   default value True is considered safe.
-   (Migrations in SFDC are not supported. If anything would
+   and fields must have option ``db_column``, which is done by ``inspectdb``
+   with default settings. Models exported by introspection ``inspectdb``
+   do not specify the option ``managed`` because the default value is True.
+   (It is safe. Migrations in SFDC are not supported. If anything would
    be implemented after all, only explicitly clearly selected fields and models
    could be migrated in explicitly labeled SFDC databases.
    Consequently, the setting ``managed = True`` is related only to an alternate
@@ -251,33 +243,40 @@ read-only and default value fields. Further details can be found in
 Caveats
 -------
 
-This package is in continuous development, and the ultimate goal is to
-support all reasonable features of the Salesforce platform, but for now
-here are the potential pitfalls and unimplemented operations:
+The ultimate goal of development of this package is to support reasonable
+new features of the Salesforce platform and of new Django versions,
+but for now here are the potential pitfalls and unimplemented operations:
 
 -  **Large Objects** — Since the entire result set needs to be transferred
    over HTTP, and since it's common to have extremely high column counts
    on full object queries, it's assumed that users will create models that
-   are specific to their individual applications' needs. Models that have
-   been included with this library are for example and documentation
-   purposes.
--  **Inheritance** — When using the default router, all models for object
-   types on Salesforce must extend salesforce.models.SalesforceModel. The
-   model router checks for this to determine which models to handle through
-   the Salesforce connection.
--  **Database Migrations** — ``migrate`` will only create new tables; in non-SF
-   databases (useful for unit tests); SFDC classes are assumed to already
+   are specific to their individual applications' needs. It is especially
+   important if migrations should be created. Migrations on the full models
+   module are really slow. (Models that have been included with this library are
+   very simplified only for example and documentation purposes and for tests.)
+-  **Inheritance** — When using the default router, all models Salesforce
+   must extend salesforce.models.SalesforceModel. The model router checks
+   for this to determine which models to handle through the Salesforce
+   connection.
+-  **Database Migrations** — ``migrate`` will create new tables only in non-SF
+   databases (useful for unit tests); SFDC tables are assumed to already
    exist with the appropriate permissions.
 
+-  **Unsupported methods**: Queryset methods ``union()``, ``difference()``,
+    ``intersection()`` and ``distinct()``
+    are e.g. not supported because SOQL doesn't support corresponding operators:
+    UNION, EXCEPT, INTERSECT and DISTINCT.
 
 Backwards-incompatible changes
 ------------------------------
 
+The most important:
 -  v0.9: This is the last version that suports Django 1.10 and Python 2.7 and 3.4
--  v0.8: The default Meta option if now ``managed = True``, which is an unimportant
-   change for Salesforce databases (see about Migrations above).
 
-   Completely different implementation of raw queries and cursor that compatible
+-  v0.8: The default Meta option if now ``managed = True``, which is an important
+   change for non-Salesforce databases (see about Migrations above).
+
+   Completely different implementation of raw queries and cursor that is compatible
    with normal databases. (a more backward compatible option can be added if
    it will be required)
 
