@@ -422,7 +422,7 @@ class CursorWrapper(object):
         request (insert).
         """
         ret = self.handle_api_exceptions('GET', '')
-        return str_dict(ret.json())
+        return ret.json()
 
     def id_request(self):
         """The Force.com Identity Service (return type dict of str)"""
@@ -438,8 +438,7 @@ class CursorWrapper(object):
 
     def versions_request(self):
         """List Available REST API Versions"""
-        ret = self.handle_api_exceptions('GET', '', api_ver='')
-        return [str_dict(x) for x in ret.json()]
+        return self.handle_api_exceptions('GET', '', api_ver='').json()
 
     def query_results(self, results):
         while True:
@@ -486,11 +485,6 @@ class CursorWrapper(object):
 
     def handle_api_exceptions(self, method, *url_parts, **kwargs):
         return self.cursor.handle_api_exceptions(method, *url_parts, **kwargs)
-
-
-def str_dict(some_dict):
-    """Convert dict of ascii str/unicode to dict of str, if necessary"""
-    return {str(k): str(v) for k, v in some_dict.items()}
 
 
 def sobj_id(obj):
