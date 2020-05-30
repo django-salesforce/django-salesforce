@@ -1,7 +1,7 @@
 import datetime
 import decimal
 from pytz import utc
-from typing import Any, Dict, Optional, overload, Tuple, Type
+from typing import Any, Callable, Dict, Optional, overload, Tuple, Type
 # from django.utils.deconstruct import deconstructible
 import salesforce.models
 
@@ -175,6 +175,9 @@ def DefaultedOnCreate(value: datetime.time) -> TimeDefault:
     ...
 @overload  # noqa
 def DefaultedOnCreate(value: 'Type[salesforce.models.Model[Any]]') -> 'salesforce.models.Model[Any]':
+    ...
+@overload  # noqa
+def DefaultedOnCreate(value: Callable[[], Any]) -> CallableDefault:
     ...
 @overload  # noqa
 def DefaultedOnCreate() -> BaseDefault:
