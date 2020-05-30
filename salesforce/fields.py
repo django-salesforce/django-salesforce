@@ -304,4 +304,21 @@ class OneToOneField(SfForeignObjectMixin, models.OneToOneField):
     """OneToOneField with sf_read_only attribute that is acceptable by Salesforce."""
 
 
+class XJSONField(TextField):  # type: ignore[no-redef] # noqa
+    """
+    Salesforce internal "complexvalue" field similar to JSON, used by SFDC for metadata,
+
+    this field should not be used for normal data or with other database backends.
+    """
+
+    def get_internal_type(self):
+        return "TextField"
+
+    def get_prep_value(self, value):
+        return value
+
+    def to_python(self, value):
+        return value
+
+
 AutoField = SalesforceAutoField
