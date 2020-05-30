@@ -21,12 +21,6 @@ __version__ = "1.0post1"
 log = logging.getLogger(__name__)
 
 # Default version of Force.com API.
-# It can be set by setattr() to any lower or higher supported value.
-# (The highest version can be set by "salesforce.utils.set_highest_api_version()".
-# It is useful for development, a constant version is for production.)
-
-# Example for settings.py:
-# >>> import salesforce
-# >>> setattr(salesforce, 'API_VERSION', '37.0')
-
+# It can be customized by settings.DATABASES['salesforce']['API_VERSION']
+# API_VERSION = '49.0'  # Summer '20
 API_VERSION = '48.0'  # Spring '20

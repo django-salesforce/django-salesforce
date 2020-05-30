@@ -104,13 +104,3 @@ def convert_lead(lead, converted_status=None, **kwargs):
         raise DatabaseError("The Lead conversion failed: {0}, leadId={1}"
                             .format(ret['errors'], ret['leadId']))
     return ret
-
-
-def set_highest_api_version(db_aliases):
-    """Set the highest version of Force.com API supported by all databases in db_aliases
-    """
-    if not isinstance(db_aliases, (list, tuple)):
-        db_aliases = [db_aliases]
-    max_version = max(connections[db_alias].cursor().versions_request()[-1]['version']
-                      for db_alias in db_aliases)
-    setattr(salesforce, 'API_VERSION', max_version)

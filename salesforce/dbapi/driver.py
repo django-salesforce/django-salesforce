@@ -127,7 +127,7 @@ class RawConnection:
         self.messages = []           # type: List[ErrInfo]
 
         self._sf_session = None      # type: Optional[SfSession]
-        self.api_ver = salesforce.API_VERSION
+        self._api_version = settings_dict.get('API_VERSION', salesforce.API_VERSION)  # type: str
         self.debug_verbs = None      # type: Optional[List[str]]
         self.composite_type = 'sobject-collections'  # 'sobject-collections' or 'composite'
 
@@ -140,6 +140,15 @@ class RawConnection:
 
     # Methods close() and commit() can be safely ignored, because everything is
     # committed automatically and the REST API is stateless.
+
+    @property
+    def api_ver(self) -> str:
+        # The highest supported SFDC API version can be set by
+        # settings.DATABASES['salesforce']['API_VERSION'] = 'MAX'
+        # It is useful for development of 'inspectdb'
+        if self._api_version == 'MAX':
+            self._api_version = self.handle_api_exceptions('GET', '', api_ver='').json()[-1]['version']
+        return self._api_version
 
     def close(self) -> None:
         del self.messages[:]
