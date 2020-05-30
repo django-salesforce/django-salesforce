@@ -97,6 +97,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         'reference':                      'ForeignKey',
         'textarea':                       'TextField',
         'url':                            'URLField',
+        'complexvalue':                   'XJSONField',
     }
 
     def __init__(self, conn: Any) -> None:
