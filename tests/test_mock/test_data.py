@@ -8,7 +8,7 @@ from tests.test_mock.mocksf import mock  # NOQA pylint:disable=unused-import
 
 
 class MockTest(MockTestCase):
-    api_ver = '20.0'
+    api_version = '20.0'
 
     def setUp(self):
         super(MockTest, self).setUp()
@@ -71,7 +71,7 @@ class SObjectCollectionsTest(MockTestCase):
     Examples from SObject Collections
     https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections.htm
     """
-    api_ver = '42.0'
+    api_version = '42.0'
 
     def setUp(self):
         super(SObjectCollectionsTest, self).setUp()

@@ -11,7 +11,7 @@ from tests.test_mock.mocksf import mock, MockJsonRequest, MockTestCase
 
 @override_settings(SF_MOCK_MODE='mixed')
 class TestMock(MockTestCase):
-    api_ver = '39.0'
+    api_version = '39.0'
 
     def prepare_expected(self):
         self.mock_add_expected(MockJsonRequest(
@@ -27,7 +27,7 @@ class TestMock(MockTestCase):
         self.prepare_expected()
         # test
         cur = connections[sf_alias].cursor()
-        with mock.patch.object(cur.cursor.connection, 'api_ver', '39.0'):
+        with mock.patch.object(cur.cursor.connection, '_api_version', '39.0'):
             cur.execute("SELECT Name FROM Contact LIMIT 1")
         self.assertEqual(list(cur.fetchall()), [['django-salesforce test']])
 

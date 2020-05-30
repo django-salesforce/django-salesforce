@@ -262,8 +262,8 @@ class MockTestCase(SimpleTestCase):
         connection._sf_session = MockRequestsSession(testcase=self, old_session=connection._sf_session)
         # connection._sf_auth = connection._sf_session.auth
 
-        self.save_api_ver = connection.api_ver
-        connection.api_ver = getattr(self, 'api_ver', salesforce.API_VERSION)
+        self.save_api_version = connection._api_version
+        connection._api_version = getattr(self, 'api_version', salesforce.API_VERSION)
         # simulate a recent request (to not run a check for broken conection in the test)
         driver.time_statistics.expiration = 1E10
 
@@ -288,7 +288,7 @@ class MockTestCase(SimpleTestCase):
             self.assertEqual(session.index, len(session.expected), "Not all expected requests has been used")
         # connection._sf_session, connection._sf_auth = self.save_session_auth
         connection._sf_session = self.save_session_auth  # pylint:disable=protected-access
-        connection.api_ver = self.save_api_ver
+        connection._api_version = self.save_api_version
         driver.time_statistics.expiration = driver.TimeStatistics().expiration
         super(MockTestCase, self).tearDown()
 
