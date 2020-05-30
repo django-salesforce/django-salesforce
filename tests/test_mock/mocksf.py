@@ -150,8 +150,11 @@ class MockRequestsSession(object):
     def mount(self, prefix, adapter):
         pass
 
+    def close(self) -> None:
+        pass
+
     @property
-    def verbosity(self):
+    def verbosity(self) -> int:
         return getattr(settings, 'SF_MOCK_VERBOSITY', 1)
 
 
