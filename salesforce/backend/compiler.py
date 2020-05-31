@@ -224,6 +224,9 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                     raise DatabaseError('NOWAIT is not supported on this database backend.')
                 result.append(self.connection.ops.for_update_sql(nowait=nowait))
 
+            if self.query.model and getattr(self.query.model._meta, 'sf_tooling_api_model', False):
+                assert self.query
+                result = [x.replace(self.query.model._meta.db_table + '.', '') for x in result]
             return ' '.join(result), tuple(params)
         finally:
             # Finally do cleanup - get rid of the joins we created above.

@@ -550,13 +550,15 @@ class Cursor(Generic[_TRow]):
     def close(self) -> None:
         self._clean()
 
-    def execute(self, soql: str, parameters: Optional[Iterable[Any]] = None, query_all: bool = False) -> None:
+    def execute(self, soql: str, parameters: Optional[Iterable[Any]] = None, query_all: bool = False,
+                tooling_api: bool = False) -> None:
         self._clean()
         parameters = parameters or []
         sqltype = soql.split(None, 1)[0].upper()
         if sqltype == 'SELECT':
-            self.execute_select(soql, parameters, query_all=query_all)
+            self.execute_select(soql, parameters, query_all=query_all, tooling_api=tooling_api)
         elif sqltype == 'EXPLAIN':
+            assert not tooling_api
             self.execute_explain(soql, parameters, query_all=query_all)
         else:
             # INSERT UPDATE DELETE EXPLAIN
@@ -639,9 +641,11 @@ class Cursor(Generic[_TRow]):
             self.query_more(self._next_records_url)
             self._chunk_offset = new_offset
 
-    def execute_select(self, soql: str, parameters: Iterable[Any], query_all: bool = False) -> None:
+    def execute_select(self, soql: str, parameters: Iterable[Any], query_all: bool = False,
+                       tooling_api: bool = False) -> None:
         processed_sql = str(soql) % tuple(arg_to_soql(x) for x in parameters)
-        service = 'query' if not query_all else 'queryAll'
+        service = '' if not tooling_api else 'tooling/'
+        service += 'query' if not query_all else 'queryAll'
 
         self.qquery = qquery = QQuery(soql)
         # TODO better description

@@ -71,11 +71,16 @@ class SalesforceModelBase(ModelBase):
         # pylint:disable=protected-access
         if name == '_meta':
             sf_custom = False
+            sf_tooling_api_model = False
             if hasattr(value.meta, 'custom'):
                 sf_custom = value.meta.custom
                 delattr(value.meta, 'custom')
+            if hasattr(value.meta, 'sf_tooling_api_model'):
+                sf_tooling_api_model = value.meta.sf_tooling_api_model
+                delattr(value.meta, 'sf_tooling_api_model')
             super(SalesforceModelBase, cls).add_to_class(name, value)  # type: ignore[misc] # noqa
             setattr(cls._meta, 'sf_custom', sf_custom)  # type: ignore[attr-defined] # noqa
+            setattr(cls._meta, 'sf_tooling_api_model', sf_tooling_api_model)  # type: ignore[attr-defined] # noqa
         else:
             if not TYPE_CHECKING:
                 if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck

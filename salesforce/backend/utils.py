@@ -277,7 +277,8 @@ class CursorWrapper(object):
         if soql != MIGRATIONS_QUERY_TO_BE_IGNORED:
             # normal query
             query_all = self.query and self.query.sf_params.query_all
-            self.cursor.execute(soql, args, query_all=query_all)
+            tooling_api = self.query and self.query.model._meta.sf_tooling_api_model
+            self.cursor.execute(soql, args, query_all=query_all, tooling_api=tooling_api)
         else:
             # Nothing queried about django_migrations to SFDC and immediately responded that
             # nothing about migration status is recorded in SFDC.
@@ -355,7 +356,33 @@ class CursorWrapper(object):
             assert len(cur.description) == 1 and cur.description[0][0] == 'Id'
             return [x[0] for x in cur]
 
+    def execute_tooling_update(self, query):
+        table = query.model._meta.db_table
+        post_data = extract_values(query)
+        pks = self.get_pks_from_query(query)
+        assert len(pks) == 1
+        pk = pks[0]
+        value_map = {qfield.db_column: value for qfield, _, value in query.values}
+        if 'Metadata' in value_map and 'FullName' in value_map and 'DurableId' in value_map:
+            ret = self.db.connection.handle_api_exceptions(
+                'PATCH',
+                'tooling/sobjects', table, value_map['DurableId'],
+                json={'Metadata': value_map['Metadata'], 'FullName': value_map['FullName']}
+            )
+        elif pk == '000000000000000AAA':
+            pks = value_map['DurableId']
+            post_data = dict(**{"attributes": {"type": query.model._meta.db_table}}, **post_data)
+            obj_url = self.db.connection.rest_api_url('tooling/sobjects', table, value_map['DurableId'], relative=True)
+            ret = self.db.connection.handle_api_exceptions('PATCH', obj_url, json=value_map)
+        else:
+            obj_url = self.db.connection.rest_api_url('tooling/sobjects', table, pk, relative=True)
+            ret = self.db.connection.handle_api_exceptions('PATCH', obj_url, json=post_data)
+        assert ret.status_code == 204
+        self.rowcount = 1
+
     def execute_update(self, query):
+        if query.model._meta.sf_tooling_api_model:
+            return self.execute_tooling_update(query)
         table = query.model._meta.db_table
         post_data = extract_values(query)
         pks = self.get_pks_from_query(query)
