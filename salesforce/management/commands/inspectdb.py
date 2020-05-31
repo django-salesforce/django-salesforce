@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from typing import Any, Container, Dict, List, Mapping, Tuple
+import argparse
 import re
 
 from django.core.management.commands.inspectdb import Command as InspectDBCommand
@@ -16,6 +17,11 @@ class Command(InspectDBCommand):
                             "from the name or 'custom'")
         parser.add_argument('--table-filter', action='store', dest='table_name_filter',
                             help='Regular expression that filters API Names of SF tables to introspect.')
+        parser.add_argument('--tooling-api', action='store_true',
+                            # help="Introspect metadata models in Tooling API (not standard tables)",
+                            help=argparse.SUPPRESS,  # hidden option
+                            )
+
 
     def handle(self, **options: Any) -> None:  # type: ignore[override] # noqa # it is incompatible in Django
         if isinstance(options['table_name_filter'], str):
@@ -23,7 +29,12 @@ class Command(InspectDBCommand):
         self.verbosity = int(options['verbosity'])          # pylint:disable=attribute-defined-outside-init
         self.connection = connections[options['database']]  # pylint:disable=attribute-defined-outside-init
         self.concise_db_column = options['concise_db_column']  # pylint:disable=attribute-defined-outside-init
+        self.tooling_api = options['tooling_api']
+
         if self.connection.vendor == 'salesforce':
+            connection = connections[options['database']]
+            connection.introspection.is_tooling_api = self.tooling_api
+
             self.db_module = 'salesforce'
             for line in self.handle_inspection(options):
                 line = line.replace(" Field renamed because it contained more than one '_' in a row.", "")
@@ -97,6 +108,9 @@ class Command(InspectDBCommand):
         # pylint:disable=arguments-differ,too-many-arguments,unused-argument
         meta = ["    class Meta(models.Model.Meta):",
                 "        db_table = '%s'" % table_name]
+        if self.tooling_api:
+            meta.append("        managed = False")
+            meta.append("        sf_tooling_api_model = True")
         if self.connection.vendor == 'salesforce':
             for line in self.connection.introspection.get_additional_meta(table_name):
                 meta.append("        " + line)

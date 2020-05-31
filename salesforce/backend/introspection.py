@@ -12,7 +12,7 @@ Salesforce introspection code.  (like django.db.backends.*.introspection)
 import logging
 import re
 from collections import OrderedDict, namedtuple
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from django.db.backends.base.introspection import (
     BaseDatabaseIntrospection, FieldInfo as BaseFieldInfo, TableInfo,
@@ -43,7 +43,6 @@ PROBLEMATIC_OBJECTS = [
     'LogoutEventStream',  # new in API 46.0 Summer '19
     'AsyncOperationEvent',  # new in API 46.0 Summer '19
     'AsyncOperationStatus',  # new in API 46.0 Summer '19
-    'DatasetExportEvent', 'VisibilityUpdateEvent',  # new in API 46.0 Summer '19 - missing 'Id'
     'FlowExecutionErrorEvent',  # new in API 47.0 Winter '20 - missing 'Id'
 ]
 
@@ -102,9 +101,15 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def __init__(self, conn: Any) -> None:
         BaseDatabaseIntrospection.__init__(self, conn)
+        self._table_names = set()  # type: Set[str]
         self._table_list_cache = None  # type: Optional[Dict[str, Any]]
         self._table_description_cache = {}  # type: Dict[str, Dict[str, Any]]
         self._converted_lead_status = None  # type: Optional[str]
+        self.is_tooling_api = False  # modified by other modules
+
+    @property
+    def sobjects_prefix(self) -> str:
+        return 'sobjects' if not self.is_tooling_api else 'tooling/sobjects'
 
     @property
     def table_list_cache(self) -> Dict[str, Any]:
@@ -112,25 +117,28 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             log.debug('Request API URL: GET sobjects')
             if not self.connection.connection:
                 self.connection.connect()
-            response = self.connection.connection.handle_api_exceptions('GET', 'sobjects/')
+            response = self.connection.connection.handle_api_exceptions('GET', self.sobjects_prefix + '/')
             # charset is detected from headers by requests package
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
             self._table_list_cache['sobjects'] = [
                 x for x in self._table_list_cache['sobjects']
                 if x['name'] not in PROBLEMATIC_OBJECTS and not x['name'].endswith('ChangeEvent')
             ]
+            self._table_names = {x['name'] for x in self._table_list_cache['sobjects']}
         return self._table_list_cache
 
     def table_description_cache(self, table: str) -> Dict[str, Any]:
         if table not in self._table_description_cache:
             log.debug('Request API URL: GET sobjects/%s/describe', table)
-            response = self.connection.connection.handle_api_exceptions('GET', 'sobjects', table, 'describe/')
+            response = self.connection.connection.handle_api_exceptions('GET', self.sobjects_prefix, table, 'describe/'
+                                                                        )
             self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
-            assert self._table_description_cache[table]['fields'][0]['type'] == 'id', (
-                "Invalid type of the first field in the table '{}'".format(table))
-            assert self._table_description_cache[table]['fields'][0]['name'] == 'Id', (
-                "Invalid name of the first field in the table '{}'".format(table))
-            del self._table_description_cache[table]['fields'][0]
+            field_list = self._table_description_cache[table]['fields']
+            # 'Id' field is sometimes not the first field in tooling metadata SObjects
+            id_field, = [x for x in field_list if x['name'] == 'Id']
+            assert id_field['type'] == 'id', (
+                "Invalid type of the field 'Id' in table '{}'".format(table))
+            del field_list[field_list.index(id_field)]
         return self._table_description_cache[table]
 
     def get_table_list(self, cursor: _Cursor) -> List[TableInfo]:
@@ -138,8 +146,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         result = [TableInfo(SfProtectName(x['name']), 't') for x in self.table_list_cache['sobjects']]
         return result
 
-    @staticmethod
-    def get_field_params(field: Dict[str, Any]) -> Dict[str, Any]:
+    def get_field_params(self, field: Dict[str, Any]) -> Dict[str, Any]:
         params = OrderedDict()
         if field['label'] and field['label'] != camel_case_to_spaces(re.sub('__c$', '', field['name'])).title():
             params['verbose_name'] = field['label']
@@ -161,9 +168,19 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         if field['picklistValues']:
             params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
             params['max_len'] = max(len(x['value']) for x in field['picklistValues'] if x['active'])
-        if field['type'] == 'reference' and not field['referenceTo']:
-            params['ref_comment'] = 'No Reference table'
+        if field['type'] == 'reference' and not self.references_to(field):
+            if not field['referenceTo']:
+                params['ref_comment'] = 'No Reference table'
+            else:
+                params['ref_comment'] = 'Invalid References: {}'.format(self.references_to(field, all=True))
         return params
+
+    def references_to(self, field: Dict[str, Any], all: bool = False) -> Optional[List[str]]:
+        if field['type'] != 'reference':
+            return None
+        reference_to_valid = [x for x in field['referenceTo'] if x in self._table_names]
+        reference_to_invalid = ['-{}'.format(x) for x in field['referenceTo'] if x not in self._table_names]
+        return reference_to_valid + reference_to_invalid if all else reference_to_valid
 
     def get_table_description(self, cursor: _Cursor, table_name: str) -> List[FieldInfo]:
         "Returns a description of the table, with the DB-API cursor.description interface."
@@ -171,7 +188,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         result = []
         for field in self.table_description_cache(table_name)['fields']:
             params = self.get_field_params(field)
-            if field['type'] == 'reference' and not field['referenceTo']:
+            if field['type'] == 'reference' and not self.references_to(field):
                 field['type'] = 'string'
             if field['calculatedFormula']:
                 # calculated formula field are without length in Salesforce 45 Spring '19,
@@ -225,20 +242,21 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         important_related_names = []
         fields_map = {}  # type: Dict[str, Dict[str, Any]]
         for _, field in enumerate(self.table_description_cache(table_name)['fields']):
-            if field['type'] == 'reference' and field['referenceTo']:
+            references_to = self.references_to(field)
+            if references_to:
                 params = OrderedDict()
-                reference_to_name = SfProtectName(field['referenceTo'][0])
                 relationship_order = field['relationshipOrder']
+                reference_to_name = SfProtectName(references_to[0])
                 if relationship_order is None:
                     relationship_tmp = set()
-                    for rel in field['referenceTo']:
+                    for rel in references_to:
                         for chld in self.table_description_cache(rel)['childRelationships']:
                             if chld['childSObject'] == table_name and chld['field'] == field['name']:
                                 relationship_tmp.add(chld['cascadeDelete'])
                     assert len(relationship_tmp) <= 1
                     if True in relationship_tmp:
                         relationship_order = '*'
-                params['refs'] = (field['referenceTo'], relationship_order)
+                params['refs'] = (self.references_to(field, all=True), relationship_order)
                 result[field['name']] = ('Id', reference_to_name)
                 reverse.setdefault(reference_to_name, []).append(field['name'])
                 params.update(self.get_field_params(field))
@@ -291,9 +309,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def get_additional_meta(self, table_name: str) -> List[str]:
         item = [x for x in self.table_list_cache['sobjects'] if x['name'] == table_name][0]
-        return ["verbose_name = '%s'" % item['label'],
-                "verbose_name_plural = '%s'" % item['labelPlural'],
-                "# keyPrefix = '%s'" % item['keyPrefix'],
+        return ["verbose_name = %r" % item['label'],
+                "verbose_name_plural = %r" % item['labelPlural'],
+                "# keyPrefix = %r" % item['keyPrefix'],
                 ]
 
     @property
