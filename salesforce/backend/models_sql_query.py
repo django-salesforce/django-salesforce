@@ -2,7 +2,7 @@
 Customized Query, RawQuery  (like django.db.models.sql.query)
 """
 import copy
-from typing import Any, cast, Generic, Optional, Tuple, Type, TypeVar
+from typing import Any, cast, Generic, Optional, Sequence, Tuple, Type, TypeVar
 from django.conf import settings
 from django.db.models import Count, Model
 from django.db.models.sql import Query, RawQuery, constants
@@ -62,7 +62,7 @@ class SalesforceQuery(Query, Generic[_T]):
         sql, params = self.sql_with_params()
         return sql % tuple(arg_to_soql(x) for x in params)
 
-    def sql_with_params(self) -> Tuple[str, Tuple[Any, ...]]:
+    def sql_with_params(self) -> Tuple[str, Sequence[Any]]:
         """
         Return the query as an SOQL string and the parameters for Salesforce.
 

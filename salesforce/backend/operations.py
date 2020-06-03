@@ -7,6 +7,7 @@
 """
 DatabaseOperations  (like salesforce.db.backends.*.operations)
 """
+from typing import Optional
 import itertools
 import warnings
 
@@ -80,9 +81,19 @@ class DatabaseOperations(BaseDatabaseOperations):
         def return_insert_id(self):
             return "", ()
 
-    # A method max_in_list_size(self) would be not a solution, because it is
-    # restricted by a maximal size of SOQL.
-    # Splitting to more (... IN ...) OR (... IN ...) does not help.
+    def max_in_list_size(self) -> Optional[int]:
+        # A non-zero return value of max_in_list_size() should be never used
+        # because it is useful only for Oracle and this form of splitting would
+        # cause only problems in Salesforce and no benefit:
+        #     WHERE (Id IN ('z0001',... 'z1000') OR ... (Id IN 'z5001',... 'z6000'))
+        return None
+
+    def max_name_length(self) -> Optional[int]:
+        # this can not be implemented correctly because:
+        # the maximum length of custom field is 40 and plus a suffix '__c' is added
+        # plus a possible namespace prefix of max length 15 plus two undercores '__'.
+        # The longest field name in some system table is 57
+        return 60  # 15 + 2 + 40 + 3
 
     def adapt_datefield_value(self, value):
         return value

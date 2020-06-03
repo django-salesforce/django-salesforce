@@ -59,6 +59,7 @@ class NotIn(lookups.In):
         return 'NOT IN %s' % rhs
 
     def split_parameter_list_as_sql(self, compiler, connection):
+        # this patch is a only for Oracle and never tested with it
         max_size = connection.ops.max_in_list_size()
         raise NotImplementedError("Lookup 'not_in' can't be used with lists longer then %d" % max_size)
 
