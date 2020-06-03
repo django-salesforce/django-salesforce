@@ -1,6 +1,6 @@
 #!/bin/bash
 if [[ "$SLOW_TESTS" = "on" ]]; then
-    MORE_TESTS="tests/inspectdb"
+    MORE_TESTS="tests/inspectdb tests/tooling"
 fi
 RET=0
 for x in tests/test_* $MORE_TESTS; do
