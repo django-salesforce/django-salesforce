@@ -157,6 +157,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             params['help_text'] = field['inlineHelpText']
         if field['picklistValues']:
             params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
+            params['max_len'] = max(len(x['value']) for x in field['picklistValues'] if x['active'])
         if field['type'] == 'reference' and not field['referenceTo']:
             params['ref_comment'] = 'No Reference table'
         return params
@@ -173,8 +174,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 # calculated formula field are without length in Salesforce 45 Spring '19,
                 # but Django requires a length, though the field is read only and never written
                 field['length'] = 1300
-            elif field['name'] == 'Field' and table_name == 'FieldPermissions':
-                field['length'] = 255
+            if 'max_len' in params:
+                if params['max_len'] > field['length']:
+                    field['length'] = params['max_len']
+                del params['max_len']
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
             result.append(FieldInfo(
