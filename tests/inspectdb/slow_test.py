@@ -34,7 +34,6 @@ sf = connections['salesforce']
 def run():
     start_name = sys.argv[1] if sys.argv[1:] else ''
     n_tables = n_read = n_no_data = n_read_errors = n_write = n_write_errors = 0
-    sf.cursor()  # this must connect manually  # TODO fix it automatically if reasonable
     for tab in sf.introspection.table_list_cache['sobjects']:
         if tab['retrieveable'] and not tab['name'].endswith('ChangeEvent') and not tab['name'] in (
                 # These require specific filters (descried in their error messages)

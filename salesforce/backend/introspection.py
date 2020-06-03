@@ -109,6 +109,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
     def table_list_cache(self) -> Dict[str, Any]:
         if self._table_list_cache is None:
             log.debug('Request API URL: GET sobjects')
+            if not self.connection.connection:
+                self.connection.connect()
             response = self.connection.connection.handle_api_exceptions('GET', 'sobjects/')
             # charset is detected from headers by requests package
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
