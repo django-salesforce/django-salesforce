@@ -139,8 +139,6 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         # However we do not want to get rid of stuff done in pre_sql_setup(),
         # as the pre_sql_setup will modify query state in a way that forbids
         # another run of it.
-        if with_limits and self.query.low_mark == self.query.high_mark:
-            return '', ()
         refcounts_before = self.query.alias_refcount.copy()
         try:
             extra_select, order_by, group_by = self.pre_sql_setup()
