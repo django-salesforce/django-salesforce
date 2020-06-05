@@ -67,7 +67,7 @@ class SalesforceModelBase(ModelBase):
             result._meta.original_attrs['db_table'] = result._meta.db_table
         return result
 
-    def add_to_class(cls, name, value):  # type: ignore[no-untyped-def] # noqa
+    def add_to_class(cls, name: str, value: Any) -> Any:
         # pylint:disable=protected-access
         if name == '_meta':
             sf_custom = False
@@ -82,15 +82,14 @@ class SalesforceModelBase(ModelBase):
             setattr(cls._meta, 'sf_custom', sf_custom)  # type: ignore[attr-defined] # noqa
             setattr(cls._meta, 'sf_tooling_api_model', sf_tooling_api_model)  # type: ignore[attr-defined] # noqa
         else:
-            if not TYPE_CHECKING:
-                if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
-                    # this is for better migrations because: obj._constructor_args = (args, kwargs)
-                    _constructor_args = value._constructor_args
-                    value = models.manager.Manager()
-                    # value = manager.SalesforceManager()
-                    value._constructor_args = _constructor_args
+            if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
+                # this is for better migrations because: obj._constructor_args = (args, kwargs)
+                _constructor_args = value._constructor_args
+                value = models.manager.Manager()
+                # value = manager.SalesforceManager()
+                value._constructor_args = _constructor_args
 
-                super(SalesforceModelBase, cls).add_to_class(name, value)
+            super(SalesforceModelBase, cls).add_to_class(name, value)  # type: ignore[misc] # noqa
 
 
 if TYPE_CHECKING:
