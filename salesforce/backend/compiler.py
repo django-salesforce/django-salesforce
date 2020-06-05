@@ -8,31 +8,40 @@
 """
 Generate queries using the SOQL dialect.  (like django.db.models.sql.compiler and  django.db.models.sql.where)
 """
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, TYPE_CHECKING
 import re
 from django.core.exceptions import EmptyResultSet
 from django.db import NotSupportedError
-from django.db.models.sql import compiler as sql_compiler, where as sql_where, constants
+from django.db.models.sql import compiler as sql_compiler, where as sql_where, constants, datastructures
 from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # required for activation of lookups
-from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
+from salesforce.backend import DJANGO_20_PLUS, DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
 from salesforce.dbapi.driver import DatabaseError
-
+if TYPE_CHECKING:
+    import salesforce.backend.base
 # pylint:no-else-return,too-many-branches,too-many-locals
+
+AliasMapItems = List[Tuple[
+    Optional[str],
+    str,
+    Optional[Tuple[Tuple[str, str], ...]],
+    str
+]]
 
 
 class SQLCompiler(sql_compiler.SQLCompiler):
     """
     A subclass of the default SQL compiler for the SOQL dialect.
     """
-    soql_trans = None
+    soql_trans = None  # type: Optional[Dict[str, str]]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super(SQLCompiler, self).__init__(*args, **kwargs)
-        self.root_aliases = []
+        self.root_aliases = []  # type: List[str]
 
-    def get_from_clause(self):
+    def get_from_clause(self) -> Tuple[List[str], List[Any]]:
         """
         Return the FROM clause, converted the SOQL dialect.
 
@@ -40,7 +49,8 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         child-to-parent relationships queries.
         """
         self.query_topology()
-        if len(self.root_aliases) == 1:
+        assert self.soql_trans
+        if self.root_aliases and len(self.root_aliases) == 1:
             root_table = self.soql_trans[self.root_aliases[0]]
         else:
             sql_items, params = super(SQLCompiler, self).get_from_clause()
@@ -50,7 +60,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             assert len(sql_items) == 1 and self.soql_trans.get(alias) == root_table, msg
         return [root_table], []
 
-    def quote_name_unless_alias(self, name):
+    def quote_name_unless_alias(self, name: str) -> str:
         """
         A wrapper around connection.ops.quote_name that doesn't quote aliases
         for table names. Mostly used during the ORDER BY clause.
@@ -60,8 +70,11 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         return r
 
     # patched and simplified the parend method  # pylint:disable=no-else-return
-    def execute_sql(self, result_type=constants.MULTI, chunked_fetch=False,
-                    chunk_size=constants.GET_ITERATOR_CHUNK_SIZE):
+    def execute_sql(self,
+                    result_type: str = constants.MULTI,
+                    chunked_fetch: bool = False,
+                    chunk_size: int = constants.GET_ITERATOR_CHUNK_SIZE
+                    ) -> Any:
         """
         Run the query against the database and returns the result(s). The
         return value is a single data item if result_type is SINGLE, or an
@@ -96,7 +109,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
 
         # The MULTI case.
         result = iter(lambda: cursor.fetchmany(chunk_size),
-                      self.connection.features.empty_fetchmany_value)
+                      self.connection.features.empty_fetchmany_value)  # type: Iterable[Any]
         if not chunked_fetch and not self.connection.features.can_use_chunked_reads:
             # If we are using non-chunked reads, we return the same data
             # structure as normally, but ensure it is all read into memory
@@ -105,7 +118,9 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         return result
         # pylint:enable=no-else-return
 
-    def as_sql(self, with_limits=True, with_col_aliases=False):  # pylint:disable=arguments-differ
+    def as_sql(self, with_limits=True, with_col_aliases=False
+               ) -> Tuple[str, Sequence[Any]]:  # pylint:disable=arguments-differ
+
         # pylint:disable=too-many-locals,too-many-branches,too-many-statements
         """
         Creates the SQL for this query. Returns the SQL string and list of
@@ -114,6 +129,11 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         If 'with_limits' is False, any limit/offset information is not included
         in the query.
         """
+        # parameter "with_col_aliases" can be a connection instead of bool in Django 1.11
+        # (this unexpected type is not before and not after Django 1.11)
+        if not isinstance(with_col_aliases, bool):
+            assert isinstance(with_col_aliases, salesforce.backend.base.DatabaseWrapper)
+            assert not DJANGO_20_PLUS
         # After executing the query, we must get rid of any joins the query
         # setup created. So, take note of alias counts before the query ran.
         # However we do not want to get rid of stuff done in pre_sql_setup(),
@@ -130,7 +150,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             if DJANGO_21_PLUS:
                 distinct_fields, distinct_params = self.get_distinct()
             else:
-                distinct_fields = self.get_distinct()
+                distinct_fields = self.get_distinct()  # type: ignore[assignment] # noqa
 
             # This must come after 'select', 'ordering', and 'distinct' -- see
             # docstring of get_from_clause() for details.
@@ -159,6 +179,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                     # fixed by removing 'AS'
                     s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
                 elif with_col_aliases and not isinstance(with_col_aliases, salesforce.backend.base.DatabaseWrapper):
+                    # the check of type "with_col_aliases" is important with ".filter(id__in=queryset)" in Django 1.11
                     s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
                     col_idx += 1
                 if soql_trans and re.match(r'^\w+\.\w+$', s_sql):
@@ -232,7 +253,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             # Finally do cleanup - get rid of the joins we created above.
             self.query.reset_refcounts(refcounts_before)
 
-    def query_topology(self, _alias_map_items=None):
+    def query_topology(self, _alias_map_items: Optional[AliasMapItems] = None) -> Dict[str, str]:
         # pylint:disable=too-many-locals,too-many-branches
         # SOQL for SFDC requires:
         # - multiple (N-1) relations between (N) tables are possible
@@ -245,24 +266,28 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             return self.soql_trans
         if not _alias_map_items and not self.query.alias_map:
             # empty alias_map is possible due to field expr in Django 1.8
-            return []
+            return {}
         # Unified interface:
         #   alias_map_items = [(lhs, table, join_cols_, rhs),...]
         query = self.query
         if _alias_map_items:
             alias_map_items = _alias_map_items
         else:
-            alias_map_items = [(getattr(v, 'parent_alias', None), v.table_name,
-                                getattr(v, 'join_cols', None), v.table_alias
-                                ) for v in query.alias_map.values()
-                               ]
+            alias_map_items = []
+            for v in query.alias_map.values():
+                assert v.table_alias
+                if isinstance(v, datastructures.Join):
+                    alias_map_items.append((v.parent_alias, v.table_name, v.join_cols, v.table_alias))
+                else:
+                    alias_map_items.append((None, v.table_name, None, v.table_alias))
         # Analyze
-        alias2table = {}
+        alias2table = {}  # Dict[str, str]
         side_l, side_r = set(), set()
         for (lhs, table, join_cols_, rhs) in alias_map_items:
             alias2table[rhs] = table
             if lhs is not None:
-                (join_cols,) = join_cols_
+                assert join_cols_
+                (join_cols,) = join_cols_  # length == 1 because primary key is one field
                 assert len(join_cols) == 2
                 # swap left-right if necessary. The left should be the top.
                 if join_cols[0] == 'Id':
@@ -286,6 +311,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             new_work = set()
             for (lhs, table, join_cols_, rhs) in alias_map_items:
                 if lhs is not None:
+                    assert join_cols_
                     (join_cols,) = join_cols_
                     if join_cols[0] == 'Id':
                         # swap lhs rhs
@@ -310,7 +336,7 @@ class SalesforceWhereNode(sql_where.WhereNode):
 
     # patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.10, 1.11, 2.0, 2.1
     # pylint:disable=no-else-return,no-else-raise,too-many-branches,too-many-locals,unused-argument
-    def as_salesforce(self, compiler, connection):
+    def as_salesforce(self, compiler: sql_compiler.SQLCompiler, connection) -> Tuple[str, List[Any]]:
         """
         Return the SQL version of the where clause and the value to be
         substituted in. Return '', [] if this node matches everything,
@@ -329,7 +355,7 @@ class SalesforceWhereNode(sql_where.WhereNode):
         # *** patch 1 end
 
         result = []
-        result_params = []
+        result_params = []  # type: List[Any]
         if self.connector == AND:
             full_needed, empty_needed = len(self.children), 1
         else:
