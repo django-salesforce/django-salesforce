@@ -1160,6 +1160,10 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         qs = Contact.objects.filter(pk__in=4750 * [contact.pk])
         self.assertEqual(list(qs.values_list('pk', flat=True)), [contact.pk])
 
+    def test_empty_slice(self):
+        """Test queryset with empty slice - if high/low limits equals"""
+        self.assertEqual(len(Contact.objects.all()[1:1]), 0)
+
 # ============= Tests that need setUp Lead ==================
 
 
