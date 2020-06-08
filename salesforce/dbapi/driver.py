@@ -30,7 +30,7 @@ import requests
 from requests.adapters import HTTPAdapter
 
 import salesforce
-from salesforce.auth import SalesforcePasswordAuth, SalesforceAuth
+from salesforce.auth import SalesforceAuth
 from salesforce.dbapi import get_max_retries
 from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
@@ -131,6 +131,8 @@ class RawConnection:
         self.debug_verbs = None      # type: Optional[List[str]]
         self.composite_type = 'sobject-collections'  # 'sobject-collections' or 'composite'
 
+        self.sf_auth = SalesforceAuth.create_subclass_instance(db_alias=self.alias,
+                                                               settings_dict=self.settings_dict)
         # The SFDC database is connected as late as possible if only tests
         # are running. Some tests don't require a connection.
         if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):  # TODO don't use argv
@@ -184,17 +186,16 @@ class RawConnection:
         """Authenticate and get the name of assigned SFDC data server"""
         with connect_lock:
             if self._sf_session is None:
+                auth_data = self.sf_auth.authenticate()
+                sf_instance_url = auth_data.get('instance_url')
                 sf_session = SfSession()
-                # TODO configurable class Salesforce***Auth
-                sf_session.auth = SalesforcePasswordAuth(db_alias=self.alias,
-                                                         settings_dict=self.settings_dict)
-                sf_instance_url = sf_session.auth.instance_url
-                if sf_instance_url not in sf_session.adapters:
+                sf_session.auth = self.sf_auth
+                if sf_instance_url and sf_instance_url not in sf_session.adapters:
                     # a repeated mount to the same prefix would cause a warning about unclosed SSL socket
                     sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
                     sf_session.mount(sf_instance_url, sf_requests_adapter)
                 # Additional headers work, but the same are added automatically by "requests' package.
-                # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'} # TODO
+                # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
                 self._sf_session = sf_session
 
     def rest_api_url(self, *url_parts_: str, **kwargs: Any) -> str:
@@ -229,7 +230,7 @@ class RawConnection:
         api_ver = api_ver if api_ver is not None else self.api_ver
         assert not kwargs
         if not relative:
-            base = [self.sf_session.auth.instance_url]
+            base = [self.sf_auth.instance_url]
         else:
             base = ['']
         if url_parts and url_parts[0].startswith('/'):
@@ -288,11 +289,12 @@ class RawConnection:
             response = session.request(method, url, **kwargs_in)
         except requests.exceptions.Timeout:
             raise SalesforceError("Timeout, URL=%s" % url)
-        if response.status_code == 401:  # Unauthorized
+        if (response.status_code == 401                      # Unauthorized
+                and 'json' in response.headers['content-type']
+                and response.json()[0]['errorCode'] == 'INVALID_SESSION_ID'):
             # Reauthenticate and retry (expired or invalid session ID or OAuth)
-            if ('json' in response.headers['content-type']
-                    and response.json()[0]['errorCode'] == 'INVALID_SESSION_ID'):
-                token = session.auth.reauthenticate()
+            token = session.auth.reauthenticate()
+            if token:
                 if 'headers' in kwargs:
                     kwargs['headers'].update(Authorization='OAuth %s' % token)
                 try:

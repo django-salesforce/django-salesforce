@@ -261,9 +261,9 @@ class MockTestCase(SimpleTestCase):
                 connection.make_session()
         connection = connection.connection
         self.sf_connection = connection
-        self.save_session_auth = connection._sf_session  # , connection._sf_auth
+        self.save_session_auth = connection._sf_session, connection.sf_auth
         connection._sf_session = MockRequestsSession(testcase=self, old_session=connection._sf_session)
-        # connection._sf_auth = connection._sf_session.auth
+        connection.sf_auth = connection._sf_session.auth
 
         self.save_api_version = connection._api_version
         connection._api_version = getattr(self, 'api_version', salesforce.API_VERSION)
@@ -289,8 +289,7 @@ class MockTestCase(SimpleTestCase):
         session = connection._sf_session  # pylint:disable=protected-access
         if ok:
             self.assertEqual(session.index, len(session.expected), "Not all expected requests has been used")
-        # connection._sf_session, connection._sf_auth = self.save_session_auth
-        connection._sf_session = self.save_session_auth  # pylint:disable=protected-access
+        connection._sf_session, connection.sf_auth = self.save_session_auth  # pylint:disable=protected-access
         connection._api_version = self.save_api_version
         driver.time_statistics.expiration = driver.TimeStatistics().expiration
         super(MockTestCase, self).tearDown()
