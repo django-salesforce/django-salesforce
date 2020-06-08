@@ -1,5 +1,6 @@
 # All error types described in DB API 2 are implemented the same way as in
 # Django (1.11 to 3.0)., otherwise some exceptions are not correctly reported in it.
+from importlib import import_module
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Set, Type, Union
 import json
 import requests  # noqa
@@ -201,3 +202,24 @@ def warn_sf(messages: Union[str, List[str]],
             ) -> None:
     """Issue a warning SalesforceWarning, with message combined from message and data from SFDC response"""
     warnings.warn(klass(messages, response, verbs), stacklevel=2)
+
+
+def import_string(dotted_path: str) -> Any:
+    # copied from django.utils.module_loading
+    """
+    Import a dotted module path and return the attribute/class designated by the
+    last name in the path. Raise ImportError if the import failed.
+    """
+    try:
+        module_path, class_name = dotted_path.rsplit('.', 1)
+    except ValueError as err:
+        raise ImportError("%s doesn't look like a module path" % dotted_path) from err
+
+    module = import_module(module_path)
+
+    try:
+        return getattr(module, class_name)
+    except AttributeError as err:
+        raise ImportError('Module "%s" does not define a "%s" attribute/class' % (
+            module_path, class_name)
+        ) from err

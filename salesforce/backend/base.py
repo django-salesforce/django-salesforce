@@ -9,10 +9,8 @@
 Salesforce database backend for Django.  (like django,db.backends.*.base)
 """
 
-from urllib.parse import urlparse
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
-from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.db.backends.base.base import BaseDatabaseWrapper
 
@@ -80,8 +78,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
         super(DatabaseWrapper, self).__init__(settings_dict, alias)
 
-        self.validate_settings(settings_dict)
-
         self._is_sandbox = None  # type: Optional[bool]
 
     @property
@@ -99,7 +95,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     @async_unsafe
     def get_new_connection(self, conn_params: Dict[str, Any]) -> Database.RawConnection:
-        # only simulated a connection interface without connecting really
+        # simulated only a connection interface without connecting really
         return Database.connect(settings_dict=conn_params, alias=self.alias)
 
     def init_connection_state(self):
@@ -109,20 +105,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         # SF REST API uses autocommit, but until rollback it is not a
         # serious problem to ignore autocommit off
         pass
-
-    def validate_settings(self, settings_dict: Dict[str, Any]) -> None:
-        # pylint:disable=
-        for k in ('ENGINE', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD', 'HOST'):
-            if k not in settings_dict:
-                raise ImproperlyConfigured("Required '%s' key missing from '%s' database settings." % (k, self.alias))
-            if not settings_dict[k]:
-                raise ImproperlyConfigured("'%s' key is the empty string in '%s' database settings." % (k, self.alias))
-
-        try:
-            urlparse(settings_dict['HOST'])
-        except Exception as exc:
-            raise ImproperlyConfigured("'HOST' key in '%s' database settings should be a valid URL: %s" %
-                                       (self.alias, exc))
 
     @async_unsafe
     def cursor(self) -> Any:
