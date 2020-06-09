@@ -10,6 +10,7 @@ Salesforce database backend for Django.  (like django,db.backends.*.base)
 """
 
 from urllib.parse import urlparse
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
@@ -27,6 +28,10 @@ from salesforce.backend.utils import CursorWrapper, async_unsafe
 from salesforce.dbapi import driver as Database
 from salesforce.dbapi.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA pylint:disable=unused-import
 
+if TYPE_CHECKING:
+    from django.db.backends.base.base import ProtoCursor
+
+
 __all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)
 
 
@@ -35,7 +40,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     Core class that provides all DB support.
     """
     # pylint:disable=abstract-method,too-many-instance-attributes
-    #     undefined abstract methods: _start_transaction_under_autocommit, create_cursor, is_usable
+    #     undefined abstract methods: _start_transaction_under_autocommit, is_usable
 
     vendor = 'salesforce'
     display_name = 'Salesforce'
@@ -77,22 +82,23 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
         self.validate_settings(settings_dict)
 
-        self._is_sandbox = None
+        self._is_sandbox = None  # type: Optional[bool]
 
     @property
-    def sf_session(self):
+    def sf_session(self) -> Database.SfSession:
         if self.connection is None:
             self.connect()
+            assert self.connection
         return self.connection.sf_session
 
-    def get_connection_params(self):
+    def get_connection_params(self) -> Dict[str, Any]:
         settings_dict = self.settings_dict
         params = settings_dict.copy()
         params.update(settings_dict['OPTIONS'])
         return params
 
     @async_unsafe
-    def get_new_connection(self, conn_params):
+    def get_new_connection(self, conn_params: Dict[str, Any]) -> Database.RawConnection:
         # only simulated a connection interface without connecting really
         return Database.connect(settings_dict=conn_params, alias=self.alias)
 
@@ -104,7 +110,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         # serious problem to ignore autocommit off
         pass
 
-    def validate_settings(self, settings_dict):
+    def validate_settings(self, settings_dict: Dict[str, Any]) -> None:
         # pylint:disable=
         for k in ('ENGINE', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD', 'HOST'):
             if k not in settings_dict:
@@ -119,17 +125,17 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                                        (self.alias, exc))
 
     @async_unsafe
-    def cursor(self):
+    def cursor(self) -> Any:
         """
         Return a fake cursor for accessing the Salesforce API with SOQL.
         """
         return CursorWrapper(self)
 
-    def create_cursor(self, name=None):
+    def create_cursor(self, name: Optional[str] = None) -> 'ProtoCursor':
         row_type = {'dict': dict, 'list': list, None: None}[name]
         return self.connection.cursor(row_type=row_type)
 
-    def quote_name(self, name):
+    def quote_name(self, name: str) -> str:
         """
         Do not quote column and table names in the SOQL dialect.
         """
@@ -137,13 +143,13 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         return name
 
     @property
-    def is_sandbox(self):
+    def is_sandbox(self) -> bool:
         if self._is_sandbox is None:
             cur = self.cursor()
             cur.execute("SELECT IsSandbox FROM Organization")
             self._is_sandbox = cur.fetchone()[0]
         return self._is_sandbox
 
-    def close(self):
+    def close(self) -> None:
         if self.connection:
             self.connection.close()
