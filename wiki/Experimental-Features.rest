@@ -2,7 +2,7 @@ Models template
 ---------------
 It is useful to can update the latest field by introspection and still to restrict which fields are in the mode.
 One possible solution are "models template". It is a models file from introspection by ``inspectdb`` where the line ``from salesforce import models`` is replaced by ``from salesforce import models_template as models`` and that file is usually renamed to ``models_template.py``. Then a very simple ``models.py`` can be created. ::
-
+``` python
     from salesforce import models
     from . import models_template
 
@@ -15,7 +15,7 @@ One possible solution are "models template". It is a models file from introspect
                 '-last_.*',
                 '.*'
             ]
-
+```
 This will create a model Organization with the field 'last_modified_date' and all fields except other fields that
 start with string "last\_" like "last_modified_by_id" or "last_viewed_date" etc. The patterns must match from the beginning to the end of field name and therefore a wild card at the end must be explicit ``.*``. All patterns that starts with minus will disable the pattern and stop the search. A very short example is in ``salesforce/testrunner/example/models.py`` and a more complete example with a full models template is in ``tests/inspectdb/dependent_model/`` directory.
 The line ``dynamic_field_patterns = ...`` can be used also as a hotfix to add some new fields without writing.
@@ -23,65 +23,80 @@ The line ``dynamic_field_patterns = ...`` can be used also as a hotfix to add so
 
 Configurable authentication/authorization methods
 -------------------------------------------------
-The same user can get a token for access restricted for different scopes. It is configured in the control panel and selected by client_id (CONSUMER_KEY in this package). The necessary selected scopes are "api" or "full". There is currently no known difference between these scopes for django-salesforce, only by the user and all authorization is done on the Salesforce side. Therefore the term "authorization" is used here and "authentication" would be also correct.
+The authentication method can be configured in connection settings by an ``"AUTH"`` parameter.
+
+The same user can get a token for access restricted for different scopes. It is configured in the control panel and selected by client_id (CONSUMER_KEY in this package). The necessary selected scopes are "api" or "full". There is currently no known difference between these scopes for django-salesforce, only by the user. All authorization is done on the Salesforce side. Therefore the term "authentication" is used here also "authorization".
 
 Username and Password (default method)
 ......................................
-``salesforcce.auth.SalesforcePasswordAuth`` It is described in README.
+``"AUTH": "salesforcce.auth.SalesforcePasswordAuth"`` It is described in README.
 The original use-case for django-salesforce assumed use of a single set of credentials with read-write access to all necessary objects. It requires the necessary CONSUMER_KEY and CONSUMER_SECRET and frequently also the security token appended to the PASSWORD.
 
-Authentication by a token from Force.com CLI
-............................................
-``salesforcce.auth.ForceComCliAuth`` The open source command-line development tool `Force.com CLI <http://force-cli.herokuapp.com/>`__ is very useful e.g. for extending the database schema. It also saves the access tokens to the user profile. These tokens expire after two hours of inactivity or after a shorter expiration time configured in the control panel. This is much better than to save a huge amount of passwords and other security sensitive information if more sandboxes and production instances are temporarily used with different user profiles. It is unpleasant, if the passwords are not deleted before a backup or if an obsoleted password or security token is left in settings in some virtual environment and it has caused a locked account temporarily, if a strict password policy is configured in the control panel. The administrator profile access is usually necessary only for a short time. Example of database settings::
-
+Authentication by a token from Salesforce CLI SFDX
+..................................................
+``salesforcce.auth.ForceComCliAuth`` The open source command-line development tool `Salesforce CLI <https://developer.salesforce.com/tools/sfdxcli>`__ that is very useful e.g. for extending the database schema, also saves encrypted tokens to its user profiles. Example of database settings::
+``` python
  'salesforce': {
      'ENGINE': 'salesforce.backend',
-     'AUTH': 'salesforce.auth.ForceComCliAuth',
      'USER': 'me@email.example.com',
+     'AUTH': 'salesforce.auth.SfdxOrgAuth',  # Take the auth data from the user connected to SFDX
  }
+```
+It the user is logged out then a an exception is raised and a ``sfdc`` command is printed to the console how to login manually.
 
+This is much better than to save more of passwords in more places and invalidate expired security tokens regularly. An obsoleted password or security token can cause a locked account temporarily soon, if a strict password policy is configured in the control panel. Administrator permissions are necessary only for a short time.
 
-Dynamic authorization
-.....................
-It's now possible to write applications that use OAuth to interact with a Salesforce
+The variants with Web Login never raise exception and display the expected username on the console and infinitely wait for login by web.:
+
+``` python
+     {...  # Take the auth from the user connected to SFDX or by web login if it expired
+     'AUTH': 'salesforce.auth.SfdxOrgWebAuth',
+     'HOST': 'https://test.salesforce.com'}
+```
+``` python
+     {...  # Web Login by SFDX at every run
+     'AUTH': 'salesforce.auth.SfdxWebAuth',
+     'HOST': 'https://test.salesforce.com'}
+```
+
+Dynamic authentication
+......................
+``"AUTH": "salesforcce.auth.DynamicAuth"`` It's possible to write applications that use OAuth to interact with a Salesforce
 instance's data on your end user's behalf. You simply need to know or request the
 `Access Token <https://www.salesforce.com/us/developer/docs/api_rest/Content/quickstart_oauth.htm>`__
-for the user in question and you can start and terminate the dynamic authorization. 
-It can be combined with any type of static authentication, that is valid before the start and after the end of dynamic authentication this way, probably by
+for the user in question and you can start and terminate the dynamic authentication probably by
 creating a Django middleware component. Then at the beginning of each request::
 
    from django.db import connections
+
    # After you get the access token for the user in some way
    # authenticate to SFDC with
-   connections['salesforce'].sf_session.auth.dynamic_start(access_token)
-
-   # or to override the `instance_url` on a per-request basis
    connections['salesforce'].sf_session.auth.dynamic_start(access_token, instance_url)
+
+Connections up to 9 last used salesforce sites remain open by default and you can fast switch between them without opening a new connection.
 
 Make sure to purge the access token at end of request::
 
    connections['salesforce'].sf_session.auth.dynamic_end()
 
-
-In this situation, if you don't need a static authorization at all, you can use only the
+In this situation, if you don't need a static authentication at all, you can use only the
 ``DynamicAuth`` replacement instead and to configure your ``DATABASES`` setting as follows::
+```
+'salesforce': {
+    'ENGINE': 'salesforce.backend', 
+    'AUTH': 'salesforcce.auth.DynamicAuth',
+}
+```
 
- 'salesforce': {
-     'ENGINE': 'salesforce.backend',
-     'AUTH': 'salesforce.auth.DynamicAuth',
-     # optional if "instance_url" is a part of "dynamic_start" call
-     'HOST': 'https://your-site.salesforce.com',
- }
+A production web server usually doesn't require a static account, because it is not required for ``runserver``, neither for ``migrate`` of a default non-salesforce database.
 
-A production web server usually doesn't require a static account, because it is not required for ``runserver`` and for ``migrate`` of the default non-salesforce database.
+Additionally a static authenticated SFDC connection combined with dynamic can be specified on a development machine with ``AUTH='salesforce.auth.PasswordAndDynamicAuth'``, because it is required for ``inspectdb`` and ``makemigrations`` commands. It uses everything from the password auth. As the ``dynamic_start()`` begins, it continues like the static auth was never present.
 
-Additionally a static SFDC connection (``USER`` and ``PASSWORD``) should be specified on a development machine, because it is required for ``inspectdb`` and ``makemigrations`` commands. The URL of the data server is good enough as ``HOST`` also for login and it should not be replaced by "https://login.salesforce.com" or "test.salesforce.com".
-
-An example is `Canvas Signed Request Authentication <https://developer.salesforce.com/docs/atlas.en-us.platform_connect.meta/platform_connect/canvas_app_signed_req_authentication.htm>`__ that is out of this scope. That allows to insert a frame related to the object displayed or edited on Salesforce web instance, restricted by permissions of the current user.
+Another example is `Canvas Signed Request Authentication <https://developer.salesforce.com/docs/atlas.en-us.platform_connect.meta/platform_connect/canvas_app_signed_req_authentication.htm>`__ that is out of this scope. That allows to insert a frame related to the object displayed or edited on Salesforce web instance, restricted by permissions of the current user.
 
 Customized Auth
 ...............
-Many auth classes are so simple that they can be easily extended by inheritance. Only ``authenticate()`` method, ``required_fields`` attribute and maybe ``can_reauthenticate=True`` need to be modified.
+Many auth classes are so simple that they can be easily extended by inheritance from some parent class. Only ``authenticate()`` method and ``required_fields`` need to be modified. Especially if an old expired token can appear in DynamicAuth then a custom authentication class is necessary that implements a ``reauthenticate()`` method e.g. as a callback to user.
 
 
 Django-Admin Support

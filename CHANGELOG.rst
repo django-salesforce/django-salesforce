@@ -14,6 +14,24 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
+[1.1] Unpublished
+-----------------
+* Fix: Allow SOQL query up to 100000 characters, fixed #164 
+* Add: Support for custom authentication modules configurable by
+  ``settings.DATABASES['salesforce']['AUTH']``
+* Add: Authentication by Salesforce CLI SFDX application for developers, e.g.
+  'salesforce.auth.SfdxOrgWebAuth'
+* Fix: Easier dynamic authentication. It requires an explicit setting now:
+  ``"salesforce": {... "AUTH": "salesforce.auth.DynamicAuth" ...}``
+* Add: Configurable API_VERSION by settings.DATABASES['salesforce']['API_VERSION']
+* Add: A method .sf() on querysets and managers to can pass additional parameter
+  e.g. all_or_none=True or edge_updates=True to bulk_create() and update() methods.
+* Fix: Fixed long delay in application after unstable nework connection #267
+* Fix: Queryset with empty slice e.g. queryset[100:100]
+* Fix: Fix "max_length" in inspectdb for Choice Fields, because it is ignored
+  by SFDC, but important for Django.
+
+
 [1.0] 2020-05-07
 ----------------
 * Remove: Support for Django 1.10
@@ -21,18 +39,18 @@ experimental.
 * Add: Support for Python 3.9 (alpha 5)
 * Add: Preliminary support for Django 3.1-dev (development snaphot 2020-04-21)
 * Fix: Fixed all hidden deprecation warnings. (related removed old versions)
-* Fix: .annotate() method can use GROUP BY if Django >= 2.1
-       example queryset.order_by().values('account_id').annotate(cnt=Count('id'))
-* Fix: DefaultedOnCreate() and DEFAULTED_ON_CREATE is now transparent for
-       other code. It has a surrogate normal value and it is never saved #213
+* Fix: ``.annotate()`` method can use GROUP BY if Django >= 2.1
+  example queryset.order_by().values('account_id').annotate(cnt=Count('id'))
+* Fix: ``DefaultedOnCreate()`` and DEFAULTED_ON_CREATE is now transparent for
+  other code. It has a surrogate normal value and it is never saved #213
 * Add: Warning if a value DEFAULTED_ON_CREATE is tried to be saved again without
-       refreshing the real value.
+  refreshing the real value.
 * Fix: Support for Django Debug Toolbar - including EXPLAIN commend
 * Fix: Consistent output of inspectdb with db_column on every field.
-       The old behavior with ``custom=`` parameter and minimalistic db_column
-       can be turn on by ``--concise-db-column`` option. #250
+  The old behavior with ``custom=`` parameter and minimalistic db_column
+  can be turn on by ``--concise-db-column`` option. #250
 * Fix: Export attributes "verbose_name", "help_text" and "default=DEFAULTED_ON_CREATE"
-       also for ForeignKey by inspectdb.
+  also for ForeignKey by inspectdb.
 * Fix: Not to export DEFAULTED_ON_CREATE excessively for not createable fields.
 * Fix: Error handling in bulk delete()
 * Fix: SomeModel.objects.all().delete()
@@ -40,17 +58,17 @@ experimental.
 * Fix: Accept a manually added AutoField in models.
 * Fix: Close correctly all SSL sockets before dropped. (minor)
 * Fix: Lazy test helper fixed for Python >= 3.8 (lazy: exception can be tested later
-       then the fail was detected. It uses two tracebacks.
-       e.g. ``with lazy_assert_n_requests(n)``: check that the optimal number
-       of requests was used if everything critical was OK and show the first
-       suboptimal command-line.)
+  then the fail was detected. It uses two tracebacks.
+  e.g. ``with lazy_assert_n_requests(n)``: check that the optimal number
+  of requests was used if everything critical was OK and show the first
+  suboptimal command-line.)
 * Add: Bulk update limited to 200 objects: bulk_update_small()
 * Add: Static typing by Mypy. Can validate user code that correspondd to the user data model.
-        with SalesforceModel (requires also installed django-salesforce-stubs)
+  with SalesforceModel (requires also installed django-salesforce-stubs)
 * Update: Salesforce 48.0 Spring '20 (no fix)
 * Add: Raw cursor with fields dict: ``connection.cursor(name='dict')``
 * Add: Internal module mocksf is used in tests/debugging for record or replay of
-       raw Salesforce requests/responses.
+  raw Salesforce requests/responses.
 
 
 [0.9] 2019-11-04
