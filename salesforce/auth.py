@@ -11,11 +11,13 @@ oauth login support for the Salesforce API
 All data are ascii str.
 """
 
+from subprocess import PIPE, Popen
 from typing import Any, Dict, Optional, Sequence, Type
 from urllib.parse import urlparse
 import base64
 import hashlib
 import hmac
+import json
 import logging
 import threading
 
@@ -294,6 +296,111 @@ class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
             return super().reauthenticate()
         else:
             return DynamicAuth.reauthenticate(self)  # raises
+
+
+# --- SFDX
+
+class SfdxWebAuth(StaticGlobalAuth):
+    """
+    Authenticate by "auth:web:login" in SFDX command line application
+
+    no private data are saved to disk by django-salesforce, only data by sfdx
+    """
+    required_fields = ['ENGINE', 'HOST', 'USER']
+
+    def authenticate(self) -> Dict[str, str]:
+        host = self.settings_dict['HOST']
+        user = self.settings_dict['USER']
+        # consumer_key = self.settings_dict.get('CONSUMER_KEY')
+        log.info("authentication by SFDX to %s as %s", host, user)
+        data = self.ask_sfdx_org_data(user)
+        if 'stack' in data:  # that means an error that is not raised
+
+            cmd = 'sfdx force:auth:web:login --json --instanceurl'.split() + [host]
+
+            # if consumer_key:
+            #     # TODO this doesn't work due to error "redirect_uri must match configuration"
+            #     cmd.extend(['--clientid', consumer_key])
+            data = self.sfdx(cmd)
+            # TODO If 'refreshToken' is in  self.data  then  reauthenticate()
+            #      can be implemented by it. It will be faster, but not essential.
+            if data['username'] != user:
+                raise SalesforceAuthError("Login by %r is requied, but you have loggedthe required username is %r" %
+                                          (data['username'], user))
+        return {'access_token': data['accessToken'], 'instance_url': data['instanceUrl']}
+
+    def ask_sfdx_org_data(self, user: str) -> Dict[str, Any]:
+        # stub - because not implemented in this parent
+        return {'stack': None, 'message': 'search is not used in this class'}
+
+    def sfdx(self, command: Sequence[str], no_raise: str = '') -> Dict[str, Any]:
+        """Run a SFDX command. Don't raise on the expected error names (comma delimited)"""
+        # not intercept OSError e.g. file not found - raise directly
+        # stderr is not redirected, because it can be used for some interactive dialogs
+        proc = Popen(command, stdout=PIPE)
+        stdout, stderr = proc.communicate()
+
+        if proc.returncode != 0:
+            # import pdb; pdb.set_trace()
+            self.data = {}
+            # proc.returncode is the same as json "status" (and json "exitCode" if not zero)
+            try:
+                data = json.loads(stdout)  # type: Dict[str, Any]
+                msg = "SFDX error {}: {}".format(data['name'], data['message'])
+                if data['name'] in no_raise.split(','):
+                    return data
+            except (json.decoder.JSONDecodeError, KeyError):
+                msg = "SFDX invalid JSON output"
+            print("COMMAND: {}".format(' '.join(command)))
+            raise SalesforceAuthError(msg)
+        data = json.loads(stdout)
+        assert data['status'] == 0
+        self.data = data['result']
+        return self.data
+
+
+class SfdxOrgWebAuth(SfdxWebAuth):
+    """
+    Authenticate by "org:display" or "auth:web:login" in SFDX CLI
+    """
+
+    required_fields = ['ENGINE', 'HOST', 'USER']
+
+    def ask_sfdx_org_data(self, user: str) -> Dict[str, Any]:
+        """Ask SFDX if it the use is connected to it"""
+
+        cmd = 'sfdx force:org:display --json -u'.split() + [user]
+
+        # 'NoOrgFound' is a possible deprecated error name in favour of 'NamedOrgNotFound'
+        # other errors are raised, e.g. network errors
+        data = self.sfdx(cmd, no_raise='NamedOrgNotFound,NoOrgFound,oauthInvalidGrant')
+        if 'stack' not in data:
+            assert data['username'] == user and 'name' not in data
+        return data
+
+
+class SfdxOrgAuth(SfdxOrgWebAuth):
+    """
+    Authenticate by "org:display" in SFDX CLI
+    """
+
+    required_fields = ['ENGINE', 'USER']
+
+    def authenticate(self) -> Dict[str, str]:
+        host = self.settings_dict.get('HOST')
+        user = self.settings_dict['USER']
+        log.info("authentication by SFDX as %s", user)
+        data = self.ask_sfdx_org_data(user)
+        if 'stack' in data:
+            if host == 'https://login.salesforce.com':
+                instance_msg = ''
+            else:
+                instance_msg = '--instanceurl ' + (host or '<login_instance_url>')
+            raise SalesforceAuthError(
+                "User %r is not connected to SFDX. You can login manually:\n"
+                "    sfdx force:auth:web:login %s" % (user, instance_msg)
+            )
+        return {'access_token': data['accessToken'], 'instance_url': data['instanceUrl']}
 
 
 # -- special internal auth (for tests)
