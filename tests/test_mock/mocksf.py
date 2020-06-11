@@ -52,7 +52,7 @@ from django.conf import settings
 
 import salesforce
 # from salesforce.dbapi import settings
-from salesforce.auth import MockAuth
+from salesforce.auth import MockAuth, TimeStatistics
 from salesforce.dbapi import driver
 from salesforce.dbapi.exceptions import DatabaseError
 from salesforce.backend import DJANGO_22_PLUS
@@ -291,7 +291,7 @@ class MockTestCase(SimpleTestCase):
             self.assertEqual(session.index, len(session.expected), "Not all expected requests has been used")
         connection._sf_session, connection.sf_auth = self.save_session_auth  # pylint:disable=protected-access
         connection._api_version = self.save_api_version
-        driver.time_statistics.expiration = driver.TimeStatistics().expiration
+        driver.time_statistics.expiration = TimeStatistics().expiration
         super(MockTestCase, self).tearDown()
 
     def list2reason(self, exc_list):

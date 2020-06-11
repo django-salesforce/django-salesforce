@@ -12,13 +12,15 @@ All data are ascii str.
 """
 
 from subprocess import PIPE, Popen
-from typing import Any, Dict, Optional, Sequence, Type
+from typing import Any, Callable, Dict, Optional, Sequence, Type
 from urllib.parse import urlparse
 import base64
 import hashlib
 import hmac
 import json
 import logging
+import re
+import time
 import threading
 
 import requests
@@ -254,6 +256,7 @@ class SalesforcePasswordAuth(StaticGlobalAuth):
             'username':      settings_dict['USER'],
             'password':      settings_dict['PASSWORD'],
         }
+        time_statistics.update_callback(url, self.ping_connection)
         response = self._session.post(url, data=auth_params)
         if response.status_code == 200:
             response_data = response.json()  # type: Dict[str, str]
@@ -272,6 +275,9 @@ class SalesforcePasswordAuth(StaticGlobalAuth):
         else:
             raise SalesforceAuthError("oauth failed: %s: %s" % (settings_dict['USER'], response.text))
         return response_data
+
+    def ping_connection(self) -> None:
+        self._session.get(self.settings_dict['HOST'], timeout=1.0)
 
 
 class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
@@ -417,3 +423,29 @@ class MockAuth(SalesforceAuth):
 
     def del_token(self) -> None:
         pass
+
+
+class TimeStatistics:
+
+    def __init__(self, expiration: float = 300) -> None:
+        self.expiration = expiration
+        self.data = {}  # type: Dict[str, float]
+
+    def update_callback(self, url: str, callback: Optional[Callable[[], Any]] = None) -> None:
+        """Update the statistics for the domain"""
+        domain = self.domain(url)
+        last_req = self.data.get(domain, 0)
+        t_new = time.time()
+        do_call = (t_new - last_req > self.expiration)
+        self.data[domain] = t_new
+        if do_call and callback:
+            callback()
+
+    @staticmethod
+    def domain(url: str) -> str:
+        match = re.match(r'^(?:https|mock)://([^/]*)/?', url)
+        assert(match)
+        return match.groups()[0]
+
+
+time_statistics = TimeStatistics(300)

@@ -30,7 +30,7 @@ import requests
 from requests.adapters import HTTPAdapter
 
 import salesforce
-from salesforce.auth import SalesforceAuth
+from salesforce.auth import SalesforceAuth, time_statistics
 from salesforce.dbapi import get_max_retries
 from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
@@ -38,7 +38,7 @@ from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
     InternalError, ProgrammingError, NotSupportedError, SalesforceError, SalesforceWarning,
     warn_sf,
     FakeReq, FakeResp, GenResponse)
-from salesforce.dbapi.subselect import nz, QQuery, _TRow
+from salesforce.dbapi.subselect import QQuery, _TRow
 
 try:
     import beatbox  # type: ignore[import]  # pylint: disable=unused-import
@@ -885,27 +885,3 @@ def merge_dict(dict_1: Dict[Any, Any], *other: Dict[Any, Any], **kw: Any) -> Dic
         tmp.update(x)
     tmp.update(kw)
     return tmp
-
-
-class TimeStatistics:
-
-    def __init__(self, expiration: float = 300) -> None:
-        self.expiration = expiration
-        self.data = {}  # type: Dict[str, float]
-
-    def update_callback(self, url: str, callback: Optional[Callable[[], Any]] = None) -> None:
-        """Update the statistics for the domain"""
-        domain = self.domain(url)
-        last_req = self.data.get(domain, 0)
-        t_new = time.time()
-        do_call = (t_new - last_req > self.expiration)
-        self.data[domain] = t_new
-        if do_call and callback:
-            callback()
-
-    @staticmethod
-    def domain(url: str) -> str:
-        return nz(re.match(r'^(?:https|mock)://([^/]*)/?', url)).groups()[0]
-
-
-time_statistics = TimeStatistics(300)
