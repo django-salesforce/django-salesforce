@@ -479,7 +479,10 @@ class RawConnection:
         Returns the duration if the command succeded.
         """
         t_0 = time.time()
-        self.handle_api_exceptions('GET', '', api_ver='', timeout=timeout)
+        try:
+            self.handle_api_exceptions('GET', '', api_ver='', timeout=timeout)
+        except (requests.exceptions.RequestException, SalesforceError):
+            pass
         return round(time.time() - t_0, 3)
 
 

@@ -277,7 +277,10 @@ class SalesforcePasswordAuth(StaticGlobalAuth):
         return response_data
 
     def ping_connection(self) -> None:
-        self._session.get(self.settings_dict['HOST'], timeout=1.0)
+        try:
+            self._session.get(self.settings_dict['HOST'], timeout=1.0)
+        except requests.exceptions.RequestException:
+            pass
 
 
 class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):

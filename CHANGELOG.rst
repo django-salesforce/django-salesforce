@@ -27,6 +27,7 @@ experimental.
 * Add: A method .sf() on querysets and managers to can pass additional parameter
   e.g. all_or_none=True or edge_updates=True to bulk_create() and update() methods.
 * Fix: Fixed long delay in application after unstable nework connection #267
+* Fix: Old fix for timeouts #174 was inappropriate for unstable connections.
 * Fix: Queryset with empty slice e.g. queryset[100:100]
 * Fix: Fix "max_length" in inspectdb for Choice Fields, because it is ignored
   by SFDC, but important for Django.
