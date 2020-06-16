@@ -34,8 +34,8 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
 
     'salesforce': {
         'ENGINE': 'salesforce.backend',
-        'CONSUMER_KEY': '',
-        'CONSUMER_SECRET': '',
+        'CONSUMER_KEY': '',                   # client_id
+        'CONSUMER_SECRET': '',                # client_secret
         'USER': '',
         'PASSWORD': '',
         'HOST': 'https://test.salesforce.com',
@@ -53,9 +53,9 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
      - Click "Enable OAuth Settings" in API, then select "Access and manage
        your data (api)" from available OAuth Scopes.
      - Other red marked fields must be filled, but are not relevant for Django
-       with password authentication. (For example a "Callback URL" can be an
-       URL that doesn't exist, but that is under your control, for the case that
-       you accidentally activate other OAuth mode later.)
+       with password authentication. ("Callback URL" should be a safe URL
+       that maybe doesn't exist, but is under your control and doesn't redirect,
+       for the case that you accidentally activate other OAuth mode later.)
    * ``USER`` is the username used to connect.
    * ``PASSWORD`` is a concatenation of the user's password and security token.
      Security token can be set by My Settings / Personal / Reset My Security Token

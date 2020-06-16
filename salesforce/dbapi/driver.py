@@ -186,7 +186,7 @@ class RawConnection:
         """Authenticate and get the name of assigned SFDC data server"""
         with connect_lock:
             if self._sf_session is None:
-                auth_data = self.sf_auth.authenticate()
+                auth_data = self.sf_auth.authenticate_and_cache()
                 sf_instance_url = auth_data.get('instance_url')
                 sf_session = SfSession()
                 sf_session.auth = self.sf_auth
