@@ -19,6 +19,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import re
 import time
 import threading
@@ -44,6 +45,11 @@ oauth_lock = threading.Lock()
 # multithread server, whereas the thread local data in connection.sf_auth
 # are necessary if dynamic auth is used.
 oauth_data = {}  # type: Dict[str, Dict[str, str]]
+
+
+def base64urlencode(input_bytes: bytes) -> str:
+    # see https://tools.ietf.org/html/rfc4648#section-5
+    return base64.urlsafe_b64encode(input_bytes).decode('ascii').rstrip('=')
 
 
 class SalesforceAuth(AuthBase):
@@ -424,7 +430,6 @@ class RefreshTokenAuth(StaticGlobalAuth):
     # https://help.salesforce.com/articleView?id=remoteaccess_oauth_web_server_flow.htm&type=5
     # use refresh token
     # https://help.salesforce.com/articleView?id=remoteaccess_oauth_refresh_token_flow.htm&type=5
-    # TODO remember invalid refresh token and deny until restart
 
     required_fields = ['ENGINE', 'HOST', 'USER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'REFRESH_TOKEN']
 
@@ -498,6 +503,10 @@ class RefreshTokenAuth(StaticGlobalAuth):
             redirect_uri = host
         log.info("Get a Refresh Token for user %s", user)
 
+        # see https://developer.salesforce.com/forums/?id=906F0000000D6kjIAC
+        code_verifier = base64urlencode(os.urandom(128))
+        code_verifier = base64urlencode(32 * 'A'.encode('ascii'))
+        code_challenge = base64urlencode(hashlib.sha256(code_verifier.encode('ascii')).digest())
         url_params = {
             'client_id': self.settings_dict['CONSUMER_KEY'],
             'redirect_uri': redirect_uri,
@@ -506,6 +515,7 @@ class RefreshTokenAuth(StaticGlobalAuth):
             'scope': 'api refresh_token',  # or 'full refresh_token'
             'login_hint': user,
             'prompt': 'consent',
+            'code_challenge': code_challenge,
             }
         query = urlencode(url_params,  quote_via=quote_no_plus)
         url_login = self.settings_dict['HOST'] + '/services/oauth2/authorize?' + query
@@ -524,6 +534,7 @@ class RefreshTokenAuth(StaticGlobalAuth):
             client_id=self.settings_dict['CONSUMER_KEY'],
             client_secret=self.settings_dict['CONSUMER_SECRET'],
             redirect_uri=redirect_uri,
+            code_verifier=code_verifier,
             format='json',
         ))
         headers = {'Content-type': 'application/x-www-form-urlencoded'}

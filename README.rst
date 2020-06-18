@@ -34,8 +34,8 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
 
     'salesforce': {
         'ENGINE': 'salesforce.backend',
-        'CONSUMER_KEY': '',                   # client_id
-        'CONSUMER_SECRET': '',                # client_secret
+        'CONSUMER_KEY': '',                # 'client_id'   in OAuth2 terminology
+        'CONSUMER_SECRET': '',             # 'client_secret'
         'USER': '',
         'PASSWORD': '',
         'HOST': 'https://test.salesforce.com',
