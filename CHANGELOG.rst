@@ -14,7 +14,7 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[1.1] Unpublished
+[1.1] 2009-04-09
 -----------------
 * Fix: Allow SOQL query up to 100000 characters, fixed #164 
 * Add: Support for custom authentication modules configurable by
