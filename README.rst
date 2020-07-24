@@ -10,7 +10,7 @@ django-salesforce
 .. image:: https://img.shields.io/badge/python-3.5%20%7C%203.6%20%7C%203.7%20%7C%203.8-blue
    :target: https://www.python.org/
 
-.. image:: https://img.shields.io/badge/Django-1.11%2C%202.0%2C%202.1%2C%202.2%2C%203.0-blue.svg
+.. image:: https://img.shields.io/badge/Django-1.11%2C%202.0%2C%202.1%2C%202.2%2C%203.0%2C%203.1-blue.svg
    :target: https://www.djangoproject.com/
 
 This library allows you to load, edit and query the objects in any Salesforce instance
@@ -19,8 +19,8 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 3.5.3 to 3.8, Django 1.11, 2.0 to 2.2 and 3.0.
-(Tested also with Python 3.9.0a5)
+Python 3.5.3 to 3.8, Django 1.11 to 3.1.
+(Tested also with Python 3.9.0b4)
 
 
 Quick Start
@@ -290,5 +290,3 @@ The most important:
 
 -  v0.5: The name of primary key is currently ``'id'``. The backward compatible
    behavior for code created before v0.5 can be reached by settings ``SF_PK='Id'``.
-
-
