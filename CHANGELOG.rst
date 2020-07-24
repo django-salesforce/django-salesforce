@@ -14,8 +14,19 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[1.1] 2009-04-09
+[3.1] Unpublished
 -----------------
+* Fix: Enable support for Django 3.1 final.
+* Change: Package versions will be synchronized with Django "release version" from now on.
+
+
+[1.1] 2020-07-09
+----------------
+* Add: Optional Refresh Token Authentication by ``RefreshTokenAuth`` with
+  cryptographic code_challenge / code_verifier.
+* Add: Tag `[django-salesforce]
+  <https://stackoverflow.com/questions/tagged/django-salesforce>`_
+  for questions on Stackoverflow.com.
 * Fix: Allow SOQL query up to 100000 characters, fixed #164 
 * Add: Support for custom authentication modules configurable by
   ``settings.DATABASES['salesforce']['AUTH']``

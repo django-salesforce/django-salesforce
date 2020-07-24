@@ -104,6 +104,7 @@ def run():
         'CustomApplication', 'CustomField', 'CustomTab', 'FlexiPage', 'GlobalValueSet',
         'Layout', 'QuickActionDefinition', 'RemoteProxy', 'ValidationRule',
         'WorkflowFieldUpdate', 'WorkflowRule',
+        'QuickActionListItem',
     }
 
     #  FIELD_INTEGRITY_EXCEPTION
