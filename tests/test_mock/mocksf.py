@@ -222,7 +222,7 @@ class MockRequest(object):
             testcase.assertEqual(request_type.split(';')[0], self.request_type.split(';')[0], msg=msg)
         kwargs.pop('timeout', None)
         assert kwargs.pop('verify', True) is True  # TLS verify must not be False
-        if 'json'in kwargs and kwargs['json'] is None:
+        if 'json' in kwargs and kwargs['json'] is None:
             del kwargs['json']
         if 'headers' in kwargs and not kwargs['headers']:
             del kwargs['headers']
