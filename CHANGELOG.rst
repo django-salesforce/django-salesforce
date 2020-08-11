@@ -14,8 +14,13 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[3.1] Unpublished
------------------
+Unpublished
+-----------
+* Fix: Backward compatibility with old migrations. #275
+
+
+[3.1] 2020-08-05
+----------------
 * Fix: Enable support for Django 3.1 final.
 * Change: Package versions will be synchronized with Django "release version" from now on.
 

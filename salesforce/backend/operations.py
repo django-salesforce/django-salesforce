@@ -15,6 +15,7 @@ import django.db.backends.utils
 from django.db.backends.base.operations import BaseDatabaseOperations
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.exceptions import SalesforceWarning
+from salesforce.defaults import DefaultedOnCreate, DEFAULTED_ON_CREATE  # noqa # for backward compatibility migrations
 
 BULK_BATCH_SIZE = 200
 
