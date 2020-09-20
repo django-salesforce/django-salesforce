@@ -15,7 +15,6 @@ import django.db.backends.utils
 from django.db.backends.base.operations import BaseDatabaseOperations
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.exceptions import SalesforceWarning
-from salesforce.defaults import DefaultedOnCreate, DEFAULTED_ON_CREATE  # noqa # for backward compatibility migrations
 
 BULK_BATCH_SIZE = 200
 
@@ -132,3 +131,11 @@ class DatabaseOperations(BaseDatabaseOperations):
         # A wildcard search is better than a search of '\\%' or '\\_', see #254
         return str(x)
         # return str(x).replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+
+
+def DefaultedOnCreate(*args, **kwargs):
+    import salesforce.defaults
+    warnings.warn("Deprecated: the object DefaultedOnCreate should be imported from "
+                  "salesforce.fields or salesforce.defaults or salesforce.models, "
+                  "but not from salesforce.backend.operations")
+    return salesforce.defaults(*args, **kwargs)
