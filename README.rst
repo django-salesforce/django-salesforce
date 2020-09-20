@@ -221,6 +221,12 @@ Advanced usage
    Consequently, the setting ``managed = True`` is related only to an alternate
    non SFDC database configured by ``SALESFORCE_DB_ALIAS``.)
 
+   There is probably no reason to collect old migrations of an application
+   that uses only SalesforceModel and all data are stored only in Salesforce.
+   Such old migrations can be easily deleted a new initial migration can be
+   created again if it would be necessary for offline tests and if that migrations
+   directory seems big and obsoleted.
+
 -  **Exceptions** - Custom exceptions instead of standard Django database
    exceptions are raised by Django-Salesforce to get more useful information.
    General exceptions are ``SalesforceError`` or a more general custom
@@ -271,6 +277,11 @@ Backwards-incompatible changes
 ------------------------------
 
 The most important:
+
+-  v1.0: The object ``salesforce.backend.operations.DefaultedOnCreate`` in an incidental
+   old migration should be rewritten to new ``salesforce.fields.DefaultedOnCreate``, but
+   old migrations are unnecessary usually.
+
 -  v0.9: This is the last version that suports Django 1.10 and Python 2.7 and 3.4
 
 -  v0.8: The default Meta option if now ``managed = True``, which is an important
