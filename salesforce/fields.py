@@ -211,8 +211,9 @@ class DecimalField(SfField, models.DecimalField):
                 ret = Decimal(int(ret))
         return ret
 
-    # parameter "context" is for Django <= 1.11 (the same is in more classes here)
-    def from_db_value(self, value, expression, connection, context=None):
+    # a positional parameter "context" was in Django <= 1.11
+    # replaced by *args here to preven deprecation warning in Django 2.x
+    def from_db_value(self, value, expression, connection, *args):
         # pylint:disable=unused-argument
         # TODO refactor and move to the driver like in other backends
         if isinstance(value, float):
@@ -245,7 +246,9 @@ class DateTimeField(SfField, models.DateTimeField):
 class DateField(SfField, models.DateField):
     """DateField with sf_read_only attribute for Salesforce."""
 
-    def from_db_value(self, value, expression, connection, context=None):
+    # a positional parameter "context" was in Django <= 1.11
+    # replaced by *args here to preven deprecation warning in Django 2.x
+    def from_db_value(self, value, expression, connection, *args):
         # pylint:disable=unused-argument
         return self.to_python(value)
 
@@ -253,7 +256,9 @@ class DateField(SfField, models.DateField):
 class TimeField(SfField, models.TimeField):
     """TimeField with sf_read_only attribute for Salesforce."""
 
-    def from_db_value(self, value, expression, connection, context=None):
+    # a positional parameter "context" was in Django <= 1.11
+    # replaced by *args here to preven deprecation warning in Django 2.x
+    def from_db_value(self, value, expression, connection, *args):
         # pylint:disable=unused-argument
         return self.to_python(value)
 
