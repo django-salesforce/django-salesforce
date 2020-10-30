@@ -75,6 +75,8 @@ def run():
         'ObjectSearchSetting', 'OpportunityInsightsSettings',
         'OpportunityListFieldsLabelMapping', 'OpportunityScoreSettings',
         'OrderManagementSettings', 'StandardAction', 'StandardValueSet',
+        # in API 50.0 Winter'20
+        'InventorySettings', 'SecuritySettings',
     }
     problematic_write = {
         # any SalesforceError
@@ -98,6 +100,10 @@ def run():
         'SurveySettings', 'SystemNotificationSettings', 'Territory2Settings',
         'TrialOrgSettings', 'User', 'UserEngagementSettings', 'UserInterfaceSettings',
         'UserManagementSettings', 'WebToXSettings', 'WorkDotComSettings',
+
+        # in API 50.0 Winter'20
+        'ExternalServicesSettings', 'RecommendationBuilderSettings',
+
         # ExpirationDate must be in the future.
         'TraceFlag',
         # silently not updated
@@ -147,11 +153,11 @@ def run():
                     obj.save(force_update=True)
                 except SalesforceError as exc:
                     new_problematic.append(db_table)
-                    stderr.write("\n************** SalesforceError %s %s\n" % (db_table, exc))
+                    stderr.write("\n************** write SalesforceError %s %s\n" % (db_table, exc))
                     n_write_errors += 1
                 except (TypeError, NotImplementedError) as exc:
                     new_problematic.append(db_table)
-                    stderr.write("\n************** %s %s %s\n" % (exc.__class__.__name__, db_table, exc))
+                    stderr.write("\n************** write %s %s %s\n" % (exc.__class__.__name__, db_table, exc))
                     n_write_errors += 1
                 else:
                     # object 'Topic' doesn't have the attribute 'last_modified_date'
