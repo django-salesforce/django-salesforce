@@ -36,6 +36,8 @@ class Command(InspectDBCommand):
             connection.introspection.is_tooling_api = self.tooling_api
 
             self.db_module = 'salesforce'
+            if options['table']:
+                options['table'] = [sf_introspection.SfProtectName(x) for x in options['table']]
             for line in self.handle_inspection(options):
                 line = line.replace(" Field renamed because it contained more than one '_' in a row.", "")
                 line = re.sub(' #$', '', line)
