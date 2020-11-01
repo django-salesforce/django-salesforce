@@ -343,8 +343,8 @@ class SfdxWebAuth(StaticGlobalAuth):
 
             data = self.sfdx(cmd)
             if data['username'] != user:
-                raise SalesforceAuthError("Login by %r is requied, but you have loggedthe required username is %r" %
-                                          (data['username'], user))
+                raise SalesforceAuthError("Login by %r is requied, but you have logged in as a different "
+                                          "user %r" % (user, data['username']))
         return {'access_token': data['accessToken'], 'instance_url': data['instanceUrl']}
 
     def ask_sfdx_org_data(self, user: str) -> Dict[str, Any]:
