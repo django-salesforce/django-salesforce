@@ -181,7 +181,11 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             params['help_text'] = field['inlineHelpText']
         if field['picklistValues']:
             params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
-            params['max_len'] = max(len(x['value']) for x in field['picklistValues'] if x['active'])
+            if len(repr(params['choices'])) < 4000:
+                params['max_len'] = max(len(x['value']) for x in field['picklistValues'] if x['active'])
+            else:
+                params['ref_comment'] = 'Too long choices skipped'
+                del params['choices']
         if field['type'] == 'reference' and not self.references_to(field):
             if not field['referenceTo']:
                 params['ref_comment'] = 'No Reference to a table'
