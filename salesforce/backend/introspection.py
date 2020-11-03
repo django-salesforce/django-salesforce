@@ -107,6 +107,20 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         self._converted_lead_status = None  # type: Optional[str]
         self.is_tooling_api = False  # modified by other modules
 
+    def filter_table_list(self, table_names):
+        self._table_list_cache['sobjects'] = [
+            x for x in self.table_list_cache['sobjects'] if x['name'] in table_names
+        ]
+        self._table_names = self._table_names.intersection(table_names)
+        unknown_tables = [x for x in table_names if x not in self.connection.introspection._table_names]
+        if unknown_tables:
+            raise ValueError('These tables are not a part of the inspected Salesforce database: '
+                             '{}'.format(unknown_tables))
+
+    def reset_table_list(self, table_names):
+        self._table_list_cache = None
+        self.table_list_cache
+
     @property
     def sobjects_prefix(self) -> str:
         return 'sobjects' if not self.is_tooling_api else 'tooling/sobjects'
@@ -170,9 +184,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             params['max_len'] = max(len(x['value']) for x in field['picklistValues'] if x['active'])
         if field['type'] == 'reference' and not self.references_to(field):
             if not field['referenceTo']:
-                params['ref_comment'] = 'No Reference table'
+                params['ref_comment'] = 'No Reference to a table'
             else:
-                params['ref_comment'] = 'Invalid References: {}'.format(self.references_to(field, all=True))
+                params['ref_comment'] = 'References to missing tables: {}'.format(self.references_to(field, all=True))
         return params
 
     def references_to(self, field: Dict[str, Any], all: bool = False) -> Optional[List[str]]:

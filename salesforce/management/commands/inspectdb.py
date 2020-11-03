@@ -25,7 +25,7 @@ class Command(InspectDBCommand):
 
     def handle(self, **options: Any) -> None:  # type: ignore[override] # noqa # it is incompatible in Django
         if isinstance(options['table_name_filter'], str):
-            options['table_name_filter'] = re.compile(options['table_name_filter']).match
+            options['table_name_filter'] = table_name_filter = re.compile(options['table_name_filter']).match
         self.verbosity = int(options['verbosity'])          # pylint:disable=attribute-defined-outside-init
         self.connection = connections[options['database']]  # pylint:disable=attribute-defined-outside-init
         self.concise_db_column = options['concise_db_column']  # pylint:disable=attribute-defined-outside-init
@@ -37,7 +37,12 @@ class Command(InspectDBCommand):
 
             self.db_module = 'salesforce'
             if options['table']:
+                self.connection.introspection.filter_table_list(options['table'])
                 options['table'] = [sf_introspection.SfProtectName(x) for x in options['table']]
+            elif options['table_name_filter'] is not None and callable(table_name_filter):
+                self.connection.introspection.filter_table_list(
+                    [x for x in self.connection.introspection.get_table_list(None) if table_name_filter(x)]
+                )
             for line in self.handle_inspection(options):
                 line = line.replace(" Field renamed because it contained more than one '_' in a row.", "")
                 line = re.sub(' #$', '', line)
