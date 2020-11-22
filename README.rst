@@ -48,8 +48,9 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
      the Salesforce REST API Documentation. Key and secret can be created on
      web by:
 
-     - Salesforce web > Setup > App Setup > Create > Apps > Connected apps >
-       New.
+     - Salesforce Classic > Setup > App Setup > Create > Apps > Connected apps >
+       New.  
+       or SalesForce Lightning > Setup > Apps > App Manager > New Connected App.
      - Click "Enable OAuth Settings" in API, then select "Access and manage
        your data (api)" from available OAuth Scopes.
      - Other red marked fields must be filled, but are not relevant for Django
