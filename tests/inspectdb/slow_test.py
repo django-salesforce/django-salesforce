@@ -111,7 +111,8 @@ def run():
                         assert test_class.objects.get(pk=obj.pk).last_modified_date > obj.last_modified_date
             stdout.write('\n')
     n_tables = len(sf.introspection.table_list_cache['sobjects'])
-    print('Result: {n_tables} tables, {n_read} reads tried, {n_no_data} no data, '
+    print('Inspectdb results:')
+    print('  {n_tables} tables, {n_read} reads tried, {n_no_data} no data, '
           '{n_read_errors} read errors, {n_write} writes tried, {n_write_errors} write errors'
           .format(n_tables=n_tables, n_read=n_read, n_no_data=n_no_data,
                   n_read_errors=n_read_errors, n_write=n_write, n_write_errors=n_write_errors))
