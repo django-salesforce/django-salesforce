@@ -35,7 +35,8 @@ class UtilitiesTest(TestCase):
             # print("Response from convertLead: " +
             #       ', '.join('%s: %s' % (k, v) for k, v in sorted(ret.items())))
             expected_names = set(('accountId', 'contactId', 'leadId', 'opportunityId', 'success'))
-            self.assertEqual(set(ret), expected_names)
+            # The field 'relatedPersonAccountId' is present in the instances ver. 51.0+ Spring '21
+            self.assertEqual(set(ret).difference(['relatedPersonAccountId']), expected_names)
             self.assertEqual(ret['success'], 'true')
             # merge the new Account with the second Lead
             ret2 = convert_lead(lead2, doNotCreateOpportunity=True, accountId=ret['accountId'])

@@ -77,6 +77,8 @@ def run():
         'OrderManagementSettings', 'StandardAction', 'StandardValueSet',
         # in API 50.0 Winter'20
         'InventorySettings', 'SecuritySettings',
+        # in API 51.0 Spring '21
+        'EmployeeUserSettings',
     }
     problematic_write = {
         # any SalesforceError
@@ -171,7 +173,8 @@ def run():
     if new_problematic:
         print("\nnew_problematic:\n%r\n" % new_problematic)
     n_tables = len(sf.introspection.table_list_cache['sobjects'])
-    print('Result: {n_tables} tables, {n_read} reads tried, {n_no_data} no data, '
+    print('Tooling api results:')
+    print('  {n_tables} tables, {n_read} reads tried, {n_no_data} no data, '
           '{n_read_errors} read errors, {n_write} writes tried, {n_write_errors} write errors'
           .format(n_tables=n_tables, n_read=n_read, n_no_data=n_no_data,
                   n_read_errors=n_read_errors, n_write=n_write, n_write_errors=n_write_errors))
