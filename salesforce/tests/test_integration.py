@@ -330,7 +330,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         finally:
             contact.delete()
         # Verify that an explicit value is possible for this field.
-        other_user_obj = User.objects.exclude(Username=current_user).filter(IsActive=True)[0]
+        other_user_obj = (User.objects.exclude(Username=current_user)
+                          .filter(IsActive=True, UserType='Standard')[0])
         contact = Contact(first_name='sf_test', last_name='your',
                           owner=other_user_obj)
         contact.save()
