@@ -60,11 +60,11 @@ apilevel = "2.0"  # see https://www.python.org/dev/peps/pep-0249
 # Create the connection by `connect(**params)` if you use it with Django or
 # with another app that has its own thread safe connection pool. and
 # create the connection by connect(**params).
-threadsafety = 1
+# threadsafety = 1
 
 # Or create and access the connection by `get_connection(alias, **params)`
 # if the pool should be managed by this driver. Then you can expect:
-# threadsafety = 2
+threadsafety = 2
 
 # (Both variants allow multitenant architecture with dynamic authentication
 # where a thread can frequently change the organization domain that it serves.)
@@ -489,8 +489,15 @@ Connection = RawConnection
 
 
 # DB API function
-def connect(**params: Any) -> Connection:
+def connect_(**params: Any) -> Connection:
     return Connection(**params)
+
+
+def connect(**params: Any) -> Connection:
+    param_str = repr(params)
+    if not hasattr(thread_connections, param_str):
+        setattr(thread_connections, param_str, connect_(**params))
+    return cast(Connection, getattr(thread_connections, param_str))
 
 
 def get_connection(alias: str, **params: Any) -> Connection:

@@ -422,6 +422,8 @@ class SfdxOrgAuth(SfdxOrgWebAuth):
         return {'access_token': data['accessToken'], 'instance_url': data['instanceUrl']}
 
 
+# ---
+
 class RefreshTokenAuth(StaticGlobalAuth):
     """
     Authenticate by refresh token or get the refresh token interactive
@@ -497,30 +499,7 @@ class RefreshTokenAuth(StaticGlobalAuth):
 
         The dialog is: visit a URL manually, authorize and paste the final URL to console
         """
-        host = self.settings_dict['HOST']
-        user = self.settings_dict['USER']
-        if 'CALLBACK_URL' in self.settings_dict:
-            redirect_uri = self.settings_dict['CALLBACK_URL']
-        else:
-            redirect_uri = host
-        log.info("Get a Refresh Token for user %s", user)
-
-        # see https://developer.salesforce.com/forums/?id=906F0000000D6kjIAC
-        code_verifier = base64urlencode(os.urandom(128))
-        code_verifier = base64urlencode(32 * 'A'.encode('ascii'))
-        code_challenge = base64urlencode(hashlib.sha256(code_verifier.encode('ascii')).digest())
-        url_params = {
-            'client_id': self.settings_dict['CONSUMER_KEY'],
-            'redirect_uri': redirect_uri,
-            'response_type': 'code',
-            # optional
-            'scope': 'api refresh_token',  # or 'full refresh_token'
-            'login_hint': user,
-            'prompt': 'consent',
-            'code_challenge': code_challenge,
-            }
-        query = urlencode(url_params,  quote_via=quote_no_plus)
-        url_login = cast(str, self.settings_dict['HOST']) + '/services/oauth2/authorize?' + query
+        url_login = self.get_auth_redirect_url()
         print()
         print(url_login)
         print("\nOpen the URL above in your browser and follow (optionally Login to Salesforce, "
@@ -528,6 +507,41 @@ class RefreshTokenAuth(StaticGlobalAuth):
               "Paste it here and Press Enter (The URL expires in 15 minutes.)\n"
               )
         final_url = input('? ')
+        auth_data = self.authorization_code_processing(final_url)
+        print("\nCopy this line to settings DATABASES[%r]:\n        "
+              "'REFRESH_TOKEN': %r," % (self.db_alias, auth_data['refresh_token']))
+        return auth_data
+
+    def get_auth_redirect_url(self, user: Optional[str] = None) -> str:
+        host = self.settings_dict['HOST']
+        user_hint = user or self.settings_dict['USER']
+        if 'CALLBACK_URL' in self.settings_dict:
+            self.redirect_uri = self.settings_dict['CALLBACK_URL']
+        else:
+            self.redirect_uri = host
+        log.info("Get a Refresh Token for user %s", user_hint)
+
+        # see https://developer.salesforce.com/forums/?id=906F0000000D6kjIAC
+        self.code_verifier = base64urlencode(os.urandom(128))
+        self.code_verifier = base64urlencode(os.urandom(32))
+        # code_verifier = base64urlencode(32 * 'A'.encode('ascii'))
+        code_challenge = base64urlencode(hashlib.sha256(self.code_verifier.encode('ascii')).digest())
+        url_params = {
+            'client_id': self.settings_dict['CONSUMER_KEY'],
+            'redirect_uri': self.redirect_uri,
+            'response_type': 'code',
+            # optional
+            'scope': self.settings_dict.get('OAUTH_SCOPE', 'api refresh_token'),  # or 'full refresh_token'
+            'prompt': 'consent',
+            'code_challenge': code_challenge,
+            }
+        if user_hint:
+            url_params['login_hint'] = user_hint
+        query = urlencode(url_params,  quote_via=quote_no_plus)
+        url_login = cast(str, self.settings_dict['HOST']) + '/services/oauth2/authorize?' + query
+        return url_login
+
+    def authorization_code_processing(self, final_url: str) -> Dict[str, Any]:
         code, = parse_qs(urlsplit(final_url).query)['code']
         url = self.settings_dict['HOST'] + '/services/oauth2/token'
         data = urlencode(dict(
@@ -535,15 +549,13 @@ class RefreshTokenAuth(StaticGlobalAuth):
             code=code,
             client_id=self.settings_dict['CONSUMER_KEY'],
             client_secret=self.settings_dict['CONSUMER_SECRET'],
-            redirect_uri=redirect_uri,
-            code_verifier=code_verifier,
+            redirect_uri=self.redirect_uri,
+            code_verifier=self.code_verifier,
             format='json',
         ))
         headers = {'Content-type': 'application/x-www-form-urlencoded'}
         response = requests.post(url, data=data, headers=headers)
         auth_data = self.checked_auth_response(response)
-        print("\nCopy this line to settings DATABASES[%r]:\n        "
-              "'REFRESH_TOKEN': %r," % (self.db_alias, auth_data['refresh_token']))
         return auth_data
 
 
