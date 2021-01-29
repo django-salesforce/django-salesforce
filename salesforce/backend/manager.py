@@ -10,8 +10,7 @@ Salesforce object manager. (like django.db.models.manager)
 
 Use a custom QuerySet to generate SOQL queries and results.
 
-This module is important for run-time, ignored in type checking and
-correct results are made by by sustomized django-stubs (django-salesforce-stubs)
+This module requires a customized package django-stubs (django-salesforce-stubs)
 """
 
 import sys
