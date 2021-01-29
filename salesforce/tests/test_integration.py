@@ -898,7 +898,9 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         salesforce.auth.oauth_data[sf_alias]['access_token'] = 'something invalid/expired'
         with self.assertWarns(SalesforceWarning) as cm:
             Contact(pk=contact_id).delete()
-            self.assertIn('ENTITY_IS_DELETED', cm.warnings[0].message.args[0])
+            message = cm.warnings[0].message
+            assert isinstance(message, SalesforceWarning)
+            self.assertIn('ENTITY_IS_DELETED', message.args[0])
         with self.assertWarns(SalesforceWarning) as cm:
             # Id of completely deleted item or fake but valid item.
             Contact(pk='003000000000000AAA').delete()

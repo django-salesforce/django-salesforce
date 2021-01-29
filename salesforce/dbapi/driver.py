@@ -189,7 +189,7 @@ class RawConnection:
                 auth_data = self.sf_auth.authenticate_and_cache()
                 sf_instance_url = auth_data.get('instance_url')
                 sf_session = SfSession()
-                sf_session.auth = self.sf_auth
+                sf_session.auth = self.sf_auth  # a name for "requests" package
                 if sf_instance_url and sf_instance_url not in sf_session.adapters:
                     # a repeated mount to the same prefix would cause a warning about unclosed SSL socket
                     sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
