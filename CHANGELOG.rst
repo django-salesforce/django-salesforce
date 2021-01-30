@@ -14,9 +14,13 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-Unpublished
------------
+[3.2] Unpublished
+-----------------
+* Add: Support for Django 3.2
+* Remove: Django 1.11
 * Fix: Backward compatibility with old migrations. #275
+* Fix: Simplify output of inspectdb if a choice is too huge
+  or if tables are restricted by table filter. #279
 
 
 [3.1] 2020-08-05

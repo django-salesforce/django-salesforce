@@ -279,6 +279,8 @@ Backwards-incompatible changes
 
 The most important:
 
+-  v3.2: Removed support for Django 1.11
+
 -  v1.0: The object ``salesforce.backend.operations.DefaultedOnCreate`` in an incidental
    old migration should be rewritten to new ``salesforce.fields.DefaultedOnCreate``, but
    old migrations are unnecessary usually.
