@@ -542,7 +542,10 @@ class RefreshTokenAuth(StaticGlobalAuth):
         return url_login
 
     def authorization_code_processing(self, final_url: str) -> Dict[str, Any]:
-        code, = parse_qs(urlsplit(final_url).query)['code']
+        query = parse_qs(urlsplit(final_url).query)
+        if 'error' in query:
+            raise SalesforceError("Salesforce OAuth2 Error: {query}".format(query=query))
+        code, = query['code']
         url = self.settings_dict['HOST'] + '/services/oauth2/token'
         data = urlencode(dict(
             grant_type='authorization_code',
