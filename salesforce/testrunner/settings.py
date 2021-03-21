@@ -195,6 +195,8 @@ LOGGING = {
 # version "django-salesforce < 0.5".
 # SF_PK = 'Id'
 
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'  # not important for Salesforce, but for Django warnings
+
 try:
     from salesforce.testrunner.local_settings import *  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 except ImportError:
