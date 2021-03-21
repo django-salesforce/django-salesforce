@@ -22,13 +22,15 @@ from django.db.backends.utils import CursorWrapper as _Cursor  # for typing
 # require "simplejson" to ensure that it is available to "requests" hook.
 import simplejson  # NOQA pylint:disable=unused-import
 
+from salesforce.backend import DJANGO_32_PLUS
 import salesforce.fields
 
 log = logging.getLogger(__name__)
 
-FieldInfo = namedtuple(
+FieldInfo = namedtuple(  # type:ignore[misc]
     'FieldInfo',
     'name type_code display_size internal_size precision scale null_ok default'
+    + (' collation' if DJANGO_32_PLUS else '') +
     ' params'  # the last name 'params' is our extension for Salesforce
 )  # pylint:disable=invalid-name
 assert FieldInfo._fields[:-1] == BaseFieldInfo._fields
@@ -218,7 +220,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 del params['max_len']
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
-            result.append(FieldInfo(
+            result.append(FieldInfo(  # type:ignore[call-arg] # problem with a conditional type
                 field['name'],       # name,
                 field['type'],       # type_code,
                 field['length'],     # display_size,

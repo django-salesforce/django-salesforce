@@ -55,3 +55,8 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # versa.
 
     can_introspect_json_field = False  # Django 3.1+
+
+    supports_collation_on_charfield = False  # Django 3.2+
+    supports_collation_on_textfield = False
+    supports_non_deterministic_collations = False
+    supports_expression_indexes = False
