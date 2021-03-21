@@ -1,9 +1,8 @@
 #!/bin/bash
 echo "python manage.py inspectdb --database=salesforce --tooling-api >tests/tooling/models.py"
-if python manage.py inspectdb --database=salesforce --tooling-api --traceback >tests/tooling/models.py; then
-
-    # Run both tests even if the first test fails. With old Django versions can
-    # the read/write test pass (useful information) though validation failed.
+python manage.py inspectdb --database=salesforce --tooling-api --traceback >tests/tooling/models.py
+RESULT_0=$?
+if [ $RESULT_0 == 0 ]; then
 
     echo "*** test"
     python manage.py test --settings=tests.tooling.settings tests.tooling.tests
@@ -20,4 +19,6 @@ if python manage.py inspectdb --database=salesforce --tooling-api --traceback >t
         echo ERROR
         false
     fi
+else
+    false
 fi
