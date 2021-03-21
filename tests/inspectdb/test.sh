@@ -8,11 +8,10 @@
 #      after version switching
 
 
-echo "python manage.py inspectdb --database=salesforce >tests/inspectdb/models.py"
-if python manage.py inspectdb --database=salesforce --concise-db-column --traceback >tests/inspectdb/models.py; then
-
-    # Run both tests even if the first test fails. With old Django versions can
-    # the read/write test pass (useful information) though validation failed.
+echo "python manage.py inspectdb --database=salesforce --concise-db-column >tests/inspectdb/models.py"
+python manage.py inspectdb --database=salesforce --concise-db-column --traceback >tests/inspectdb/models.py
+RESULT_0=$?
+if [ $RESULT_0 == 0 ]; then
 
     echo "*** check"
     python manage.py check --settings=tests.inspectdb.settings --traceback
@@ -45,4 +44,6 @@ if python manage.py inspectdb --database=salesforce --concise-db-column --traceb
         echo ERROR
         false
     fi
+else
+    false
 fi
