@@ -3,8 +3,9 @@
 from importlib import import_module
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Set, Type, Union
 import json
-import requests  # noqa
 import warnings
+
+import requests  # noqa
 # pylint:disable=too-few-public-methods
 
 
@@ -59,7 +60,7 @@ class SalesforceWarning(Warning):
         self.response = None  # type: Optional[GenResponse]
         self.verbs = None  # type: Optional[Set[str]]
         message = prepare_exception(self, messages, response, verbs)
-        super(SalesforceWarning, self).__init__(message)
+        super().__init__(message)
 
 
 class Error(Exception):
@@ -77,7 +78,7 @@ class Error(Exception):
         self.response = None  # type: Optional[GenResponse]
         self.verbs = None  # type: Optional[Set[str]]
         message = prepare_exception(self, messages, response, verbs)
-        super(Error, self).__init__(message)
+        super().__init__(message)
 
 
 class InterfaceError(Error):

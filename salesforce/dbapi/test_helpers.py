@@ -17,7 +17,7 @@ def expectedFailureIf(condition: bool) -> Callable[[TestMethod], TestMethod]:
     return lambda func: func
 
 
-class QuietSalesforceErrors(object):
+class QuietSalesforceErrors:
     """Context manager that helps expected SalesforceErrors to be not logged too verbose.
 
     It works on the default Salesforce connection. It can be nested.

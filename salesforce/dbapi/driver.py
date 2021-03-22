@@ -262,13 +262,12 @@ class RawConnection:
         if not errorhandler:
             # nothing is caught usually and error handler not used
             return self.handle_api_exceptions_inter(method, *url_parts, **kwargs)
-        else:
-            try:
-                return self.handle_api_exceptions_inter(method, *url_parts, **kwargs)
-            except (SalesforceError, requests.exceptions.RequestException):
-                exc_class, exc_value, _ = sys.exc_info()
-                errorhandler(self, cursor_context, exc_class, exc_value)
-                raise
+        try:
+            return self.handle_api_exceptions_inter(method, *url_parts, **kwargs)
+        except (SalesforceError, requests.exceptions.RequestException):
+            exc_class, exc_value, _ = sys.exc_info()
+            errorhandler(self, cursor_context, exc_class, exc_value)
+            raise
 
     def handle_api_exceptions_inter(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
         """The main (middle) part - it is enough if no error occurs."""
@@ -867,7 +866,6 @@ sql_conversions = {}  # type: Dict[Type[Any], ConversionSqlFunc[Any]]
 
 subclass_conversions = []  # type: List[type]
 
-# pylint:disable=bad-whitespace
 register_conversion(int,             json_conv=str)
 register_conversion(float,           json_conv=lambda o: '%.15g' % o)
 register_conversion(type(None),      json_conv=lambda s: None,          sql_conv=lambda s: 'NULL')
@@ -878,7 +876,6 @@ register_conversion(datetime.datetime, json_conv=date_literal)
 register_conversion(datetime.time,   json_conv=lambda d: datetime.time.strftime(d, "%H:%M:%S.%fZ"))
 register_conversion(decimal.Decimal, json_conv=float, subclass=True)
 # the type models.Model is registered from backend, because it is a Django type
-# pylint:enable=bad-whitespace
 
 
 def merge_dict(dict_1: Dict[Any, Any], *other: Dict[Any, Any], **kw: Any) -> Dict[Any, Any]:

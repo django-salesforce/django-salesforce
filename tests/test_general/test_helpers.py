@@ -66,7 +66,7 @@ class TestLazyAssertNoSetup(TestCase, LazyTestMixin):
 
     def setUp(self):
         # this overshadowed "setUp" in LazyTestMixin
-        # by omitting  super(..., self).setUp()
+        # by omitting  super().setUp()
         pass
 
     def test_fail(self):

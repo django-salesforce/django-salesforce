@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db.models import Field
 
 
-class LazyField(object):
+class LazyField:
     """A Field that can be later customized until it is binded to the final Model"""
     # It does not need a deserializer for migrations because it is never passed
     # to migration tracking before before activation to a normal field

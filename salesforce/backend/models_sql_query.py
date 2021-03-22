@@ -36,7 +36,7 @@ class SalesforceRawQuery(RawQuery):
 #         return "<SalesforceRawQuery: %s; %r>" % (self.sql, tuple(self.params))
 #
 #     def __iter__(self):
-#         for row in super(SalesforceRawQuery, self).__iter__():
+#         for row in super().__iter__():
 #             yield [row[k] for k in self.get_columns()]
 
 
@@ -52,7 +52,7 @@ class SalesforceQuery(Query, Generic[_T]):
     Override aggregates.
     """
     def __init__(self, model: Optional[Type[_T]], *args, **kwargs) -> None:
-        super(SalesforceQuery, self).__init__(model, *args, **kwargs)
+        super().__init__(model, *args, **kwargs)
         self.max_depth = 1
         self.sf_params = SfParams()  # paramaters for Salesforce query instead of transaction control
 
@@ -116,11 +116,10 @@ class SalesforceQuery(Query, Generic[_T]):
         return bool(compiler.execute_sql(constants.SINGLE))
 
     def get_count(self, using: str) -> int:
-        # TODO maybe can be removed soon
         """
         Performs a COUNT() query using the current filter constraints.
         """
-        # customized because "Count('*')" is not possbel wit Salesforce and also not "__" in an alias
+        # customized because "Count('*')" is not possible with Salesforce and also not "__" in an alias
         obj = self.clone()
         obj.add_annotation(Count('pk'), alias='x_sf_count', is_summary=True)  # pylint: disable=no-member
         number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']  # type: Optional[int] # pylint: disable=no-member # noqa

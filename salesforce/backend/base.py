@@ -76,7 +76,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     def __init__(self, settings_dict, alias=None):
         if alias is None:
             alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
-        super(DatabaseWrapper, self).__init__(settings_dict, alias)
+        super().__init__(settings_dict, alias)
 
         self._is_sandbox = None  # type: Optional[bool]
 

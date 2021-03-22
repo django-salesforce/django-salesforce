@@ -60,12 +60,12 @@ else:
         pass
 
 
-class DummyMixin(object):
+class DummyMixin:
     def some_overridden_method(self):
         pass
 
 
-class DummyMixin2(object):
+class DummyMixin2:
     pass
 
 

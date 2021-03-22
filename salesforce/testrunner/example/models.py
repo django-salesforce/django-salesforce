@@ -6,8 +6,9 @@
 #
 
 from typing import Optional
-import django
 import types
+
+import django
 from django.conf import settings
 
 from salesforce import models

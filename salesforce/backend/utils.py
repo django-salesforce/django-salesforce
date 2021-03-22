@@ -169,7 +169,7 @@ def extract_values_inner(row, query):
     return d
 
 
-class CursorWrapper(object):
+class CursorWrapper:
     """
     A wrapper that emulates the behavior of a database cursor.
 

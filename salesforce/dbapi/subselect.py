@@ -44,7 +44,7 @@ pattern_aggregation = re.compile(r'\b(?:{})(?=\()'.format('|'.join(AGGREGATION_W
 pattern_groupby = re.compile(r'\bGROUP BY\b', re.I)
 
 
-class QQuery(object):
+class QQuery:
     """Parse the SOQL query to an object useful to correctly interpret a response.
 
     public methods:

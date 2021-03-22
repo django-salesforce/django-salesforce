@@ -25,7 +25,8 @@ import salesforce.backend.utils
 
 _T = TypeVar("_T", bound=models.Model, covariant=True)
 if TYPE_CHECKING:
-    from salesforce.models import SalesforceModel  # noqa
+    from salesforce.models import SalesforceModel  # pylint:disable=cyclic-import # noqa
+    # pylint:enable=cyclic-import
 
 # class SalesforceRawQuerySet(query.RawQuerySet):
 #     def __len__(self):
@@ -82,7 +83,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             for x in objs:
                 if x.pk is None:
                     x.pk = get_sf_alt_pk()
-        return super(SalesforceQuerySet, self).bulk_create(objs, batch_size=batch_size, **kwargs)
+        return super().bulk_create(objs, batch_size=batch_size, **kwargs)
 
     def sf(self,
            query_all: Optional[bool] = None,
@@ -108,8 +109,8 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
         )
         return clone
 
-    def _chain(self, **kwargs) -> 'SalesforceQuerySet[_T]':
-        return super()._chain(**kwargs)
+    # def _chain(self, **kwargs) -> 'SalesforceQuerySet[_T]':
+    #     return super()._chain(**kwargs)
 
     def patch_insert_query(self, query: models.sql.Query) -> None:
         setattr(query, 'sf_params', self.query.sf_params)

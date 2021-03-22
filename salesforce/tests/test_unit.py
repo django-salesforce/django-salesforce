@@ -14,12 +14,12 @@ from salesforce.backend.test_helpers import LazyTestMixin
 
 class EasyCharField(models.CharField):
     def __init__(self, max_length=255, null=True, default='', **kwargs):
-        super(EasyCharField, self).__init__(max_length=max_length, null=null, default=default, **kwargs)
+        super().__init__(max_length=max_length, null=null, default=default, **kwargs)
 
 
 class EasyForeignKey(models.ForeignKey):
     def __init__(self, othermodel, on_delete=DO_NOTHING, **kwargs):
-        super(EasyForeignKey, self).__init__(othermodel, on_delete=on_delete, **kwargs)
+        super().__init__(othermodel, on_delete=on_delete, **kwargs)
 
 
 class TestField(TestCase):

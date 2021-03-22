@@ -126,7 +126,7 @@ else:
                                  verbose_name='ID', auto_created=True)
 
 
-class ModelTemplate(object):
+class ModelTemplate:
     Meta = SalesforceModel.Meta
 
 
