@@ -17,7 +17,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         self.collect_sql = collect_sql
         # if self.collect_sql:
         #    self.collected_sql = []
-        super(DatabaseSchemaEditor, self).__init__(connection, collect_sql=collect_sql, atomic=atomic)
+        super().__init__(connection, collect_sql=collect_sql, atomic=atomic)
 
     # State-managing methods
 

@@ -64,7 +64,7 @@ APPLICATION_JSON = 'application/json;charset=UTF-8'
 # the first part are not test cases, but helpers for a mocked network: MockTestCase, MockRequest
 
 
-class MockRequestsSession(object):
+class MockRequestsSession:
     """Prepare mock session with expected requests + responses history
 
     expected:   iterable of MockJsonRequest
@@ -158,7 +158,7 @@ class MockRequestsSession(object):
         return getattr(settings, 'SF_MOCK_VERBOSITY', 1)
 
 
-class MockRequest(object):
+class MockRequest:
     """Recorded Mock request to be compared and response to be used
 
     for some unit tests offline
@@ -305,7 +305,7 @@ class MockTestCase(SimpleTestCase):
 # class MockXmlRequest - only with different default content types
 
 
-class MockResponse(object):
+class MockResponse:
     """Mock response for some unit tests offline"""
     default_type = None  # type: Optional[str]
 

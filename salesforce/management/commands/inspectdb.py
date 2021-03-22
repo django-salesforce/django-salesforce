@@ -9,9 +9,10 @@ from salesforce.backend import introspection as sf_introspection
 
 
 class Command(InspectDBCommand):
+    tooling_api = None  # type:bool
 
     def add_arguments(self, parser):
-        super(Command, self).add_arguments(parser)
+        super().add_arguments(parser)
         parser.add_argument('--concise-db-column', action='store_true', dest='concise_db_column',
                             help="Export 'db_column' only if it is necessary and can not be reconstructed "
                             "from the name or 'custom'")
@@ -48,11 +49,10 @@ class Command(InspectDBCommand):
                 line = re.sub(' #$', '', line)
                 self.stdout.write("%s\n" % line)
         else:
-            super(Command, self).handle(**options)
+            super().handle(**options)
 
     def get_field_type(self, connection, table_name, row):
-        field_type, field_params, field_notes = (super(Command, self)
-                                                 .get_field_type(connection, table_name, row))
+        field_type, field_params, field_notes = super().get_field_type(connection, table_name, row)
         if connection.vendor == 'salesforce':
             if 'ref_comment' in row.params:
                 field_notes.append(row.params.pop('ref_comment'))
@@ -100,8 +100,7 @@ class Command(InspectDBCommand):
                     field_notes.append('Master Detail Relationship %s' % relationship_order)
                 field_params.update(fields_map)
         else:
-            new_name, field_params, field_notes = (super(Command, self)
-                                                   .normalize_col_name(col_name, used_column_names, is_relation))
+            new_name, field_params, field_notes = super().normalize_col_name(col_name, used_column_names, is_relation)
         return new_name, field_params, field_notes
 
     # the parameter 'is_view' has been since Django 2.1 and 'is_partition' since Django 2.2

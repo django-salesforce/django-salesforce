@@ -122,7 +122,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         All filter elements in a WHERE clause must be a field compared with value.
         The same is necessary for boolean fields, e.g. IsActive=true
         """
-        False
+        return False
 
     def prep_for_like_query(self, x):
         """Prepare a value for use in a LIKE query."""
@@ -138,4 +138,4 @@ def DefaultedOnCreate(*args, **kwargs):
     warnings.warn("Deprecated: the object DefaultedOnCreate should be imported from "
                   "salesforce.fields or salesforce.defaults or salesforce.models, "
                   "but not from salesforce.backend.operations")
-    return salesforce.defaults(*args, **kwargs)
+    return salesforce.defaults.DefaultedOnCreate(*args, **kwargs)

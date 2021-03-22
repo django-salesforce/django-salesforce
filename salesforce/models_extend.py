@@ -52,16 +52,16 @@ class SfCharAutoField(SalesforceAutoField):
 
 
 if TYPE_CHECKING:
-    class SalesforceModel(models.Model, Generic[_T],  # type: ignore[no-redef] # noqa # redefined
+    class SalesforceModel(models.Model, Generic[_T],  # type:ignore[no-redef] # pylint:disable=function-redefined #noqa
                           metaclass=SalesforceModelBase):
         _salesforce_object = ...
 
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *args, **kwargs) -> None:  # pylint:disable=super-init-not-called
             tmp = models.manager.Manager()  # type: models.manager.Manager[_T]
             self.objects = tmp
 else:
     # pylint:disable=too-few-public-methods,function-redefined
-    class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
+    class SalesforceModel(models.Model, metaclass=SalesforceModelBase):  # pylint:disable=function-redefined
         """
         Abstract model class for Salesforce objects that can be saved to other db.
 
@@ -84,8 +84,8 @@ else:
             using = using or router.db_for_write(self.__class__, instance=self)
             if self.pk is None and not force_update and not is_sf_database(using):
                 self.pk = get_sf_alt_pk()
-            super(SalesforceModel, self).save(force_insert=force_insert, force_update=force_update,
-                                              using=using, update_fields=update_fields)
+            super().save(force_insert=force_insert, force_update=force_update,
+                         using=using, update_fields=update_fields)
             if not isinstance(self.pk, str):
                 raise ValueError("The primary key value is not assigned correctly")
 
@@ -95,4 +95,4 @@ else:
                 # the check "is_sf_database(using)" is used for something unexpected
                 if self.pk and not is_sf_database(using):
                     returning_fields = []
-                return super(SalesforceModel, self)._do_insert(manager, using, fields, returning_fields, raw)
+                return super()._do_insert(manager, using, fields, returning_fields, raw)

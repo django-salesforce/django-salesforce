@@ -9,7 +9,7 @@ VERSION = (2, 1, 'mock')
 warnings.warn("Fake Django is for running some tests without Django.")
 
 
-class Settings(object):
+class Settings:
     pass
 
 

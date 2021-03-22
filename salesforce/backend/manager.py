@@ -39,14 +39,14 @@ class SalesforceManager(manager.Manager, Generic[_T]):
         assert self.model is not None
         if router.is_sf_database(self.db) or alias_is_sf or is_extended_model:
             return query.SalesforceQuerySet(self.model, using=self.db)
-        return super(SalesforceManager, self).get_queryset()
+        return super().get_queryset()
 
     # def raw(self, raw_query, params=None, translations=None):
     #     if router.is_sf_database(self.db):
     #         q = models_sql_query.SalesforceRawQuery(raw_query, self.db, params)
     #         return query.SalesforceRawQuerySet(raw_query=raw_query, model=self.model, query=q,
     #                                            params=params, using=self.db)
-    #     return super(SalesforceManager, self).raw(raw_query, params=params, translations=translations)
+    #     return super().raw(raw_query, params=params, translations=translations)
 
     # methods of SalesforceQuerySet on a SalesfroceManager
 

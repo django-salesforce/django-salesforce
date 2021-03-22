@@ -1,7 +1,7 @@
 import datetime
 import decimal
-from pytz import utc
 from typing import Any, Callable, Dict, Optional, overload, Tuple, Type, TYPE_CHECKING
+from pytz import utc
 # from django.utils.deconstruct import deconstructible
 import salesforce
 
@@ -209,7 +209,7 @@ def DefaultedOnCreate(value: Any = None, internal_type: Optional[str] = None) ->
     elif value is not None:
         if isinstance(value, type) and hasattr(value, '_salesforce_object'):
             if TYPE_CHECKING:
-                import salesforce.models
+                import salesforce.models  # pylint:disable=cyclic-import
                 assert issubclass(value, salesforce.models.Model)
             return foreign_key_factory_default(value)
         if callable(value):

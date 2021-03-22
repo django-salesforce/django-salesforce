@@ -86,7 +86,7 @@ class SalesforceAutoField(fields.AutoField):
             # with the same default SalesforceAutoField. Therefore the second should be
             # ignored.
             return
-        super(SalesforceAutoField, self).contribute_to_class(cls, name, **kwargs)
+        super().contribute_to_class(cls, name, **kwargs)
         cls._meta.auto_field = self
 
 
@@ -110,7 +110,7 @@ class SfField(models.Field):
         self.sf_namespace = ''
         if kwargs.get('default') is DEFAULTED_ON_CREATE:
             kwargs['default'] = DefaultedOnCreate(internal_type=self.get_internal_type())
-        super(SfField, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def get_attname_column(self) -> Tuple[str, str]:
         """
@@ -139,7 +139,7 @@ class SfField(models.Field):
         return attname, column
 
     def contribute_to_class(self, cls, name, private_only=False):
-        super(SfField, self).contribute_to_class(cls, name, private_only=private_only)
+        super().contribute_to_class(cls, name, private_only=private_only)
         if self.sf_custom is None and hasattr(cls._meta, 'sf_custom'):
             # Only custom fields in models explicitly marked by
             # Meta custom=True are recognized automatically - for
@@ -202,7 +202,7 @@ class DecimalField(SfField, models.DecimalField):
     def to_python(self, value):
         if str(value) == '':
             return value
-        ret = super(DecimalField, self).to_python(value)
+        ret = super().to_python(value)
         if ret is not None and self.decimal_places == 0:
             # this is because Salesforce has no numeric integer type
             if ret == int(ret):
@@ -232,7 +232,7 @@ class BooleanField(SfField, models.BooleanField):
     a default value. Implicit default is False if not specified.
     """
     def __init__(self, default=False, **kwargs):
-        super(BooleanField, self).__init__(default=default, **kwargs)
+        super().__init__(default=default, **kwargs)
 
 
 class DateTimeField(SfField, models.DateTimeField):

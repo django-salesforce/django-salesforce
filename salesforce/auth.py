@@ -330,6 +330,7 @@ class SfdxWebAuth(StaticGlobalAuth):
     no private data are saved to disk by django-salesforce, only data by sfdx
     """
     required_fields = ['ENGINE', 'HOST', 'USER']
+    data = None  # type:Dict[str, Any]
 
     def authenticate(self) -> Dict[str, str]:
         host = self.settings_dict['HOST']
@@ -362,7 +363,8 @@ class SfdxWebAuth(StaticGlobalAuth):
             self.data = {}
             # proc.returncode is the same as json "status" (and json "exitCode" if not zero)
             try:
-                data = json.loads(stdout)  # type: Dict[str, Any]
+                data = json.loads(stdout)
+                assert isinstance(data, dict)
                 msg = "SFDX error {}: {}".format(data['name'], data['message'])
                 if data['name'] in no_raise.split(','):
                     return data
@@ -580,7 +582,7 @@ class TimeStatistics:
     @staticmethod
     def domain(url: str) -> str:
         match = re.match(r'^(?:https|mock)://([^/]*)/?', url)
-        assert(match)
+        assert match
         return match.groups()[0]
 
 

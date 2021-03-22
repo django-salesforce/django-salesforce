@@ -19,7 +19,7 @@ from django.db.transaction import TransactionManagementError
 import salesforce.backend.models_lookups   # noqa # required for activation of lookups
 from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
 from salesforce.dbapi.driver import DatabaseError
-# pylint:no-else-return,too-many-branches,too-many-locals
+# pylint:disable=no-else-return,too-many-branches,too-many-locals
 
 AliasMapItems = List[Tuple[
     Optional[str],
@@ -36,7 +36,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
     soql_trans = None  # type: Optional[Dict[str, str]]
 
     def __init__(self, *args, **kwargs) -> None:
-        super(SQLCompiler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.root_aliases = []  # type: List[str]
 
     def get_from_clause(self) -> Tuple[List[str], List[Any]]:
@@ -51,7 +51,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         if self.root_aliases and len(self.root_aliases) == 1:
             root_table = self.soql_trans[self.root_aliases[0]]
         else:
-            sql_items, params = super(SQLCompiler, self).get_from_clause()
+            sql_items, params = super().get_from_clause()
             assert not params
             root_table, alias = sql_items[0].rsplit(' ', 1)
             msg = "Only queries with one top child model are supported by Salesforce. Use a subquery."
@@ -338,7 +338,7 @@ class SalesforceWhereNode(sql_where.WhereNode):
         # *** patch 1 (add) begin
         # # prepare SOQL translations
         if not isinstance(compiler, SQLCompiler):
-            return super(SalesforceWhereNode, self).as_sql(compiler, connection)
+            return super().as_sql(compiler, connection)
         soql_trans = compiler.query_topology()
         # *** patch 1 end
 
@@ -405,6 +405,7 @@ class SalesforceWhereNode(sql_where.WhereNode):
 
 
 class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):  # type: ignore[misc] # noqa # as_sql
+
     if DJANGO_31_PLUS:
 
         def execute_sql(self, returning_fields=None):

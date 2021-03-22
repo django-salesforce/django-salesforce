@@ -346,7 +346,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 # pylint:disable=too-few-public-methods
 
 
-class SymbolicModelsName(object):
+class SymbolicModelsName:
     """A symbolic name from the `models` module.
     >>> from salesforce import models
     >>> assert models.READ_ONLY == 3

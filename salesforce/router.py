@@ -17,14 +17,14 @@ from django.db import models
 
 def is_sf_database(db: Optional[str], model: models.Model = None) -> bool:
     """The alias is a Salesforce database."""
-    from django.db import connections
+    from django.db import connections  # pylint:disable=import-outside-toplevel
     if db is None:
         return hasattr(model, '_salesforce_object')
     engine = connections[db].settings_dict['ENGINE']
     return engine == 'salesforce.backend' or connections[db].vendor == 'salesforce'
 
 
-class ModelRouter(object):
+class ModelRouter:
     """
     Database router for Salesforce models.
     """

@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import warnings
+from typing import Any, cast, List, TypeVar
 
 import pytz
 from django.conf import settings
@@ -20,7 +21,6 @@ from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max, Model, query as models_query
 from django.test import TestCase
 from django.utils import timezone
-from typing import Any, cast, List, TypeVar
 
 import salesforce
 from salesforce import router

@@ -2,7 +2,7 @@ import unittest
 from salesforce.backend.indep import LazyField
 
 
-class MyField(object):
+class MyField:
     # pylint:disable=invalid-name,too-few-public-methods
 
     def __init__(self, a=None, **kwargs):
