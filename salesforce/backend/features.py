@@ -20,7 +20,6 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 
     supports_select_for_update_with_limit = False
 
-    # features new in Django 1.11
     supports_select_union = False
     supports_select_intersection = False
     supports_select_difference = False

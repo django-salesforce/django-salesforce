@@ -8,9 +8,8 @@
 """
 Salesforce object query and queryset customizations.  (like django.db.models.query)
 """
-from typing import Dict, Generic, Iterable, List, Optional, TYPE_CHECKING, Type, TypeVar
+from typing import Dict, Generic, Iterable, List, NoReturn, Optional, TYPE_CHECKING, Type, TypeVar
 import typing
-import warnings
 
 from django.conf import settings
 from django.db import NotSupportedError, models
@@ -19,7 +18,7 @@ from django.db.utils import DEFAULT_DB_ALIAS
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
-from salesforce.backend import compiler, DJANGO_20_PLUS, DJANGO_22_PLUS, DJANGO_30_PLUS
+from salesforce.backend import compiler, DJANGO_22_PLUS, DJANGO_30_PLUS
 from salesforce.backend.models_sql_query import SalesforceQuery
 from salesforce.router import is_sf_database
 import salesforce.backend.utils
@@ -71,11 +70,8 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
         """
         return self.sf(query_all=True)
 
-    def simple_select_related(self, *fields: str) -> 'SalesforceQuerySet[_T]':
-        if DJANGO_20_PLUS:
-            raise NotSupportedError("Obsoleted method .simple_select_related(), use .select_related() instead")
-        warnings.warn("Obsoleted method .simple_select_related(), use .select_related() instead")
-        return self.select_related(*fields)
+    def simple_select_related(self, *fields: str) -> NoReturn:
+        raise NotSupportedError("Obsoleted method .simple_select_related(), use .select_related() instead")
 
     def bulk_create(self, objs: Iterable[_T], batch_size: Optional[int] = None, ignore_conflicts: bool = False
                     ) -> List[_T]:
@@ -113,10 +109,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
         return clone
 
     def _chain(self, **kwargs) -> 'SalesforceQuerySet[_T]':
-        if DJANGO_20_PLUS:
-            return super()._chain(**kwargs)
-        else:
-            return self._clone(**kwargs)  # type: ignore[call-arg] # noqa
+        return super()._chain(**kwargs)
 
     def patch_insert_query(self, query: models.sql.Query) -> None:
         setattr(query, 'sf_params', self.query.sf_params)

@@ -19,7 +19,7 @@ class Range(models.lookups.Range):
     def override_as_sql(self, compiler, connection):
         lhs, lhs_params = self.process_lhs(compiler, connection)
         rhs, rhs_params = self.process_rhs(compiler, connection)
-        assert tuple(rhs) == ('%s', '%s')  # tuple in Django 1.11+, list in old Django
+        assert rhs == ('%s', '%s')
         assert len(rhs_params) == 2
         params = lhs_params + [rhs_params[0]] + lhs_params + [rhs_params[1]]
         # The symbolic parameters %s are again substituted by %s. The real

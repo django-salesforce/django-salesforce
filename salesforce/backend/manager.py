@@ -19,7 +19,7 @@ from django.db.models import manager, Model
 from django.db.models.query import QuerySet
 
 from salesforce import router
-from salesforce.backend import query, DJANGO_20_PLUS
+from salesforce.backend import query
 
 _T = TypeVar("_T", bound=Model, covariant=True)
 
@@ -29,10 +29,6 @@ class SalesforceManager(manager.Manager, Generic[_T]):
     if sys.version_info[:2] < (3, 6):
         # this is a fix for Generic type issue https://github.com/python/typing/issues/498
         __copy__ = None
-
-    if not DJANGO_20_PLUS:
-        use_for_related_fields = True
-        silence_use_for_related_fields_deprecation = True  # pylint:disable=invalid-name  # name from Django
 
     def get_queryset(self, _alias: Optional[str] = None) -> 'QuerySet[_T]':
         """

@@ -176,7 +176,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             with self.lazy_assert_n_requests(1):
                 qs = Contact.objects.filter(account__Name='sf_test account').select_related('account')
                 contacts = list(qs)
-            with self.lazy_assert_n_requests(0):  # this fails in Django 2.0 - not cached
+            with self.lazy_assert_n_requests(0):
                 [x.account.Name for x in contacts]
             self.assertGreaterEqual(len(contacts), 1)
             self.lazy_check()
