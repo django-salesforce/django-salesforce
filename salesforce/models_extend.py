@@ -23,7 +23,7 @@ Interesting not yet implemented ideas are:
 from typing import Generic, TYPE_CHECKING
 from django.db import models, router
 
-from salesforce.backend import DJANGO_20_PLUS, DJANGO_30_PLUS
+from salesforce.backend import DJANGO_30_PLUS
 from salesforce.backend.indep import get_sf_alt_pk
 from salesforce.models import *  # NOQA; pylint:disable=wildcard-import,unused-wildcard-import
 from salesforce.models import SalesforceAutoField, SalesforceModelBase, SF_PK, _T
@@ -77,8 +77,6 @@ else:
             # pylint:disable=duplicate-code
             abstract = True
             base_manager_name = 'objects'
-            if not DJANGO_20_PLUS:
-                manager_inheritance_from_future = True
 
         id = SfCharAutoField(primary_key=True, name=SF_PK, db_column='Id', verbose_name='ID', auto_created=True)
 

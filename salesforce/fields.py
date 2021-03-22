@@ -138,10 +138,8 @@ class SfField(models.Field):
                 column = self.sf_namespace + column + '__c'
         return attname, column
 
-    def contribute_to_class(self, cls, name, private_only=False, **kwargs):
-        # More arguments are in Django 1.11 than in Django 2.0, therefore we use the universal **kwargs
-        # pylint:disable=arguments-differ
-        super(SfField, self).contribute_to_class(cls, name, private_only=private_only, **kwargs)
+    def contribute_to_class(self, cls, name, private_only=False):
+        super(SfField, self).contribute_to_class(cls, name, private_only=private_only)
         if self.sf_custom is None and hasattr(cls._meta, 'sf_custom'):
             # Only custom fields in models explicitly marked by
             # Meta custom=True are recognized automatically - for
@@ -211,9 +209,7 @@ class DecimalField(SfField, models.DecimalField):
                 ret = Decimal(int(ret))
         return ret
 
-    # a positional parameter "context" was in Django <= 1.11
-    # replaced by *args here to preven deprecation warning in Django 2.x
-    def from_db_value(self, value, expression, connection, *args):
+    def from_db_value(self, value, expression, connection):
         # pylint:disable=unused-argument
         # TODO refactor and move to the driver like in other backends
         if isinstance(value, float):
@@ -246,9 +242,7 @@ class DateTimeField(SfField, models.DateTimeField):
 class DateField(SfField, models.DateField):
     """DateField with sf_read_only attribute for Salesforce."""
 
-    # a positional parameter "context" was in Django <= 1.11
-    # replaced by *args here to preven deprecation warning in Django 2.x
-    def from_db_value(self, value, expression, connection, *args):
+    def from_db_value(self, value, expression, connection):
         # pylint:disable=unused-argument
         return self.to_python(value)
 
@@ -256,9 +250,7 @@ class DateField(SfField, models.DateField):
 class TimeField(SfField, models.TimeField):
     """TimeField with sf_read_only attribute for Salesforce."""
 
-    # a positional parameter "context" was in Django <= 1.11
-    # replaced by *args here to preven deprecation warning in Django 2.x
-    def from_db_value(self, value, expression, connection, *args):
+    def from_db_value(self, value, expression, connection):
         # pylint:disable=unused-argument
         return self.to_python(value)
 

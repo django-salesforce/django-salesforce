@@ -25,7 +25,6 @@ from django.db.models.base import ModelBase
 from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 # from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
 
-from salesforce.backend import DJANGO_20_PLUS
 from salesforce.defaults import DefaultedOnCreate, DEFAULTED_ON_CREATE
 from salesforce.fields import SalesforceAutoField, SF_PK, SfField, ForeignKey
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
@@ -120,8 +119,6 @@ else:
         class Meta:
             abstract = True
             base_manager_name = 'base_manager'
-            if not DJANGO_20_PLUS:
-                manager_inheritance_from_future = True
 
         # Name of primary key 'Id' can be easily changed to 'id'
         # by "settings.SF_PK='id'".

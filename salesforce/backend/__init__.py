@@ -33,7 +33,6 @@ import re
 
 import django
 
-DJANGO_20_PLUS = django.VERSION[:2] >= (2, 0)
 DJANGO_21_PLUS = django.VERSION[:2] >= (2, 1)
 DJANGO_22_PLUS = django.VERSION[:2] >= (2, 2)
 DJANGO_30_PLUS = django.VERSION[:2] >= (3, 0)

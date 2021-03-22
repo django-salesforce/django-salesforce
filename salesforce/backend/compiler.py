@@ -8,7 +8,7 @@
 """
 Generate queries using the SOQL dialect.  (like django.db.models.sql.compiler and  django.db.models.sql.where)
 """
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import re
 from django.core.exceptions import EmptyResultSet
 from django.db import NotSupportedError
@@ -16,11 +16,9 @@ from django.db.models.sql import compiler as sql_compiler, where as sql_where, c
 from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
-import salesforce.backend.models_lookups   # required for activation of lookups
-from salesforce.backend import DJANGO_20_PLUS, DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
+import salesforce.backend.models_lookups   # noqa # required for activation of lookups
+from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
 from salesforce.dbapi.driver import DatabaseError
-if TYPE_CHECKING:
-    import salesforce.backend.base
 # pylint:no-else-return,too-many-branches,too-many-locals
 
 AliasMapItems = List[Tuple[
@@ -129,11 +127,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         If 'with_limits' is False, any limit/offset information is not included
         in the query.
         """
-        # parameter "with_col_aliases" can be a connection instead of bool in Django 1.11
-        # (this unexpected type is not before and not after Django 1.11)
-        if not isinstance(with_col_aliases, bool):
-            assert isinstance(with_col_aliases, salesforce.backend.base.DatabaseWrapper)
-            assert not DJANGO_20_PLUS
+        assert isinstance(with_col_aliases, bool)
         # After executing the query, we must get rid of any joins the query
         # setup created. So, take note of alias counts before the query ran.
         # However we do not want to get rid of stuff done in pre_sql_setup(),
@@ -176,8 +170,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                 if alias:
                     # fixed by removing 'AS'
                     s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
-                elif with_col_aliases and not isinstance(with_col_aliases, salesforce.backend.base.DatabaseWrapper):
-                    # the check of type "with_col_aliases" is important with ".filter(id__in=queryset)" in Django 1.11
+                elif with_col_aliases:
                     s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
                     col_idx += 1
                 if soql_trans and re.match(r'^\w+\.\w+$', s_sql):
@@ -332,7 +325,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
 
 class SalesforceWhereNode(sql_where.WhereNode):
 
-    # patched "django.db.models.sql.where.WhereNode.as_sql" from Django 1.10, 1.11, 2.0, 2.1
+    # patched "django.db.models.sql.where.WhereNode.as_sql" from Django 2.0, 2.1
     # pylint:disable=no-else-return,no-else-raise,too-many-branches,too-many-locals,unused-argument
     def as_salesforce(self, compiler: sql_compiler.SQLCompiler, connection) -> Tuple[str, List[Any]]:
         """
@@ -345,9 +338,6 @@ class SalesforceWhereNode(sql_where.WhereNode):
         # *** patch 1 (add) begin
         # # prepare SOQL translations
         if not isinstance(compiler, SQLCompiler):
-            # future fix for DJANGO_20_PLUS, when deprecated "use_for_related_fields"
-            # removed from managers,
-            # "str(<UpdateQuery...>)" or "<UpdateQuery...>.get_compiler('default').as_sql()"
             return super(SalesforceWhereNode, self).as_sql(compiler, connection)
         soql_trans = compiler.query_topology()
         # *** patch 1 end
@@ -408,13 +398,7 @@ class SalesforceWhereNode(sql_where.WhereNode):
                 # SOQL requires parentheses around "NOT" expression, if combined with AND/OR
                 sql_string = '(NOT (%s))' % sql_string
                 # *** patch 3 end
-
-            # *** patch 4 (combine two versions into one compatible) begin
-            # elif len(result) > 1:                                    # Django 1.11
-            # elif len(result) > 1 or self.resolved:                   # Django 2.0, 2.1
-            elif len(result) > 1 or getattr(self, 'resolved', False):  # compatible code
-                # *** patch 4 end
-
+            elif len(result) > 1 or self.resolved:
                 sql_string = '(%s)' % sql_string
         return sql_string, result_params
     # pylint:enable=no-else-return,too-many-branches,too-many-locals,unused-argument

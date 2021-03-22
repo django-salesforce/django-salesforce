@@ -7,7 +7,6 @@ from django.conf import settings
 from django.db.models import Count, Model
 from django.db.models.sql import Query, RawQuery, constants
 
-from salesforce.backend import DJANGO_20_PLUS
 from salesforce.dbapi.driver import arg_to_soql
 
 _T = TypeVar("_T", bound=Model, covariant=True)
@@ -26,7 +25,7 @@ class SalesforceRawQuery(RawQuery):
 #         if self.cursor.rowcount > 0:
 #             return [converter(col) for col in self.cursor.first_row.keys() if col != 'attributes']
 #         # TODO hy: A more general fix is desirable with rewriting more code.
-#         return ['Id']  # originally [SF_PK] before Django 1.8.4
+#         return ['Id']
 #
 #     def _execute_query(self):
 #         self.cursor = connections[self.using].cursor()
@@ -74,13 +73,7 @@ class SalesforceQuery(Query, Generic[_T]):
         return self.get_compiler(sf_alias).as_sql()
 
     def clone(self, klass=None, memo=None) -> 'SalesforceQuery[_T]':  # pylint: disable=arguments-differ
-        if DJANGO_20_PLUS:
-            query = cast(SalesforceQuery, Query.clone(self))
-        else:
-            # pylint: disable=too-many-function-args
-            query = cast(SalesforceQuery, Query.clone(self, klass, memo))  # type: ignore[call-arg]  # noqa
-            query.sf_params = self.sf_params
-        return query
+        return cast(SalesforceQuery, Query.clone(self))
 
     def sf(self,
            query_all: Optional[bool] = None,
