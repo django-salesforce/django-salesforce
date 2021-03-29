@@ -117,13 +117,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         row_type = {'dict': dict, 'list': list, None: None}[name]
         return self.connection.cursor(row_type=row_type)
 
-    def quote_name(self, name: str) -> str:
-        """
-        Do not quote column and table names in the SOQL dialect.
-        """
-        # pylint:disable=no-self-use
-        return name
-
     @property
     def is_sandbox(self) -> bool:
         if self._is_sandbox is None:
