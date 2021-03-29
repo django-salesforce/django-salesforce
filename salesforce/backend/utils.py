@@ -1,23 +1,19 @@
 """
 CursorWrapper (like django.db.backends.utils)
 """
-import datetime
 import decimal
 import logging
 import warnings
 from typing import Any, Callable, Tuple, TypeVar, Union, overload
 
-import pytz
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
 
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.driver import (
     DatabaseError, InternalError, SalesforceWarning, merge_dict,
-    register_conversion, arg_to_json, SALESFORCE_DATETIME_FORMAT)
-from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, SF_PK
+    register_conversion, arg_to_json)
+from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 if not DJANGO_30_PLUS:
     F = TypeVar('F', bound=Callable)
@@ -52,68 +48,6 @@ log = logging.getLogger(__name__)
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
 MIGRATIONS_QUERY_TO_BE_IGNORED = "SELECT django_migrations.app, django_migrations.name FROM django_migrations"
-
-
-def prep_for_deserialize_inner(model, record, init_list=None):
-    fields = dict()
-    for x in model._meta.fields:
-        if not x.primary_key and (not init_list or x.name in init_list):
-            if x.column.endswith('.Type'):
-                # Type of generic foreign key
-                simple_column, _ = x.column.split('.')
-                fields[x.name] = record[simple_column]['Type']
-            else:
-                # Normal fields
-                field_val = record[x.column]
-                # db_type = x.db_type(connection=connections[using])
-                if x.__class__.__name__ == 'DateTimeField' and field_val is not None:
-                    d = datetime.datetime.strptime(field_val, SALESFORCE_DATETIME_FORMAT)
-                    d = d.replace(tzinfo=pytz.utc)
-                    if settings.USE_TZ:
-                        fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT)
-                    else:
-                        tz = pytz.timezone(settings.TIME_ZONE)
-                        d = tz.normalize(d.astimezone(tz))
-                        fields[x.name] = d.strftime(DJANGO_DATETIME_FORMAT[:-6])
-                else:
-                    fields[x.name] = field_val
-    return fields
-
-
-def prep_for_deserialize(model, record, using, init_list=None):  # pylint:disable=unused-argument
-    """
-    Convert a record from SFDC (decoded JSON) to dict(model string, pk, fields)
-    If fixes fields of some types. If names of required fields `init_list `are
-    specified, then only these fields are processed.
-    """
-    # TODO the parameter 'using' is not currently important.
-    attribs = record.pop('attributes')  # NOQA pylint:disable=unused-variable
-
-    mod = model.__module__.split('.')
-    if hasattr(model._meta, 'app_label'):
-        app_label = getattr(model._meta, 'app_label')
-    elif mod[-1] == 'models':
-        app_label = mod[-2]
-    else:
-        raise ImproperlyConfigured("Can't discover the app_label for %s, you must specify it via model meta options.")
-
-    if len(record.keys()) == 1 and model._meta.db_table in record:
-        # this is for objects with ManyToManyField and OneToOneField
-        while len(record) == 1:
-            record = list(record.values())[0]
-            if record is None:
-                return None
-
-    fields = prep_for_deserialize_inner(model, record, init_list=init_list)
-
-    if init_list and set(init_list).difference(fields).difference([SF_PK]):
-        raise DatabaseError("Not found some expected fields")
-
-    return dict(
-        model='.'.join([app_label, model.__name__]),
-        pk=record.pop('Id'),
-        fields=fields,
-    )
 
 
 def extract_values(query):
@@ -290,9 +224,6 @@ class CursorWrapper:
             self.cursor.rowcount = 0
         self.rowcount = self.cursor.rowcount
 
-    def query_more(self, nextRecordsUrl: str):
-        return self.handle_api_exceptions('GET', nextRecordsUrl)
-
     def execute_insert(self, query):
         table = query.model._meta.db_table
         if table == 'django_migrations':
@@ -467,24 +398,6 @@ class CursorWrapper:
         """List Available REST API Versions"""
         return self.handle_api_exceptions('GET', '', api_ver='').json()
 
-    def query_results(self, results):
-        while True:
-            for rec in results['records']:
-                if rec['attributes']['type'] == 'AggregateResult' and hasattr(self.query, 'annotation_select'):
-                    annotation_select = self.query.annotation_select
-                    assert len(rec) - 1 == len(list(annotation_select.items()))
-                    # The 'attributes' info is unexpected for Django within fields.
-                    rec = [rec[k] for k, _ in annotation_select.items()]
-                yield rec
-
-            if results['done']:
-                break
-
-            # see about Retrieving the Remaining SOQL Query Results
-            # http://www.salesforce.com/us/developer/docs/api_rest/Content/dome_query.htm#retrieve_remaining_results_title
-            response = self.query_more(results['nextRecordsUrl'])
-            results = response.json(parse_float=decimal.Decimal)
-
     def __iter__(self):
         return self.cursor
 
@@ -519,4 +432,5 @@ def sobj_id(obj):
     return obj.pk
 
 
+# this JSON conversion is important for QuerySet.update(foreign_key_field=some_object)
 register_conversion(models.Model, json_conv=sobj_id, subclass=True)

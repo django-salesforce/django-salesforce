@@ -34,29 +34,11 @@ class DatabaseOperations(BaseDatabaseOperations):
 
     compiler_module = "salesforce.backend.compiler"
 
-    def connection_init(self):
-        pass
-
     def sql_flush(self, style, tables, sequences, allow_cascade=False):
         return []
 
     def quote_name(self, name):
         return name
-
-    def value_to_db_datetime(self, value):
-        """
-        We let the JSON serializer handle dates for us.
-        """
-        return value
-
-    def value_to_db_date(self, value):
-        """
-        We let the JSON serializer handle dates for us.
-        """
-        return value
-
-    def last_insert_id(self, cursor, table_name, pk_name):
-        return cursor.lastrowid
 
     if DJANGO_30_PLUS:
 

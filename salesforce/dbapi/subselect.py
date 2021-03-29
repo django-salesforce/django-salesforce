@@ -191,12 +191,6 @@ class QQuery:
                         yield {k: fix_data_type(row_flat[k.lower()]) for k in self.aliases}
                     elif issubclass(row_type, list):
                         yield [fix_data_type(row_flat[k.lower()]) for k in self.aliases]
-                # if not resp['done']:
-                #     if not cursor:
-                #         raise ProgrammingError("Must get a cursor")
-                #     resp = cursor.query_more(resp['nextRecordsUrl']).json()
-                # else:
-                #     break
                 break
 
 

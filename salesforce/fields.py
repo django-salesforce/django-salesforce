@@ -9,8 +9,7 @@
 Customized fields for Salesforce, especially the primary key. (like django.db.models.fields)
 """
 
-from typing import Tuple
-import typing
+from typing import Tuple, TYPE_CHECKING
 import warnings
 from decimal import Decimal
 from django.conf import settings
@@ -255,7 +254,7 @@ class TimeField(SfField, models.TimeField):
         return self.to_python(value)
 
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     # static typing of a mixin requires an additional base, that is not necessary
     # at runtime
     _MixinTypingBase = models.ForeignObject

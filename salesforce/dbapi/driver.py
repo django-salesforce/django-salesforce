@@ -13,7 +13,6 @@ import json
 import logging
 import pprint
 import re
-import socket
 import sys
 import threading
 import time
@@ -98,7 +97,7 @@ class SfSession(requests.Session):
 class RawConnection:
     """
     parameters:
-        settings_dict:  like settings.SADABASES['salesforce'] in Django
+        settings_dict:  like settings.DATABASES['salesforce'] in Django
         alias:          important if the authentication should be shared for more thread
         errorhandler: function with following signature
             ``errorhandler(connection, cursor, errorclass, errorvalue)``
@@ -572,7 +571,7 @@ class Cursor(Generic[_TRow]):
             assert not tooling_api
             self.execute_explain(soql, parameters, query_all=query_all)
         else:
-            # INSERT UPDATE DELETE EXPLAIN
+            # INSERT UPDATE DELETE
             raise ProgrammingError("Unexpected command '{}'".format(sqltype))
 
     def executemany(self, operation: str, seq_of_parameters: Iterable[Iterable[Any]]) -> None:
@@ -776,25 +775,6 @@ def signalize_extensions() -> None:
     warnings.warn("DB-API extension cursor.__iter__(, SalesforceWarning) used")
     warnings.warn("DB-API extension cursor.lastrowid used", SalesforceWarning)
     warnings.warn("DB-API extension .errorhandler used", SalesforceWarning)
-
-
-# --  LOW LEVEL
-
-
-# pylint:disable=too-many-arguments
-def getaddrinfo_wrapper(host: Any, port: Any, family: int = socket.AF_INET,
-                        socktype: int = 0, proto: int = 0, flags: int = 0) -> Any:
-    """Patched 'getaddrinfo' with default family IPv4 (enabled by settings IPV4_ONLY=True)"""
-    return orig_getaddrinfo(host, port, family, socktype, proto, flags)
-# pylint:enable=too-many-arguments
-
-
-# patch to IPv4 if required and not patched by anything other yet
-if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('socket', '_socket'):
-    log.info("Patched socket to IPv4 only")
-    orig_getaddrinfo = socket.getaddrinfo
-    # replace the original socket.getaddrinfo by our version
-    socket.getaddrinfo = cast(Any, getaddrinfo_wrapper)
 
 
 # ----
