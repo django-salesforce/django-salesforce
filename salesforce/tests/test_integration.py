@@ -31,6 +31,7 @@ from salesforce.backend.test_helpers import (
     current_user, default_is_sf, sf_alias, uid_version as uid,
     QuietSalesforceErrors, LazyTestMixin)
 from salesforce.dbapi.exceptions import SalesforceWarning
+from salesforce.dbapi.test_helpers import PatchedSfConnection
 from salesforce.models import SalesforceModel
 from salesforce.testrunner.example.models import (
         Account, Contact, Lead, User,
@@ -848,6 +849,37 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertEqual(soql, expected_soql)
         self.assertEqual(params, ('',))
         self.assertEqual(set(list(qs)[0].keys()), {'account_id', 'cnt'})
+        list(qs)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_count_distinct(self) -> None:
+        """Test Count(some_field, distinct=True)"""
+        qs = (Contact.objects.order_by().values('account_id')
+              .annotate(cnt=Count('first_name', distinct=True))
+              )
+        soql, params = qs.query.get_compiler('salesforce').as_sql()
+        expected_soql = (
+            'SELECT Contact.AccountId, COUNT_DISTINCT(Contact.FirstName) cnt FROM Contact '
+            'GROUP BY Contact.AccountId'
+        )
+        self.assertEqual(soql, expected_soql)
+        self.assertEqual(params, ())
+        self.assertEqual(set(list(qs)[0].keys()), {'account_id', 'cnt'})
+        list(qs)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_count_asterisk(self) -> None:
+        """Test Count('*')"""
+        with PatchedSfConnection(sf_alias, verbs=['use_debug_info']):
+            ret = Contact.objects.aggregate(cnt=Count('*'))
+            debug_info = connections[sf_alias].connection.debug_info
+        self.assertEqual(debug_info['soql'], ('SELECT COUNT(Id) cnt FROM Contact', []))
+        self.assertTrue('cnt' in ret)
+
+        qs = Contact.objects.order_by().values('account_id').annotate(cnt=Count('*'))
+        soql, params = qs.query.get_compiler('salesforce').as_sql()
+        self.assertEqual(soql, 'SELECT Contact.AccountId, COUNT(Id) cnt FROM Contact GROUP BY Contact.AccountId')
+        list(qs)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_errors(self) -> None:

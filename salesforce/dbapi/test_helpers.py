@@ -23,8 +23,8 @@ class QuietSalesforceErrors:
     It works on the default Salesforce connection. It can be nested.
     """
     def __init__(self, alias: Optional[str], verbs: Optional[List[str]] = None):
-        self.connection = connections[alias]
-        self.verbs = verbs
+        self.connection = connections[alias or 'salesforce']
+        self.verbs = verbs or []
         self.save_debug_verbs = None
 
     def __enter__(self) -> 'QuietSalesforceErrors':
@@ -38,6 +38,10 @@ class QuietSalesforceErrors:
             self.connection.connection.debug_verbs = self.save_debug_verbs
         except AttributeError:
             pass
+
+
+class PatchedSfConnection(QuietSalesforceErrors):
+    """A connection with a temporarily modified setting"""
 
 
 if TYPE_CHECKING:
