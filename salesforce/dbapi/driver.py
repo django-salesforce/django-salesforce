@@ -121,13 +121,13 @@ class RawConnection:
         # private members:
         self.alias = cast(str, alias)
         self.errorhandler = errorhandler
-        self.use_introspection = use_introspection if use_introspection is not None else True  # TODO
+        self.use_introspection = use_introspection if use_introspection is not None else True  # TODO implement
         self.settings_dict = settings_dict
         self.messages = []           # type: List[ErrInfo]
 
         self._sf_session = None      # type: Optional[SfSession]
         self._api_version = settings_dict.get('API_VERSION', salesforce.API_VERSION)  # type: str
-        self.debug_verbs = None      # type: Optional[List[str]]
+        self.debug_verbs = []        # type: List[str]
         self.composite_type = 'sobject-collections'  # 'sobject-collections' or 'composite'
 
         self.sf_auth = SalesforceAuth.create_subclass_instance(db_alias=self.alias,
@@ -136,6 +136,7 @@ class RawConnection:
         # are running. Some tests don't require a connection.
         if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):  # TODO don't use argv
             self.make_session()
+        self.debug_info = {}         # type:Dict[str, Any]
 
     # -- public methods
 
@@ -318,7 +319,7 @@ class RawConnection:
         # TODO extract a case ID for Salesforce support from code 500 messages
 
         # TODO disabled 'debug_verbs' temporarily, after writing better default messages
-        verb = self.debug_verbs  # NOQA pylint:disable=unused-variable
+        # verb = self.debug_verbs
         method = response.request.method
         data = None
         is_json = 'json' in response.headers.get('Content-Type', '') and response.text
@@ -564,6 +565,8 @@ class Cursor(Generic[_TRow]):
                 tooling_api: bool = False) -> None:
         self._clean()
         parameters = parameters or []
+        if 'use_debug_info' in self.connection.debug_verbs:
+            self.connection.debug_info['soql'] = (soql, parameters)
         sqltype = soql.split(None, 1)[0].upper()
         if sqltype == 'SELECT':
             self.execute_select(soql, parameters, query_all=query_all, tooling_api=tooling_api)
