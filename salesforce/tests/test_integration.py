@@ -243,15 +243,14 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         orig_objects = list(ApexEmailNotification.objects.filter(
             Q(user=current_sf_user) | Q(email='apex.bugs@example.com')))
         _ = orig_objects  # NOQA
+        new_u, new_e = None, None
         try:
             notifier_u = current_sf_user.apex_email_notification
-            new_u = None
         except ApexEmailNotification.DoesNotExist:
             notifier_u = new_u = ApexEmailNotification(user=current_sf_user)
             notifier_u.save()
         try:
             notifier_e = ApexEmailNotification.objects.get(email='apex.bugs@example.com')
-            new_e = None
         except ApexEmailNotification.DoesNotExist:
             notifier_e = new_e = ApexEmailNotification(email='apex.bugs@example.com')
             notifier_e.save()

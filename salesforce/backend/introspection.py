@@ -236,12 +236,13 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             ))
         return result
 
-    def get_sequences(self, cursor: _Cursor, table_name: str, table_fields=()) -> List[Dict[str, str]]:
+    # unused because feature 'supports_table_check_constraints == False'
+    def get_sequences(self, cursor: _Cursor, table_name: str, table_fields=()) -> List[Dict[str, str]]:  # noqa # pragma: no cover
         pk_col = self.get_primary_key_column(cursor, table_name) or 'Id'
         return [{'table': table_name, 'column': pk_col}]
 
     # never used until real migrations will be supported
-    def get_key_columns(self, cursor: _Cursor, table_name: str) -> List[Tuple[str, str, str]]:
+    def get_key_columns(self, cursor: _Cursor, table_name: str) -> List[Tuple[str, str, str]]:  # pragma: no cover
         """
             (column_name, referenced_table_name, referenced_column_name)
         """
