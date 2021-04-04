@@ -181,8 +181,10 @@ class QQuery:
             elif issubclass(row_type, list):
                 yield [rowcount]  # originally [resp.json()['totalSize']]
         else:
-            while True:
-                for row_deep in records:
+            for row_deep in records:
+                if list(row_deep.keys()) == ['explain']:
+                    yield row_deep['explain']
+                else:
                     assert self.is_aggregation == (row_deep['attributes']['type'] == 'AggregateResult')
                     row_flat = self._make_flat(row_deep, path=(), subroots=self.subroots)
                     # TODO Will be the expression "or x['done']" really correct also for long subrequests?
@@ -191,7 +193,6 @@ class QQuery:
                         yield {k: fix_data_type(row_flat[k.lower()]) for k in self.aliases}
                     elif issubclass(row_type, list):
                         yield [fix_data_type(row_flat[k.lower()]) for k in self.aliases]
-                break
 
 
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'

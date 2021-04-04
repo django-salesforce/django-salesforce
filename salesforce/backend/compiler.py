@@ -205,6 +205,13 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                 result.append('HAVING %s' % having)
                 params.extend(h_params)
 
+            if DJANGO_21_PLUS:
+                if self.query.explain_query:
+                    result.insert(0, self.connection.ops.explain_query_prefix(
+                        self.query.explain_format,
+                        **self.query.explain_options
+                    ))
+
             if order_by:
                 ordering = []
                 for _, (o_sql, o_params, _) in order_by:

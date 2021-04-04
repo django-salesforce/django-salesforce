@@ -33,6 +33,7 @@ class DatabaseOperations(BaseDatabaseOperations):
     # pylint:disable=abstract-method,no-self-use,unused-argument
 
     compiler_module = "salesforce.backend.compiler"
+    explain_prefix = 'EXPLAIN'
 
     def sql_flush(self, style, tables, sequences, allow_cascade=False):
         return []
