@@ -24,7 +24,7 @@ from django.utils import timezone
 
 import salesforce
 from salesforce import router
-from salesforce.backend import DJANGO_22_PLUS
+from salesforce.backend import DJANGO_21_PLUS, DJANGO_22_PLUS
 from salesforce.backend.test_helpers import (  # NOQA pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless)
 from salesforce.backend.test_helpers import (
@@ -194,7 +194,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                 sql_end = 'FROM Contact WHERE (Contact.Account.OwnerId != null AND Contact.Id != null)'
             else:
                 sql_end = 'FROM Contact WHERE (Contact.Id != null AND Contact.Account.OwnerId != null)'
-            self.assertTrue(sql_end, str(qs.query))
+            self.assertIn(sql_end, str(qs.query))
             self.assertGreater(len(list(qs)), 0)
             self.assertGreater(qs[0].Owner.Username, '')
 
@@ -1208,6 +1208,12 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_empty_slice(self):
         """Test queryset with empty slice - if high/low limits equals"""
         self.assertEqual(len(Contact.objects.all()[1:1]), 0)
+
+    @skipUnless(DJANGO_21_PLUS, "Method .explain() is only in Django >= 2.1")
+    def test_select_explan(self) -> None:
+        """Test EXPLAIN SELECT ..."""
+        qs = Contact.objects.all()[:2]
+        self.assertRegex(qs.explain(), r"^{'plans': \[{")
 
 # ============= Tests that need setUp Lead ==================
 

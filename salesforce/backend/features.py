@@ -39,7 +39,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # autocommits_when_autocommit_is_off = True
     # ignores_table_name_case = True
 
-    supported_explain_formats = set('JSON')
+    supported_explain_formats = set(['JSON'])
 
     # Though Salesforce doesn't support transactions, the setting
     # `supports_transactions` is used only for switching between rollback or
