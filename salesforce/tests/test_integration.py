@@ -78,7 +78,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Add contact if less than 2 exist"""
         super(BasicSOQLRoTest, cls).setUpClass()
         if User.objects.count() == 0:
-            User.objects.create(Username=current_user)
+            User.objects.create(Username=current_user)                       # pragma: no test
         some_accounts = list(Account.objects.all()[:1])
         if not some_accounts:
             some_accounts = [Account.objects.create(Name='sf_test account_0')]
@@ -873,7 +873,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         with PatchedSfConnection(sf_alias, verbs=['use_debug_info']):
             ret = Contact.objects.aggregate(cnt=Count('*'))
             debug_info = connections[sf_alias].connection.debug_info
-        self.assertEqual(debug_info['soql'], ('SELECT COUNT(Id) cnt FROM Contact', []))
+        self.assertEqual(debug_info['soql'][:2], ('SELECT COUNT(Id) cnt FROM Contact', []))
         self.assertTrue('cnt' in ret)
 
         qs = Contact.objects.order_by().values('account_id').annotate(cnt=Count('*'))
@@ -1198,14 +1198,20 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertTrue(models_template)
         self.assertIn('@', Organization.objects.get().created_by.Username)
 
-    def test_big_soql(self):
+    def test_big_soql(self) -> None:
         """Test that a query of length almost 100000 is possible"""
         contact = Contact.objects.all()[0]
-        # 4750 items * 21 characters == 99750
-        qs = Contact.objects.filter(pk__in=4750 * [contact.pk])
-        self.assertEqual(list(qs.values_list('pk', flat=True)), [contact.pk])
+        # 4534 items * 22 characters == 99748
+        from django.utils.crypto import get_random_string
+        names = [get_random_string(18) for _ in range(4534)]
+        names.append(contact.name)
+        qs = Contact.objects.filter(name__in=names)
+        with PatchedSfConnection(sf_alias, verbs=['use_debug_info']):
+            self.assertIn(contact.pk, list(qs.values_list('pk', flat=True)))
+        processed_soql = connections[sf_alias].connection.debug_info['soql'][2]
+        self.assertGreater(len(processed_soql), 90000)
 
-    def test_empty_slice(self):
+    def test_empty_slice(self) -> None:
         """Test queryset with empty slice - if high/low limits equals"""
         self.assertEqual(len(Contact.objects.all()[1:1]), 0)
 
@@ -1360,3 +1366,5 @@ def clean_test_data() -> None:
     ids = [x for x in Product.objects.filter(Name__startswith='test ')
            if re.match(r'test [a-z_0-9]+', x.Name)]
     Product.objects.filter(pk__in=ids).delete()
+    Contact.objects.filter(first_name='sf_test demo', last_name__in=('Test 0', 'Test 1')).delete()
+    Account.objects.filter(Name='sf_test account_0').delete()

@@ -566,7 +566,8 @@ class Cursor(Generic[_TRow]):
         self._clean()
         parameters = parameters or []
         if 'use_debug_info' in self.connection.debug_verbs:
-            self.connection.debug_info['soql'] = (soql, parameters)
+            processed_soql = str(soql) % tuple(arg_to_soql(x) for x in parameters)
+            self.connection.debug_info['soql'] = (soql, parameters, processed_soql)
         sqltype = soql.split(None, 1)[0].upper()
         if sqltype == 'SELECT':
             self.execute_select(soql, parameters, query_all=query_all, tooling_api=tooling_api)
