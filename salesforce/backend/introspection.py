@@ -218,6 +218,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 if params['max_len'] > field['length']:
                     field['length'] = params['max_len']
                 del params['max_len']
+            optional_kw = {'collation': None} if DJANGO_32_PLUS else {}
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
             result.append(FieldInfo(  # type:ignore[call-arg] # problem with a conditional type
@@ -229,7 +230,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 field['scale'],      # scale,
                 field['nillable'],   # null_ok,
                 params.get('default'),  # default
-                params,
+                # 'collation' paramater is used only in Django >= 3.2. It is before 'params', but we pass it by **kw
+                params=params,
+                **optional_kw
             ))
         return result
 
