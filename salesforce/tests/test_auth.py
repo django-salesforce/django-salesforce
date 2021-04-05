@@ -23,9 +23,9 @@ class OAuthTest(TestCase):
     def validate_oauth(self, settings_dict):
         for key in ('access_token', 'id', 'instance_url', 'issued_at', 'signature'):
             if key not in settings_dict:
-                self.fail("Missing %s key in returned oauth data." % key)
+                self.fail("Missing %s key in returned oauth data." % key)           # pragma: no cover
             elif not settings_dict[key]:
-                self.fail("Empty value for %s key in returned oauth data." % key)
+                self.fail("Empty value for %s key in returned oauth data." % key)   # pragma: no cover
 
     def test_token_renewal(self):
         # import salesforce
