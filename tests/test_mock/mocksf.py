@@ -40,11 +40,12 @@ Parameters
     json:  it is unused and will be probably deprecated.
            It can be replaced by "json.dumps(request_json)"
 """
-from typing import Optional, Set, Union
-from unittest import mock  # pylint:disable=unused-import  # NOQA
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Type, Union
+from unittest import mock, TestCase  # pylint:disable=unused-import  # NOQA
 import json as json_mod
 import re
 
+import requests.models
 from django.db import connections
 from django.test import SimpleTestCase
 
@@ -52,14 +53,19 @@ from django.conf import settings
 
 import salesforce
 # from salesforce.dbapi import settings
-from salesforce.auth import MockAuth, TimeStatistics
+from salesforce.auth import MockAuth, SalesforceAuth, TimeStatistics
 from salesforce.dbapi import driver
+from salesforce.dbapi.driver import SfSession
 from salesforce.dbapi.exceptions import DatabaseError
 from salesforce.backend import DJANGO_22_PLUS
 from salesforce.backend.test_helpers import sf_alias
 
+AnyResponse = Union[requests.models.Response, 'MockResponse']
+
 APPLICATION_JSON = 'application/json;charset=UTF-8'
 
+
+dummy_login_session = SfSession()
 
 # the first part are not test cases, but helpers for a mocked network: MockTestCase, MockRequest
 
@@ -71,20 +77,21 @@ class MockRequestsSession:
     testcase:  testcase object (for consistent assertion)
     """
 
-    def __init__(self, testcase, expected=(), auth=None, old_session=None):
+    def __init__(self, testcase: SimpleTestCase, expected: Iterable['MockRequest'] = (),
+                 auth: Optional[SalesforceAuth] = None, old_session: Optional[SfSession] = None) -> None:
         self.index = 0
         self.testcase = testcase
         self.expected = list(expected)
-        self.auth = auth or MockAuth('dummy alias', {'USER': ''}, _session='dummy login session')
+        self.auth = auth or MockAuth('dummy alias', {'USER': ''}, _session=dummy_login_session)
         self.old_session = old_session
 
-    def add_expected(self, expected_requests):
-        if isinstance(expected_requests, (list, tuple)):
+    def add_expected(self, expected_requests: Union['MockRequest', Iterable['MockRequest']]) -> None:
+        if not isinstance(expected_requests, MockRequest):
             self.expected.extend(expected_requests)
         else:
             self.expected.append(expected_requests)
 
-    def request(self, method, url, data=None, **kwargs):
+    def request(self, method: str, url: str, data: Optional[str] = None, **kwargs) -> AnyResponse:
         """Assert the request equals the expected, return historical response"""
         # pylint:disable=too-many-locals
         mode = getattr(settings, 'SF_MOCK_MODE', 'playback')
@@ -92,7 +99,7 @@ class MockRequestsSession:
             expected = self.expected[self.index]
             msg = "Difference at request index %d (from %d)" % (self.index, len(self.expected))
             response = expected.request(method, url, data=data, testcase=self.testcase,
-                                        msg=msg, **kwargs)
+                                        msg=msg, **kwargs)  # type: AnyResponse
             self.index += 1
             return response
         if mode in ('record', 'mixed'):
@@ -117,7 +124,7 @@ class MockRequestsSession:
                 response_type = response.headers.get('Content-Type', '')
                 basic_type = request_type or response_type
                 if basic_type.startswith('application/json'):
-                    request_class = MockJsonRequest
+                    request_class = MockJsonRequest  # type: Type[MockRequest]
                 else:
                     request_class = MockRequest
                     output.append("request_type=%r" % request_type)
@@ -135,19 +142,19 @@ class MockRequestsSession:
             return response
         raise NotImplementedError("Not implemented SF_MOCK_MODE=%s" % mode)
 
-    def get(self, url, **kwargs):
+    def get(self, url: str, **kwargs) -> AnyResponse:
         return self.request('GET', url, **kwargs)
 
-    def post(self, url, data=None, json=None, **kwargs):  # pylint:disable=redefined-outer-name
+    def post(self, url: str, data: Optional[str] = None, json: Any = None, **kwargs) -> AnyResponse:  # pylint:disable=redefined-outer-name # noqa
         return self.request('POST', url, data=data, json=json, **kwargs)
 
-    def patch(self, url, data=None, json=None, **kwargs):  # pylint:disable=redefined-outer-name
+    def patch(self, url: str, data: Optional[str] = None, json: Any = None, **kwargs) -> AnyResponse:  # pylint:disable=redefined-outer-name # noqa
         return self.request('PATCH', url, data=data, json=json, **kwargs)
 
-    def delete(self, url, **kwargs):
+    def delete(self, url: str, **kwargs) -> AnyResponse:
         return self.request('DELETE', url, **kwargs)
 
-    def mount(self, prefix, adapter):
+    def mount(self, prefix, adapter) -> None:
         pass
 
     def close(self) -> None:
@@ -167,11 +174,11 @@ class MockRequest:
     # pylint:disable=too-few-public-methods,too-many-instance-attributes
     default_type = None  # type: Optional[str]
 
-    def __init__(self, method_url,  # pylint:disable=too-many-arguments
-                 req=None, resp=None,
-                 request_json=None,
-                 request_type=None, response_type=None,
-                 status_code=200, check_request=True):
+    def __init__(self, method_url: str,  # pylint:disable=too-many-arguments
+                 req: Optional[str] = None, resp: Optional[str] = None,
+                 request_json: Any = None,
+                 request_type: Optional[str] = None, response_type: Optional[str] = None,
+                 status_code: int = 200, check_request: bool = True) -> None:
         method, url = method_url.split(' ', 1)
         self.method = method
         self.url = url
@@ -183,7 +190,8 @@ class MockRequest:
         self.status_code = status_code
         self.check_request = check_request
 
-    def request(self, method, url, data=None, json=None, testcase=None, **kwargs):
+    def request(self, method: str, url: str, data: str = None, json: Any = None,
+                testcase: Optional[SimpleTestCase] = None, **kwargs) -> 'MockResponse':
         # pylint:disable=too-many-arguments,too-many-branches
         """Compare the request to the expected. Return the expected response."""
         if testcase is None:
@@ -210,8 +218,10 @@ class MockRequest:
             return response
 
         if 'json' in self.request_type:
+            assert data is not None and self.request_data is not None
             testcase.assertJSONEqual(data, self.request_data, msg=msg)
         elif 'xml' in self.request_type:
+            assert data is not None and self.request_data is not None
             testcase.assertXMLEqual(data, self.request_data, msg=msg)
         elif self.request_type != '*':
             testcase.assertEqual(data, self.request_data, msg=msg)
@@ -246,7 +256,7 @@ class MockTestCase(SimpleTestCase):
     else:
         allow_database_queries = True
 
-    def setUp(self):
+    def setUp(self) -> None:
         # pylint:disable=protected-access
         mode = getattr(settings, 'SF_MOCK_MODE', 'playback')
         super(MockTestCase, self).setUp()
@@ -270,12 +280,9 @@ class MockTestCase(SimpleTestCase):
         # simulate a recent request (to not run a check for broken conection in the test)
         driver.time_statistics.expiration = 1E10
 
-    def tearDown(self):
-        if hasattr(self, '_outcome'):  # Python 3.4+
-            result = self.defaultTestResult()  # these 2 methods have no side effects
-            self._feedErrorsToResult(result, self._outcome.errors)
-        else:  # Python 3.2 - 3.3 or 2.7
-            result = getattr(self, '_outcomeForDoCleanups', self._resultForDoCleanups)  # pylint:disable=no-member
+    def tearDown(self) -> None:
+        result = self.defaultTestResult()  # these 2 methods have no side effects
+        self._feedErrorsToResult(result, self._outcome.errors)  # type: ignore[attr-defined] # hidden attributes used
         error = self.list2reason(result.errors)
         failure = self.list2reason(result.failures)
         ok = not error and not failure
@@ -294,11 +301,12 @@ class MockTestCase(SimpleTestCase):
         driver.time_statistics.expiration = TimeStatistics().expiration
         super(MockTestCase, self).tearDown()
 
-    def list2reason(self, exc_list):
+    def list2reason(self, exc_list: List[Tuple[TestCase, str]]) -> Optional[str]:
         if exc_list and exc_list[-1][0] is self:
             return exc_list[-1][1]
+        return None
 
-    def mock_add_expected(self, expected_requests):
+    def mock_add_expected(self, expected_requests: Iterable[MockRequest]) -> None:
         self.sf_connection._sf_session.add_expected(expected_requests)  # pylint:disable=protected-access
 
 
@@ -309,16 +317,17 @@ class MockResponse:
     """Mock response for some unit tests offline"""
     default_type = None  # type: Optional[str]
 
-    def __init__(self, text, resp_content_type=None, status_code=200):
+    def __init__(self, text: Optional[str], resp_content_type: Optional[str] = None, status_code: int = 200) -> None:
         self.text = text
         self.status_code = status_code
         self.content_type = resp_content_type if resp_content_type is not None else self.default_type
 
-    def json(self, parse_float=None):
+    def json(self, parse_float: Optional[Callable[[str], Any]] = None) -> Any:
+        assert self.text
         return json_mod.loads(self.text.replace('...', ''), parse_float=parse_float)
 
     @property
-    def headers(self):
+    def headers(self) -> Dict[str, str]:
         return {'Content-Type': self.content_type} if self.content_type else {}
 
 
@@ -329,7 +338,7 @@ class MockJsonResponse(MockResponse):
 # Undocumented - useful for tests
 
 
-def case_safe_sf_id(id_15):
+def case_safe_sf_id(id_15: Optional[str]) -> Optional[str]:
     """
     Equivalent to Salesforce CASESAFEID()
 
@@ -364,7 +373,7 @@ def case_safe_sf_id(id_15):
     return id_15[:15] + out
 
 
-def check_sf_api_id(id_18):
+def check_sf_api_id(id_18: str) -> Optional[str]:
     """
     Check the 18 characters long API ID, no exceptions
     """
@@ -374,7 +383,7 @@ def check_sf_api_id(id_18):
         return None
 
 
-def extract_ids(data_text, data_type=None):
+def extract_ids(data_text: str, data_type: str = None) -> Iterator[Tuple[str, Tuple[int, int]]]:
     """
     Extract all Force.com ID from REST/SOAP/SOQL request/response (for mock tests)
 
