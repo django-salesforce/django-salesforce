@@ -1,8 +1,18 @@
 [run]
-omit = salesforce/backend/tooling.py,salesforce/backend/fake/base.py,salesforce/test.py
+# omit = salesforce/backend/tooling.py
 
 [report]
 ignore_errors = True
+exclude_lines =
+    # pragma: no cover
+    if TYPE_CHECKING:
+    raise InternalError
+    raise NotImplementedError
+    raise NotSupportedError
+    ^ *\.\.\.$
+    if getattr\(settings, 'PERSON_ACCOUNT_ACTIVATED', False\):
+    if settings.PERSON_ACCOUNT_ACTIVATED:
+    if not beatbox:
 
 [html]
 directory = coverage_html

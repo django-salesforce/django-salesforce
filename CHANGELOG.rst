@@ -14,10 +14,14 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[3.2] Unpublished
------------------
+[3.2] 2021-04-06
+----------------
 * Add: Support for Django 3.2
 * Remove: Django 1.11
+* Update: to use Salesforce 51.0 Spring '21 API
+* Add: Fields `OneToOneField` are detected by `inspectdb` in Django >= 3.0
+  (and as ForeignKey unchanged in old Django)
+* Fix: Fixed all hidden deprecation warnings
 * Fix: Backward compatibility with old migrations. #275
 * Fix: Simplify output of inspectdb if a choice is too huge
   or if tables are restricted by table filter. #279
