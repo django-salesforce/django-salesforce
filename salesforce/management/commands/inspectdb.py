@@ -42,7 +42,7 @@ class Command(InspectDBCommand):
                 options['table'] = [sf_introspection.SfProtectName(x) for x in options['table']]
             elif options['table_name_filter'] is not None and callable(table_name_filter):
                 self.connection.introspection.filter_table_list(
-                    [x for x in self.connection.introspection.get_table_list(None) if table_name_filter(x)]
+                    [x.name for x in self.connection.introspection.get_table_list(None) if table_name_filter(x.name)]
                 )
             for line in self.handle_inspection(options):
                 line = line.replace(" Field renamed because it contained more than one '_' in a row.", "")
