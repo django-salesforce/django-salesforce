@@ -53,9 +53,14 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # setting for Oracle, while Salesforce saves nulls as empty strings not vice
     # versa.
 
+    supports_partial_indexes = False  # Django 2.2+
+    supports_table_check_constraints = False
+
     can_introspect_json_field = False  # Django 3.1+
+    supports_deferrable_unique_constraints = False
 
     supports_collation_on_charfield = False  # Django 3.2+
     supports_collation_on_textfield = False
     supports_non_deterministic_collations = False
+    supports_covering_indexes = False
     supports_expression_indexes = False
