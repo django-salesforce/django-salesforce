@@ -43,7 +43,7 @@ class User(SalesforceModel):
     LastName = models.CharField(max_length=80)
     FirstName = models.CharField(max_length=40)
     IsActive = models.BooleanField(default=False)
-    UserType = models.CharField(max_length=80)
+    UserType = models.CharField(max_length=80, default='Standard')
 
 
 class AbstractAccount(SalesforceModel):
