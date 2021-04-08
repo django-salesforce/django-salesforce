@@ -12,7 +12,7 @@ Salesforce introspection code.  (like django.db.backends.*.introspection)
 import logging
 import re
 from collections import OrderedDict, namedtuple
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from django.db.backends.base.introspection import (
     BaseDatabaseIntrospection, FieldInfo as BaseFieldInfo, TableInfo,
@@ -27,7 +27,7 @@ import salesforce.fields
 
 log = logging.getLogger(__name__)
 
-FieldInfo = namedtuple(  # type:ignore[misc]
+FieldInfo = namedtuple(  # type: ignore[misc]
     'FieldInfo',
     'name type_code display_size internal_size precision scale null_ok default'
     + (' collation' if DJANGO_32_PLUS else '') +
@@ -109,7 +109,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         self._converted_lead_status = None  # type: Optional[str]
         self.is_tooling_api = False  # modified by other modules
 
-    def filter_table_list(self, table_names):
+    def filter_table_list(self, table_names: Iterable[str]):
+        # value "self._table_list_cache" is never None after avaluating the property "self.table_list_cache"
+        assert self.table_list_cache and self._table_list_cache
         self._table_list_cache['sobjects'] = [
             x for x in self.table_list_cache['sobjects'] if x['name'] in table_names
         ]
@@ -119,7 +121,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             raise ValueError('These tables are not a part of the inspected Salesforce database: '
                              '{}'.format(unknown_tables))
 
-    def reset_table_list(self, table_names):
+    def reset_table_list(self) -> None:
         self._table_list_cache = None
         self.table_list_cache
 
@@ -221,7 +223,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             optional_kw = {'collation': None} if DJANGO_32_PLUS else {}
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
-            result.append(FieldInfo(  # type:ignore[call-arg] # problem with a conditional type
+            result.append(FieldInfo(  # type: ignore[call-arg] # problem with a conditional type
                 field['name'],       # name,
                 field['type'],       # type_code,
                 field['length'],     # display_size,
@@ -258,7 +260,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         representing all relationships to the given table. Indexes are 0-based.
         """
         # pylint:disable=global-statement,too-many-locals,too-many-nested-blocks,unused-argument
-        def table2model(table_name):
+        def table2model(table_name: str) -> str:
             return SfProtectName(table_name).title().replace(' ', '').replace('-', '')
         global last_introspection
         result = {}
@@ -391,10 +393,6 @@ class SfProtectName(str):
     def title(self) -> str:
         name = re.sub(r'__c$', '', self)   # fixed custom name
         return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
-
-    @property
-    def name(self) -> 'SfProtectName':
-        return self
 
 
 reverse_models_names = dict((obj.value, obj) for obj in

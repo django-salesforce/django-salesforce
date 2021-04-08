@@ -36,8 +36,7 @@ if not DJANGO_30_PLUS:
             func = message
             message = 'You cannot call this from an async context - use a thread or sync_to_async.'
             return decorator(func)
-        else:
-            return decorator
+        return decorator
 else:
     from django.utils.asyncio import async_unsafe  # type: ignore[import,no-redef]  # noqa
 

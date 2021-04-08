@@ -4,7 +4,9 @@ from typing import Any, Callable, Dict, Optional, overload, Tuple, Type, TYPE_CH
 from pytz import utc
 # from django.utils.deconstruct import deconstructible
 import salesforce
-
+if TYPE_CHECKING:
+    import salesforce.models  # pylint:disable=cyclic-import
+# pylint:disable=invalid-str-returned,no-else-return,unused-argument
 
 # --- DefaultedOnCreate ---
 
@@ -67,7 +69,7 @@ class DateDefault(BaseDefault, datetime.date):
     def __new__(cls, *args: Any, **kwargs: Any) -> 'DateDefault':
         if len(args) == 1 and not kwargs:
             args = args[0].timetuple()[:3]
-        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return] # noqa
+        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return]
 
     def isoformat(self) -> str:
         return StrDefault(super().isoformat())
@@ -81,7 +83,7 @@ class DateTimeDefault(BaseDefault, datetime.datetime):
             arg = args[0]
             args = arg.timetuple()[:6] + (arg.microsecond,)
             kwargs = {'tzinfo': arg.tzinfo}
-        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return] # noqa
+        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return]
 
     def isoformat(self, sep: str = 'T', timecspec: str = 'auto') -> str:
         return StrDefault(super().isoformat())
@@ -95,7 +97,7 @@ class TimeDefault(BaseDefault, datetime.time):
             arg = args[0]
             args = (arg.hour, arg.minute, arg.second, arg.microsecond)
             kwargs = {'tzinfo': arg.tzinfo}
-        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return] # noqa
+        return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return]
 
     def isoformat(self, timecspec: str = 'auto') -> str:
         return StrDefault(super().isoformat())
@@ -116,7 +118,7 @@ def foreign_key_factory_default(model: 'Type[salesforce.models.Model[Any]]') -> 
         return ('salesforce.fields.DefaultedOnCreate', (model,), {})
 
     pk = StrDefault('')
-    instance = model(pk=pk)  # type: ignore[misc] # noqa
+    instance = model(pk=pk)  # type: ignore[misc]
     setattr(instance, 'deconstruct', deconstruct)
     setattr(instance, 'default', None)
     return instance
@@ -209,7 +211,6 @@ def DefaultedOnCreate(value: Any = None, internal_type: Optional[str] = None) ->
     elif value is not None:
         if isinstance(value, type) and hasattr(value, '_salesforce_object'):
             if TYPE_CHECKING:
-                import salesforce.models  # pylint:disable=cyclic-import
                 assert issubclass(value, salesforce.models.Model)
             return foreign_key_factory_default(value)
         if callable(value):

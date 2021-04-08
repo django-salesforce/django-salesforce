@@ -275,6 +275,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             # test 3: relation to the parent
             result = ApexEmailNotification.objects.filter(user__Username=notifier_u.user.Username)
             self.assertEqual(len(result), 1)
+            # sometimes mypy error: '"ApexEmailNotification" has no attribute "user_id"'
+            # probably caused by .mypy_cache  # TODO report it if reproduced with a new django-stubs version
             self.assertEqual(result[0].user_id, notifier_u.user_id)
         finally:
             if new_u:
@@ -519,7 +521,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test insert and delete an account (normal or personal SF config)
         """
         if settings.PERSON_ACCOUNT_ACTIVATED:
-            test_account = Account(FirstName='IntegrationTest',  # type: ignore[misc] # noqa # skip this branch
+            test_account = Account(FirstName='IntegrationTest',  # type: ignore[misc] # skip this branch
                                    LastName='Account')
         else:
             test_account = Account(Name='IntegrationTest Account')

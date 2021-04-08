@@ -11,6 +11,7 @@ oauth login support for the Salesforce API
 All data are ascii str.
 """
 
+from abc import ABC, abstractmethod
 from subprocess import PIPE, Popen
 from typing import Any, Callable, cast, Dict, Optional, Sequence, Type
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -52,7 +53,7 @@ def base64urlencode(input_bytes: bytes) -> str:
     return base64.urlsafe_b64encode(input_bytes).decode('ascii').rstrip('=')
 
 
-class SalesforceAuth(AuthBase):
+class SalesforceAuth(AuthBase, ABC):
     """
     Authentication object that encapsulates all auth settings and holds the auth token.
 
@@ -105,18 +106,19 @@ class SalesforceAuth(AuthBase):
         self.dynamic = None   # type: Optional[Dict[str, str]]
         self._session = _session or requests.Session()
 
+    @abstractmethod
     def authenticate(self) -> Dict[str, str]:
-        return {}
+        pass
 
     def authenticate_and_cache(self) -> Dict[str, str]:
         """authenticate and save the result to cache (in static auth)"""
         return self.authenticate()
 
+    @abstractmethod
     def get_auth(self) -> Dict[str, str]:
         """
         Cached value of authenticate()
         """
-        raise NotImplementedError("This method should be subclassed.")
 
     def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
         """Standard auth hook on the "requests" request r"""
@@ -124,6 +126,7 @@ class SalesforceAuth(AuthBase):
         r.headers['Authorization'] = 'OAuth %s' % access_token
         return r
 
+    @abstractmethod
     def reauthenticate(self) -> str:
         return ''
 
@@ -158,13 +161,13 @@ class SalesforceAuth(AuthBase):
 
 class StaticGlobalAuth(SalesforceAuth):
 
+    @abstractmethod
     def authenticate(self) -> Dict[str, str]:
         """
         Authenticate to the Salesforce API with the provided credentials.
 
         This function will be called only if a token is not in this object or in the auth cache.
         """
-        raise NotImplementedError("This method should be subclassed.")
 
     def authenticate_and_cache(self) -> Dict[str, str]:
         return self.get_auth()
@@ -314,7 +317,7 @@ class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
         super().del_token()
         self.dynamic = None
 
-    def reauthenticate(self) -> str:
+    def reauthenticate(self) -> str:  # pylint:disable=no-else-return
         if self.dynamic is None:
             return super().reauthenticate()
         else:
@@ -348,9 +351,11 @@ class SfdxWebAuth(StaticGlobalAuth):
                                           "user %r" % (user, data['username']))
         return {'access_token': data['accessToken'], 'instance_url': data['instanceUrl']}
 
+    @abstractmethod
     def ask_sfdx_org_data(self, user: str) -> Dict[str, Any]:
         # stub - because not implemented in this parent
-        return {'stack': None, 'message': 'search is not used in this class'}
+        # return {'stack': None, 'message': 'search is not used in this class'}
+        pass
 
     def sfdx(self, command: Sequence[str], no_raise: str = '') -> Dict[str, Any]:
         """Run a SFDX command. Don't raise on the expected error names (comma delimited)"""
@@ -386,7 +391,7 @@ class SfdxOrgWebAuth(SfdxWebAuth):
     required_fields = ['ENGINE', 'HOST', 'USER']
 
     def ask_sfdx_org_data(self, user: str) -> Dict[str, Any]:
-        """Ask SFDX if it the use is connected to it"""
+        """Ask SFDX if it the user is connected to it"""
 
         cmd = 'sfdx force:org:display --json -u'.split() + [user]
 
@@ -435,6 +440,9 @@ class RefreshTokenAuth(StaticGlobalAuth):
     # use refresh token
     # https://help.salesforce.com/articleView?id=remoteaccess_oauth_refresh_token_flow.htm&type=5
 
+    redirect_uri = None  # type: str
+    code_verifier = None  # type: str
+
     required_fields = ['ENGINE', 'HOST', 'USER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'REFRESH_TOKEN']
 
     def authenticate(self, old_auth: Optional[Dict[str, str]] = None) -> Dict[str, str]:
@@ -444,10 +452,9 @@ class RefreshTokenAuth(StaticGlobalAuth):
         if refresh_token == '?':
             if not old_auth:
                 return self.get_refresh_token_interactive()
-            else:
-                refresh_token = old_auth['refresh_token']
-                if refresh_token == 'invalid':
-                    raise SalesforceAuthError("Invalid refresh token in database %r" % self.db_alias)
+            refresh_token = old_auth['refresh_token']
+            if refresh_token == 'invalid':
+                raise SalesforceAuthError("Invalid refresh token in database %r" % self.db_alias)
 
         log.info("authentication by Refresh Token to %s as %s", host, user)
 
@@ -573,6 +580,9 @@ class MockAuth(SalesforceAuth):
     def get_auth(self) -> Dict[str, str]:
         # this is never cached
         return self.authenticate()
+
+    def reauthenticate(self) -> str:
+        return ''
 
     def del_token(self) -> None:
         pass
