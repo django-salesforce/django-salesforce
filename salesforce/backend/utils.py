@@ -117,7 +117,7 @@ class CursorWrapper:
         """
         self.db = db
         self.query = None
-        self.session = db.sf_session
+        self.session = db.sf_session  # this creates a TCP connection if doesn't exist
         self.rowcount = None
         self.first_row = None
         self.lastrowid = None  # not moved to driver because INSERT is implemented here
@@ -366,36 +366,6 @@ class CursorWrapper:
                           for pk in pks]
         ret = self.db.connection.composite_request(composite_data)
         self.rowcount = len([x for x in ret.json()['compositeResponse'] if x['httpStatusCode'] == 204])
-
-    # The following 3 methods (execute_ping, id_request, versions_request)
-    # can be renamed soon or moved.
-
-    def urls_request(self):
-        """Empty REST API request is useful after long inactivity before POST.
-
-        It ensures that the token will remain valid for at least half life time
-        of the new token. Otherwise it would be an awkward doubt if a timeout on
-        a lost connection is possible together with token expire in a post
-        request (insert).
-        """
-        ret = self.handle_api_exceptions('GET', '')
-        return ret.json()
-
-    def id_request(self):
-        """The Force.com Identity Service (return type dict of str)"""
-        # https://developer.salesforce.com/page/Digging_Deeper_into_OAuth_2.0_at_Salesforce.com?language=en&language=en#The_Force.com_Identity_Service
-
-        if 'id' in self.oauth:
-            url = self.oauth['id']
-        else:
-            # dynamic auth without 'id' parameter
-            url = self.urls_request()['identity']
-        ret = self.handle_api_exceptions('GET', url)  # TODO
-        return ret.json()
-
-    def versions_request(self):
-        """List Available REST API Versions"""
-        return self.handle_api_exceptions('GET', '', api_ver='').json()
 
     def __iter__(self):
         return self.cursor

@@ -113,4 +113,4 @@ class LazyAssertRequests(LazyTestMixin, TestCase):
             ''.join(exc_value.args),
             '1 != 2 : expected requests != real requests;  checked by:\n    with self.lazy_assert_n_requests(1):'
         )
-        self.assertRegex(r'^File \n".*", line ', exc_traceback_str)
+        self.assertRegex(exc_traceback_str, r'^File ".*", line ')

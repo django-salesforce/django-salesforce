@@ -30,12 +30,13 @@ def get_soap_client(db_alias, client_class=None):
         client_class = beatbox.PythonClient
     soap_client = client_class()
 
-    # authenticate
+    # authenticate if known that not authenticated
     connection = connections[db_alias]
-    # verify the authenticated connection, because Beatbox can not refresh the token
+    # verify the authenticated connection by a request, because Beatbox can not refresh the token
     cursor = connection.cursor()
-    cursor.urls_request()
-    auth_info = connections[db_alias].sf_session.auth
+    cursor.cursor.urls_request()
+
+    auth_info = connection.sf_session.auth
 
     access_token = auth_info.get_auth()['access_token']
     assert access_token[15] == '!'

@@ -730,11 +730,41 @@ class Cursor(Generic[_TRow]):
     def handle_api_exceptions(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
         return self.connection.handle_api_exceptions(method, *url_parts, cursor_context=self, **kwargs)
 
+    # --- custom extension methods
 
-#                              The first two items are mandatory. (name, type)
+    def urls_request(self) -> Any:  # Dict[str, Any]
+        """Empty REST API request is useful after long inactivity before POST.
+
+        It ensures that the token will remain valid for at least half life time
+        of the new token. Otherwise it would be an awkward doubt if a timeout on
+        a lost connection is possible together with token expire in a post
+        request (insert).
+        """
+        ret = self.handle_api_exceptions('GET', '')
+        return ret.json()
+
+    def id_request(self) -> Any:  # Dict[str, Any]
+        """The Force.com Identity Service (return type dict of str)"""
+        # https://developer.salesforce.com/page/Digging_Deeper_into_OAuth_2.0_at_Salesforce.com?language=en&language=en#The_Force.com_Identity_Service
+        oauth = self.connection.sf_session.auth.get_auth()
+        if 'id' in oauth:
+            url = oauth['id']
+        else:
+            # dynamic auth without 'id' parameter
+            url = self.urls_request()['identity']
+        ret = self.handle_api_exceptions('GET', url)  # TODO
+        return ret.json()
+
+    def versions_request(self) -> Any:  # List[Dict[str, str]]
+        """List Available REST API Versions"""
+        return self.handle_api_exceptions('GET', '', api_ver='').json()
+
+
+# ---
+
 CursorDescription = NamedTuple(
     'CursorDescription', [
-        ('name', str),
+        ('name', str),          # The first two items are mandatory. (name, type)
         ('type_code', Any),
         ('display_size', bool),
         ('internal_size', int),
