@@ -42,6 +42,7 @@ class QuietSalesforceErrors:
 
 class PatchedSfConnection(QuietSalesforceErrors):
     """A connection with a temporarily modified setting"""
+    # this is only a mnemonic name for other usage of the parent class
 
 
 if TYPE_CHECKING:

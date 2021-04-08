@@ -52,7 +52,7 @@ class SfCharAutoField(SalesforceAutoField):
 
 
 if TYPE_CHECKING:
-    class SalesforceModel(models.Model, Generic[_T],  # type:ignore[no-redef] # pylint:disable=function-redefined #noqa
+    class SalesforceModel(models.Model, Generic[_T],  # type: ignore[no-redef] # pylint:disable=function-redefined
                           metaclass=SalesforceModelBase):
         _salesforce_object = ...
 

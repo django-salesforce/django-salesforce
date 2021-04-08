@@ -170,7 +170,7 @@ class RawConnection:
     @overload  # noqa
     def cursor(self, row_type: Type[_TRow]) -> 'Cursor[_TRow]': ...
 
-    def cursor(self, row_type=list):  # type: ignore[no-untyped-def] # noqa
+    def cursor(self, row_type=list):  # type: ignore[no-untyped-def]
         return Cursor(self, row_type)
 
     # -- private attributes
@@ -311,9 +311,10 @@ class RawConnection:
         # status codes docs (400, 403, 404, 405, 415, 500)
         # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/errorcodes.htm
         self.raise_errors(response)
-        return  # type: ignore[return-value]  # noqa
+        return  # type: ignore[return-value]
 
-    def raise_errors(self, response: GenResponse) -> None:
+    @staticmethod
+    def raise_errors(response: GenResponse) -> None:
         """The innermost part - report errors by exceptions"""
         # Errors: 400, 403 permissions or REQUEST_LIMIT_EXCEEDED, 404, 405, 415, 500)
         # TODO extract a case ID for Salesforce support from code 500 messages
@@ -393,10 +394,10 @@ class RawConnection:
         bad_resp_headers.update({'Content-Type': resp.headers['Content-Type']})
 
         bad_resp = FakeResp(bad_response['httpStatusCode'], bad_resp_headers, json.dumps(body), bad_req
-                            ) # type: requests.Response # type: ignore[assignment]  # noqa
+                            )  # type: requests.Response # type: ignore[assignment]
 
         self.raise_errors(bad_resp)
-        return  # type: ignore[return-value]  # noqa
+        return  # type: ignore[return-value]  # TODO analyze whether this line is accessible in the case of 404 code
 
     @staticmethod
     def _group_results(resp_data: List[Dict[str, Any]], records: Sequence[Dict[str, Any]], all_or_none: bool
@@ -741,9 +742,9 @@ CursorDescription = NamedTuple(
         ('scale', int),
         ('null_ok', bool),
         ('default', Any),
-        ('params', dict),  # type: ignore[type-arg] # noqa
+        ('params', dict),  # type: ignore[type-arg]
     ])
-CursorDescription.__new__.__defaults__ = 7 * (None,)  # type: ignore[attr-defined]  # noqa
+CursorDescription.__new__.__defaults__ = 7 * (None,)  # type: ignore[attr-defined]
 
 
 def standard_errorhandler(connection: Connection, cursor: Optional[Cursor[Any]], errorclass: Type[Exception],
