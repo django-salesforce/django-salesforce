@@ -29,7 +29,7 @@ class MockTest(MockTestCase):
                     }
                     ...
                 ]""",))
-        ret = self.cursor.versions_request()
+        ret = self.cursor.cursor.versions_request()
         self.assertEqual(ret, [{'version': '20.0', 'url': '/services/data/v20.0', 'label': "Winter '11"}])
 
     # ---------------------
@@ -46,7 +46,7 @@ class MockTest(MockTestCase):
                     "recent" : "/services/data/v20.0/recent"
                     ...
                 }""",))
-        ret = self.cursor.urls_request()
+        ret = self.cursor.cursor.urls_request()
         self.assertEqual(ret['sobjects'], '/services/data/v20.0/sobjects')
 
     # ---------------------
@@ -60,7 +60,7 @@ class MockTest(MockTestCase):
                 {
                     ...
                 }""",))
-        ret = self.cursor.urls_request()
+        ret = self.cursor.cursor.urls_request()
         self.assertEqual(ret, {})
 
 # ---------------------
