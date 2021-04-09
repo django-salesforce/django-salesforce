@@ -30,7 +30,7 @@ from requests.adapters import HTTPAdapter
 
 import salesforce
 from salesforce.auth import SalesforceAuth, time_statistics
-from salesforce.dbapi import get_max_retries
+from salesforce.dbapi import get_max_retries, thread_loc
 from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
     Error, InterfaceError, DatabaseError, DataError, OperationalError, IntegrityError,
@@ -83,7 +83,6 @@ SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 request_count = 0  # global counter
 
 connect_lock = threading.Lock()
-thread_connections = threading.local()
 
 ErrInfo = Tuple[Type[Exception], Exception]
 
@@ -117,6 +116,13 @@ class RawConnection:
 
     def __init__(self, settings_dict: Dict[str, Any], alias: Optional[str] = None,
                  errorhandler: Optional[ErrorHandler] = None, use_introspection: Optional[bool] = None) -> None:
+
+        if alias in thread_loc.connections:
+            del thread_loc.connections[alias]
+            raise InterfaceError(
+                "Tried to open more database connections with the same alias {alias} from the same thread."
+                "The previous connection has been closed now however.".format(alias=alias))
+        thread_loc.connections[alias] = self
 
         # private members:
         self.alias = cast(str, alias)
@@ -174,6 +180,10 @@ class RawConnection:
         return Cursor(self, row_type)
 
     # -- private attributes
+
+    def check(self) -> None:
+        if self != thread_loc.connections.get(self.alias):
+            raise InterfaceError("The connection has been closed previously")
 
     @property
     def sf_session(self) -> SfSession:
@@ -490,21 +500,14 @@ Connection = RawConnection
 
 
 # DB API function
-def connect_(**params: Any) -> Connection:
+def connect(**params: Any) -> Connection:
     return Connection(**params)
 
 
-def connect(**params: Any) -> Connection:
-    param_str = repr(params)
-    if not hasattr(thread_connections, param_str):
-        setattr(thread_connections, param_str, connect_(**params))
-    return cast(Connection, getattr(thread_connections, param_str))
-
-
 def get_connection(alias: str, **params: Any) -> Connection:
-    if not hasattr(thread_connections, alias):
-        setattr(thread_connections, alias, connect(alias=alias, **params))
-    return cast(Connection, getattr(thread_connections, alias))
+    if alias not in thread_loc.connections:
+        connect(alias=alias, **params)
+    return cast(Connection, thread_loc.connections[alias])
 
 
 class Cursor(Generic[_TRow]):
@@ -537,7 +540,7 @@ class Cursor(Generic[_TRow]):
         self.arraysize = 1  # writable, but ignored finally
         # db api extensions
         self.rownumber = None             # type: Optional[int]  # cursor position index
-        self.connection = connection
+        self._connection = connection     # type: Connection
         self.messages = []                # type: List[ErrInfo]
         self.lastrowid = None  # TODO to be used for INSERT id, but insert is not implemented by cursor
         self.errorhandler = connection.errorhandler
@@ -554,6 +557,7 @@ class Cursor(Generic[_TRow]):
         self.qquery = None                # type: Optional[QQuery]
         self._raw_iterator = None         # type: Optional[Iterator[Dict[str, Any]]]
         self._iter = not_executed_yet()   # type: Iterator[_TRow]
+        self.closed = False
 
     # -- DB API methods
 
@@ -561,6 +565,7 @@ class Cursor(Generic[_TRow]):
 
     def close(self) -> None:
         self._clean()
+        self.closed = True
 
     def execute(self, soql: str, parameters: Optional[Iterable[Any]] = None, query_all: bool = False,
                 tooling_api: bool = False) -> None:
@@ -603,8 +608,8 @@ class Cursor(Generic[_TRow]):
         # The undocumented structure of 'nextRecordsUrl' is
         #     'query/{query_id}-{offset}'  e.g.
         #     '/services/data/v44.0/query/01gM000000zr0N0IAI-3012'
-        warnings.warn("cursor.scroll is based on an undocumented info. Long "
-                      "jump in a big query may be unsupported.")
+        warnings.warn("cursor.scroll is based on an undocumented Salesforce info. "
+                      "Long jump in a big query may be unsupported.")
         assert mode in ('absolute', 'relative')
         # The possible offset range is from 0 to resp.json()['totalSize']
         # An exception IndexError should be raised if the offset is invalid [PEP 429]
@@ -636,6 +641,16 @@ class Cursor(Generic[_TRow]):
         return self._iter.__next__()
 
     # -- private methods
+
+    @property
+    def connection(self) -> Connection:
+        self.check()
+        return self._connection
+
+    def check(self) -> None:
+        self._connection.check()
+        if self.closed:
+            raise InterfaceError("Cursor is closed")
 
     def __iter__(self) -> 'Cursor[_TRow]':
         return self

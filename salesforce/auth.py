@@ -30,7 +30,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
-from salesforce.dbapi import connections, get_max_retries
+from salesforce.dbapi import thread_loc, get_max_retries
 from salesforce.dbapi.exceptions import (
     SalesforceAuthError,  # error from SFCD
     OperationalError,     # authentication error by invalid usage
@@ -89,6 +89,8 @@ class SalesforceAuth(AuthBase, ABC):
         Set values for authentication
             Params:
                 db_alias:  The database alias e.g. the default SF alias 'salesforce'.
+                        The 'alias' must be unique (It is not possible to open more
+                        connections with the same alias from the same thread.)
                 settings_dict: It is only important for the first connecting.
                         It should be e.g. django.conf.settings.DATABASES['salesforce'],
                         because it is not known initially in the connection.settings_dict.
@@ -98,7 +100,7 @@ class SalesforceAuth(AuthBase, ABC):
             self.settings_dict = settings_dict
         else:
             assert db_alias
-            self.settings_dict = connections[db_alias].settings_dict
+            self.settings_dict = thread_loc.connections[db_alias].settings_dict
 
         self.db_alias = db_alias
         self.validate_settings()
@@ -269,7 +271,7 @@ class SalesforcePasswordAuth(StaticGlobalAuth):
     is provided by the ancestor class.
     """
 
-    required_fields = ['ENGINE', 'HOST']
+    required_fields = ['ENGINE', 'HOST', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD']
 
     def authenticate(self) -> Dict[str, str]:
         """
@@ -306,6 +308,8 @@ class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
     Start as password authentication. Switch to dynamic after ".dynamic_start(...)".
     It never uses the static auth more after the end of dynamic.
     """
+
+    required_fields = ['ENGINE', 'HOST']
 
     def get_auth(self) -> Dict[str, str]:
         if self.dynamic is None:
