@@ -1,6 +1,7 @@
 import unittest
 import requests
 from salesforce import auth
+from salesforce.dbapi import driver
 import salesforce.testrunner.settings
 
 sf_alias = 'salesforce'
@@ -46,3 +47,23 @@ class OAuthTest(unittest.TestCase):
 
         self.assertEqual(old_data[sf_alias]['access_token'], auth.oauth_data[sf_alias]['access_token'])
         _session.close()
+
+
+class CursorTest(unittest.TestCase):
+    """Currently tested only methods not covered by Django test"""
+
+    def test_scroll(self):
+        with driver.get_connection('salesforce', settings_dict=settings_dict) as connection:
+            # the context manager for cursor is not important
+            with connection.cursor() as cursor:
+                cursor.execute("select Name from Contact limit 5")
+                result = cursor.fetchall()
+                # no more data
+                self.assertEqual(cursor.fetchone(), None)
+                self.assertEqual(cursor.fetchall(), [])
+                self.assertEqual(cursor.fetchmany(), [])
+                self.assertEqual(cursor.fetchmany(size=10), [])
+                # scroll to replay the data
+                cursor.scroll(0, 'absolute')
+                result2 = cursor.fetchall()
+                self.assertEqual(result2, result)

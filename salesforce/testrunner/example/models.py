@@ -29,6 +29,8 @@ INDUSTRIES = [
     'Telecommunications', 'Transportation', 'Utilities'
 ]
 
+# pylint:disable=invalid-str-returned  # return type of __str__ method
+
 
 # This class customizes `managed = True` for tests and does not disturbe SF
 class SalesforceModel(SalesforceModelParent):

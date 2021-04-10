@@ -91,7 +91,7 @@ else:
 
         if DJANGO_30_PLUS:
 
-            def _do_insert(self, manager, using, fields, returning_fields, raw):
+            def _do_insert(self, manager, using, fields, returning_fields, raw):  # pylint:disable=redefined-outer-name
                 # the check "is_sf_database(using)" is used for something unexpected
                 if self.pk and not is_sf_database(using):
                     returning_fields = []

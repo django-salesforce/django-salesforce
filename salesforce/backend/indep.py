@@ -5,7 +5,7 @@ from inspect import getcallargs
 from typing import Any, Callable, Dict, Type
 
 from django.conf import settings
-from django.db.models import Field
+from django.db.models import Field  # pylint:disable=unused-import
 
 
 class LazyField:

@@ -181,6 +181,16 @@ class RawConnection:
 
     # -- private attributes
 
+    def __enter__(self) -> 'RawConnection':
+        return self
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], exc_tb: Any
+                 ) -> None:
+        try:
+            self.close()
+        except AttributeError:
+            pass
+
     def check(self) -> None:
         if self != thread_loc.connections.get(self.alias):
             raise InterfaceError("The connection has been closed previously")
@@ -642,6 +652,16 @@ class Cursor(Generic[_TRow]):
 
     # -- private methods
 
+    def __enter__(self) -> 'Cursor[_TRow]':
+        return self
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], exc_tb: Any
+                 ) -> None:
+        try:
+            self.close()
+        except AttributeError:
+            pass
+
     @property
     def connection(self) -> Connection:
         self.check()
@@ -800,8 +820,9 @@ def standard_errorhandler(connection: Connection, cursor: Optional[Cursor[Any]],
         connection.messages.append((errorclass, errorvalue))
 
 
-def verbose_error_handler(connection: Connection, cursor: Optional[Cursor[Any]], errorclass: Type[Exception],
-                          errorvalue: Exception) -> None:  # pylint:disable=unused-argument
+def verbose_error_handler(connection: Connection, cursor: Optional[Cursor[Any]],  # pylint:disable=unused-argument
+                          errorclass: Type[Exception], errorvalue: Exception,  # pylint:disable=unused-argument
+                          ) -> None:
     pprint.pprint(errorvalue.__dict__)
 
 

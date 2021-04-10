@@ -16,7 +16,7 @@ This module requires a customized package django-stubs (django-salesforce-stubs)
 import sys
 from typing import Generic, Optional, TypeVar
 from django.db.models import manager, Model
-from django.db.models.query import QuerySet
+from django.db.models.query import QuerySet  # pylint:disable=unused-import
 
 from salesforce import router
 from salesforce.backend import query

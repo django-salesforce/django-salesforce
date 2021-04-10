@@ -85,7 +85,7 @@ class DateTimeDefault(BaseDefault, datetime.datetime):
             kwargs = {'tzinfo': arg.tzinfo}
         return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return]
 
-    def isoformat(self, sep: str = 'T', timecspec: str = 'auto') -> str:
+    def isoformat(self, sep: str = 'T', timecspec: str = 'auto') -> str:  # pylint:disable=arguments-differ
         return StrDefault(super().isoformat())
 
 
@@ -99,7 +99,7 @@ class TimeDefault(BaseDefault, datetime.time):
             kwargs = {'tzinfo': arg.tzinfo}
         return super().__new__(cls, *args, **kwargs)  # type: ignore[call-arg,no-any-return]
 
-    def isoformat(self, timecspec: str = 'auto') -> str:
+    def isoformat(self, timecspec: str = 'auto') -> str:  # pylint:disable=arguments-differ
         return StrDefault(super().isoformat())
 
 

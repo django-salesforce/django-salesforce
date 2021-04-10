@@ -20,6 +20,5 @@ log
 tests/inspectdb/models.py
 tests/inspectdb/dependent_model/models_template.py
 tests/tooling/models.py
-salesforce/packages/
 venv
 tests/x_*/
