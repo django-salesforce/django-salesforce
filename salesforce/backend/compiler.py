@@ -16,7 +16,7 @@ from django.db.models.sql import compiler as sql_compiler, where as sql_where, c
 from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
-import salesforce.backend.models_lookups   # noqa # required for activation of lookups
+import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import # required for activation of lookups
 from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
 from salesforce.dbapi.driver import DatabaseError
 # pylint:disable=no-else-return,too-many-branches,too-many-locals
@@ -473,13 +473,13 @@ class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):  # type: i
 
     else:
 
-        def execute_sql(self, return_id=False):  # type: ignore[misc] # noqa # check typing only for Django >= 3.0
+        def execute_sql(self, return_id=False):  # type: ignore[misc] # noqa pylint:disable=arguments-differ
             # copied from Django 1.11, with one line patch
             assert not (
                 return_id and len(self.query.objs) != 1 and
                 not self.connection.features.can_return_ids_from_bulk_insert
             )
-            self.return_id = return_id
+            self.return_id = return_id  # pylint:disable=attribute-defined-outside-init
             with self.connection.cursor() as cursor:
                 # this line is the added patch:
                 cursor.prepare_query(self.query)

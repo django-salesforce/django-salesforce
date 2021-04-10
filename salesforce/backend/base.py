@@ -27,7 +27,7 @@ from salesforce.dbapi import driver as Database
 from salesforce.dbapi.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA pylint:disable=unused-import
 
 if TYPE_CHECKING:
-    from django.db.backends.base.base import ProtoCursor
+    from django.db.backends.base.base import ProtoCursor  # pylint:disable=ungrouped-imports,no-name-in-module
 
 
 __all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)

@@ -321,8 +321,8 @@ class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
         super().del_token()
         self.dynamic = None
 
-    def reauthenticate(self) -> str:  # pylint:disable=no-else-return
-        if self.dynamic is None:
+    def reauthenticate(self) -> str:
+        if self.dynamic is None:  # pylint:disable=no-else-return
             return super().reauthenticate()
         else:
             return DynamicAuth.reauthenticate(self)  # raises
@@ -366,7 +366,7 @@ class SfdxWebAuth(StaticGlobalAuth):
         # not intercept OSError e.g. file not found - raise directly
         # stderr is not redirected, because it can be used for some interactive dialogs
         proc = Popen(command, stdout=PIPE)
-        stdout, stderr = proc.communicate()
+        stdout, _ = proc.communicate()
 
         if proc.returncode != 0:
             self.data = {}
@@ -449,7 +449,8 @@ class RefreshTokenAuth(StaticGlobalAuth):
 
     required_fields = ['ENGINE', 'HOST', 'USER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'REFRESH_TOKEN']
 
-    def authenticate(self, old_auth: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    def authenticate(self, old_auth: Optional[Dict[str, str]] = None  # pylint:disable=arguments-differ
+                     ) -> Dict[str, str]:
         host = self.settings_dict['HOST']
         user = self.settings_dict['USER']
         refresh_token = self.settings_dict['REFRESH_TOKEN']

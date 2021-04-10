@@ -5,6 +5,7 @@
 # See LICENSE.md for details
 #
 
+import requests
 from django.test import TestCase
 from django.conf import settings
 
@@ -31,7 +32,6 @@ class OAuthTest(TestCase):
         # import salesforce
         # _session=salesforce.backend.fake.base.FakeAuthSession()
         # _session.bind('default')
-        import requests
         _session = requests.Session()
 
         auth_obj = auth.SalesforcePasswordAuth(sf_alias, settings_dict=settings.DATABASES[sf_alias],

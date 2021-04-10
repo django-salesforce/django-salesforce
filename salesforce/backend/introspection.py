@@ -20,7 +20,7 @@ from django.db.backends.base.introspection import (
 from django.utils.text import camel_case_to_spaces
 from django.db.backends.utils import CursorWrapper as _Cursor  # for typing
 # require "simplejson" to ensure that it is available to "requests" hook.
-import simplejson  # NOQA pylint:disable=unused-import
+import simplejson  # noqa pylint:disable=unused-import
 
 from salesforce.backend import DJANGO_32_PLUS
 import salesforce.fields
@@ -52,7 +52,7 @@ PROBLEMATIC_OBJECTS = [
 last_introspection = None
 
 
-class LastIntrospection:
+class LastIntrospection:  # pylint:disable=too-few-public-methods
     def __init__(self, model_name: str, important_related_names: List[str],
                  fields_map: Dict[str, Dict[str, Any]]) -> None:
         self.model_name = model_name
@@ -116,14 +116,14 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             x for x in self.table_list_cache['sobjects'] if x['name'] in table_names
         ]
         self._table_names = self._table_names.intersection(table_names)
-        unknown_tables = [x for x in table_names if x not in self.connection.introspection._table_names]
+        unknown_tables = [x for x in table_names if x not in self.connection.introspection._table_names]  # noqa pylint:disable=protected-access
         if unknown_tables:
             raise ValueError('These tables are not a part of the inspected Salesforce database: '
                              '{}'.format(unknown_tables))
 
     def reset_table_list(self) -> None:
         self._table_list_cache = None
-        self.table_list_cache
+        self.table_list_cache  # pylint:disable=pointless-statement
 
     @property
     def sobjects_prefix(self) -> str:
@@ -164,7 +164,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         result = [TableInfo(SfProtectName(x['name']), 't') for x in self.table_list_cache['sobjects']]
         return result
 
-    def get_field_params(self, field: Dict[str, Any]) -> Dict[str, Any]:
+    def get_field_params(self, field: Dict[str, Any]) -> Dict[str, Any]:  # pylint:disable=too-many-branches
         params = OrderedDict()
         if field['label'] and field['label'] != camel_case_to_spaces(re.sub('__c$', '', field['name'])).title():
             params['verbose_name'] = field['label']
@@ -197,7 +197,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 params['ref_comment'] = 'References to missing tables: {}'.format(self.references_to(field, all=True))
         return params
 
-    def references_to(self, field: Dict[str, Any], all: bool = False) -> Optional[List[str]]:
+    def references_to(self, field: Dict[str, Any], all: bool = False) -> Optional[List[str]]:  # pylint:disable=redefined-builtin # noqa
         if field['type'] != 'reference':
             return None
         reference_to_valid = [x for x in field['referenceTo'] if x in self._table_names]
@@ -239,7 +239,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         return result
 
     # unused because feature 'supports_table_check_constraints == False'
-    def get_sequences(self, cursor: _Cursor, table_name: str, table_fields=()) -> List[Dict[str, str]]:  # noqa # pragma: no cover
+    def get_sequences(self, cursor: _Cursor, table_name: str, table_fields=()  # pragma: no cover
+                      ) -> List[Dict[str, str]]:
         pk_col = self.get_primary_key_column(cursor, table_name) or 'Id'
         return [{'table': table_name, 'column': pk_col}]
 

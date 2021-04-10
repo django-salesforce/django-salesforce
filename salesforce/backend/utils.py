@@ -38,11 +38,11 @@ if not DJANGO_30_PLUS:
             return decorator(func)
         return decorator
 else:
-    from django.utils.asyncio import async_unsafe  # type: ignore[import,no-redef]  # noqa
+
+    from django.utils.asyncio import async_unsafe  # type: ignore[import,no-redef] # pylint:disable=unused-import,ungrouped-imports # noqa
 
 log = logging.getLogger(__name__)
 
-# pylint:disable=invalid-name
 
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 
@@ -54,7 +54,6 @@ def extract_values(query):
     Extract values from insert or update query.
     Supports bulk_create
     """
-    # pylint
     if isinstance(query, subqueries.UpdateQuery):
         row = query.values
         return extract_values_inner(row, query)

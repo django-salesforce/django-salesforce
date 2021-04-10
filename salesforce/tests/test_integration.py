@@ -21,11 +21,12 @@ from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max, Model, query as models_query
 from django.test import TestCase
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 import salesforce
 from salesforce import router
 from salesforce.backend import DJANGO_21_PLUS, DJANGO_22_PLUS
-from salesforce.backend.test_helpers import (  # NOQA pylint:disable=unused-import
+from salesforce.backend.test_helpers import (  # noqa pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless)
 from salesforce.backend.test_helpers import (
     current_user, default_is_sf, sf_alias, uid_version as uid,
@@ -34,11 +35,11 @@ from salesforce.dbapi.exceptions import SalesforceWarning
 from salesforce.dbapi.test_helpers import PatchedSfConnection
 from salesforce.models import SalesforceModel
 from salesforce.testrunner.example.models import (
-        Account, Contact, Lead, User,
+        Attachment, Account, Contact, Lead, User,
         ApexEmailNotification, BusinessHours, Campaign, CronTrigger,
         Opportunity, OpportunityContactRole,
         Product, Pricebook, PricebookEntry, Note, Task,
-        Organization, models_template,
+        Organization, models_template, Test,
         )
 
 log = logging.getLogger(__name__)
@@ -242,7 +243,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         current_sf_user = User.objects.get(Username=current_user)
         orig_objects = list(ApexEmailNotification.objects.filter(
             Q(user=current_sf_user) | Q(email='apex.bugs@example.com')))
-        _ = orig_objects  # NOQA
+        _ = orig_objects  # noqa
         new_u, new_e = None, None
         try:
             notifier_u = current_sf_user.apex_email_notification
@@ -476,7 +477,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_simple_custom_object(self) -> None:
         """Create, read and delete a simple custom object `django_Test__c`.
         """
-        from salesforce.testrunner.example.models import Attachment, Test
         if 'django_Test__c' not in sf_tables():
             self.skipTest("Not found custom object 'django_Test__c'")
         results = Test.objects.all()[0:1]
@@ -1058,7 +1058,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         with self.lazy_assert_n_requests(1):
             _ = contact.email
         self.lazy_check()
-        _  # NOQA
+        _  # noqa
 
     def test_incomplete_raw(self) -> None:
         """Test that omitted model fields can be queried by dot."""
@@ -1178,7 +1178,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
         are correctly compiled. (__r, __c etc.)
         """
-        from salesforce.testrunner.example.models import Attachment, Test
         if 'django_Test__c' not in sf_tables():
             self.skipTest("Not found custom object 'django_Test__c'")
         qs = Attachment.objects.filter(parent__name='abc')
@@ -1203,7 +1202,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test that a query of length almost 100000 is possible"""
         contact = Contact.objects.all()[0]
         # 4534 items * 22 characters == 99748
-        from django.utils.crypto import get_random_string
         names = [get_random_string(18) for _ in range(4534)]
         names.append(contact.name)
         qs = Contact.objects.filter(name__in=names)
