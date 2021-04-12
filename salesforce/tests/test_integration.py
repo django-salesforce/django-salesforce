@@ -11,7 +11,6 @@ from distutils.util import strtobool  # pylint: disable=no-name-in-module,import
 import datetime
 import logging
 import os
-import re
 import warnings
 from typing import Any, cast, List, TypeVar
 
@@ -1354,16 +1353,3 @@ class BasicLeadSOQLTest(TestCase):
             note_1.delete()
             note_2.delete()
             test_contact.delete()
-
-
-def clean_test_data() -> None:
-    """Clean test objects after an interrupted test.
-
-    All tests are written so that a failed test should not leave objects,
-    but a test interrupted by debugger or Ctrl-C could do it.
-    """
-    ids = [x for x in Product.objects.filter(Name__startswith='test ')
-           if re.match(r'test [a-z_0-9]+', x.Name)]
-    Product.objects.filter(pk__in=ids).delete()
-    Contact.objects.filter(first_name='sf_test demo', last_name__in=('Test 0', 'Test 1')).delete()
-    Account.objects.filter(Name='sf_test account_0').delete()
