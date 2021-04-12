@@ -227,8 +227,9 @@ class FloatField(SfField, models.FloatField):
 class BooleanField(SfField, models.BooleanField):
     """BooleanField with sf_read_only attribute for Salesforce.
 
-    No NullBooleanField exist for Salesforce and every BooleanField has
-    a default value. Implicit default is False if not specified.
+    Every BooleanField has a default value. It is False if default
+    value checkbox is unchecked or True if checked.
+    No NullBooleanField exist for Salesforce.
     """
     def __init__(self, default=False, **kwargs):
         super().__init__(default=default, **kwargs)
