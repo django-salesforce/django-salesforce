@@ -308,6 +308,8 @@ class RawConnection:
             response = session.request(method, url, **kwargs_in)
         except requests.exceptions.Timeout:
             raise SalesforceError("Timeout, URL=%s" % url)
+        except requests.exceptions.ConnectionError as exc:
+            raise SalesforceError("ConnectionError, URL=%s, %r" % (url, exc))
         if (response.status_code == 401                      # Unauthorized
                 and 'json' in response.headers['content-type']
                 and response.json()[0]['errorCode'] == 'INVALID_SESSION_ID'):
@@ -936,10 +938,6 @@ register_conversion(decimal.Decimal, json_conv=float, subclass=True)
 # the type models.Model is registered from backend, because it is a Django type
 
 
-def merge_dict(dict_1: Dict[Any, Any], *other: Dict[Any, Any], **kw: Any) -> Dict[Any, Any]:
-    """Merge two or more dict including kw into result dict."""
-    tmp = dict_1.copy()
-    for x in other:
-        tmp.update(x)
-    tmp.update(kw)
-    return tmp
+def merge_dict(dict_1: Dict[Any, Any], **kw: Any) -> Dict[Any, Any]:
+    """Merge a dict with some keys and values (or another dict)."""
+    return {**dict_1, **kw}
