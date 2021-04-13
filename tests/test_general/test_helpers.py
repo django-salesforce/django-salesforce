@@ -20,7 +20,7 @@ class TestExpectedFailure(TestCase):
         assert False
 
 
-class TestLazyAssert(TestCase, LazyTestMixin):
+class TestLazyAssert(LazyTestMixin, TestCase):
 
     def test_lazy_assert_fail(self):
         """example of an failed test if any lazy_assert fails"""
@@ -62,11 +62,11 @@ class TestLazyAssert(TestCase, LazyTestMixin):
         self.assertTrue(clean_up)
 
 
-class TestLazyAssertNoSetup(TestCase, LazyTestMixin):
+class TestLazyAssertNoSetup(LazyTestMixin, TestCase):
+    """Verify that LazyTestMixin works also if omitted super().setUp()"""
 
     def setUp(self):
-        # this overshadowed "setUp" in LazyTestMixin
-        # by omitting  super().setUp()
+        # verify that super().setUp() is not necessary for LazyTestMixin
         pass
 
     def test_fail(self):
@@ -79,7 +79,7 @@ class TestLazyAssertNoSetup(TestCase, LazyTestMixin):
         self.lazy_check()
 
 
-class LazyAssertRequests(TestCase, LazyTestMixin):
+class LazyAssertRequests(LazyTestMixin, TestCase):
 
     def test_ok(self):
         """example that more asserts can be checked together"""

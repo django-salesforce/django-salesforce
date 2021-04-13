@@ -12,7 +12,7 @@ All data are ascii str.
 """
 
 from subprocess import PIPE, Popen
-from typing import Any, Callable, Dict, Optional, Sequence, Type
+from typing import Any, Callable, cast, Dict, Optional, Sequence, Type
 from urllib.parse import parse_qs, urlencode, urlsplit
 import base64
 import hashlib
@@ -520,7 +520,7 @@ class RefreshTokenAuth(StaticGlobalAuth):
             'code_challenge': code_challenge,
             }
         query = urlencode(url_params,  quote_via=quote_no_plus)
-        url_login = self.settings_dict['HOST'] + '/services/oauth2/authorize?' + query
+        url_login = cast(str, self.settings_dict['HOST']) + '/services/oauth2/authorize?' + query
         print()
         print(url_login)
         print("\nOpen the URL above in your browser and follow (optionally Login to Salesforce, "
@@ -587,4 +587,4 @@ class TimeStatistics:
 
 
 time_statistics = TimeStatistics(300)
-quote_no_plus = urllib.parse.quote  # type: Callable[[str, str, Optional[str], Optional[str]], str]
+quote_no_plus = urllib.parse.quote  # type: Callable[[str, str, str, str], str]
