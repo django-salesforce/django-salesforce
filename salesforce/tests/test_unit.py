@@ -3,13 +3,16 @@ Tests that do not need to connect servers
 """
 # pylint:disable=deprecated-method,too-many-ancestors,unused-variable
 
+from typing import Type
 from django.apps.registry import Apps
 from django.test import TestCase
 from django.db.models import DO_NOTHING, Subquery
 from salesforce import fields, models
+from salesforce.dbapi import driver
 from salesforce.testrunner.example.models import (
         Contact, Opportunity, OpportunityContactRole, ChargentOrder)
 from salesforce.backend.test_helpers import LazyTestMixin
+from salesforce.backend.utils import sobj_id
 
 
 class EasyCharField(models.CharField):
@@ -194,3 +197,37 @@ class SfParamsTest(TestCase):
         # a valua is propagated to the next level, but not to the previous
         self.assertTrue(qs_3.query.sf_params.query_all)
         self.assertFalse(qs_1.query.sf_params.query_all)
+
+
+class RegisterConversionTest(TestCase):
+    @staticmethod
+    def unregister_conversion(type_: Type) -> None:
+        del driver.json_conversions[type_]
+        del driver.sql_conversions[type_]
+        if type_ in driver.subclass_conversions:
+            driver.subclass_conversions.remove(type_)
+
+    def test_arg_model_conversion(self) -> None:
+        contact = Contact(last_name='test contact', pk='003001234567890AAA')
+
+        self.assertNotIn(models.SalesforceModel, driver.json_conversions)
+        self.assertNotIn(models.SalesforceModel, driver.sql_conversions)
+        self.assertNotIn(models.SalesforceModel, driver.subclass_conversions)
+
+        driver.register_conversion(models.SalesforceModel,
+                                   json_conv=sobj_id,
+                                   sql_conv=lambda x: driver.quoted_string_literal(sobj_id(x)),
+                                   subclass=True)
+
+        self.assertEqual(driver.arg_to_json(contact), contact.pk)
+        self.assertEqual(driver.arg_to_soql(contact), contact.pk)
+
+        self.assertIn(models.SalesforceModel, driver.json_conversions)
+        self.assertIn(models.SalesforceModel, driver.sql_conversions)
+        self.assertIn(models.SalesforceModel, driver.subclass_conversions)
+
+        self.unregister_conversion(models.Model)
+
+        self.assertNotIn(models.SalesforceModel, driver.json_conversions)
+        self.assertNotIn(models.SalesforceModel, driver.sql_conversions)
+        self.assertNotIn(models.SalesforceModel, driver.subclass_conversions)
