@@ -385,6 +385,14 @@ class Test(SalesforceParentModel):
         db_table = 'django_Test__c'
 
 
+class TestDetail(models.Model):
+    parent = models.ForeignKey(Test, models.DO_NOTHING, db_column='Parent__c', sf_read_only=models.NOT_UPDATEABLE)
+    contact = models.ForeignKey('Contact', models.DO_NOTHING, db_column='Contact__c', blank=True, null=True)
+
+    class Meta(models.Model.Meta):
+        db_table = 'django_Test_detail__c'
+
+
 # example of relationship from builtin object to custom object
 
 class Attachment(models.Model):
@@ -420,3 +428,8 @@ class ApexEmailNotification(models.Model):
 class Campaign(models.Model):
     name = models.CharField(max_length=80)
     number_sent = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Num Sent', blank=True, null=True)
+
+
+# this model will be removed to test removing in migrations
+class DeletedObject(SalesforceModel):
+    pass
