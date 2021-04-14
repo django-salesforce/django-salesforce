@@ -6,7 +6,7 @@ Principial differences to other packages:
 - This module has several modes:
   "record": mode for re-writing small integration tests to create mock tests
   "playback": mode for running the tests fast from recorded data
-  "mixed" mode is used like a silent "record" mode that is prepared to be
+  "mixed" mode is used like a silent "record" mode. "mixed" is prepared to be
       switched to "record" mode inside the same session, e.g if a test test is
       extended by additional requests
 
@@ -92,7 +92,7 @@ class MockRequestsSession:
             self.expected.append(expected_requests)
 
     def request(self, method: str, url: str, data: Optional[str] = None, **kwargs) -> AnyResponse:
-        """Assert the request equals the expected, return historical response"""
+        """Assert the request equals the expected, return a historical response"""
         # pylint:disable=too-many-locals
         mode = getattr(settings, 'SF_MOCK_MODE', 'playback')
         if mode == 'playback':
@@ -175,7 +175,7 @@ class MockRequest:
     default_type = None  # type: Optional[str]
 
     def __init__(self, method_url: str,  # pylint:disable=too-many-arguments
-                 req: Optional[str] = None, resp: Optional[str] = None,
+                 req: Union[str, Dict[str, Any], None] = None, resp: Optional[str] = None,
                  request_json: Any = None,
                  request_type: Optional[str] = None, response_type: Optional[str] = None,
                  status_code: int = 200, check_request: bool = True) -> None:
@@ -193,7 +193,9 @@ class MockRequest:
     def request(self, method: str, url: str, data: str = None, json: Any = None,
                 testcase: Optional[SimpleTestCase] = None, **kwargs) -> 'MockResponse':
         # pylint:disable=too-many-arguments,too-many-branches
-        """Compare the request to the expected. Return the expected response."""
+        """Compare the request to the expected. Return the expected response.
+        Supported kwargs: 'msg', 'headers', 'timeout', 'verify'
+        """
         if testcase is None:
             raise TypeError("Required keyword argument 'testcase' not found")
         msg = kwargs.pop('msg', None)
@@ -214,6 +216,7 @@ class MockRequest:
         response = response_class(self.response_data,
                                   status_code=self.status_code,
                                   resp_content_type=self.response_type)
+        response.request = RequestHint(method, url, body=data, headers={'content-type': request_type})
         if not self.check_request:
             return response
 
@@ -221,7 +224,7 @@ class MockRequest:
             assert data is not None and self.request_data is not None
             testcase.assertJSONEqual(data, self.request_data, msg=msg)
         elif 'xml' in self.request_type:
-            assert data is not None and self.request_data is not None
+            assert data is not None and isinstance(self.request_data, str)
             testcase.assertXMLEqual(data, self.request_data, msg=msg)
         elif self.request_type != '*':
             testcase.assertEqual(data, self.request_data, msg=msg)
@@ -232,13 +235,19 @@ class MockRequest:
             testcase.assertEqual(request_type.split(';')[0], self.request_type.split(';')[0], msg=msg)
         kwargs.pop('timeout', None)
         assert kwargs.pop('verify', True) is True  # TLS verify must not be False
-        if 'json' in kwargs and kwargs['json'] is None:
-            del kwargs['json']
         if 'headers' in kwargs and not kwargs['headers']:
             del kwargs['headers']
         if kwargs:
             raise NotImplementedError("unexpected args = %s (msg=%s) at url %s" % (kwargs, msg, url))
         return response
+
+
+class RequestHint:
+    def __init__(self, method, url, body, headers):
+        self.method = method
+        self.url = url
+        self.body = body
+        self.headers = headers
 
 
 class MockJsonRequest(MockRequest):
@@ -306,7 +315,7 @@ class MockTestCase(SimpleTestCase):
             return exc_list[-1][1]
         return None
 
-    def mock_add_expected(self, expected_requests: Iterable[MockRequest]) -> None:
+    def mock_add_expected(self, expected_requests: Union[MockRequest, Iterable[MockRequest]]) -> None:
         self.sf_connection._sf_session.add_expected(expected_requests)  # pylint:disable=protected-access
 
 
@@ -316,6 +325,7 @@ class MockTestCase(SimpleTestCase):
 class MockResponse:
     """Mock response for some unit tests offline"""
     default_type = None  # type: Optional[str]
+    request = None  # type: RequestHint
 
     def __init__(self, text: Optional[str], resp_content_type: Optional[str] = None, status_code: int = 200) -> None:
         self.text = text
