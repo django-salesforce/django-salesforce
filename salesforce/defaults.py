@@ -118,16 +118,16 @@ class CallableDefault(BaseDefault):
         return value_type_map[type(out)](out)
 
 
-# def foreign_key_factory_default(model: 'Type[salesforce.models.Model[Any]]') -> 'salesforce.models.Model[Any]':
-#     def deconstruct() -> Tuple[Any, ...]:
-#         # return ('{}.{}'.format(model.__module__, model.__name__), (), {'pk': pk})
-#         return ('salesforce.fields.DefaultedOnCreate', (model,), {})
-#
-#     pk = StrDefault('')
-#     instance = model(pk=pk)  # type: ignore[misc]
-#     setattr(instance, 'deconstruct', deconstruct)
-#     setattr(instance, 'default', None)
-#     return instance
+def foreign_key_factory_default(model: 'Type[salesforce.models.Model[Any]]') -> 'salesforce.models.Model[Any]':
+    def deconstruct() -> Tuple[Any, ...]:
+        # return ('{}.{}'.format(model.__module__, model.__name__), (), {'pk': pk})
+        return ('salesforce.fields.DefaultedOnCreate', (model,), {})
+
+    pk = StrDefault('')
+    instance = model(pk=pk)  # type: ignore[misc]
+    setattr(instance, 'deconstruct', deconstruct)
+    setattr(instance, 'default', None)
+    return instance
 
 
 field_type_map = {
@@ -223,12 +223,12 @@ def DefaultedOnCreate(value: Any = None, internal_type: Optional[str] = None) ->
         # only one instance without parameters make sense, that is in DEFAULTED_ON_CREATE
         return BaseDefault()
     else:
-        # if isinstance(value, type) and hasattr(value, '_salesforce_object'):
-        #     # assert issubclass(value, salesforce.models.Model)
-        #     return foreign_key_factory_default(value)
-        # if hasattr(type(value), '_salesforce_object'):
-        #     # assert isinstance(value, salesforce.models.Model)
-        #     return type(value)(pk=value.pk)
+        if isinstance(value, type) and hasattr(value, '_salesforce_object'):
+            # assert issubclass(value, salesforce.models.Model)
+            return foreign_key_factory_default(value)
+        if hasattr(type(value), '_salesforce_object'):
+            # assert isinstance(value, salesforce.models.Model)
+            return type(value)(pk=value.pk)
         raise ValueError("The type of object '{}' not found for DefaultedOnCreate".format(value))
 
 
