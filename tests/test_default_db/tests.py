@@ -1,7 +1,10 @@
 """Test djangoBackward compatible behaviour with primary key 'Id'."""
+import datetime
+import pytz
 from django.test import TestCase
 
-from .models import Account, Contact
+from salesforce import defaults
+from .models import Account, Contact, TryDefaults
 
 
 class DefaultDbTest(TestCase):
@@ -84,3 +87,35 @@ class DefaultDbTest(TestCase):
                .update(last_name='sf_test contact 2'))
         self.assertEqual(cnt, 1)
         self.assertEqual(Contact.objects.filter(last_name='sf_test contact 2').count(), 1)
+
+    def test_defaulted_on_create(self):
+        account = Account.objects.create(name='test')
+        obj = TryDefaults.objects.create()
+        obj = TryDefaults.objects.get(pk=obj.pk)
+        self.assertEqual(obj.example_str, 'client')
+        self.assertEqual(obj.example_datetime_2, datetime.datetime(2021, 3, 31, 23, 59, tzinfo=pytz.utc))
+        self.assertEqual(obj.example_time, datetime.time(23, 59))
+        self.assertIs(obj.example_bool, True)
+        self.assertIs(obj.example_bool_3, False)
+        self.assertEqual(obj.example_foreign_key.pk, account.pk)
+        obj2 = TryDefaults.objects.get(pk=obj.pk)  # refreshed
+        self.assertEqual(obj2.example_foreign_key.pk, account.pk)
+        obj.delete()
+        account.delete()
+
+
+class DefaultsTest(TestCase):
+    def test_datetime_defaults(self) -> None:
+        timezone = pytz.timezone('Europe/Prague')
+        obj = defaults.DateTimeDefault(datetime.datetime(2021, 3, 31, 23, 59))
+        obj2 = pytz.utc.localize(obj)
+        obj2 = timezone.localize(obj)
+        str(obj)
+        pytz.utc.localize(obj)
+        obj2.astimezone(pytz.utc)
+        obj2.replace(tzinfo=None)
+
+    def test_time_defaults(self) -> None:
+        obj = defaults.TimeDefault(datetime.time(23, 59))
+        self.assertTrue(isinstance(str(obj.args[0]), str))
+        self.assertRegex(str(obj), r'\d{2}:\d{2}:\d{2}$')

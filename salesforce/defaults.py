@@ -19,7 +19,10 @@ class BaseDefault:
 
     default = None  # type: Any
 
-    def __init__(self, *args: Any) -> None:
+    def __init__(self, *args: Any, **kwargs) -> None:
+        if isinstance(self, StrDefault) and args:
+            # this branch is called in a convertion to str: str(something)
+            args = (args[0].__str__(),)
         self.args = args
 
     def __str__(self) -> str:
@@ -109,19 +112,22 @@ class CallableDefault(BaseDefault):
     def __call__(self) -> Any:
         assert len(self.args) == 1
         out = self.args[0]()
+        if hasattr(type(out), '_salesforce_object'):
+            # assert isinstance(out, salesforce.models.Model)
+            return type(out)(pk=DefaultedOnCreate(out.pk))
         return value_type_map[type(out)](out)
 
 
-def foreign_key_factory_default(model: 'Type[salesforce.models.Model[Any]]') -> 'salesforce.models.Model[Any]':
-    def deconstruct() -> Tuple[Any, ...]:
-        # return ('{}.{}'.format(model.__module__, model.__name__), (), {'pk': pk})
-        return ('salesforce.fields.DefaultedOnCreate', (model,), {})
-
-    pk = StrDefault('')
-    instance = model(pk=pk)  # type: ignore[misc]
-    setattr(instance, 'deconstruct', deconstruct)
-    setattr(instance, 'default', None)
-    return instance
+# def foreign_key_factory_default(model: 'Type[salesforce.models.Model[Any]]') -> 'salesforce.models.Model[Any]':
+#     def deconstruct() -> Tuple[Any, ...]:
+#         # return ('{}.{}'.format(model.__module__, model.__name__), (), {'pk': pk})
+#         return ('salesforce.fields.DefaultedOnCreate', (model,), {})
+#
+#     pk = StrDefault('')
+#     instance = model(pk=pk)  # type: ignore[misc]
+#     setattr(instance, 'deconstruct', deconstruct)
+#     setattr(instance, 'default', None)
+#     return instance
 
 
 field_type_map = {
@@ -170,7 +176,7 @@ def DefaultedOnCreate(value: float) -> FloatDefault:
 def DefaultedOnCreate(value: decimal.Decimal) -> DecimalDefault:
     ...
 @overload  # noqa
-def DefaultedOnCreate(value: datetime.datetime) -> DateTimeDefault:
+def DefaultedOnCreate(value: datetime.date) -> DateDefault:  # this is also for DatetimeDefault
     ...
 @overload  # noqa
 def DefaultedOnCreate(value: datetime.time) -> TimeDefault:
@@ -208,21 +214,22 @@ def DefaultedOnCreate(value: Any = None, internal_type: Optional[str] = None) ->
     if internal_type:
         klass = field_type_map[internal_type]
         return klass(klass.default)
-    elif value is not None:
-        if isinstance(value, type) and hasattr(value, '_salesforce_object'):
-            if TYPE_CHECKING:
-                assert issubclass(value, salesforce.models.Model)
-            return foreign_key_factory_default(value)
-        if callable(value):
-            return CallableDefault(value)
-        klass2 = value_type_map.get(type(value))
-        if klass2:
-            return klass2(value)
-        else:
-            raise ValueError("The type of object '{}' not found for DefaultedOnCreate".format(value))
-    else:
+    elif type(value) in value_type_map:
+        klass2 = value_type_map[type(value)]
+        return klass2(value)
+    elif callable(value):
+        return CallableDefault(value)
+    elif value is None:
         # only one instance without parameters make sense, that is in DEFAULTED_ON_CREATE
         return BaseDefault()
+    else:
+        # if isinstance(value, type) and hasattr(value, '_salesforce_object'):
+        #     # assert issubclass(value, salesforce.models.Model)
+        #     return foreign_key_factory_default(value)
+        # if hasattr(type(value), '_salesforce_object'):
+        #     # assert isinstance(value, salesforce.models.Model)
+        #     return type(value)(pk=value.pk)
+        raise ValueError("The type of object '{}' not found for DefaultedOnCreate".format(value))
 
 
 DEFAULTED_ON_CREATE = DefaultedOnCreate()
