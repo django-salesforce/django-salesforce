@@ -230,9 +230,9 @@ def make_dynamic_fields(pattern_module: types.ModuleType, dynamic_field_patterns
             enabled = False
         if enabled:
             if issubclass(obj.klass, ForeignKey):
-                to = obj.kw['to']
+                to = obj.args[0]
                 if isclass(to) and issubclass(to, ModelTemplate):
-                    obj.kw['to'] = to.__name__
+                    obj.args = (to.__name__,) + obj.args[1:]
             field = obj.create()
             attrs[name] = field
     assert pattern_module  # maybe rarely locked while running inspectdb
