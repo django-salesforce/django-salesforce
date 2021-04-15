@@ -18,5 +18,4 @@ def complain(*args, **kwargs):
 
 
 class DatabaseClient(BaseDatabaseClient):
-    # pylint:disable=too-few-public-methods
     runshell = complain

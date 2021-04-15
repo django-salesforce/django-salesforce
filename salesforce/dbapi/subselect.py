@@ -62,7 +62,7 @@ class QQuery:
     # type of query: QRootQuery, QFieldSubquery, QWhereSubquery
     # type of field: QField, QAggregation, QFieldSubquery
 
-    # pylint:disable=too-few-public-methods,too-many-instance-attributes
+    # pylint:disable=too-many-instance-attributes
 
     def __init__(self, soql: Optional[str] = None) -> None:
         self.soql = None                  # type: Optional[str]

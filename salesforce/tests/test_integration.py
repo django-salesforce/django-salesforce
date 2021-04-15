@@ -4,7 +4,7 @@
 # (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 # See LICENSE.md for details
 #
-# pylint:disable=deprecated-method,invalid-name,protected-access,too-many-lines,unused-variable
+# pylint:disable=protected-access,too-many-lines,unused-variable
 
 from decimal import Decimal
 from distutils.util import strtobool  # pylint: disable=no-name-in-module,import-error # venv inst pylint false positiv

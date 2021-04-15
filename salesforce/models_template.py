@@ -27,7 +27,6 @@ import salesforce
 
 Model = salesforce.models.ModelTemplate  # type: ignore[assignment,misc]  # noqa
 
-# pylint: disable=invalid-name
 CharField = LazyField(salesforce.models.CharField)
 EmailField = LazyField(salesforce.models.EmailField)
 URLField = LazyField(salesforce.models.URLField)

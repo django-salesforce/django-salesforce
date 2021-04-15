@@ -111,12 +111,10 @@ if TYPE_CHECKING:
         class Meta:
             ...
 else:
-    # pylint:disable=too-few-public-methods
     class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
         """
         Abstract model class for Salesforce objects.
         """
-        # pylint:disable=invalid-name
         _salesforce_object = 'standard'
 
         # If both managers are specified in this class, they should be different objects,
@@ -176,7 +174,7 @@ def make_dynamic_fields(pattern_module: types.ModuleType, dynamic_field_patterns
             db_table = 'Contact'
             dynamic_patterns = exported.models, ['Last', '.*Date$']
     """
-    # pylint:disable=invalid-name,too-many-branches,too-many-locals
+    # pylint:disable=too-many-branches,too-many-locals
     attr_meta = attrs['Meta']
     db_table = getattr(attr_meta, 'db_table', None)
     if not db_table:

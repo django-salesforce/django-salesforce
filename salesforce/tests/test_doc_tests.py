@@ -8,6 +8,6 @@ doc_tests = [
 
 def load_tests(loader, tests, ignore):
     """Add doctests to unittests"""
-    # pylint:disable=invalid-name,unused-argument
+    # pylint:disable=unused-argument
     tests.addTests(doc_tests)
     return tests

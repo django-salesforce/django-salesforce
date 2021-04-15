@@ -32,7 +32,7 @@ FieldInfo = namedtuple(  # type: ignore[misc]
     'name type_code display_size internal_size precision scale null_ok default'
     + (' collation' if DJANGO_32_PLUS else '') +
     ' params'  # the last name 'params' is our extension for Salesforce
-)  # pylint:disable=invalid-name
+)
 assert FieldInfo._fields[:-1] == BaseFieldInfo._fields
 
 # these sObjects are not tables - ignore them
@@ -52,7 +52,7 @@ PROBLEMATIC_OBJECTS = [
 last_introspection = None
 
 
-class LastIntrospection:  # pylint:disable=too-few-public-methods
+class LastIntrospection:
     def __init__(self, model_name: str, important_related_names: List[str],
                  fields_map: Dict[str, Dict[str, Any]]) -> None:
         self.model_name = model_name
@@ -349,8 +349,6 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                         "WHERE IsConverted = True ORDER BY SortOrder LIMIT 1")
             self._converted_lead_status = cur.fetchone()[0]
         return self._converted_lead_status
-
-# pylint:disable=too-few-public-methods
 
 
 class SymbolicModelsName:

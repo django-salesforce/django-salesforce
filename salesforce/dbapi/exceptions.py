@@ -6,14 +6,12 @@ import json
 import warnings
 
 import requests  # noqa
-# pylint:disable=too-few-public-methods
 
 
 # === Forward defs  (they are first due to dependency)
 
 class FakeReq:
     """A Fake Request is used for compatible error reporting in "composite" subrequests."""
-    # pylint:disable=too-few-public-methods,too-many-arguments
     def __init__(self,
                  method: str,
                  url: str,
@@ -34,7 +32,7 @@ class FakeReq:
         return json.dumps(self.data)
 
 
-class FakeResp:  # pylint:disable=too-few-public-methods,too-many-instance-attributes
+class FakeResp:  # pylint:disable=too-many-instance-attributes
     """A Fake Response is used for compatible error reporting in "composite" subrequests."""
     def __init__(self, status_code: int, headers: Mapping[str, str], text: str, request: FakeReq) -> None:
         self.status_code = status_code

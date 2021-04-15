@@ -174,10 +174,10 @@ class MockRequest:
     for some unit tests offline
     If the parameter 'request_type' is '*' then the request is not tested
     """
-    # pylint:disable=too-few-public-methods,too-many-instance-attributes
+    # pylint:disable=too-many-instance-attributes
     default_type = None  # type: Optional[str]
 
-    def __init__(self, method_url: str,  # pylint:disable=too-many-arguments
+    def __init__(self, method_url: str,
                  req: Union[str, Dict[str, Any], None] = None, resp: Optional[str] = None,
                  request_json: Any = None,
                  request_type: Optional[str] = None, response_type: Optional[str] = None,
@@ -195,7 +195,7 @@ class MockRequest:
 
     def request(self, method: str, url: str, data: Optional[str] = None, json: Any = None,
                 testcase: Optional[SimpleTestCase] = None, **kwargs: Any) -> 'MockResponse':
-        # pylint:disable=too-many-arguments,too-many-branches
+        # pylint:disable=too-many-branches
         """Compare the request to the expected. Return the expected response.
         Supported kwargs: 'msg', 'headers', 'timeout', 'verify'
         """
@@ -256,7 +256,6 @@ class RequestHint:
 
 class MockJsonRequest(MockRequest):
     """Mock JSON request/response for some unit tests offline"""
-    # pylint:disable=too-few-public-methods
     default_type = APPLICATION_JSON
 
 

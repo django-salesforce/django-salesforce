@@ -63,7 +63,7 @@ if TYPE_CHECKING:
             tmp = models.manager.Manager()  # type: models.manager.Manager[_T]
             self.objects = tmp
 else:
-    # pylint:disable=too-few-public-methods,function-redefined
+    # pylint:disable=function-redefined
     class SalesforceModel(models.Model, metaclass=SalesforceModelBase):  # pylint:disable=function-redefined
         """
         Abstract model class for Salesforce objects that can be saved to other db.
@@ -72,7 +72,6 @@ else:
         a big problem if we don't check inheritance but only the '_salesforce_object'
         attribute or if we use only this or only the original implementation.)
         """
-        # pylint:disable=invalid-name
         _salesforce_object = 'extended'
         objects = manager.SalesforceManager()  # type: manager.SalesforceManager[_T]
 
