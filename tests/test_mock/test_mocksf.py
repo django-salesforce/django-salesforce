@@ -3,7 +3,7 @@ Test that MockTestCase works in all modes, including "record"
 (this must connect to servers)
 """
 import unittest
-from typing import List
+from typing import List, Optional
 from django.db import connections
 from django.test.utils import override_settings
 
@@ -16,7 +16,7 @@ from tests.test_mock.mocksf import (mock, MockJsonRequest, MockTestCase,
 class TestMock(MockTestCase):
     api_version = '39.0'
 
-    def prepare_expected(self):
+    def prepare_expected(self) -> None:
         self.mock_add_expected(MockJsonRequest(
             'GET mock:///services/data/v39.0/query/?q=SELECT+Name+FROM+Contact+LIMIT+1',
             resp=('{"totalSize": 1, "done": true, "records": [{'
@@ -26,7 +26,7 @@ class TestMock(MockTestCase):
         ))
 
     @override_settings(SF_MOCK_MODE='playback')
-    def test_mock_playback(self):
+    def test_mock_playback(self) -> None:
         self.prepare_expected()
         # test
         cur = connections[sf_alias].cursor()
@@ -41,7 +41,7 @@ class TestMock(MockTestCase):
 
     @override_settings(SF_MOCK_MODE='record')
     @override_settings(SF_MOCK_VERBOSITY=0)
-    def test_mock_record(self):
+    def test_mock_record(self) -> None:
         # test
         cur = connections[sf_alias].cursor()
         cur.execute("SELECT Name FROM Contact LIMIT 1")
@@ -50,7 +50,7 @@ class TestMock(MockTestCase):
         self.assertIsInstance(row[0], str)
 
     @override_settings(SF_MOCK_MODE='playback')
-    def test_response_parser(self):
+    def test_response_parser(self) -> None:
         "Test a response parser by a Mock playback, without testing the request."
         cur = connections[sf_alias].cursor()
         req = MockJsonRequest(
@@ -80,7 +80,7 @@ class SafeIdTest(unittest.TestCase):
         self.assertEqual(check_sf_api_id('0'), None)
 
     def test_extract_ids(self) -> None:
-        def extract(data, data_type=None) -> List[str]:
+        def extract(data: str, data_type: Optional[str] = None) -> List[str]:
             return [x[0] for x in extract_ids(data, data_type)]
         json_demo = '{"key": "000000000000000AAA", "name": "something"}'
         soap_demo = '<key>000000000000000AAA</key><name>something</name>'

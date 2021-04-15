@@ -40,7 +40,7 @@ Parameters
     json:  it is unused and will be probably deprecated.
            It can be replaced by "json.dumps(request_json)"
 """
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, cast, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Type, Union
 from unittest import mock, TestCase  # pylint:disable=unused-import  # NOQA
 import json as json_mod
 import re
@@ -92,7 +92,7 @@ class MockRequestsSession:
         else:
             self.expected.append(expected_requests)
 
-    def request(self, method: str, url: str, data: Optional[str] = None, **kwargs) -> AnyResponse:
+    def request(self, method: str, url: str, data: Optional[str] = None, **kwargs: Any) -> AnyResponse:
         """Assert the request equals the expected, return a historical response"""
         # pylint:disable=too-many-locals
         mode = getattr(settings, 'SF_MOCK_MODE', 'playback')
@@ -145,19 +145,19 @@ class MockRequestsSession:
             return response
         raise NotImplementedError("Not implemented SF_MOCK_MODE=%s" % mode)
 
-    def get(self, url: str, **kwargs) -> AnyResponse:
+    def get(self, url: str, **kwargs: Any) -> AnyResponse:
         return self.request('GET', url, **kwargs)
 
-    def post(self, url: str, data: Optional[str] = None, json: Any = None, **kwargs) -> AnyResponse:  # pylint:disable=redefined-outer-name # noqa
+    def post(self, url: str, data: Optional[str] = None, json: Any = None, **kwargs: Any) -> AnyResponse:  # pylint:disable=redefined-outer-name # noqa
         return self.request('POST', url, data=data, json=json, **kwargs)
 
-    def patch(self, url: str, data: Optional[str] = None, json: Any = None, **kwargs) -> AnyResponse:  # pylint:disable=redefined-outer-name # noqa
+    def patch(self, url: str, data: Optional[str] = None, json: Any = None, **kwargs: Any) -> AnyResponse:  # pylint:disable=redefined-outer-name # noqa
         return self.request('PATCH', url, data=data, json=json, **kwargs)
 
-    def delete(self, url: str, **kwargs) -> AnyResponse:
+    def delete(self, url: str, **kwargs: Any) -> AnyResponse:
         return self.request('DELETE', url, **kwargs)
 
-    def mount(self, prefix, adapter) -> None:
+    def mount(self, prefix: str, adapter: requests.adapters.HTTPAdapter) -> None:
         pass
 
     def close(self) -> None:
@@ -165,7 +165,7 @@ class MockRequestsSession:
 
     @property
     def verbosity(self) -> int:
-        return getattr(settings, 'SF_MOCK_VERBOSITY', 1)
+        return cast(int, getattr(settings, 'SF_MOCK_VERBOSITY', 1))
 
 
 class MockRequest:
@@ -193,8 +193,8 @@ class MockRequest:
         self.status_code = status_code
         self.check_request = check_request
 
-    def request(self, method: str, url: str, data: str = None, json: Any = None,
-                testcase: Optional[SimpleTestCase] = None, **kwargs) -> 'MockResponse':
+    def request(self, method: str, url: str, data: Optional[str] = None, json: Any = None,
+                testcase: Optional[SimpleTestCase] = None, **kwargs: Any) -> 'MockResponse':
         # pylint:disable=too-many-arguments,too-many-branches
         """Compare the request to the expected. Return the expected response.
         Supported kwargs: 'msg', 'headers', 'timeout', 'verify'
@@ -246,7 +246,8 @@ class MockRequest:
 
 
 class RequestHint:
-    def __init__(self, method, url, body, headers):
+    """Minimalist imitation of requests.models.Request usable for MockResponse"""
+    def __init__(self, method: str, url: str, body: Optional[str], headers: Dict[str, str]) -> None:
         self.method = method
         self.url = url
         self.body = body
@@ -398,7 +399,7 @@ def check_sf_api_id(id_18: str) -> Optional[str]:
         return None
 
 
-def extract_ids(data_text: str, data_type: str = None) -> Iterator[Tuple[str, Tuple[int, int]]]:
+def extract_ids(data_text: str, data_type: Optional[str] = None) -> Iterator[Tuple[str, Tuple[int, int]]]:
     """
     Extract all Force.com ID from REST/SOAP/SOQL request/response (for mock tests)
 

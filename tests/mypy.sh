@@ -1,5 +1,6 @@
 #!/bin/bash
-RET=0
+.tox/typing/bin/mypy --strict salesforce/*.py
+RET=$?
 MORE_TESTS=tests/inspectdb
 for x in tests/test_* $MORE_TESTS; do
     if test -e $x/test.sh; then

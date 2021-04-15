@@ -19,7 +19,7 @@ class BaseDefault:
 
     default = None  # type: Any
 
-    def __init__(self, *args: Any, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         if isinstance(self, StrDefault) and args:
             # this branch is called in a convertion to str: str(something)
             args = (args[0].__str__(),)
