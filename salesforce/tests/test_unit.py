@@ -1,7 +1,7 @@
 """
 Tests that do not need to connect servers
 """
-# pylint:disable=deprecated-method,too-many-ancestors,unused-variable
+# pylint:disable=unused-variable
 
 from typing import Type
 from django.apps.registry import Apps

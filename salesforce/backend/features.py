@@ -29,7 +29,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 
     if DJANGO_30_PLUS:
         can_return_columns_from_insert = True
-        can_return_rows_from_bulk_insert = True  # pylint:disable=invalid-name
+        can_return_rows_from_bulk_insert = True
     else:
         can_return_id_from_insert = True
         can_return_ids_from_bulk_insert = True

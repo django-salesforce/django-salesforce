@@ -70,7 +70,7 @@ class LazyTestMixin(BaseLazyTestMixin):
     class LazyAssertionError(AssertionError):
         pass
 
-    def setUp(self) -> None:  # pylint:disable=invalid-name
+    def setUp(self) -> None:
         self.lazy_failure = None  # type: Optional[Tuple[Type[BaseException], BaseException, str]]
 
     def _lazy_assert(self, assert_method: TestMethod, *args: Any, **kwargs: Any) -> None:
@@ -86,7 +86,7 @@ class LazyTestMixin(BaseLazyTestMixin):
         if not getattr(self, 'lazy_failure', None):
             skip_frames = kwargs.pop('skip_frames', 2)
             # the name is like in unittests due to more readable test tracebacks
-            lazyAssertMethod = assert_method  # pylint:disable=invalid-name
+            lazyAssertMethod = assert_method
             try:
                 lazyAssertMethod(*args, **kwargs)
             except self.failureException:
@@ -111,7 +111,6 @@ class LazyTestMixin(BaseLazyTestMixin):
             )
             raise original_exception
 
-    # pylint:disable=invalid-name
     def lazyAssertTrue(self, expr: Any, msg: Optional[str] = None) -> None:
         self._lazy_assert(self.assertTrue, expr, msg=msg)
 

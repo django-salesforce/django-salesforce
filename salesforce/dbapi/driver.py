@@ -730,7 +730,7 @@ class Cursor(Generic[_TRow]):
         self.rownumber = 0
         self._iter = iter(self._gen())
 
-    def query_more(self, nextRecordsUrl: str) -> None:  # pylint:disable=invalid-name
+    def query_more(self, nextRecordsUrl: str) -> None:
         self._check()
         if len(nextRecordsUrl) < 15500:
             ret = self.handle_api_exceptions('GET', nextRecordsUrl).json()
