@@ -39,16 +39,18 @@ class SfCharAutoField(SalesforceAutoField):
     #                       # but a fix by "_do_insert()" is better.
 
     def get_internal_type(self):
-        return None
+        return 'CharField'
 
     def db_type(self, connection):
         if connection.vendor != 'salesforce':
             # it is 'varchar(32)'
             return models.CharField(max_length=32).db_type(connection=connection)
+        return 'AutoField'
 
     def rel_db_type(self, connection):
         if connection.vendor != 'salesforce':
             return models.CharField(max_length=32).db_type(connection=connection)
+        return 'AutoField'
 
 
 if TYPE_CHECKING:
