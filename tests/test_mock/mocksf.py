@@ -84,6 +84,7 @@ class MockRequestsSession:
         self.expected = list(expected)
         self.auth = auth or MockAuth('dummy alias', {'USER': ''}, _session=dummy_login_session)
         self.old_session = old_session
+        self.mock_recorded = []  # type: List[str]
 
     def add_expected(self, expected_requests: Union['MockRequest', Iterable['MockRequest']]) -> None:
         if not isinstance(expected_requests, MockRequest):
@@ -110,7 +111,6 @@ class MockRequestsSession:
             new_url = url.replace('mock://', self.old_session.auth.instance_url)
             response = self.old_session.request(method, new_url, data=data, **kwargs)
             if mode == 'record':
-                print()
                 output = []
                 output.append('"%s %s"' % (method, url))
                 if data:
@@ -133,12 +133,15 @@ class MockRequestsSession:
                     output.append("response_type=%r" % response_type)
                 if response.status_code != 200:
                     output.append("status_code=%d" % response.status_code)
-                if self.verbosity > 0:
-                    print("=== MOCK RECORD {testcase}\n{class_name}(\n    {params})\n===".format(
+                new_output = (
+                    "=== MOCK RECORD {testcase}\n{class_name}(\n    {params})\n===".format(
                         class_name=request_class.__name__,
                         testcase=self.testcase,
-                        params=',\n    '.join(output)
-                        ))
+                        params=',\n    '.join(output))
+                )
+                self.mock_recorded.append(new_output)
+                if self.verbosity > 0:
+                    print(new_output, '\n')
             return response
         raise NotImplementedError("Not implemented SF_MOCK_MODE=%s" % mode)
 
