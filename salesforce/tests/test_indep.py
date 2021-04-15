@@ -21,7 +21,7 @@ class TestLazyField(unittest.TestCase):
     def test_positional_arg(self):
         MyLazyField = LazyField(MyField)
         field = MyLazyField(1)
-        self.assertEqual(field.kw, {'a': 1})
+        self.assertEqual(field.kw, {})
         self.assertEqual(field.create().kw, {'a': 1})
 
     def test_noarg_and_update_later(self):
@@ -29,7 +29,7 @@ class TestLazyField(unittest.TestCase):
         self.assertEqual(MyLazyField.klass, MyField)
         field = MyLazyField()
         self.assertTrue(not hasattr(field, 'kwargs'))
-        self.assertEqual(field.kw, {'a': None})
+        self.assertEqual(field.kw, {})
         self.assertEqual(field.create().kw, {'a': None})
         field.update(a=7)
         self.assertEqual(field.kw, {'a': 7})
@@ -39,19 +39,19 @@ class TestLazyField(unittest.TestCase):
         MyLazyField = LazyField(MyField)
         self.assertEqual(MyLazyField.klass, MyField)
         field = MyLazyField(a=2)
-        self.assertEqual(field.kw, {'a': 2})
+        self.assertEqual(field.kw, {})
         self.assertEqual(field.create().kw, {'a': 2})
 
     def test_kw_args(self):
         MyLazyField = LazyField(MyField)
         field = MyLazyField(b=2, c=3)
-        self.assertEqual(field.kw, {'a': None, 'b': 2, 'c': 3})
+        self.assertEqual(field.kw, {'b': 2, 'c': 3})
         self.assertEqual(field.create().kw, {'a': None, 'b': 2, 'c': 3})
 
     def test_mixed_args(self):
         MyLazyField = LazyField(MyField)
         field = MyLazyField(1, b=4)
-        self.assertEqual(field.kw, {'a': 1, 'b': 4})
+        self.assertEqual(field.kw, {'b': 4})
         self.assertEqual(field.create().kw, {'a': 1, 'b': 4})
 
     def test_mismatch_args(self):
