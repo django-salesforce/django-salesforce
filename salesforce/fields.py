@@ -63,7 +63,7 @@ class SalesforceAutoField(fields.AutoField):
     def get_prep_value(self, value: Any) -> Any:
         return self.to_python(value)
 
-    def contribute_to_class(self, cls: Type[models.Model], name: str, private_only: bool = False) -> None:
+    def contribute_to_class(self, cls: Type[models.Model], name: str, private_only: bool = False) -> None: # noqa pylint:disable=arguments-differ
         name = name if self.name is None else self.name
         # we can't require "self.auto_created==True" due to backward compatibility
         # with old migrations created before v0.6. Other conditions are enough.

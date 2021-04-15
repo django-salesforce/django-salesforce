@@ -365,10 +365,11 @@ class SfdxWebAuth(StaticGlobalAuth):
         """Run a SFDX command. Don't raise on the expected error names (comma delimited)"""
         # not intercept OSError e.g. file not found - raise directly
         # stderr is not redirected, because it can be used for some interactive dialogs
-        proc = Popen(command, stdout=PIPE)
-        stdout, _ = proc.communicate()
+        with Popen(command, stdout=PIPE) as proc:
+            stdout, _ = proc.communicate()
+            returncode = proc.returncode
 
-        if proc.returncode != 0:
+        if returncode != 0:
             self.data = {}
             # proc.returncode is the same as json "status" (and json "exitCode" if not zero)
             try:

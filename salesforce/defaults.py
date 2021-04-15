@@ -3,7 +3,7 @@ import decimal
 from typing import Any, Callable, Dict, Optional, overload, Tuple, Type, TYPE_CHECKING
 from pytz import utc
 # from django.utils.deconstruct import deconstructible
-import salesforce
+import salesforce  # pylint:disable=unused-import
 if TYPE_CHECKING:
     import salesforce.models  # pylint:disable=cyclic-import
 # pylint:disable=invalid-str-returned,no-else-return,unused-argument
