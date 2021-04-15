@@ -29,18 +29,18 @@ import requests
 from requests.adapters import HTTPAdapter
 
 import salesforce
-from salesforce.auth import SalesforceAuth, time_statistics
+from salesforce.auth import SalesforceAuth, time_statistics as time_statistics
 from salesforce.dbapi import get_max_retries, thread_loc
 from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
-    Error, InterfaceError, DatabaseError, DataError, OperationalError, IntegrityError,
-    InternalError, ProgrammingError, NotSupportedError, SalesforceError, SalesforceWarning,
-    warn_sf,
+    Error, InterfaceError as InterfaceError, DatabaseError as DatabaseError, DataError, OperationalError,
+    IntegrityError, InternalError, ProgrammingError, NotSupportedError, SalesforceError as SalesforceError,
+    SalesforceWarning, warn_sf,
     FakeReq, FakeResp, GenResponse)
 from salesforce.dbapi.subselect import QQuery, _TRow
 
 try:
-    import beatbox  # type: ignore[import]  # pylint: disable=unused-import
+    import beatbox as beatbox  # type: ignore[import]  # pylint: disable=unused-import
 except ImportError:
     beatbox = None
 

@@ -9,18 +9,18 @@
 Database router for SalesforceModel objects.
 """
 
-from typing import Optional
+from typing import cast, Optional, Type
 from django.apps import apps
 from django.conf import settings
 from django.db import models
 
 
-def is_sf_database(db: Optional[str], model: models.Model = None) -> bool:
+def is_sf_database(db: Optional[str], model: Optional[models.Model] = None) -> bool:
     """The alias is a Salesforce database."""
     from django.db import connections  # pylint:disable=import-outside-toplevel
     if db is None:
         return hasattr(model, '_salesforce_object')
-    engine = connections[db].settings_dict['ENGINE']
+    engine = cast(str, connections[db].settings_dict['ENGINE'])
     return engine == 'salesforce.backend' or connections[db].vendor == 'salesforce'
 
 
@@ -30,10 +30,10 @@ class ModelRouter:
     """
     # pylint:disable=protected-access
     @property
-    def sf_alias(self):
-        return getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
+    def sf_alias(self) -> str:
+        return cast(str, getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce'))
 
-    def db_for_read(self, model, **hints):
+    def db_for_read(self, model: models.Model, **hints: models.Model) -> Optional[str]:
         """
         If given some hints['instance'] that is saved in a db, use related
         fields from the same db. Otherwise if passed a class or instance to
@@ -45,8 +45,9 @@ class ModelRouter:
                 return db
         if hasattr(model, '_salesforce_object'):
             return self.sf_alias
+        return None
 
-    def db_for_write(self, model, **hints):
+    def db_for_write(self, model: models.Model, **hints: models.Model) -> Optional[str]:
         """
         If given some hints['instance'] that is saved in a db, use related
         fields from the same db. Otherwise if passed a class or instance to
@@ -58,17 +59,19 @@ class ModelRouter:
                 return db
         if hasattr(model, '_salesforce_object'):
             return self.sf_alias
+        return None
 
-    def allow_migrate(self, db, app_label, model_name=None, **hints):
+    def allow_migrate(self, db: str, app_label: str, model_name: Optional[str] = None, **hints: Type[models.Model]
+                      ) -> Optional[bool]:
         """
         Don't attempt to sync SF models to non SF databases and vice versa.
         """
         if model_name:
             try:
-                model = apps.get_model(app_label, model_name)
+                model = apps.get_model(app_label, model_name)  # type: Optional[Type[models.Model]]
             except LookupError:
                 if 'model' in hints and hints['model'].__module__ == '__fake__':
-                    return
+                    return None
                 raise
         else:
             # hints are used with less priority, because many hints are dynamic
@@ -93,3 +96,4 @@ class ModelRouter:
         # Nothing is decided about non SF models with non SF databases, because
         # it can be solved by other routers. Migration is enabled by default if
         # all routers return "None".
+        return None

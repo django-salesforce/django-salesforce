@@ -10,14 +10,14 @@ are available in the SOAP API. We are using `beatbox` as
 a workaround for those specific actions (such as Lead-Contact
 conversion).
 """
-
+from typing import Any, Dict, Optional
 from django.db import connections
 
 import salesforce
 from salesforce.dbapi.driver import beatbox, DatabaseError, InterfaceError
 
 
-def get_soap_client(db_alias, client_class=None):
+def get_soap_client(db_alias: str, client_class: 'beatbox.PythonClient' = None) -> 'beatbox.PythonClient':
     """
     Create the SOAP client for the current user logged in the db_alias
 
@@ -47,7 +47,7 @@ def get_soap_client(db_alias, client_class=None):
     return soap_client
 
 
-def convert_lead(lead, converted_status=None, **kwargs):
+def convert_lead(lead: Any, converted_status: Optional[str] = None, **kwargs: Any) -> Dict[str, str]:
     """
     Convert `lead` using the `convertLead()` endpoint exposed
     by the SOAP API.
