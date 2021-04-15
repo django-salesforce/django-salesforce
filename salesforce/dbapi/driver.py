@@ -40,7 +40,7 @@ from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
 from salesforce.dbapi.subselect import QQuery, _TRow
 
 try:
-    import beatbox as beatbox  # type: ignore[import]  # pylint: disable=unused-import
+    import beatbox as beatbox  # type: ignore[import]  # pylint: disable=unused-import,useless-import-alias
 except ImportError:
     beatbox = None
 
