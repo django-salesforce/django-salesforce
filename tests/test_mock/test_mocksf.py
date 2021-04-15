@@ -34,11 +34,10 @@ class TestMock(MockTestCase):
             cur.execute("SELECT Name FROM Contact LIMIT 1")
         self.assertEqual(list(cur.fetchall()), [['django-salesforce test']])
 
-    def test_mock_unused_playback(self):
-        # pylint:disable=deprecated-method,protected-access
+    def test_mock_unused_playback(self) -> None:
         self.prepare_expected()
-        self.assertRaisesRegexp(AssertionError, "Not all expected requests has been used", self.tearDown)
-        connections[sf_alias].connection._sf_session.index += 1  # mock a consumed request
+        # warning: tearDown() will be called 2x (here + autopmatic), that could cause side effects
+        self.assertRaisesRegex(AssertionError, "Not all expected requests has been used", self.tearDown)
 
     @override_settings(SF_MOCK_MODE='record')
     @override_settings(SF_MOCK_VERBOSITY=0)

@@ -79,7 +79,7 @@ class MockRequestsSession:
 
     def __init__(self, testcase: SimpleTestCase, expected: Iterable['MockRequest'] = (),
                  auth: Optional[SalesforceAuth] = None, old_session: Optional[SfSession] = None) -> None:
-        self.index = 0
+        self.index = 0  # index to self.expected
         self.testcase = testcase
         self.expected = list(expected)
         self.auth = auth or MockAuth('dummy alias', {'USER': ''}, _session=dummy_login_session)
@@ -303,12 +303,14 @@ class MockTestCase(SimpleTestCase):
 
         connection = self.sf_connection
         session = connection._sf_session  # pylint:disable=protected-access
-        if ok:
-            self.assertEqual(session.index, len(session.expected), "Not all expected requests has been used")
-        connection._sf_session, connection.sf_auth = self.save_session_auth  # pylint:disable=protected-access
-        connection._api_version = self.save_api_version
-        driver.time_statistics.expiration = TimeStatistics().expiration
-        super(MockTestCase, self).tearDown()
+        try:
+            if ok and isinstance(session, MockRequestsSession):
+                self.assertEqual(session.index, len(session.expected), "Not all expected requests has been used")
+        finally:
+            connection._sf_session, connection.sf_auth = self.save_session_auth  # pylint:disable=protected-access
+            connection._api_version = self.save_api_version
+            driver.time_statistics.expiration = TimeStatistics().expiration
+            super(MockTestCase, self).tearDown()
 
     def list2reason(self, exc_list: List[Tuple[TestCase, str]]) -> Optional[str]:
         if exc_list and exc_list[-1][0] is self:
