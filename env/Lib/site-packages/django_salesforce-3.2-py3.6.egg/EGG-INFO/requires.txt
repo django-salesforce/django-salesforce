@@ -1,0 +1,4 @@
+django>=2.0
+simplejson>=2.5.0
+pytz>=2012c
+requests>=2.4.0

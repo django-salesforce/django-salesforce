@@ -1,9 +1,19 @@
+"""
+Patient Connections Platform
+-- the data models defined here are important
+
+@author Preston Mackert
+"""
 # django-salesforce
 #
 # by Phil Christensen
 # (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 # See LICENSE.md for details
 #
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# imports
+# -------------------------------------------------------------------------------------------------------------------- #
 
 from typing import Optional
 import types
@@ -14,6 +24,9 @@ from django.conf import settings
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
 
+# -------------------------------------------------------------------------------------------------------------------- #
+# i think these are global definitions
+# -------------------------------------------------------------------------------------------------------------------- #
 
 SALUTATIONS = [
     'Mr.', 'Ms.', 'Mrs.', 'Dr.', 'Prof.'
@@ -29,6 +42,9 @@ INDUSTRIES = [
     'Telecommunications', 'Transportation', 'Utilities'
 ]
 
+# -------------------------------------------------------------------------------------------------------------------- #
+# defining these models from SFDC, the standard objects seem to be provided
+# -------------------------------------------------------------------------------------------------------------------- #
 
 # This class customizes `managed = True` for tests and does not disturbe SF
 class SalesforceModel(SalesforceModelParent):
@@ -418,3 +434,25 @@ class ApexEmailNotification(models.Model):
 class Campaign(models.Model):
     name = models.CharField(max_length=80)
     number_sent = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Num Sent', blank=True, null=True)
+
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# defining our custom PCP data models
+# -------------------------------------------------------------------------------------------------------------------- #
+
+class Program(SalesforceModel):
+    """
+    I'm being lazy and just copying the template for right now so that I can see the object within the admin
+    """
+    class Meta:
+        custom = True
+        db_table = 'DTPC_Program__c'
+
+
+class InsurancePlan(SalesforceModel):
+    """
+    I'm being lazy and just copying the template for right now so that I can see the object within the admin
+    """
+    class Meta:
+        custom = True
+        db_table = 'DTPC_Coverage_BI__c'

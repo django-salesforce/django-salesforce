@@ -7,6 +7,9 @@ from django.contrib import admin
 
 def register_omitted_classes(models):
     """
+    I'm pretty sure this is just replicating out the object models from salesforce into the django-admin
+    -- PM
+    
     Register classes that don't have an own admin yet.
     Example:
         register_omitted_classes(some_app.models)

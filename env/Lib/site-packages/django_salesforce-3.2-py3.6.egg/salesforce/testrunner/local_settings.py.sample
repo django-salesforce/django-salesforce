@@ -1,0 +1,20 @@
+# More info how to set OAuth2 with Salesforce is in articles:
+# http://wiki.developerforce.com/page/Digging_Deeper_into_OAuth_2.0_at_Salesforce.com
+# http://www.wadewegner.com/2013/11/forcecom-token-requests-with-python/
+
+DATABASES = {
+	'default': {
+		'ENGINE': 'django.db.backends.sqlite3',
+		'NAME': 'salesforce_testrunner_db',
+	},
+	'salesforce': {
+		'ENGINE': 'salesforce.backend',
+		"CONSUMER_KEY" : 'EDIT: your key you get.......................',
+		"CONSUMER_SECRET" : 'EDIT secret you get',
+		'USER': 'EDIT your@sadbox.login.name',
+		'PASSWORD': 'EDIT password + security_token',
+		'HOST': 'https://test.salesforce.com',
+	}
+}
+
+SALESFORCE_QUERY_TIMEOUT= (4, 15)

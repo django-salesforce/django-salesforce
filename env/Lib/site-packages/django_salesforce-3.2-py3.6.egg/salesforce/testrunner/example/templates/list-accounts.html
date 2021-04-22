@@ -1,0 +1,25 @@
+{% load i18n %}
+
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+	<title>list salesforce accounts</title>
+</head>
+<body>
+
+<a href="{% url 'search_accounts' %}">search accounts &gt;&gt;</a>
+
+<div class="salesforce">
+	<div class="content">
+		<div id="content-wrapper">
+		{% for account in accounts %}
+		<div class="account">
+			{{ account.Name }}, Phone: {{ account.Phone }}
+		</div>
+		{% endfor %}
+		</div>
+	</div>
+</div>
+
+</body>
+</html>

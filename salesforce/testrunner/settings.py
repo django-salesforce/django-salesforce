@@ -5,7 +5,7 @@ import os
 DEBUG = True
 
 ADMINS = (
-    # ('Your Name', 'your_email@example.com'),
+    # ('Preston Mackert', 'mackert_preston_reed@lilly.com'),
 )
 
 PERSON_ACCOUNT_ACTIVATED = False
@@ -19,11 +19,11 @@ DATABASES = {
     # in order to protect private secret values from unintentional committing.
     'salesforce': {
         'ENGINE': 'salesforce.backend',
-        "CONSUMER_KEY": os.environ.get('SF_CONSUMER_KEY', ''),
-        "CONSUMER_SECRET": os.environ.get('SF_CONSUMER_SECRET', ''),
-        'USER': os.environ.get('SF_USER', ''),
-        'PASSWORD': os.environ.get('SF_PASSWORD', ''),
-        'HOST': 'https://login.salesforce.com',
+        'CONSUMER_KEY': os.environ.get('engine_key'),
+        'CONSUMER_SECRET': os.environ.get('engine_secret'),
+        'USER': os.environ.get('dev_user'),
+        'PASSWORD': os.environ.get('dev_password'),
+        'HOST': 'https://test.salesforce.com',
         'TEST': {
             'DEPENDENCIES': [],
             'MIGRATE': False,   # to run tests without migrations in Django 3.1+

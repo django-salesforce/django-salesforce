@@ -15,6 +15,10 @@ class AccountAdmin(admin.ModelAdmin):
     list_display = ('Name', 'Phone')
 
 
-admin.site.register(models.Account, AccountAdmin)
 
-register_omitted_classes(models)
+admin.site.register(models.Account, AccountAdmin)
+admin.site.register(models.Program)
+admin.site.register(models.InsurancePlan)
+
+# call the custom django-salesforce universal admin
+# register_omitted_classes(models)
