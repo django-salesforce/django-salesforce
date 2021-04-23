@@ -437,13 +437,15 @@ class Campaign(models.Model):
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# defining our custom PCP data models
+# Patient Connections Platform Object Models
 # -------------------------------------------------------------------------------------------------------------------- #
 
 class Program(SalesforceModel):
     """
-    I'm being lazy and just copying the template for right now so that I can see the object within the admin
+    This is the core object for operating a Customer Support Program. Re CSP is built around programs
     """
+    name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
+    status = models.CharField(max_length=121, db_column='DTPC_Status__c', blank=True, null=True)
     class Meta:
         custom = True
         db_table = 'DTPC_Program__c'
@@ -451,8 +453,9 @@ class Program(SalesforceModel):
 
 class InsurancePlan(SalesforceModel):
     """
-    I'm being lazy and just copying the template for right now so that I can see the object within the admin
+    Taking the coverage record and remodeling it to an appropriate web-design
     """
+    name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
     class Meta:
         custom = True
         db_table = 'DTPC_Coverage_BI__c'
