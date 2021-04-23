@@ -1,15 +1,19 @@
 """
-Patient Connections Platform
--- the data models defined here are important
+This model file is copied from:
+
+django-salesforce
+
+by Phil Christensen
+(c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
+See LICENSE.md for details
+
+We are using it to create a custom data model of the patient connections platform, which is the core operating system
+for Lilly's customer support programs. This will allow us to add object models, manipulate them through code and
+perform custom queries that are displayed directly into a web framework: Django.
 
 @author Preston Mackert
 """
-# django-salesforce
-#
-# by Phil Christensen
-# (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
-# See LICENSE.md for details
-#
+
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # imports
@@ -456,7 +460,21 @@ class InsurancePlan(SalesforceModel):
     Taking the coverage record and remodeling it to an appropriate web-design
     """
     name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
+    record_type_id = models.CharField(max_length=121, db_column='RecordTypeId', blank=True, null=True)
     class Meta:
         custom = True
         db_table = 'DTPC_Coverage_BI__c'
+
+
+class Document(SalesforceModel):
+    """
+    Documents are the source of all new information within the PCP
+    """
+    name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
+    record_type_id = models.CharField(max_length=121, db_column='RecordTypeId')
+
+    class Meta:
+        custom = True
+        db_table = 'DTPC_Document__c'
+
 
