@@ -3,7 +3,7 @@ Derived from django-salesforce
 
 This repository is cloned from https://github.com/django-salesforce/django-salesforce.
 
-Django-Salesforce allows us to use the SFDC REST API in order to interact with our custom salesforce application via Python. The reasons for doing this are varied, but python is the language of choice for many reasons. This gives us a way to manipulate data using NLP in python and then present that information inside of salesforce.
+Django-Salesforce allows us to use the SFDC REST API in order to interact with our custom salesforce application via Python. The reasons for doing this are varied, but python is the language of choice for any type of natural language processing application. This gives us a framework to manipulate data using NLP in python and then present that information inside of salesforce.
 
 
 The Patient Connections Platform
