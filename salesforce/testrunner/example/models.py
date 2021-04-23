@@ -459,3 +459,4 @@ class InsurancePlan(SalesforceModel):
     class Meta:
         custom = True
         db_table = 'DTPC_Coverage_BI__c'
+
