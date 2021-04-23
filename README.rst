@@ -1,4 +1,4 @@
-derived from django-salesforce
+Derived from django-salesforce
 ================================
 
 This repository is cloned from https://github.com/django-salesforce/django-salesforce.
