@@ -611,6 +611,7 @@ class Registration(SalesforceModel):
     Registrations
     """
     name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
+    eighteen_years_of_age = models.BooleanField(db_column='DTPC_18_years_of_Age__c')
 
     class Meta:
         custom = True

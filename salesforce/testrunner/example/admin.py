@@ -24,6 +24,9 @@ class AccountAdmin(admin.ModelAdmin):
 class DocumentAdmin(admin.ModelAdmin):
     list_display = ('name', 'affiliate', 'any_information_identified')
 
+class RegistrationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'eighteen_years_of_age')
+
 class ProgramAdmin(admin.ModelAdmin):
     list_display = ('name', 'status')
 
@@ -37,6 +40,7 @@ class InsurancePlanAdmin(admin.ModelAdmin):
 
 admin.site.register(models.Account, AccountAdmin)
 admin.site.register(models.Document, DocumentAdmin)
+admin.site.register(models.Registration, RegistrationAdmin)
 admin.site.register(models.Program, ProgramAdmin)
 admin.site.register(models.InsurancePlan, InsurancePlanAdmin)
 
