@@ -11,4 +11,4 @@ The Patient Connections Platform
 
 The Patient Connections Platform (PCP) is a totally custom SFDC application that we are connecting to. I've created a connected app called "integration engine" in order to authenticate myself inside of the deldev3 environment. From here we can do proof of concepts.
 
-![sheeb-a-roo](https://thehappypuppysite.com/wp-content/uploads/2018/06/Shiba-Inu-Wonderful-Watchdog-or-Family-Pet_-HP-long.jpg)
+![alt text](https://thehappypuppysite.com/wp-content/uploads/2018/06/Shiba-Inu-Wonderful-Watchdog-or-Family-Pet_-HP-long.jpg)
