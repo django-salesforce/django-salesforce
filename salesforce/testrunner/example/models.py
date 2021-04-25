@@ -604,3 +604,14 @@ class Document(SalesforceModel):
     class Meta:
         custom = True
         db_table = 'DTPC_Document__c'
+
+
+class Registration(SalesforceModel):
+    """
+    Registrations
+    """
+    name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
+
+    class Meta:
+        custom = True
+        db_table = 'DTPC_Registration__c'
