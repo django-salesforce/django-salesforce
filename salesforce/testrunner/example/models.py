@@ -480,35 +480,74 @@ class Document(SalesforceModel):
     I'll need to load test data... I've created a few files for informatica testing
     """
     # --------------------------
-    # generics
+    # descriptive fields
     # --------------------------
 
     name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
-    
-    record_type_id = models.CharField(max_length=121, db_column='RecordTypeId')
-    
-    fax_action = models.CharField(max_length=121, db_column='Fax_Action__c')
-    
+    status = models.CharField(max_length=121, db_column='Fax_Status__c')
+    status_reason = models.CharField(max_length=121, db_column='DTPC_Status_Reason__c')
     affiliate = models.CharField(max_length=121, db_column='Affiliates__c')
+    brand_programs = models.CharField(max_length=121, db_column='DTPC_Brand_Programs__c')
+    sub_program = models.CharField(max_length=121, db_column='DTPC_PatientOne_Brand__c')
+    generic_drug = models.CharField(max_length=121, db_column='DTPC_Generic_Drug_Name__c')
+    record_type_id = models.CharField(max_length=121, db_column='RecordTypeId')
+    category = models.CharField(max_length=121, db_column='Fax_Category__c')
+    description = models.TextField(max_length=255, db_column='Description__c')
     
+    # I know this is a lookup and I still need to figure out how to model the lookup fields in django
+    registration = models.CharField(max_length=121, db_column='Smartform_Registration__c')
+
+    # this is the view field that links us to a registration...
+    fax_action = models.CharField(max_length=121, db_column='Fax_Action__c')
+
+    # some docs will be attached to communication histories
+    communication_history = models.CharField(max_length=121, db_column='DTPC_CommunicationHistory__c')
+    attachment_id = models.CharField(max_length=25, db_column='Attachment_Id__c')
+
+
+    # --------------------------
+    # system info
+    # --------------------------
+    
+    parent_document = models.CharField(max_length=121, db_column='Parent_Document__c')
     any_information_identified = models.BooleanField(db_column='isPIIIdentified__c')
-    
+    owner_full_name = models.CharField(max_length=121, db_column='DTPC_Owner_Full_Name__c')
+    test_duplicate = models.CharField(max_length=121, db_column='DTPC_Test_Duplicate_Record__c')
+    delete_record = models.CharField(max_length=25, db_column='DTPC_Delete_Record__c')
     archived_by = models.CharField(max_length=121, db_column='Archived_By__c')
     archived_on = models.DateTimeField(db_column='Archived_On__c')
     
-    attachment_id = models.CharField(max_length=25, db_column='Attachment_Id__c')
-    brand_programs = models.CharField(max_length=121, db_column='DTPC_Brand_Programs__c')
     
-    category = models.CharField(max_length=121, db_column='Fax_Category__c')
+    # --------------------------
+    # faxing
+    # --------------------------
     
-    communication_history = models.CharField(max_length=121, db_column='DTPC_CommunicationHistory__c')
-    
+    generate_conga = models.BooleanField(db_column='Generate_Conga__c')
     conga_parameters = models.TextField(max_length=1000, db_column='Conga_Parameters__c')
     conga_test_text = models.TextField(max_length=255, db_column='Conga_Test_Txt__c')
     conga_workflow_test = models.CharField(max_length=121, db_column='Conga_Workflow_Test__c')
     
-    delete_record = models.CharField(max_length=25, db_column='DTPC_Delete_Record__c')
-    description = models.TextField(max_length=255, db_column='Description__c')
+    fax_received = models.DateTimeField(db_column='Inbound_Fax_Date_Time__c')
+    fax_sent = models.DateTimeField(db_column='Fax_Sent_Date_Time__c')
+    
+    from_fax_number = models.CharField(max_length=255, db_column='From_Fax_Number__c')
+    from_name = models.CharField(max_length=255, db_column='From_Name__c')
+    
+    inbound_fax = models.BooleanField(db_column='Inbound_Fax__c')
+    inbound_fax_handle = models.CharField(max_length=10, db_column='Fax_Handle__c')
+    inbound_fax_status = models.CharField(max_length=121, db_column='DTPC_Inbound_Fax_Status__c')
+    
+    isOutbound = models.BooleanField(db_column='Is_Outbound__c')
+    outbound_fax_handle = models.CharField(max_length=255, db_column='Outbound_Fax_Handle__c')
+
+    to_fax_number = models.CharField(max_length=255, db_column='To_Fax_Number__c')
+    to_fax_name = models.CharField(max_length=255, db_column='To_Fax_Name__c')
+    z_paper_unique_id = models.CharField(max_length=50, db_column='DTPC_zPaper_Fax_Unique_Id__c')
+
+
+    # --------------------------
+    # copay automation
+    # --------------------------
     
     document_number = models.CharField(max_length=121, db_column='Document_Number_Formula__c')
     document_signed = models.BooleanField(db_column='DTPC_DocuSign_Document_Signed__c')
@@ -519,23 +558,17 @@ class Document(SalesforceModel):
     error = models.TextField(max_length=32768, db_column='Error__c')
     failure_count = models.IntegerField(db_column='Failure_Count__c')
     
-    fax_received = models.DateTimeField(db_column='Inbound_Fax_Date_Time__c')
-    fax_sent = models.DateTimeField(db_column='Fax_Sent_Date_Time__c')
     
-    from_fax_number = models.CharField(max_length=255, db_column='From_Fax_Number__c')
-    from_name = models.CharField(max_length=255, db_column='From_Name__c')
-    
-    generate_conga = models.BooleanField(db_column='Generate_Conga__c')
-    
-    generic_drug = models.CharField(max_length=121, db_column='DTPC_Generic_Drug_Name__c')
-    
+    # --------------------------
+    # hibbert
+    # --------------------------
+
     hibbert_list_view_time_filter = models.IntegerField(db_column='DTPC_Hibbert_List_View_Time_Filter__c')
     
-    inbound_fax = models.BooleanField(db_column='Inbound_Fax__c')
-    inbound_fax_handle = models.CharField(max_length=10, db_column='Fax_Handle__c')
-    inbound_fax_status = models.CharField(max_length=121, db_column='DTPC_Inbound_Fax_Status__c')
-    
-    isOutbound = models.BooleanField(db_column='Is_Outbound__c')
+
+    # --------------------------
+    # legacy fields
+    # --------------------------
     
     legacy_ec_alert_id = models.CharField(max_length=80, db_column='Legacy_EC_AlertID__c')
     legacy_ec_doc_id = models.CharField(max_length=100, db_column='Legacy_EC_DocID__c')
@@ -543,20 +576,15 @@ class Document(SalesforceModel):
     legacy_eg_fax_id = models.CharField(max_length=80, db_column='Legacy_EG_FaxID__c')
     legacy_system_patient_id = models.CharField(max_length=50, db_column='Legacy_System_Patient_ID__c')
     
+
+    # --------------------------
+    # mark ups...
+    # --------------------------
+
     marked_spam_by = models.CharField(max_length=121, db_column='Marked_Spam_By__c')
     marked_spam_on = models.DateField(db_column='Marked_Spam_On__c')
     mark_for_delete = models.BooleanField(db_column='Mark_for_Delete__c')
-
-    outbound_fax_handle = models.CharField(max_length=255, db_column='Outbound_Fax_Handle__c')
     
-    owner_full_name = models.CharField(max_length=121, db_column='DTPC_Owner_Full_Name__c')
-    
-    parent_document = models.CharField(max_length=121, db_column='Parent_Document__c')
-    
-    # I know this is a lookup and I still need to figure out how to model the lookup fields in django
-    registration = models.CharField(max_length=121, db_column='Smartform_Registration__c')
-
-
 
     # found deprecatations
     # --------------------------
@@ -571,6 +599,7 @@ class Document(SalesforceModel):
     # share_on_hcp_portal = models.BooleanField(db_column='DTPC_Share_on_HCP_Portal__c')
     # sms_body = models.TextField(max_length=32768, db_column='DTPC_SMS_Body__c')
     # sms_phone_number = PhoneField(blank=True, help_text='sms phone number', db_column='DTPC_SMS_Phone_Number__c')
+    # sms_timestamp = models.DateTimeField(db_column='DTPC_SMS_timestamp__c')
 
     class Meta:
         custom = True
