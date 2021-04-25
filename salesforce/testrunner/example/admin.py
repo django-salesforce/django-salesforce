@@ -19,11 +19,10 @@ from salesforce.testrunner.example.universal_admin import register_omitted_class
 # -------------------------------------------------------------------------------------------------------------------- #
 
 class AccountAdmin(admin.ModelAdmin):
-    # list_display = ('Salutation', 'Name', 'PersonEmail')
     list_display = ('Name', 'Phone')
 
 class DocumentAdmin(admin.ModelAdmin):
-    list_display = ('name', 'record_type_id')
+    list_display = ('name', 'affiliate', 'any_information_identified')
 
 class ProgramAdmin(admin.ModelAdmin):
     list_display = ('name', 'status')
@@ -41,5 +40,5 @@ admin.site.register(models.Document, DocumentAdmin)
 admin.site.register(models.Program, ProgramAdmin)
 admin.site.register(models.InsurancePlan, InsurancePlanAdmin)
 
-# call the custom django-salesforce universal admin
+# call the custom django-salesforce universal , I've commented this out... my admin
 # register_omitted_classes(models)

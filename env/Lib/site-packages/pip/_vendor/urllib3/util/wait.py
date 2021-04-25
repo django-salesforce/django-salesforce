@@ -1,7 +1,8 @@
 import errno
-from functools import partial
 import select
 import sys
+from functools import partial
+
 try:
     from time import monotonic
 except ImportError:
@@ -40,12 +41,11 @@ if sys.version_info >= (3, 5):
     # Modern Python, that retries syscalls by default
     def _retry_on_intr(fn, timeout):
         return fn(timeout)
+
+
 else:
     # Old and broken Pythons.
     def _retry_on_intr(fn, timeout):
-        if timeout is not None and timeout <= 0:
-            return fn(timeout)
-
         if timeout is None:
             deadline = float("inf")
         else:
@@ -117,7 +117,7 @@ def _have_working_poll():
     # from libraries like eventlet/greenlet.
     try:
         poll_obj = select.poll()
-        poll_obj.poll(0)
+        _retry_on_intr(poll_obj.poll, 0)
     except (AttributeError, OSError):
         return False
     else:
@@ -140,14 +140,14 @@ def wait_for_socket(*args, **kwargs):
 
 
 def wait_for_read(sock, timeout=None):
-    """ Waits for reading to be available on a given socket.
+    """Waits for reading to be available on a given socket.
     Returns True if the socket is readable, or False if the timeout expired.
     """
     return wait_for_socket(sock, read=True, timeout=timeout)
 
 
 def wait_for_write(sock, timeout=None):
-    """ Waits for writing to be available on a given socket.
+    """Waits for writing to be available on a given socket.
     Returns True if the socket is readable, or False if the timeout expired.
     """
     return wait_for_socket(sock, write=True, timeout=timeout)

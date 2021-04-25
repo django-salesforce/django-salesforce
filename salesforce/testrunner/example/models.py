@@ -23,7 +23,10 @@ from typing import Optional
 import types
 
 import django
+from django.utils import timezone
 from django.conf import settings
+from django.db import models
+from phone_field import PhoneField
 
 from salesforce import models
 from salesforce.models import SalesforceModel as SalesforceModelParent
@@ -468,13 +471,107 @@ class InsurancePlan(SalesforceModel):
 
 class Document(SalesforceModel):
     """
-    Documents are the source of all new information within the PCP
+    Documents are the source of all new information within the PCP. I am going to try and 
+    evaluate SP Portal documents by parsing them into a unique model.
+
+    I'm adding in all of the fields for modeling purposes. We need to start making uique views,
+    the first view will be the SP Portal documents.
+    
+    I'll need to load test data... I've created a few files for informatica testing
     """
+    # --------------------------
+    # generics
+    # --------------------------
+
     name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
+    
     record_type_id = models.CharField(max_length=121, db_column='RecordTypeId')
+    
+    fax_action = models.CharField(max_length=121, db_column='Fax_Action__c')
+    
+    affiliate = models.CharField(max_length=121, db_column='Affiliates__c')
+    
+    any_information_identified = models.BooleanField(db_column='isPIIIdentified__c')
+    
+    archived_by = models.CharField(max_length=121, db_column='Archived_By__c')
+    archived_on = models.DateTimeField(db_column='Archived_On__c')
+    
+    attachment_id = models.CharField(max_length=25, db_column='Attachment_Id__c')
+    brand_programs = models.CharField(max_length=121, db_column='DTPC_Brand_Programs__c')
+    
+    category = models.CharField(max_length=121, db_column='Fax_Category__c')
+    
+    communication_history = models.CharField(max_length=121, db_column='DTPC_CommunicationHistory__c')
+    
+    conga_parameters = models.TextField(max_length=1000, db_column='Conga_Parameters__c')
+    conga_test_text = models.TextField(max_length=255, db_column='Conga_Test_Txt__c')
+    conga_workflow_test = models.CharField(max_length=121, db_column='Conga_Workflow_Test__c')
+    
+    delete_record = models.CharField(max_length=25, db_column='DTPC_Delete_Record__c')
+    description = models.TextField(max_length=255, db_column='Description__c')
+    
+    document_number = models.CharField(max_length=121, db_column='Document_Number_Formula__c')
+    document_signed = models.BooleanField(db_column='DTPC_DocuSign_Document_Signed__c')
+    document_type = models.CharField(max_length=121, db_column='DTPC_Document_Type__c')
+    duplicate_reason = models.CharField(max_length=255, db_column='DTPC_Duplicate_Reason__c')
+    
+    eletter_type = models.CharField(max_length=121, db_column='DTPC_eLetter_Type__c')
+    error = models.TextField(max_length=32768, db_column='Error__c')
+    failure_count = models.IntegerField(db_column='Failure_Count__c')
+    
+    fax_received = models.DateTimeField(db_column='Inbound_Fax_Date_Time__c')
+    fax_sent = models.DateTimeField(db_column='Fax_Sent_Date_Time__c')
+    
+    from_fax_number = models.CharField(max_length=255, db_column='From_Fax_Number__c')
+    from_name = models.CharField(max_length=255, db_column='From_Name__c')
+    
+    generate_conga = models.BooleanField(db_column='Generate_Conga__c')
+    
+    generic_drug = models.CharField(max_length=121, db_column='DTPC_Generic_Drug_Name__c')
+    
+    hibbert_list_view_time_filter = models.IntegerField(db_column='DTPC_Hibbert_List_View_Time_Filter__c')
+    
+    inbound_fax = models.BooleanField(db_column='Inbound_Fax__c')
+    inbound_fax_handle = models.CharField(max_length=10, db_column='Fax_Handle__c')
+    inbound_fax_status = models.CharField(max_length=121, db_column='DTPC_Inbound_Fax_Status__c')
+    
+    isOutbound = models.BooleanField(db_column='Is_Outbound__c')
+    
+    legacy_ec_alert_id = models.CharField(max_length=80, db_column='Legacy_EC_AlertID__c')
+    legacy_ec_doc_id = models.CharField(max_length=100, db_column='Legacy_EC_DocID__c')
+    legacy_ec_ifa_id = models.CharField(max_length=80, db_column='Legacy_EC_IFAID__c')
+    legacy_eg_fax_id = models.CharField(max_length=80, db_column='Legacy_EG_FaxID__c')
+    legacy_system_patient_id = models.CharField(max_length=50, db_column='Legacy_System_Patient_ID__c')
+    
+    marked_spam_by = models.CharField(max_length=121, db_column='Marked_Spam_By__c')
+    marked_spam_on = models.DateField(db_column='Marked_Spam_On__c')
+    mark_for_delete = models.BooleanField(db_column='Mark_for_Delete__c')
+
+    outbound_fax_handle = models.CharField(max_length=255, db_column='Outbound_Fax_Handle__c')
+    
+    owner_full_name = models.CharField(max_length=121, db_column='DTPC_Owner_Full_Name__c')
+    
+    parent_document = models.CharField(max_length=121, db_column='Parent_Document__c')
+    
+    # I know this is a lookup and I still need to figure out how to model the lookup fields in django
+    registration = models.CharField(max_length=121, db_column='Smartform_Registration__c')
+
+
+
+    # found deprecatations
+    # --------------------------
+    # fax_unique_id = models.CharField(max_length=50, db_column='Fax_Unique_Id__c')
+    # isMasked = models.BooleanField(db_column='DTPC_isMasked__c')
+    # legacy_system_document_id = models.CharField(max_length=50, db_column='Legacy_System_Document_ID__c')
+    # legacy_system_source = models.CharField(max_length=50, db_column='Legacy_System_Source__c')
+    # legacy_system_source = models.CharField(max_length=50, db_column='Legacy_System_Source__c')
+    # record_shared = models.BooleanField(db_column='DTPC_Record_Shared__c')
+    # related_records_id = models.TextField(max_length=131072, db_column='DTPC_Related_Record_Ids__c')
+    # reviewed = models.CharField(max_length=121, db_column='DTPC_Reviewed__c')
+    # share_on_hcp_portal = models.BooleanField(db_column='DTPC_Share_on_HCP_Portal__c')
+    # sms_body = models.TextField(max_length=32768, db_column='DTPC_SMS_Body__c')
+    # sms_phone_number = PhoneField(blank=True, help_text='sms phone number', db_column='DTPC_SMS_Phone_Number__c')
 
     class Meta:
         custom = True
         db_table = 'DTPC_Document__c'
-
-
