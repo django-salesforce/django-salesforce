@@ -25,7 +25,7 @@ class DocumentAdmin(admin.ModelAdmin):
     list_display = ('name', 'affiliate', 'any_information_identified')
 
 class RegistrationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'eighteen_years_of_age')
+    list_display = ('name', 'registration_type', 'hub_patient_id')
 
 class ProgramAdmin(admin.ModelAdmin):
     list_display = ('name', 'status')

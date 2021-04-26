@@ -608,10 +608,330 @@ class Document(SalesforceModel):
 
 class Registration(SalesforceModel):
     """
-    Registrations
+    Registration model
+
     """
+
+    # --------------------------
+    # system information
+    # --------------------------
+
     name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
+    registration_type = models.CharField(max_length=121, db_column='Registration_Type__c')
+
+    hub_patient_id = models.CharField(max_length=255, db_column='Hub_Patient_ID__c')
+    
+    affiliate = models.CharField(max_length=121, db_column='DTPC_Affiliate__c')
+    brand_program_picklist = models.CharField(max_length=121, db_column='DTPC_Brand_Program_Picklist__c')
+    generic_drug_name = models.CharField(max_length=121, db_column='DTPC_Generic_Drug_Name__c')
+
+    mmn_number = models.CharField(max_length=30, db_column='DTPC_MMN_Number__c')
+
+    fax = models.CharField(max_length=20, db_column='Fax__c')
+
+    added_hub_patient_id = models.CharField(max_length=255, db_column='Added_Hub_Patient_ID__c')
+    date_action_recorded = models.DateField(db_column='Date_Action_Recorded__c')
+
+    products = models.CharField(max_length=121, db_column='DTPC_Products__c')
+    reviewed_manually = models.BooleanField(db_column='DTPC_Reviewed_Manually__c')
+    program_registration = models.CharField(max_length=121, db_column='DTPC_Program_Registration__c')
+
+    subject = models.CharField(max_length=255, db_column='DTPC_Subject__c')
+    patientone_brand = models.CharField(max_length=121, db_column='DTPC_PatientOne_Brand__c')
+    
+    test_duplicate_record = models.CharField(max_length=255, db_column='DTPC_Test_Duplicate_Record__c')
+
+    sent_from = models.CharField(max_length=255, db_column='DTPC_Sent_From__c')
+    sent_to = models.CharField(max_length=255, db_column='DTPC_Sent_To__c')
+
+
+    # --------------------------
+    # patient demographics
+    # --------------------------
+    
+    first_name = models.CharField(max_length=255, db_column='DTPC_First_Name__c')
+    last_name = models.CharField(max_length=255, db_column='DTPC_Last_Name__c')
+    middle_name = models.CharField(max_length=255, db_column='DTPC_Middle_Name__c')
     eighteen_years_of_age = models.BooleanField(db_column='DTPC_18_years_of_Age__c')
+    gender = models.CharField(max_length=121, db_column='Gender__c')
+    address = models.CharField(max_length=255, db_column='Address__c')
+    city = models.CharField(max_length=100, db_column='City__c')
+    state = models.CharField(max_length=121, db_column='State__c')
+    zip_code = models.CharField(max_length=32, db_column='Zip_Code__c')
+    date_of_birth = models.DateField(db_column='Date_of_Birth__c')
+    email = models.EmailField(db_column='Email__c')
+    phone = PhoneField(db_column='Phone__c')
+
+
+    patient_registration = models.CharField(max_length=121, db_column='DTPC_Patient_Registration__c')
+    patient_name = models.CharField(max_length=121, db_column='Patient_Name__c')
+    patient_address_registration = models.CharField(max_length=255, db_column='DTPC_Patient_Address_Registration__c')
+    patient_attestation = models.BooleanField(db_column='DTPC_Patient_Attestation__c')
+    patient_or_caregiver = models.CharField(max_length=121, db_column='DTPC_Patient_or_Caregiver__c')
+    patient_state_of_residence = models.CharField(max_length=121, db_column='DTPC_Patient_State_of_Residence__c')
+
+    primary_address_line_1 = models.CharField(max_length=255, db_column='DTPC_Primary_Address_Line_1__c')
+    primary_address_line_2 = models.CharField(max_length=255, db_column='DTPC_Primary_Address_Line_2__c')
+
+    primary_country = models.CharField(max_length=121, db_column='DTPC_Primary_Country__c')
+
+    other_deignation = models.CharField(max_length=100, db_column='Other_Designation__c')
+    primary_languages_spoken = models.CharField(max_length=121, db_column='Primary_Language_Spoken__c')
+    other_language_spoken = models.CharField(max_length=100, db_column='Other_Language_Spoken__c')
+
+    preferred_date_to_contact_me = models.DateField(db_column='Preferred_date_to_contact_me__c')
+    preferred_phone_type = models.CharField(max_length=121, db_column='Preferred_Phone_Type__c')
+    prefered_time_for_call = models.CharField(max_length=121, db_column='DTPC_Prefered_Time_for_Call__c')
+    preferred_time_to_contact = models.CharField(max_length=121, db_column='Preferred_time_to_contact__c')
+
+
+    # --------------------------
+    # caregiver demographics
+    # --------------------------
+
+    caregiver_registration = models.CharField(max_length=121, db_column='DTPC_Caregiver_Registration__c')
+    caregiver_18_years_of_age = models.BooleanField(db_column='DTPC_Caregiver_18_Years_of_Age__c')
+    caregiver_address = models.CharField(max_length=255, db_column='DTPC_Caregiver_Address__c')
+    caregiver_city = models.CharField(max_length=100, db_column='DTPC_Caregiver_City__c')
+    caregiver_date_of_birth = models.DateField(db_column='DTPC_Caregiver_Date_of_Birth__c')	
+    caregiver_email = models.EmailField(db_column='DTPC_Caregiver_Email__c')
+    caregiver_first_name = models.CharField(max_length=255, db_column='DTPC_Caregiver_First_Name__c')
+    caregiver_last_name = models.CharField(max_length=255, db_column='DTPC_Caregiver_Last_Name__c')
+    caregiver_phone = PhoneField(db_column='DTPC_Caregiver_Phone__c')
+    caregiver_state = models.CharField(max_length=121, db_column='DTPC_Caregiver_State__c')
+    caregiver_zip = models.CharField(max_length=32, db_column='DTPC_Caregiver_Zip__c')
+
+
+    # --------------------------
+    # coverage information
+    # --------------------------
+    
+    insurance_plan_name = models.CharField(max_length=255, db_column='DTPC_Insurance_Plan_Name__c')
+    insurance_effective_date = models.DateField(db_column='Insurance_Effective_Date__c')
+    insurnace_investigation = models.CharField(max_length=121, db_column='DTPC_Insurance_Investigation__c')
+    insurance_type = models.CharField(max_length=121, db_column='DTPC_Insurance_Type__c')
+
+    primary_insurance_company = models.CharField(max_length=255, db_column='DTPC_Primary_Insurance_Company__c')
+    primary_insurance_company_phone = PhoneField(db_column='DTPC_Primary_Insurance_Company_Phone__c')
+    primary_insurance_group_number = models.CharField(max_length=100, db_column='DTPC_Primary_Insurance_Group_Number__c')
+    primary_insurance_number = models.CharField(max_length=100, db_column='DTPC_Primary_Insurance_Number__c')
+    primary_insurance_policyholder = models.CharField(max_length=255, db_column='DTPC_Primary_Insurance_Policyholder__c')
+
+    secondary_insurance_company = models.CharField(max_length=255, db_column='DTPC_Secondary_Insurance_Company__c')
+    secondary_insurance_company_phone = PhoneField(db_column='DTPC_Secondary_Insurance_Company_Phone__c')
+    secondary_insurance_group_number = models.CharField(max_length=100, db_column='DTPC_Secondary_Insurance_Group_Number__c')
+    secondary_insurance_number = models.CharField(max_length=100, db_column='DTPC_Secondary_Insurance_Number__c')
+    secondary_insurance_policyholder = models.CharField(max_length=255, db_column='DTPC_Secondary_Insurance_Policyholder__c')
+    
+    is_patient_insured = models.CharField(max_length=121, db_column='DTPC_Is_Patient_Insured__c')
+
+    copay_card_number = models.CharField(max_length=50, db_column='DTPC_Copay_Card_Number__c')
+    benefit_converted = models.CharField(max_length=121, db_column='Benefit_Converted__c')
+
+    pa_denial_reason = models.CharField(max_length=255, db_column='PA_Denial_Reason__c')
+    pa_expired = models.CharField(max_length=121, db_column='PA_Expired__c')
+    pa_outcome = models.CharField(max_length=121, db_column='PA_Outcome__c')
+    pa_submitted = models.CharField(max_length=121, db_column='PA_Submitted__c')
+    pa_submitted_date = models.DateField(db_column='PA_Submitted_Date__c')
+
+    appeal_denial_reason = models.CharField(max_length=255, db_column='Appeal_Denial_Reason__c')
+    appeaal_outcome = models.CharField(max_length=121, db_column='Appeal_Outcome__c')
+    appeal_submitted = models.CharField(max_length=121, db_column='Appeal_Submitted__c')
+    appeal_submitted_date = models.CharField(max_length=121, db_column='Appeal_Submitted_Date__c')
+
+    """
+    These fields were supposed to be added in R24, but were not found on initial query...
+    # me_denial_reason = models.CharField(max_length=255, db_column='DTPC_ME_Denial_Reason__c')
+    # me_outcome = models.CharField(max_length=121, db_column='DTPC_ME_Outcome__c')
+    # me_submitted = models.CharField(max_length=121, db_column='DTPC_ME_Submitted__c')
+    # me_submitted_date = models.DateField(db_column='DTPC_ME_Submitted_Date__c')
+    # pa_not_available = models.CharField(max_length=121, db_column='DTPC_PA_Not_Available__c')
+    # mandatory_transfer = models.BooleanField(db_column='DTPC_Mandatory_Transfer__c')
+    """
+
+    household_income_cammelcase = models.DecimalField(max_digits=6, decimal_places=2, db_column='DTPC_HouseholdIncome__c')
+    number_of_persons_in_household = models.IntegerField(db_column='DTPC_Number_of_Persons_in_Household__c')
+    
+
+    # --------------------------
+    # services information
+    # --------------------------
+
+    signature_completed = models.BooleanField(db_column='DTPC_Signature_Completed__c')
+    signature_completed_date = models.DateField(db_column='DTPC_Signature_Completed_Date__c')
+
+    on_label = models.BooleanField(db_column='DTPC_On_Label__c')
+
+    indication = models.CharField(max_length=121, db_column='DTPC_Indication__c')
+    diagnosis_icd_10_code = models.CharField(max_length=100, db_column='DTPC_Diagnosis_ICD_10_Code__c')
+    secondary_diagnosis_code = models.CharField(max_length=255, db_column='DTPC_Secondary_Diagnosis_Code__c')
+    
+    hippa_consent = models.BooleanField(db_column='DTPC_HIPPA_Consent__c')
+    hipaa_consent_date = models.DateField(db_column='DTPC_HIPAA_Consent_Date__c')
+
+    tcpa_consent = models.BooleanField(db_column='DTPC_TCPA_Consent__c')
+    tcpa_consent_date = models.DateField(db_column='DTPC_TCPA_Consent_Date__c')
+
+    marketing_consent = models.BooleanField(db_column='DTPC_Marketing_Consent__c')
+    marketing_consent_date = models.DateField(db_column='DTPC_Marketing_Consent_Date__c')
+    
+    medical_research_consent = models.BooleanField(db_column='DTPC_Medical_Research_Consent__c')
+    medical_research_consent_date = models.DateField(db_column='DTPC_Medical_Research_Consent_Date__c')
+
+    csp_services = models.CharField(max_length=121, db_column='CSP_Services__c')
+    
+    date_enrollment_processed = models.DateField(db_column='DTPC_Date_Enrollment_Processed__c')
+    
+    days_to_signature = models.IntegerField(db_column='Days_to_Signature__c')
+    
+    designation = models.CharField(max_length=121, db_column='Designation__c')
+
+    docusign_mkt_sms_enabled = models.BooleanField(db_column='DTPC_DocuSign_MKT_SMSEnabled__c')
+        
+    docusign_copay_card = models.BooleanField(db_column='DTPC_DocuSign_Co_Pay_Card__c')
+    docusign_fr_support = models.BooleanField(db_column='DTPC_DocuSign_FR_Support__c')
+    docusign_insurance_investigation = models.BooleanField(db_column='DTPC_DocuSign_Insurance_Investigation__c')
+    docusign_ongoing_support = models.BooleanField(db_column='DTPC_DocuSign_Ongoing_Support__c')
+    
+    do_not_sell = models.BooleanField(db_column='DTPC_Do_Not_Sell__c')
+    
+    email_consent = models.BooleanField(db_column='DTPC_Email_Consent__c')
+    email_consent_date = models.DateField(db_column='DTPC_Email_Consent_Date__c')
+    
+    e_sign_act_acceptance_date = models.CharField(max_length=50, db_column='E_SIGN_Act_Acceptance_Date__c')
+    
+    fr_support_insurance_investigation = models.BooleanField(db_column='DTPC_FR_Support_Insurance_Investigation__c')
+    
+    injection_training = models.CharField(max_length=121, db_column='DTPC_Injection_Training__c')
+    sharps_disposal = models.CharField(max_length=255, db_column='DTPC_Sharps_Disposal__c')
+
+    ongoing_support = models.CharField(max_length=121, db_column='DTPC_Ongoing_Support__c')
+
+    additional_services_backend = models.BooleanField(db_column='DTPC_Additional_Services_backend__c')
+    additional_services_consent = models.BooleanField(db_column='DTPC_Additional_Services_Consent__c')
+    additional_services_consent_date = models.DateField(db_column='DTPC_Additional_Services_Consent_Date__c')
+
+    text_consent = models.BooleanField(db_column='DTPC_Text_Consent__c')
+    text_message_reminders = models.CharField(max_length=255, db_column='Text_message_reminders__c')
+    
+    treatent_reminders = models.CharField(max_length=255, db_column='DTPC_Treatment_Reminders__c')
+    treatment_setting = models.CharField(max_length=255, db_column='DTPC_Treatment_Setting__c')
+    treatment_start_date = models.DateField(db_column='DTPC_Treatment_Start_Date__c')	
+    
+    verification_method = models.CharField(max_length=50, db_column='DTPC_Verification_Method__c')
+
+    ordered_specialty_pharmacy_directly = models.CharField(max_length=121, db_column='DTPC_Ordered_specialty_pharmacy_directly__c')
+    
+
+    # --------------------------
+    # hcp information
+    # --------------------------
+
+    facility_name = models.CharField(max_length=100, db_column='Facility_Name__c')
+    hospital_address = models.CharField(max_length=255, db_column='DTPC_Hospital_Address__c')
+    hospital_name = models.CharField(max_length=255, db_column='DTPC_Hospital_Name__c')
+    hospital_npi = models.CharField(max_length=100, db_column='DTPC_Hospital_NPI__c')
+    hospital_tax_id = models.CharField(max_length=100, db_column='DTPC_Hospital_Tax_ID__c')
+    npi = models.CharField(max_length=20, db_column='NPI__c')
+    
+    office_contact_name = models.CharField(max_length=20, db_column='Office_Contact_Name__c')
+    office_contact_phone = PhoneField(db_column='DTPC_Office_Contact_Phone__c')
+
+    physician_medicaid = models.CharField(max_length=100, db_column='DTPC_Physician_Medicaid_ID__c')
+    physician_tax_id = models.CharField(max_length=100, db_column='DTPC_Physician_Tax_ID__c')
+    
+    prescriber_address = models.CharField(max_length=255, db_column='DTPC_Prescriber_Address__c')
+    prescriber_address_2 = models.CharField(max_length=255, db_column='Prescriber_Address_2__c')
+    prescriber_city = models.CharField(max_length=100, db_column='DTPC_Prescriber_City__c')
+    prescriber_fax = models.CharField(max_length=20, db_column='DTPC_Prescriber_Fax__c')
+    prescriber_first_name = models.CharField(max_length=255, db_column='DTPC_Prescriber_First_Name__c')
+    prescriber_last_name = models.CharField(max_length=255, db_column='DTPC_Prescriber_Last_Name__c')
+    prescriber_middle_name = models.CharField(max_length=255, db_column='Prescriber_Middle_Name__c')
+    prescriber_name = models.CharField(max_length=255, db_column='Prescriber_Name__c')
+    prescriber_phone = PhoneField(db_column='DTPC_Prescriber_Phone__c')
+    prescriber_practice_name = models.CharField(max_length=255, db_column='DTPC_Prescriber_Practice_Name__c')
+    prescriber_state = models.CharField(max_length=121, db_column='DTPC_Prescriber_State__c')
+    prescriber_zip = models.CharField(max_length=32, db_column='Prescriber_Zip__c')
+
+    ras_results = models.CharField(max_length=100, db_column='DTPC_RAS_Results__c')
+
+
+    # --------------------------
+    # pharmacy information
+    # --------------------------
+
+    pharmacy_name = models.CharField(max_length=255, db_column='Pharmacy_Name__c')
+    ncpdp = models.CharField(max_length=255, db_column='NCPDP__c')
+    
+    docusign_rxbin = models.CharField(max_length=50, db_column='DTPC_DocuSign_RxBIN__c')
+    docusign_rxgroup = models.CharField(max_length=100, db_column='DTPC_DocuSign_RxGroup__c')
+    docusign_rxpcn = models.CharField(max_length=50, db_column='DTPC_DocuSign_RxPCN__c')
+    
+
+    # fields in setup, cannot be found in query
+    # ------------------------------------------------
+    # additional_notes = models.CharField(max_length=255, db_column='DTPC_Additional_Notes__c')
+    # associated_brand_programs = models.CharField(max_length=121, db_column='Associated_Brand_Programs__c')
+    # automation_indicator = models.BooleanField(db_column='DTPC_Automation_Indicator__c')
+    # brnd_site_identifier = models.BooleanField(db_column='DTPC_Brand_Site_Identifier__c')
+    # brand_site_url = models.CharField(max_length=100, db_column='DTPC_Brand_Site_Url__c')
+    # buildings = models.CharField(max_length=255, db_column='Buildings__c')
+    # caregiver_phone_number_type = models.CharField(max_length=255, db_column='DTPC_Caregiver_Phone_Number_Type__c')
+    # date_of_birth_docusign = models.CharField(max_length=50, db_column='DTPC_Date_of_Birth_Docusign__c')
+    # delete_record = models.CharField(max_length=121, db_column='DTPC_Delete_Record__c')
+    # docusign_injection_training = models.BooleanField(db_column='DTPC_DocuSign_Injection_Training__c')
+    # docusign_sharps = models.BooleanField(db_column='DTPC_DocuSign_Sharps__c')
+    # dr_code = models.CharField(max_length=255, db_column='DTPC_Dr_Code__c')
+    # docusign_envelope_id = models.CharField(max_length=100, db_column='DTPC_DocuSign_Envelope_ID__c')
+    # docusign_envelope_status = models.CharField(max_length=100, db_column='DTPC_Docusign_Envelope_Status__c')
+    # e_sign_metadata = models.TextField(max_length=32768, db_column='DTPC_E_Sign_Metadata__c')
+    # first_name_furigana = models.CharField(max_length=255, db_column='DTPC_First_Name_Furigana__c')
+    # furigana = models.CharField(max_length=255, db_column='DTPC_Furigana__c')
+    # hcp_name_furigana = models.CharField(max_length=255, db_column='DTPC_HCP_name_Furigana__c')
+    # household_income = models.CharField(max_length=255, db_column='DTPC_Household_Income__c')
+    # interests = models.CharField(max_length=121, db_column='DTPC_Interests__c')
+    # last_name_furigana = models.CharField(max_length=255, db_column='DTPC_Last_Name_Furigana__c')
+    # uid = models.CharField(max_length=255, db_column='DTPC_UID__c')
+    # magazine_serive = models.CharField(max_length=121, db_column='DTPC_Magazine_Service__c')
+    # magazine_service_type = models.CharField(max_length=121, db_column='DTPC_Magazine_Service_Type__c')
+    # mail_consent = models.CharField(max_length=6, db_column='DTPC_Mail_Consent__c')
+    # mail_consent_date = models.DateField(db_column='DTPC_Mail_Consent_Date__c')
+    # national_identification_number = models.CharField(max_length=100, db_column='DTPC_National_Identifcation_Number__c')
+    # opt_out = models.BooleanField(db_column='DTPC_Opt_Out__c')
+    # participant = models.CharField(max_length=121, db_column='Participant__c')
+    # patient = models.CharField(max_length=121, db_column='DTPC_Patient__c')
+    # permission_to_send_sms = models.CharField(max_length=121, db_column='DTPC_Permission_to_send_SMS__c')
+    # phone_number_2 = PhoneField(db_column='DTPC_Phone_Number_2__c')
+    # phone_number_3 = PhoneField(db_column='DTPC_Phone_Number_3__c')
+    # phone_number_type = models.CharField(max_length=255, db_column='DTPC_Phone_Number_Type__c')
+    # prefered_date_for_first_call_1 = models.DateField(db_column='DTPC_Prefered_Date_for_First_Call_1__c')
+    # prefered_date_for_first_call_2 = models.DateField(db_column='DTPC_Prefered_Date_for_First_Call_2__c')
+    # preferred_day_of_call = models.CharField(max_length=121, db_column='DTPC_Preferred_Day_of_Call__c')
+    # preferred_length_of_call = models.CharField(max_length=121, db_column='DTPC_Preferred_Length_of_Call__c')
+    # preferred_telephone_number = models.CharField(max_length=121, db_column='DTPC_Preferred_Telephone_Number__c')
+    # primary_address_line_3 = models.CharField(max_length=255, db_column='DTPC_Primary_Address_Line_3__c')
+    # primary_insurance_owner_type = models.CharField(max_length=121, db_column='DTPC_Primary_Insurance_Owner_Type__c')
+    # primary_insurance_policyholder_dob = models.DateField(db_column='DTPC_Primary_Insurance_Policyholder_DOB__c')
+    # primary_prefecture = models.CharField(max_length=255, db_column='DTPC_Primary_Prefecture__c')
+    # program = models.CharField(max_length=121, db_column='DTPC_Program__c')
+    # province = models.CharField(max_length=255, db_column='DTPC_Province__c')
+    # record_shared = models.BooleanField(db_column='DTPC_Record_Shared__c')
+    # registration_status = models.CharField(max_length=255, db_column='DTPC_Registration_Status__c')
+    # related_record_ids = models.TextField(max_length=131072, db_column='DTPC_Related_Record_Ids__c')
+    # relationship_to_patient = models.CharField(max_length=255, db_column='DTPC_Relationship_To_Patient__c')
+    # requester_email_address = models.EmailField(db_column='DTPC_Requester_e_mail_address__c')
+    # requester_name = models.CharField(max_length=255, db_column='DTPC_Requester_name__c')
+    # reviewed = models.CharField(max_length=121, db_column='DTPC_Reviewed__c')
+    # salutation = models.CharField(max_length=121, db_column='DTPC_Salutation__c')
+    # secondary_insurance_owner_type = models.CharField(max_length=121, db_column='DTPC_Secondary_Insurance_Owner_Type__c')
+    # secondary_insurance_policyholder_dob = models.DateField(db_column='DTPC_Secondary_Insur_Policyholder_DOB__c')
+    # services_requested = models.CharField(max_length=255, db_column='DTPC_Services_Requested__c')
+    # share_information_with_doctor = models.CharField(max_length=255, db_column='DTPC_Share_information_with_Doctor__c')
+    # sms_consent_date = models.DateField(db_column='DTPC_SMS_Consent_Date__c')
+    # sms_language = models.CharField(max_length=10, db_column='DTPC_SMS_Language__c')
+    # street = models.CharField(max_length=255, db_column='DTPC_Street__c')
+    # reg_json = models.TextField(max_length=32768, db_column='DTPC_Reg_JSON__c')
+    # surveys = models.CharField(max_length=255, db_column='DTPC_Surveys__c')
 
     class Meta:
         custom = True
