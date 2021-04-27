@@ -586,8 +586,8 @@ class Document(SalesforceModel):
     mark_for_delete = models.BooleanField(db_column='Mark_for_Delete__c')
     
 
-    # found deprecatations
-    # --------------------------
+    # fields in setup, cannot be found in query
+    # ------------------------------------------------
     # fax_unique_id = models.CharField(max_length=50, db_column='Fax_Unique_Id__c')
     # isMasked = models.BooleanField(db_column='DTPC_isMasked__c')
     # legacy_system_document_id = models.CharField(max_length=50, db_column='Legacy_System_Document_ID__c')

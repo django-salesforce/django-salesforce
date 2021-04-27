@@ -1,0 +1,23 @@
+{% load i18n %}
+
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+	<title>sp portal automation</title>
+</head>
+<body>
+
+<div class="salesforce">
+	<div class="content">
+		<div id="content-wrapper">
+		{% for document in documents %}
+		<div class="document">
+			{{ document.name }}
+		</div>
+		{% endfor %}
+		</div>
+	</div>
+</div>
+
+</body>
+</html>

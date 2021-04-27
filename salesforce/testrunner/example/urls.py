@@ -11,4 +11,5 @@ from . import views
 urlpatterns = [
     path(r'', views.list_accounts, name='list_accounts'),
     path(r'search/', views.search_accounts, name='search_accounts'),
+    path(r'sp_portal/', views.sp_portal, name='sp_portal'),
 ]
