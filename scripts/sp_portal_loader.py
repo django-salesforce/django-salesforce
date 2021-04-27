@@ -21,7 +21,7 @@ from salesforce.testrunner.example import models
 # -------------------------------------------------------------------------------------------------------------------- #
 
 def load_sp_pipe_file(filename):
-    """ loading in the historical file... pipe deliniated is annoying, should look to abstract this in sp_util """
+    """ loading in a handmade test file... pipe deliniated is annoying, but hey, this works """
     # open file, read lines and clean
     file_handler = open(filename, 'r')
     clean_lines = []
@@ -48,13 +48,21 @@ def load_sp_pipe_file(filename):
     file_handler.close()
     return status_updates
 
-def create_records(status_updates):
-    print(len(status_updates))
 
+def create_records(status_updates):
+    """ function to actually create the records in the pcp... """
+    print(len(status_updates))
+    
+    # create a new object to store status updates in deldev3
+    # create new object to store coverage submissions separately
+    # models.Document.objects.create()
+
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# scripts in the django format require a 'run' similar to a 'main'
+# -------------------------------------------------------------------------------------------------------------------- #
 
 def run():
     test_updates = load_sp_pipe_file('scripts\iqvia_data\sp_portal_files\portal_test_file')
     create_records(test_updates)
 
-
-# models.Document.objects.create()
