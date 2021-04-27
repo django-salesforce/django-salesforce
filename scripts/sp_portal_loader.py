@@ -48,11 +48,13 @@ def load_sp_pipe_file(filename):
     file_handler.close()
     return status_updates
 
-    
+def create_records(status_updates):
+    print(len(status_updates))
+
 
 def run():
-    test_updates = load_sp_pipe_file('iqvia_data\sp_portal_files\portal_test_file')
-    print(test_updates)
+    test_updates = load_sp_pipe_file('scripts\iqvia_data\sp_portal_files\portal_test_file')
+    create_records(test_updates)
 
 
 # models.Document.objects.create()
