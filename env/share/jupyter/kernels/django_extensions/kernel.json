@@ -1,0 +1,1 @@
+{"argv": ["python", "-m", "ipykernel_launcher", "-f", "{connection_file}", "--ext", "django_extensions.management.notebook_extension"], "env": {"PYTHONPATH": "C:\\PYTHON36\\;C:\\Users\\c266139\\Documents\\web_services\\integration_engine\\django-salesforce"}, "display_name": "Django Shell-Plus", "language": "python", "interrupt_mode": "signal", "metadata": {}}

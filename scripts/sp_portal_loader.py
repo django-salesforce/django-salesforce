@@ -53,9 +53,7 @@ def create_records(status_updates):
     """ function to actually create the records in the pcp... """
     for status_update in status_updates[0]:
         print(status_update)
-        models.SPStatusUpdate.objects.create(
-            
-        )
+        models.SPStatusUpdate.objects.create()
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

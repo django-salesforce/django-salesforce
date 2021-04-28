@@ -1,0 +1,4 @@
+Wheel-Version: 1.0
+Generator: maturin (0.10.3)
+Root-Is-Purelib: false
+Tag: cp36-none-win_amd64
