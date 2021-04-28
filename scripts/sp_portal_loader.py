@@ -51,11 +51,11 @@ def load_sp_pipe_file(filename):
 
 def create_records(status_updates):
     """ function to actually create the records in the pcp... """
-    print(len(status_updates))
-    
-    # create a new object to store status updates in deldev3
-    # create new object to store coverage submissions separately
-    # models.Document.objects.create()
+    for status_update in status_updates[0]:
+        print(status_update)
+        models.SPStatusUpdate.objects.create(
+            
+        )
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -65,4 +65,3 @@ def create_records(status_updates):
 def run():
     test_updates = load_sp_pipe_file('scripts\iqvia_data\sp_portal_files\portal_test_file')
     create_records(test_updates)
-

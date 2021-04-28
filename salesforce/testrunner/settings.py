@@ -131,6 +131,7 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.admindocs',
     'django_extensions',
+    'phone_field',
     'salesforce',
     'salesforce.testrunner.example',
 ]

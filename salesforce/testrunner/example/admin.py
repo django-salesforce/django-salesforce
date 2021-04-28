@@ -33,6 +33,9 @@ class ProgramAdmin(admin.ModelAdmin):
 class InsurancePlanAdmin(admin.ModelAdmin):
     list_display = ('name', 'record_type_id')
 
+class SPStautsUpdateAdmin(admin.ModelAdmin):
+    list_display = ('savings_card_id', 'brand_program', 'hub_patient_id')
+
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Registering object models to the admin site
@@ -43,6 +46,7 @@ admin.site.register(models.Document, DocumentAdmin)
 admin.site.register(models.Registration, RegistrationAdmin)
 admin.site.register(models.Program, ProgramAdmin)
 admin.site.register(models.InsurancePlan, InsurancePlanAdmin)
+admin.site.register(models.SPStautsUpdate, SPStautsUpdateAdmin)
 
 # call the custom django-salesforce universal , I've commented this out... my admin
 # register_omitted_classes(models)

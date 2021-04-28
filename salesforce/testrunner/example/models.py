@@ -1,11 +1,5 @@
 """
-This model file is copied from:
-
-django-salesforce
-
-by Phil Christensen
-(c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
-See LICENSE.md for details
+Data modeler for the Salesforce Platform 
 
 We are using it to create a custom data model of the patient connections platform, which is the core operating system
 for Lilly's customer support programs. This will allow us to add object models, manipulate them through code and
@@ -936,3 +930,59 @@ class Registration(SalesforceModel):
     class Meta:
         custom = True
         db_table = 'DTPC_Registration__c'
+
+
+class SPStautsUpdate(SalesforceModel):
+    """
+    New object for the SP Status updates
+    """
+
+    # --------------------------
+    # update fields from the sp
+    # --------------------------
+    added_hub_patient_id = models.CharField(max_length=255, db_column='Added_HUB_Patient_ID__c')
+    appeal_denial_reason = models.CharField(max_length=255, db_column='Appeal_Denial_Reason__c')
+    appeal_status = models.CharField(max_length=255, db_column='Appeal_Status__c')
+    appeal_submitted = models.CharField(max_length=255, db_column='Appeal_Submitted__c')
+    appeal_submitted_date = models.DateTimeField(db_column='Appeal_Submitted_Date__c')
+    benefit_converted = models.CharField(max_length=255, db_column='Benefit_Converted__c')
+    brand_program = models.CharField(max_length=255, db_column='Brand_Program__c')
+    date_action_recorded = models.DateTimeField(db_column='Date_Action_Recorded__c')
+    group_number = models.CharField(max_length=11, db_column='Group_Number__c')
+    hcp_address_1 = models.CharField(max_length=25, db_column='HCP_Address_1__c')
+    hcp_address_2 = models.CharField(max_length=35, db_column='HCP_Address_2__c')
+    hcp_city = models.CharField(max_length=20, db_column='HCP_City__c')
+    hcp_first_name = models.CharField(max_length=25, db_column='HCP_First_Name__c')
+    hcp_last_name = models.CharField(max_length=25, db_column='HCP_Last_Name__c')
+    hcp_phone = PhoneField(db_column='HCP_Phone__c')
+    hcp_state = models.CharField(max_length=2, db_column='HCP_State__c')
+    hcp_zip = models.CharField(max_length=5, db_column='HCP_Zip__c')
+    hub_patient_id = models.CharField(max_length=12, db_column='Hub_Patient_ID__c')
+    insurance_bin = models.CharField(max_length=8, db_column='Insurance_BIN__c')
+    insurance_group = models.CharField(max_length=15, db_column='Insurance_Group__c')
+    insurance_id = models.CharField(max_length=25, db_column='Insurance_ID__c')
+    insurance_pcn = models.CharField(max_length=10, db_column='Insurance_PCN__c')
+    insurance_phone = PhoneField(db_column='Insurance_Phone__c')
+    iqvia_bin = models.CharField(max_length=6, db_column='IQVIA_BIN__c')
+    iqvia_pcn = models.CharField(max_length=10, db_column='IQVIA_PCN__c')
+    me_denial_reason = models.CharField(max_length=255, db_column='ME_Denial_Reason__c')
+    medical_exception = models.CharField(max_length=255, db_column='Medical_Exception__c')
+    me_status = models.CharField(max_length=255, db_column='ME_Status__c')
+    me_submitted_date = models.DateTimeField(db_column='ME_Submitted_Date__c')
+    ncpdp = models.CharField(max_length=7, db_column='NCPDP__c')
+    npi_dea = models.CharField(max_length=10, db_column='NPI_DEA__c')
+    on_label = models.BooleanField(db_column='On_Label__c')
+    pa_fe_submitted = models.CharField(max_length=255, db_column='PA_FE_Submitted__c')
+    pa_fe_denial_reason = models.CharField(max_length=255, db_column='PA_FE_Denial_Reason__c')
+    pa_fe_status = models.CharField(max_length=255, db_column='PA_FE_Status__c')
+    pa_fe_submitted_date = models.DateTimeField(db_column='PA_FE_Submitted_Date__c')
+    pa_na_submitted_date = models.DateTimeField(db_column='PA_N_A_Submitted_Date__c')
+    payer_name = models.CharField(max_length=255, db_column='Payer_Name__c')
+    pharmacy_name = models.CharField(max_length=255, db_column='Pharmacy_Name__c')
+    plan_name = models.CharField(max_length=255, db_column='Plan_Name__c')
+    prior_authorization_na = models.CharField(max_length=255, db_column='Prior_Authorization_N_A__c')
+    savings_card_id = models.CharField(max_length=12, db_column='Savings_Card_ID__c')
+
+    class Meta:
+        custom = True
+        db_table = 'SP_Status_Update__c'
