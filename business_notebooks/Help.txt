@@ -1,0 +1,2 @@
+After this is all setup and configured in your environment, you should 
+be able to just ctrl + shift + p and then type: "Create New Blank Jupyter Notebook"
