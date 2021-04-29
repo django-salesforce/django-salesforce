@@ -1,0 +1,5 @@
+After configuration, run:
+
+>> python manage.py runscript name_of_script
+
+to run one of the scripts from the command line

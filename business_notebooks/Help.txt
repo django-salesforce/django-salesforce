@@ -1,2 +1,10 @@
+Sauce:
+https://django-extensions.readthedocs.io/en/latest/runscript.html
+
 After this is all setup and configured in your environment, you should 
 be able to just ctrl + shift + p and then type: "Create New Blank Jupyter Notebook"
+
+Sauce:
+https://medium.com/ayuth/how-to-use-django-in-jupyter-notebook-561ea2401852
+
+run 'python manage.py shell_plus --notebook' to launch the notebook in the standard jupyter editor online
