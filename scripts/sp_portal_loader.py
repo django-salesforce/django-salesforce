@@ -50,7 +50,50 @@ def load_sp_pipe_file(filename):
 
 
 def create_records(status_updates):
-    """ function to actually create the records in the pcp... """
+    """ 
+    function to actually create the records in the pcp...
+
+    THIS IS THE FIA
+    -------------------------
+    Brand_Program
+    Hub_Patient_ID
+    Savings_Card_ID
+    NPI_DEA
+    HCP_First_Name
+    HCP_Last_Name
+    HCP_Address1
+    HCP_Address2
+    HCP_City
+    HCP_State
+    HCP_Zip
+    HCP_Phone
+    Payer_Name
+    Plan_Name
+    Insurance_BIN
+    Insurance_PCN
+    Insurance_Group
+    Insurance_ID
+    Insurance_Phone
+    Pharmacy_Name
+    Added_HUB_Patient_ID
+    PA_FE_Submitted
+    PA_FE_Submitted_Date
+    PA_FE_Status
+    PA_FE_Denial_Reason
+    Appeal_Submitted
+    Appeal_Status
+    Appeal_Denial_Reason
+    ME -- oncology matters
+    ME_Submitted_Date
+    ME_Status
+    ME_Denial_Reason
+    PA_NA
+    ON_Label
+    Transfer
+    Group_Number
+    IQVIA_BIN
+    IQVIA_PCN
+    """
     for status_update in status_updates[0]:
         print(status_update)
         # models.SPStatusUpdate.objects.create()
