@@ -50,15 +50,16 @@ def load_sp_pipe_file(filename):
 
 
 def create_records(status_updates):
-    print(len(status_updates))
     """ 
     function to actually create the records in the pcp...
 
     THIS IS THE FIA
     -------------------------
+    
     Brand_Program
     Hub_Patient_ID
     Savings_Card_ID
+
     NPI_DEA
     HCP_First_Name
     HCP_Last_Name
@@ -68,6 +69,7 @@ def create_records(status_updates):
     HCP_State
     HCP_Zip
     HCP_Phone
+    
     Payer_Name
     Plan_Name
     Insurance_BIN
@@ -75,8 +77,10 @@ def create_records(status_updates):
     Insurance_Group
     Insurance_ID
     Insurance_Phone
+    
     Pharmacy_Name
     Added_HUB_Patient_ID
+    
     PA_FE_Submitted
     PA_FE_Submitted_Date
     PA_FE_Status
@@ -89,17 +93,78 @@ def create_records(status_updates):
     ME_Status
     ME_Denial_Reason
     PA_NA
+    
     ON_Label
+    
     Transfer
+    
     Group_Number
     IQVIA_BIN
     IQVIA_PCN
     """
 
     for status_update in status_updates:
-        for key in status_update:
-                print(key, ":\t", status_update[key])
-            
+        """ load key, value pair into salesforce """
+        # general program data
+        print(status_update['Brand_Program'])
+        print(status_update['Hub_Patient_ID'])
+        print(status_update['Savings_Card_ID'])
+        
+        # physician information
+        print(status_update['NPI_DEA'])
+        print(status_update['HCP_First_Name'])
+        print(status_update['HCP_Last_Name'])
+        print(status_update['HCP_Address1'])
+        print(status_update['HCP_Address2'])
+        print(status_update['HCP_City'])
+        print(status_update['HCP_State'])
+        print(status_update['HCP_Zip'])
+        print(status_update['HCP_Phone'])
+
+        # insurance information
+        print(status_update['Payer_Name'])
+        print(status_update['Plan_Name'])
+        print(status_update['Insurance_BIN'])
+        print(status_update['Insurance_PCN'])
+        print(status_update['Insurance_Group'])
+
+        print(status_update['Insurance_ID'])
+        print(status_update['Insurance_Phone'])
+
+        # pharmacy information
+        print(status_update['Pharmacy_Name'])
+        # this field is in the FIA, but is throwing an error... print(status_update['Added_HUB_Patient_ID'])
+        
+        # coverage submissions
+        print(status_update['PA_FE_Submitted'])
+        print(status_update['PA_FE_Submitted_Date'])
+        print(status_update['PA_FE_Status'])
+        # throws an error... print(status_update['PA_FE_Denial_Reason'])
+        print(status_update['Appeal_Submitted'])
+        print(status_update['Appeal_Status'])
+        print(status_update['Appeal_Denial_Reason'])
+        print(status_update['ME'])
+        print(status_update['ME_Submitted_Date'])
+        print(status_update['ME_Status'])
+        print(status_update['ME_Denial_Reason'])
+        print(status_update['PA_NA'])
+
+        # on label verification
+        print(status_update['ON_Label'])
+
+        # transfer field
+        print(status_update['Transfer'])
+        
+        # copay details
+        print(status_update['Group_Number'])
+        print(status_update['IQVIA_BIN'])
+        print(status_update['IQVIA_PCN'])
+    
+    
+    
+        
+    
+        # stop gap to next update
         input("\npress enter to see next update...")
         print("")
 
@@ -111,5 +176,6 @@ def create_records(status_updates):
 # -------------------------------------------------------------------------------------------------------------------- #
 
 def run():
-    test_updates = load_sp_pipe_file('scripts\iqvia_data\sp_portal_files\portal_test_file')
-    create_records(test_updates)
+    status_updates = load_sp_pipe_file('scripts\iqvia_data\sp_portal_files\production_4_30_2021')
+    create_records(status_updates)
+
