@@ -50,6 +50,7 @@ def load_sp_pipe_file(filename):
 
 
 def create_records(status_updates):
+    print(len(status_updates))
     """ 
     function to actually create the records in the pcp...
 
@@ -94,8 +95,14 @@ def create_records(status_updates):
     IQVIA_BIN
     IQVIA_PCN
     """
-    for status_update in status_updates[0]:
-        print(status_update)
+
+    for status_update in status_updates:
+        for key in status_update:
+                print(key, ":\t", status_update[key])
+            
+        input("\npress enter to see next update...")
+        print("")
+
         # models.SPStatusUpdate.objects.create()
 
 
