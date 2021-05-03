@@ -20,6 +20,7 @@ from salesforce.testrunner.example import models
 # sp portal document feed
 # -------------------------------------------------------------------------------------------------------------------- #
 
+# ToDo: implement a test_file loader, setup Django sFTP in order to route test files and production files to different folders...
 def load_sp_pipe_file(filename):
     """ loading in a handmade test file... pipe deliniated is annoying, but hey, this works """
     # open file, read lines and clean
@@ -133,13 +134,15 @@ def create_records(status_updates):
 
         # pharmacy information
         print(status_update['Pharmacy_Name'])
-        # this field is in the FIA, but is throwing an error... print(status_update['Added_HUB_Patient_ID'])
+        # this field is in the FIA, but is throwing an error... print(
+        # status_update['Added_HUB_Patient_ID']
         
         # coverage submissions
         print(status_update['PA_FE_Submitted'])
         print(status_update['PA_FE_Submitted_Date'])
         print(status_update['PA_FE_Status'])
-        # throws an error... print(status_update['PA_FE_Denial_Reason'])
+        # throws an error... 
+        # status_update['PA_FE_Denial_Reason']
         print(status_update['Appeal_Submitted'])
         print(status_update['Appeal_Status'])
         print(status_update['Appeal_Denial_Reason'])
@@ -159,9 +162,6 @@ def create_records(status_updates):
         print(status_update['Group_Number'])
         print(status_update['IQVIA_BIN'])
         print(status_update['IQVIA_PCN'])
-    
-    
-    
         
     
         # stop gap to next update
