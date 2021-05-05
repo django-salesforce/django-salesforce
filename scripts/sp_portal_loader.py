@@ -103,73 +103,78 @@ def create_records(status_updates):
     IQVIA_BIN
     IQVIA_PCN
     """
-
     for status_update in status_updates:
         """ load key, value pair into salesforce """
-        # general program data
-        print(status_update['Brand_Program'])
-        print(status_update['Hub_Patient_ID'])
-        print(status_update['Savings_Card_ID'])
+        try:
+            """
+            # general program data
+            print(status_update['Brand_Program'])
+            print(status_update['Hub_Patient_ID'])
+            print(status_update['Savings_Card_ID'])
+            
+            # physician information
+            print(status_update['NPI_DEA'])
+            print(status_update['HCP_First_Name'])
+            print(status_update['HCP_Last_Name'])
+            print(status_update['HCP_Address1'])
+            print(status_update['HCP_Address2'])
+            print(status_update['HCP_City'])
+            print(status_update['HCP_State'])
+            print(status_update['HCP_Zip'])
+            print(status_update['HCP_Phone'])
+
+            # insurance information
+            print(status_update['Payer_Name'])
+            print(status_update['Plan_Name'])
+            print(status_update['Insurance_BIN'])
+            print(status_update['Insurance_PCN'])
+            print(status_update['Insurance_Group'])
+
+            print(status_update['Insurance_ID'])
+            print(status_update['Insurance_Phone'])
+
+            # pharmacy information
+            print(status_update['Pharmacy_Name'])
+            # this field is in the FIA, but is throwing an error... print(
+            print(status_update['Added_HUB_Patient_ID'])
+            
+            # coverage submissions
+            print(status_update['PA_FE_Submitted'])
+            print(status_update['PA_FE_Submitted_Date'])
+            print(status_update['PA_FE_Status'])
+            # throws an error... 
+            print(status_update['PA_FE_Denial_Reason'])
+            print(status_update['Appeal_Submitted'])
+            print(status_update['Appeal_Status'])
+            print(status_update['Appeal_Denial_Reason'])
+            print(status_update['ME'])
+            print(status_update['ME_Submitted_Date'])
+            print(status_update['ME_Status'])
+            print(status_update['ME_Denial_Reason'])
+            print(status_update['PA_NA'])
+
+            # on label verification
+            print(status_update['ON_Label'])
+
+            # transfer field
+            print(status_update['Transfer'])
+            
+            # copay details
+            print(status_update['Group_Number'])
+            print(status_update['IQVIA_BIN'])
+            print(status_update['IQVIA_PCN'])
+            
         
-        # physician information
-        print(status_update['NPI_DEA'])
-        print(status_update['HCP_First_Name'])
-        print(status_update['HCP_Last_Name'])
-        print(status_update['HCP_Address1'])
-        print(status_update['HCP_Address2'])
-        print(status_update['HCP_City'])
-        print(status_update['HCP_State'])
-        print(status_update['HCP_Zip'])
-        print(status_update['HCP_Phone'])
-
-        # insurance information
-        print(status_update['Payer_Name'])
-        print(status_update['Plan_Name'])
-        print(status_update['Insurance_BIN'])
-        print(status_update['Insurance_PCN'])
-        print(status_update['Insurance_Group'])
-
-        print(status_update['Insurance_ID'])
-        print(status_update['Insurance_Phone'])
-
-        # pharmacy information
-        print(status_update['Pharmacy_Name'])
-        # this field is in the FIA, but is throwing an error... print(
-        # status_update['Added_HUB_Patient_ID']
+            # stop gap to next update
+            input("\npress enter to see next update...")
+            print("")
+            """
+            # models.SPStatusUpdate.objects.create()
+            status_update['Brand_Program']
         
-        # coverage submissions
-        print(status_update['PA_FE_Submitted'])
-        print(status_update['PA_FE_Submitted_Date'])
-        print(status_update['PA_FE_Status'])
-        # throws an error... 
-        # status_update['PA_FE_Denial_Reason']
-        print(status_update['Appeal_Submitted'])
-        print(status_update['Appeal_Status'])
-        print(status_update['Appeal_Denial_Reason'])
-        print(status_update['ME'])
-        print(status_update['ME_Submitted_Date'])
-        print(status_update['ME_Status'])
-        print(status_update['ME_Denial_Reason'])
-        print(status_update['PA_NA'])
-
-        # on label verification
-        print(status_update['ON_Label'])
-
-        # transfer field
-        print(status_update['Transfer'])
-        
-        # copay details
-        print(status_update['Group_Number'])
-        print(status_update['IQVIA_BIN'])
-        print(status_update['IQVIA_PCN'])
-        
+        except KeyError:
+            errored_updates.append(status_update)
     
-        # stop gap to next update
-        input("\npress enter to see next update...")
-        print("")
-
-        # models.SPStatusUpdate.objects.create()
-
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # scripts in the django format require a 'run' similar to a 'main'
