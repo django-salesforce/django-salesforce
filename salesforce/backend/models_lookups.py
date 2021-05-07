@@ -9,6 +9,8 @@ from django.db.models import lookups
 class IsNull(models.lookups.IsNull):
     def override_as_sql(self, compiler, connection):  # pylint:disable=unused-argument
         # it must be relabeled if used for a children rows set
+        if compiler.soql_trans is None:
+            compiler.get_from_clause()
         sql, params = compiler.compile(self.lhs.relabeled_clone(compiler.soql_trans))
         return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
 
