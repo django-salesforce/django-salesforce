@@ -587,6 +587,16 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             account_1.delete()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_queryset_update_foreign_key(self) -> None:
+        contact = Contact.objects.exclude(account=None)[0]
+        Contact.objects.filter(Id=contact.Id).update(account=contact.account)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_queryset_none_filter_update(self) -> None:
+        """Test that this can be compiled and the SOQL is valid"""
+        Contact.objects.filter(pk=None).update(last_name='a')
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_bulk_delete_and_update(self) -> None:
         """Delete two Accounts by one request.
         """
