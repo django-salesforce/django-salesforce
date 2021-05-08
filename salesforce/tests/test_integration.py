@@ -851,6 +851,40 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertEqual(set(list(qs)[0].keys()), {'account_id', 'cnt'})
         list(qs)
 
+    def test_having_compile(self) -> None:
+        """Test GROUP BY ... HAVING compile for a ManyToMany field"""
+        qs = (Contact.objects.values('testdetail__parent__test_bool').order_by()
+              .annotate(val=Max('testdetail__parent__test_text'))
+              .filter(val__contains='b', val__gt='a')
+              )
+        expected_soql = (
+            "SELECT django_Test_detail__c.Parent__r.TestBool__c,"
+            " MAX(django_Test_detail__c.Parent__r.TestText__c) val "
+            "FROM django_Test_detail__c "
+            "GROUP BY django_Test_detail__c.Parent__r.TestBool__c "
+            "HAVING (MAX(django_Test_detail__c.Parent__r.TestText__c) LIKE '%b%'"
+            " AND MAX(django_Test_detail__c.Parent__r.TestText__c) > 'a')"
+        )
+        self.assertEqual(str(qs.query), expected_soql)
+        if 'django_Test__c' not in sf_tables():
+            self.skipTest("Not found custom object 'django_Test__c'")
+        list(qs)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_order_by_compile(self) -> None:
+        """Test order_by() compile for a field by ManyToMany relationship"""
+        qs = Contact.objects.values('pk').order_by('testdetail__parent__test_text')
+        soql, params = qs.query.get_compiler('salesforce').as_sql()
+        expected_soql = (
+            'SELECT django_Test_detail__c.Contact__r.Id FROM django_Test_detail__c '
+            'ORDER BY django_Test_detail__c.Parent__r.TestText__c ASC'
+        )
+        self.assertEqual(soql, expected_soql)
+        self.assertEqual(params, ())
+        if 'django_Test__c' not in sf_tables():
+            self.skipTest("Not found custom object 'django_Test__c'")
+        list(qs)
+
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_count_distinct(self) -> None:
         """Test Count(some_field, distinct=True)"""
