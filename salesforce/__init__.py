@@ -23,3 +23,4 @@ log = logging.getLogger(__name__)
 # Default version of Force.com API.
 # It can be customized by settings.DATABASES['salesforce']['API_VERSION']
 API_VERSION = '51.0'  # Spring '21
+# API_VERSION = '52.0'  # Summer '21

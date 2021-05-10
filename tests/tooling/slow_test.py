@@ -79,6 +79,8 @@ def run():
         'InventorySettings', 'SecuritySettings',
         # in API 51.0 Spring '21
         'EmployeeUserSettings',
+        # in API 52.0 Summer '21
+        'EinsteinAgentSettings'
     }
     problematic_write = {
         # any SalesforceError
