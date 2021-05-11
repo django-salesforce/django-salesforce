@@ -14,6 +14,36 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
+[3.2.1] Unpublished
+-------------------
+* Fix: ManyToMany relationships compiled also with GROUP BY, HAVING, ORDER BY. #264
+* Fix: Lookup IsNull() in 'queryset.filter(...=None).update(...)' #283
+* Fix: DefaultedOnCreate() to work with new sqlite3 and new Django
+* Fix: Command inspectdb with --table-filter=regex_pattern
+* Fix: Count('*') and Count(... distinct=True)
+* Add: Simple authentication by auth.SimpleSfPasswordAuth(). #282
+* Add: Higher 'threadsafety=2' level of the driver. Every thread can use its
+  own database connections with the same alias, but checked that the same
+  thread can not open more connections with the same alias.
+* Add: Test for big SOQL queries of length almost 100000 bytes
+* Add: Strict typing of SalesforceModel and all ``salesforce/*.py`` code.
+  All dependent user code can use also strict typing now.
+* Add: Method .explain(...)
+* Fix: Low level EXPLAIN command
+* Add: Decorator 'PatchedSfConnection(... use_debug_info ...)' to can check
+  the executed SOQL in tests e.g. for aggregate() method.
+* Add: Verbose error message in authentication.
+* Add: Support offline tests with playback by MockTestCase,
+  also for tests of database error handling.
+* Fix: Example models can now create a migration
+* Fix: Check pylint, increase code coverage (91%)
+* Fix: Tests updated for Salesforce API 52.0 Summer '21
+* Remove: Unused code, mostly residues from old Django versions
+* Add: Prepare for DynamicWebAuth; Configurable username in RefreshTokenAuth
+  Still requires a low level user code in middlewawe. (therefore considered as
+  undocumented alpha code.)
+
+
 [3.2] 2021-04-06
 ----------------
 * Add: Support for Django 3.2
@@ -40,7 +70,7 @@ experimental.
 * Add: Tag `[django-salesforce]
   <https://stackoverflow.com/questions/tagged/django-salesforce>`_
   for questions on Stackoverflow.com.
-* Fix: Allow SOQL query up to 100000 characters, fixed #164 
+* Fix: Allow SOQL query up to 100000 characters, fixed #164
 * Add: Support for custom authentication modules configurable by
   ``settings.DATABASES['salesforce']['AUTH']``
 * Add: Authentication by Salesforce CLI SFDX application for developers, e.g.
@@ -57,7 +87,7 @@ experimental.
   by SFDC, but important for Django.
 
 
-[1.0] 2020-05-07
+[1.0] 2020-05-08
 ----------------
 * Remove: Support for Django 1.10
 * Remove: Support for Python 2.7, 3.4
@@ -96,7 +126,7 @@ experimental.
   raw Salesforce requests/responses.
 
 
-[0.9] 2019-11-04
+[0.9] 2019-11-05
 ----------------
 
 * Fixed: filter for objects with no children rows (missing test)
@@ -232,7 +262,7 @@ Internal:
   and module tests.inspectdb.dependent_model.test)
 
 
-[0.7.2] 2017-05-15
+[0.7.2] 2017-05-16
 ------------------
 * Added: Support for two timeouts as a tuple (shorter time for connecting,
   a longer for data in a request)
