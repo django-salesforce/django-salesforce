@@ -428,6 +428,7 @@ class ApexEmailNotification(models.Model):
 class Campaign(models.Model):
     name = models.CharField(max_length=80)
     number_sent = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Num Sent', blank=True, null=True)
+    parent = models.ForeignKey('Campaign', on_delete=models.DO_NOTHING, blank=True, null=True)
 
 
 # this model will be removed to test removing in migrations

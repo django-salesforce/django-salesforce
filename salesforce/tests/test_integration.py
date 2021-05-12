@@ -891,6 +891,13 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         list(qs)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_recursive_parent(self) -> None:
+        qs = Campaign.objects.values('name', 'parent__name', 'parent__parent__name').annotate()
+        expected = "SELECT Campaign.Name, Campaign.Parent.Name, Campaign.Parent.Parent.Name FROM Campaign"
+        self.assertEqual(str(qs.query), expected)
+        list(qs)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_count_distinct(self) -> None:
         """Test Count(some_field, distinct=True)"""
         qs = (Contact.objects.order_by().values('account_id')
