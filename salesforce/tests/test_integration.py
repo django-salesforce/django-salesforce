@@ -866,7 +866,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             " AND MAX(django_Test_detail__c.Parent__r.TestText__c) > 'a')"
         )
         self.assertEqual(str(qs.query), expected_soql)
-        if 'django_Test__c' not in sf_tables():
+        if not ('django_Test__c' in sf_tables() and 'django_Test_detail__c' in sf_tables()):
             self.skipTest("Not found custom object 'django_Test__c'")
         list(qs)
 
@@ -881,7 +881,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         )
         self.assertEqual(soql, expected_soql)
         self.assertEqual(params, ())
-        if 'django_Test__c' not in sf_tables():
+        if not ('django_Test__c' in sf_tables() and 'django_Test_detail__c' in sf_tables()):
             self.skipTest("Not found custom object 'django_Test__c'")
         list(qs)
 
