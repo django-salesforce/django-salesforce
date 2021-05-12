@@ -12,6 +12,7 @@ All data are ascii str.
 """
 
 from abc import ABC, abstractmethod
+from html import escape as html_escape
 from subprocess import PIPE, Popen
 from typing import Any, Callable, cast, Dict, Optional, Sequence, Type
 from urllib.parse import parse_qs, urlencode, urlsplit
@@ -30,6 +31,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
+from salesforce import API_VERSION
 from salesforce.dbapi import thread_loc, get_max_retries
 from salesforce.dbapi.exceptions import (
     SalesforceAuthError,  # error from SFCD
@@ -328,6 +330,66 @@ class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
             return super().reauthenticate()
         else:
             return DynamicAuth.reauthenticate(self)  # raises
+
+
+class SimpleSfPasswordAuth(StaticGlobalAuth):
+    """
+    The simplest authentication from simple-salesforce
+    """
+
+    required_fields = ['HOST', 'USER', 'PASSWORD']
+
+    def authenticate(self) -> Dict[str, str]:
+        """
+        Authenticate to the Salesforce API with the provided credentials (password).
+        """
+        def tag_content(tag: str) -> str:
+            match = re.search('<{tag}>(.*)</{tag}>'.format(tag=tag), response.text)
+            assert match
+            return match.group(1)
+
+        simple_soap_login_template = (
+            """<?xml version="1.0" encoding="utf-8" ?>
+            <env:Envelope
+                    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+                    xmlns:urn="urn:partner.soap.sforce.com">
+                <env:Header>
+                    <urn:CallOptions>
+                        <urn:client>{client_id}</urn:client>
+                        <urn:defaultNamespace>sf</urn:defaultNamespace>
+                    </urn:CallOptions>
+                </env:Header>
+                <env:Body>
+                    <n1:login xmlns:n1="urn:partner.soap.sforce.com">
+                        <n1:username>{username}</n1:username>
+                        <n1:password>{password}</n1:password>
+                    </n1:login>
+                </env:Body>
+            </env:Envelope>
+            """
+        )
+        settings_dict = self.settings_dict
+        request_body = simple_soap_login_template.format(
+            username=html_escape(settings_dict['USER']),
+            password=html_escape(settings_dict['PASSWORD']),  # including a personal security_token
+            client_id='django-salesforce',
+        )
+        request_headers = {'content-type': 'text/xml', 'charset': 'UTF-8', 'SOAPAction': 'login'}
+        url = '{}/services/Soap/u/{}'.format(settings_dict['HOST'], API_VERSION)
+        log.info("authentication to %s as %s", settings_dict['HOST'], settings_dict['USER'])
+        if settings_dict['HOST'] not in self._session.adapters:
+            self._session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=get_max_retries()))
+        response = self._session.post(url, request_body, headers=request_headers)
+        if response.status_code != 200:
+            raise SalesforceAuthError("login failed for user '%s': %s" % (
+                self.settings_dict['USER'], tag_content('faultstring'))
+            )
+        match_instance_url = re.match(r'(https://[^/]+)/', tag_content('serverUrl'))
+        assert match_instance_url
+        instance_url = match_instance_url.group(1)
+        return {'access_token': tag_content('sessionId'), 'instance_url': instance_url}
 
 
 # --- SFDX
