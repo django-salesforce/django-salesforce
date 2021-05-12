@@ -4,13 +4,13 @@ import datetime
 import decimal
 import unittest
 import django
+from django.db import connections
 from django.test.utils import override_settings
 
 from .models import Account, Contact, Unreal
 from tests.test_mock.mocksf import MockJsonRequest, MockRequest, MockTestCase  # mock
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.exceptions import SalesforceError
-
 
 @override_settings(SF_MOCK_MODE='mixed')
 class TestMock(MockTestCase):
@@ -109,7 +109,17 @@ class TestMock(MockTestCase):
 class Test(unittest.TestCase):
     databases = {'salesforce'}
 
+    def is_complete(self) -> bool:
+        cur = connections['salesforce'].cursor()
+        cur.execute("select QualifiedApiName from FieldDefinition "
+                    "where EntityDefinition.QualifiedApiName = 'Contact' "
+                    "and QualifiedApiName='Donor_class__c'")
+        return bool(len(cur.fetchall()))
+
     def test(self) -> None:
+        if not self.is_complete():
+            self.skipTest("Not found custom field 'Donor_class__c'")
+
         obj = Contact(last_name='a')
         obj.save()
         obj = Contact.objects.get(id=obj.id)
