@@ -81,6 +81,8 @@ class SalesforceAuth(AuthBase, ABC):
                             http://docs.python-requests.org/en/latest/user/advanced/#custom-authentication
     """
 
+    # The key 'ENGINE' in settings_dict is required only by Django
+    # to can find django-salesforce. It doesn't make sense to check 'ENGINE' here.
     required_fields = []  # type: Sequence[str]
 
     def __init__(self, db_alias: str, settings_dict: Optional[Dict[str, Any]] = None,
@@ -228,7 +230,7 @@ class DynamicAuth(SalesforceAuth):
             connections['salesforce'].sf_auth.dynamic_start(access_token, instance_url)
     """
 
-    required_fields = ['ENGINE']
+    required_fields = []
 
     def dynamic_start(self, access_token: str, instance_url: str, **kw: Any) -> None:
         """
@@ -271,7 +273,7 @@ class SalesforcePasswordAuth(StaticGlobalAuth):
     is provided by the ancestor class.
     """
 
-    required_fields = ['ENGINE', 'HOST', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD']
+    required_fields = ['HOST', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD']
 
     def authenticate(self) -> Dict[str, str]:
         """
@@ -309,7 +311,7 @@ class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
     It never uses the static auth more after the end of dynamic.
     """
 
-    required_fields = ['ENGINE', 'HOST']
+    required_fields = ['HOST']
 
     def get_auth(self) -> Dict[str, str]:
         if self.dynamic is None:
@@ -336,7 +338,7 @@ class SfdxWebAuth(StaticGlobalAuth):
 
     no private data are saved to disk by django-salesforce, only data by sfdx
     """
-    required_fields = ['ENGINE', 'HOST', 'USER']
+    required_fields = ['HOST', 'USER']
     data = None  # type:Dict[str, Any]
 
     def authenticate(self) -> Dict[str, str]:
@@ -393,7 +395,7 @@ class SfdxOrgWebAuth(SfdxWebAuth):
     Authenticate by "org:display" or "auth:web:login" in SFDX CLI
     """
 
-    required_fields = ['ENGINE', 'HOST', 'USER']
+    required_fields = ['HOST', 'USER']
 
     def ask_sfdx_org_data(self, user: str) -> Dict[str, Any]:
         """Ask SFDX if it the user is connected to it"""
@@ -413,7 +415,7 @@ class SfdxOrgAuth(SfdxOrgWebAuth):
     Authenticate by "org:display" in SFDX CLI
     """
 
-    required_fields = ['ENGINE', 'USER']
+    required_fields = ['USER']
 
     def authenticate(self) -> Dict[str, str]:
         host = self.settings_dict.get('HOST')
@@ -448,7 +450,7 @@ class RefreshTokenAuth(StaticGlobalAuth):
     redirect_uri = None  # type: str
     code_verifier = None  # type: str
 
-    required_fields = ['ENGINE', 'HOST', 'USER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'REFRESH_TOKEN']
+    required_fields = ['HOST', 'USER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'REFRESH_TOKEN']
 
     def authenticate(self, old_auth: Optional[Dict[str, str]] = None  # pylint:disable=arguments-differ
                      ) -> Dict[str, str]:
