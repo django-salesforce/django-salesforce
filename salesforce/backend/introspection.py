@@ -19,8 +19,6 @@ from django.db.backends.base.introspection import (
 )
 from django.utils.text import camel_case_to_spaces
 from django.db.backends.utils import CursorWrapper as _Cursor  # for typing
-# require "simplejson" to ensure that it is available to "requests" hook.
-import simplejson  # noqa pylint:disable=unused-import
 
 from salesforce.backend import DJANGO_32_PLUS
 import salesforce.fields
