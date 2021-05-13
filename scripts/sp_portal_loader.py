@@ -13,6 +13,7 @@ Good Extension!!! -- https://django-extensions.readthedocs.io/en/latest/runscrip
 
 import logging
 from django import shortcuts
+from datetime import datetime
 from salesforce.testrunner.example import models
 
 
@@ -103,84 +104,168 @@ def create_records(status_updates):
     IQVIA_BIN
     IQVIA_PCN
     """
+    new_updates = []
+    errored_updates = []
     for status_update in status_updates:
         """ load key, value pair into salesforce """
         try:
-            """
             # general program data
-            print(status_update['Brand_Program'])
-            print(status_update['Hub_Patient_ID'])
-            print(status_update['Savings_Card_ID'])
+            brand_program = status_update['Brand_Program']
+            hub_patient_id = status_update['Hub_Patient_ID']
+            savings_card_id = status_update['Savings_Card_ID']
             
             # physician information
-            print(status_update['NPI_DEA'])
-            print(status_update['HCP_First_Name'])
-            print(status_update['HCP_Last_Name'])
-            print(status_update['HCP_Address1'])
-            print(status_update['HCP_Address2'])
-            print(status_update['HCP_City'])
-            print(status_update['HCP_State'])
-            print(status_update['HCP_Zip'])
-            print(status_update['HCP_Phone'])
+            npi_dea = status_update['NPI_DEA']
+            hcp_first_name = status_update['HCP_First_Name']
+            hcp_last_name = status_update['HCP_Last_Name']
+            hcp_address1 = status_update['HCP_Address1']
+            hcp_address2 = status_update['HCP_Address2']
+            hcp_city = status_update['HCP_City']
+            hcp_state = status_update['HCP_State']
+            hcp_zip = status_update['HCP_Zip']
+            hcp_phone = status_update['HCP_Phone']
 
             # insurance information
-            print(status_update['Payer_Name'])
-            print(status_update['Plan_Name'])
-            print(status_update['Insurance_BIN'])
-            print(status_update['Insurance_PCN'])
-            print(status_update['Insurance_Group'])
-
-            print(status_update['Insurance_ID'])
-            print(status_update['Insurance_Phone'])
+            payer_name = status_update['Payer_Name']
+            plan_name = status_update['Plan_Name']
+            insurance_bin = status_update['Insurance_BIN']
+            insurance_pcn = status_update['Insurance_PCN']
+            insurance_group = status_update['Insurance_Group']
+            insurance_id = status_update['Insurance_ID']
+            insurance_phone = status_update['Insurance_Phone']
 
             # pharmacy information
-            print(status_update['Pharmacy_Name'])
-            # this field is in the FIA, but is throwing an error... print(
-            print(status_update['Added_HUB_Patient_ID'])
-            
+            pharmacy_name = status_update['Pharmacy_Name']
+            added_hub_patient_id = status_update['Added_Hub_Patient_ID']
+            benefit_converted = status_update['Benefit_Converted']
+
+            # the date action recorded must always be present and formatted, fail record if not present
+            try:
+                date_action_recorded = datetime.strptime(status_update['Date_Action_Recorded'], '%m/%d/%Y %H:%M:%S')
+            except ValueError:
+                errored_updates.append(status_update)
+                continue
+                
+
+            ncpdp = status_update['NCPDP']
+
             # coverage submissions
-            print(status_update['PA_FE_Submitted'])
-            print(status_update['PA_FE_Submitted_Date'])
-            print(status_update['PA_FE_Status'])
-            # throws an error... 
-            print(status_update['PA_FE_Denial_Reason'])
-            print(status_update['Appeal_Submitted'])
-            print(status_update['Appeal_Status'])
-            print(status_update['Appeal_Denial_Reason'])
-            print(status_update['ME'])
-            print(status_update['ME_Submitted_Date'])
-            print(status_update['ME_Status'])
-            print(status_update['ME_Denial_Reason'])
-            print(status_update['PA_NA'])
+            pa_fe_submitted = status_update['PA_FE_Submitted']
+            pa_fe_submitted_date = status_update['PA_FE_Submitted_Date']
+            pa_fe_status = status_update['PA_FE_Status']
+            pa_fe_denial_reason = status_update['PA_FE_Denial_Reason']
+            appeal_submitted = status_update['Appeal_Submitted']
+            appeal_submitted_date = status_update['Appeal_Submitted_Date']
+            appeal_status = status_update['Appeal_Status']
+            appeal_denial_reason = status_update['Appeal_Denial_Reason']
+            me = status_update['ME']
+            me_submitted_date = status_update['ME_Submitted_Date']
+            me_status = status_update['ME_Status']
+            me_denial_reason = status_update['ME_Denial_Reason']
+            pa_na = status_update['PA_NA']
+            pa_na_submitted_date = status_update['PA_NA_Submitted_Date']
 
             # on label verification
-            print(status_update['ON_Label'])
+            on_label = status_update['ON_Label']
 
             # transfer field
-            print(status_update['Transfer'])
+            mandatory_transfer = status_update['Transfer']
             
             # copay details
-            print(status_update['Group_Number'])
-            print(status_update['IQVIA_BIN'])
-            print(status_update['IQVIA_PCN'])
+            copay_group_number = status_update['Group_Number']
+            copay_bin = status_update['IQVIA_BIN']
+            copay_pcn = status_update['IQVIA_PCN']
+
+
+            new_status_update = {
+                'brand_program': brand_program,
+                'hub_patient_id': hub_patient_id,
+                'savings_card_id': savings_card_id,
+                'npi_dea': npi_dea,
+                'hcp_first_name': hcp_first_name,
+                'hcp_last_name': hcp_last_name,
+                'hcp_address_1': hcp_address1,
+                'hcp_address_2': hcp_address2,
+                'hcp_city': hcp_city,
+                'hcp_state': hcp_state,
+                'hcp_zip': hcp_zip,
+                'hcp_phone': hcp_phone,
+                'payer_name': payer_name,
+                'plan_name': plan_name,
+                'insurance_bin': insurance_bin,
+                'insurance_pcn': insurance_pcn,
+                'insurance_group': insurance_group,
+                'insurance_id': insurance_id,
+                'insurance_phone': insurance_phone,
+                'pharmacy_name': pharmacy_name,
+                'added_hub_patient_id': added_hub_patient_id,
+                'benefit_converted': benefit_converted,
+                'date_action_recorded': date_action_recorded,
+                'ncpdp': ncpdp,
+                'pa_fe_submitted': pa_fe_submitted,
+                'pa_fe_status': pa_fe_status,
+                'pa_fe_denial_reason': pa_fe_denial_reason,
+                'appeal_submitted': appeal_submitted,
+                'appeal_status': appeal_status,
+                'appeal_denial_reason': appeal_denial_reason,
+                'medical_exception': me,
+                'me_status': me_status,
+                'me_denial_reason': me_denial_reason,
+                'prior_authorization_na': pa_na,
+                'group_number': copay_group_number,
+                'iqvia_bin': copay_bin,
+                'iqvia_pcn': copay_pcn
+            }
+
+            # format date fields if they are populated in the status update and add into the struct
+            if pa_fe_submitted_date != '':
+                pa_fe_submitted_date = datetime.strptime(pa_fe_submitted_date, '%m/%d/%Y %H:%M:%S')
+                new_status_update['pa_fe_submitted_date'] = pa_fe_submitted_date
+            if appeal_submitted_date != '':
+                appeal_submitted_date = datetime.strptime(appeal_submitted_date, '%m/%d/%Y %H:%M:%S')
+                new_status_update['appeal_submitted_date'] = appeal_submitted_date
+            if me_submitted_date != '':
+                me_submitted_date = datetime.strptime(me_submitted_date, '%m/%d/%Y %H:%M:%S')
+                new_status_update['me_submitted_date'] = me_submitted_date
+            if pa_na_submitted_date != '':
+                pa_na_submitted_date = datetime.strptime(pa_na_submitted_date, '%m/%d/%Y %H:%M:%S')
+                new_status_update['pa_na_submitted_date'] = pa_na_submitted_date
             
+            # format boolean fields if they are populated in the status update and add into the struct
+            if on_label == 'True':
+                new_status_update['on_label'] = True
+            else:
+                new_status_update['on_label'] = False
+
+            if mandatory_transfer == 'True':
+                new_status_update['transfer'] = True
+            else:
+                new_status_update['transfer'] = False
+            
+            # attempt to create the record in PCP
+            try:
+                new_sf_record = models.SPStautsUpdate(**new_status_update)
+                new_sf_record.save()
+                new_updates.append(new_status_update)
+            except:
+                errored_updates.append(status_update)
         
-            # stop gap to next update
-            input("\npress enter to see next update...")
-            print("")
-            """
-            # models.SPStatusUpdate.objects.create()
-            status_update['Brand_Program']
-        
-        except KeyError:
+        except KeyError as error:
             errored_updates.append(status_update)
     
+    # return all of the successful records and all of the non successful records
+    return [new_updates, errored_updates]
+
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # scripts in the django format require a 'run' similar to a 'main'
 # -------------------------------------------------------------------------------------------------------------------- #
 
 def run():
-    status_updates = load_sp_pipe_file('scripts\iqvia_data\sp_portal_files\production_4_30_2021')
-    create_records(status_updates)
+    status_updates = load_sp_pipe_file('scripts\iqvia_data\sp_portal_files\portal_test_file')
+    records = create_records(status_updates)
+    print("new updates:", len(records[0]), "\nerrors:", len(records[1]))
+    input('press enter to see error records...')
+    for record in records[1]:
+        print(record['Hub_Patient_ID'], record['Savings_Card_ID'])
 

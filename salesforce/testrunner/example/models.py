@@ -982,6 +982,7 @@ class SPStautsUpdate(SalesforceModel):
     plan_name = models.CharField(max_length=255, db_column='Plan_Name__c')
     prior_authorization_na = models.CharField(max_length=255, db_column='Prior_Authorization_N_A__c')
     savings_card_id = models.CharField(max_length=12, db_column='Savings_Card_ID__c')
+    transfer = models.BooleanField(db_column='Transfer__c')
 
     class Meta:
         custom = True
