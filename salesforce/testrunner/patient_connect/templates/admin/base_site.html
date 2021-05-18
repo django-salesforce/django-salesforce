@@ -1,0 +1,17 @@
+{% extends "admin/base.html" %} {%load static%}
+
+
+{% block branding %}
+
+<h1 id="head">
+<img src="{% static 'patient_connect/images/main_logo.png' %}" width="60" height="35" />
+| Patient Services
+</h1>
+
+{% endblock %}
+
+{% block extrastyle %}
+
+<link rel="stylesheet" href="{% static 'patient_connect/css/adminstyle.css' %}" />
+
+{% endblock %}

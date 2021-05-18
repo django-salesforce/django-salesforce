@@ -1,0 +1,71 @@
+#header {
+    background: #333333;
+    color: #ffffff;
+}
+
+#branding h1 {
+color: #ffffff;
+}
+
+#user-tools a:hover {
+color: #cccccc;
+text-decoration-color: #4d0000;
+}
+
+
+div.breadcrumbs {
+    background: #737373;
+    padding: 10px 40px;
+    border: none;
+    font-size: 14px;
+    color:  #4d0000;
+    text-align: left;
+}
+
+
+div.breadcrumbs a:hover {
+color: #cccccc;
+}
+
+
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    background: #333333;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+}
+
+.module h2, .module caption, .inline-group h2 {
+    margin: 0;
+    padding: 8px;
+    font-weight: 400;
+    font-size: 13px;
+    text-align: left;
+    background:  #333333;
+    color: #fff;
+}
+
+a:link, a:visited {
+    color:  #4d0000;
+    text-decoration: none;
+}
+
+a:hover {
+color: #8c8c8c;
+}
+
+.dashboard #content {
+    width: 1000px;
+}
+
+#nav-sidebar .current-app .section:link, #nav-sidebar .current-app .section:visited {
+    color: #4d4d4d;
+    font-weight: bold;
+}
+
+
+#nav-sidebar .current-model {
+    background: #ffe6e6;
+}

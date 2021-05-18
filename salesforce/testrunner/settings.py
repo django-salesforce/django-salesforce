@@ -122,6 +122,8 @@ TEMPLATES = [
 ]
 
 INSTALLED_APPS = [
+    'salesforce',
+    'salesforce.testrunner.patient_connect',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -132,8 +134,6 @@ INSTALLED_APPS = [
     'django.contrib.admindocs',
     'django_extensions',
     'phone_field',
-    'salesforce',
-    'salesforce.testrunner.patient_connect',
 ]
 
 SALESFORCE_DB_ALIAS = 'salesforce'
