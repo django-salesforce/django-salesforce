@@ -133,7 +133,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'phone_field',
     'salesforce',
-    'salesforce.testrunner.example',
+    'salesforce.testrunner.patient_connect',
 ]
 
 SALESFORCE_DB_ALIAS = 'salesforce'
