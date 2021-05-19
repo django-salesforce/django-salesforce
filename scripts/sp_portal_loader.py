@@ -14,7 +14,7 @@ Good Extension!!! -- https://django-extensions.readthedocs.io/en/latest/runscrip
 import logging
 from django import shortcuts
 from datetime import datetime
-from salesforce.testrunner.example import models
+from salesforce.testrunner.patient_connect import models
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -166,10 +166,10 @@ def create_records(status_updates):
             pa_na_submitted_date = status_update['PA_NA_Submitted_Date']
 
             # on label verification
-            on_label = status_update['ON_Label']
+            on_label = bool(status_update['ON_Label'])
 
             # transfer field
-            mandatory_transfer = status_update['Transfer']
+            mandatory_transfer = bool(status_update['Transfer'])
             
             # copay details
             copay_group_number = status_update['Group_Number']
@@ -212,6 +212,8 @@ def create_records(status_updates):
                 'me_status': me_status,
                 'me_denial_reason': me_denial_reason,
                 'prior_authorization_na': pa_na,
+                'on_label': on_label,
+                'transfer': mandatory_transfer,
                 'group_number': copay_group_number,
                 'iqvia_bin': copay_bin,
                 'iqvia_pcn': copay_pcn
@@ -230,17 +232,6 @@ def create_records(status_updates):
             if pa_na_submitted_date != '':
                 pa_na_submitted_date = datetime.strptime(pa_na_submitted_date, '%m/%d/%Y %H:%M:%S')
                 new_status_update['pa_na_submitted_date'] = pa_na_submitted_date
-            
-            # format boolean fields if they are populated in the status update and add into the struct
-            if on_label == 'True':
-                new_status_update['on_label'] = True
-            else:
-                new_status_update['on_label'] = False
-
-            if mandatory_transfer == 'True':
-                new_status_update['transfer'] = True
-            else:
-                new_status_update['transfer'] = False
             
             # attempt to create the record in PCP
             try:
