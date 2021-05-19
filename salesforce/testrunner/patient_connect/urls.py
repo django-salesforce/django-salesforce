@@ -1,15 +1,14 @@
-# django-salesforce
-#
-# by Phil Christensen
-# (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
-# See LICENSE.md for details
-#
+"""
+creating the custom urls for access the LPS Patient Connect Portal
+
+@author Preston Mackert
+"""
 
 from django.urls import path
 from . import views
 
 urlpatterns = [
-    path(r'', views.list_accounts, name='list_accounts'),
-    path(r'search/', views.search_accounts, name='search_accounts'),
-    path(r'sp_portal/', views.sp_portal, name='sp_portal'),
+    path(r'', views.index, name='index'),
+    path(r'sp_portal/', views.list_specialty_pharmacy_status, name='sp_portal'),
+    path(r'search_sp_updates/', views.search_sp_updates, name='search_sp_updates')
 ]

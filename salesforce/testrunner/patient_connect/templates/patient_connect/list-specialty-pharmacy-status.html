@@ -1,0 +1,25 @@
+{% load i18n %}
+
+<!doctype html>
+<html class="no-js" lang="en">
+<head>
+	<title>list specialty pharmacy updates</title>
+</head>
+<body>
+
+<a href="{% url 'search_sp_updates' %}">search portal updates &gt;&gt;</a>
+
+<div class="salesforce">
+	<div class="content">
+		<div id="content-wrapper">
+		{% for update in updates %}
+		<div class="update">
+			{{ update.name }}, Program: {{ update.hub_patient_id }}
+		</div>
+		{% endfor %}
+		</div>
+	</div>
+</div>
+
+</body>
+</html>

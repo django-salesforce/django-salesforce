@@ -34,7 +34,7 @@ class InsurancePlanAdmin(admin.ModelAdmin):
     list_display = ('name', 'record_type_id')
 
 class SPStautsUpdateAdmin(admin.ModelAdmin):
-    list_display = ('pharmacy_name', 'savings_card_id', 'hub_patient_id', 'brand_program')
+    list_display = ('name', 'pharmacy_name', 'savings_card_id', 'hub_patient_id', 'brand_program')
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

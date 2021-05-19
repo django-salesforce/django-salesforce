@@ -951,6 +951,7 @@ class SPStautsUpdate(SalesforceModel):
     # --------------------------
     # update fields from the sp
     # --------------------------
+    name = models.CharField(max_length=121, db_column='Name', blank=True, null=True)
     added_hub_patient_id = models.CharField(max_length=255, db_column='Added_HUB_Patient_ID__c')
     appeal_denial_reason = models.CharField(max_length=255, db_column='Appeal_Denial_Reason__c')
     appeal_status = models.CharField(max_length=255, db_column='Appeal_Status__c')
