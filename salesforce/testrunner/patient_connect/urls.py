@@ -10,5 +10,7 @@ from . import views
 urlpatterns = [
     path(r'', views.index, name='index'),
     path(r'sp_portal/', views.list_specialty_pharmacy_status, name='sp_portal'),
-    path(r'search_sp_updates/', views.search_sp_updates, name='search_sp_updates')
+    path(r'search_sp_updates/', views.search_sp_updates, name='search_sp_updates'),
+    path(r'automation/', views.automation, name='automation'),
+    path(r'wiki/', views.wiki, name='wiki')
 ]

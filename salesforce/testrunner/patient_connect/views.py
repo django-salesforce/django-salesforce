@@ -24,6 +24,15 @@ def index(request):
                             dict(title="Lilly Patient Services")
                             )
 
+def automation(request):
+    return shortcuts.render(request, 'patient_connect/automation.html',
+                            dict(title="Automation")
+                            )
+
+def wiki(request):
+    return shortcuts.render(request, 'patient_connect/wiki.html',
+                            dict(title="Automation")
+                            )
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # sp portal automation
