@@ -16,9 +16,10 @@ from django.db.models.sql import compiler as sql_compiler, where as sql_where, c
 from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
-import salesforce.backend.models_lookups   # noqa # required for activation of lookups
+import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import # required for activation of lookups
 from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
 from salesforce.dbapi.driver import DatabaseError
+from salesforce.dbapi.subselect import AGGREGATION_WORDS
 # pylint:disable=no-else-return,too-many-branches,too-many-locals
 
 AliasMapItems = List[Tuple[
@@ -66,6 +67,29 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         r = self.connection.ops.quote_name(name)
         self.quote_cache[name] = r
         return r
+
+    def sf_fix_field(self, sql_field: str, debug_: int = 0) -> str:
+        """Translate the field name from sql join "alias.name" to SOQL tree "object_1.object_2...name"."""
+        # debug_: 1 = print what is not recompiled, 2 = print everything
+        soql_trans = self.query_topology()
+        if '(' in sql_field:
+            match = re.match(r'^([A-Z_]+\()(\w+\.\w+)(\) (?:\w+|[!<>=]+ %s|LIKE %s))$', sql_field)
+            if not match or match.group(1)[:-1] not in AGGREGATION_WORDS:
+                if debug_:
+                    print("** sf_fix_field: Can not recompile sql: {!r}".format(sql_field))
+                return sql_field
+            pre, field, post = match.groups()
+        else:
+            if len(sql_field.split('.')) != 2:
+                if debug_:
+                    print("** sf_fix_field: Can not recompile sql: {!r}".format(sql_field))
+                return sql_field
+            pre, field, post = '', sql_field, ''
+        tab_name, field_name = field.split('.')
+        ret = "%s%s.%s%s" % (pre, soql_trans[tab_name], field_name, post)
+        if debug_ >= 2:
+            print('** sf_fix_field: {!r} -> {!r}'.format(sql_field, ret))
+        return ret
 
     # patched and simplified the parend method  # pylint:disable=no-else-return
     def execute_sql(self,
@@ -136,7 +160,6 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         refcounts_before = self.query.alias_refcount.copy()
         try:
             extra_select, order_by, group_by = self.pre_sql_setup()
-            soql_trans = self.query_topology()
             if with_limits and self.query.low_mark == self.query.high_mark:
                 return '', ()
             if DJANGO_21_PLUS:
@@ -173,9 +196,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                 elif with_col_aliases:
                     s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
                     col_idx += 1
-                if soql_trans and re.match(r'^\w+\.\w+$', s_sql):
-                    tab_name, col_name = s_sql.split('.')
-                    s_sql = '%s.%s' % (soql_trans[tab_name], col_name)
+                s_sql = self.sf_fix_field(s_sql)
                 params.extend(s_params)
                 out_cols.append(s_sql)
 
@@ -199,15 +220,24 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                         "annotate() + distinct(fields) is not implemented.")
                 if not order_by:
                     order_by = self.connection.ops.force_no_ordering()
+                grouping = [self.sf_fix_field(x) for x in grouping]
                 result.append('GROUP BY %s' % ', '.join(grouping))
 
             if having:
                 result.append('HAVING %s' % having)
                 params.extend(h_params)
 
+            if DJANGO_21_PLUS:
+                if self.query.explain_query:
+                    result.insert(0, self.connection.ops.explain_query_prefix(
+                        self.query.explain_format,
+                        **self.query.explain_options
+                    ))
+
             if order_by:
                 ordering = []
                 for _, (o_sql, o_params, _) in order_by:
+                    o_sql = self.sf_fix_field(o_sql)
                     ordering.append(o_sql)
                     params.extend(o_params)
                 result.append('ORDER BY %s' % ', '.join(ordering))
@@ -339,7 +369,6 @@ class SalesforceWhereNode(sql_where.WhereNode):
         # # prepare SOQL translations
         if not isinstance(compiler, SQLCompiler):
             return super().as_sql(compiler, connection)
-        soql_trans = compiler.query_topology()
         # *** patch 1 end
 
         result = []
@@ -359,11 +388,7 @@ class SalesforceWhereNode(sql_where.WhereNode):
 
                     # *** patch 2 (add) begin
                     # # translate the alias of child to SOQL name
-                    x_match = re.match(r'(\w+)\.(.*)', sql)
-                    if x_match:
-                        x_table, x_field = x_match.groups()
-                        sql = '%s.%s' % (soql_trans[x_table], x_field)
-                        # print('sql params:', sql, params)
+                    sql = compiler.sf_fix_field(sql)
                     # *** patch 2 end
 
                     result.append(sql)
@@ -466,13 +491,13 @@ class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):  # type: i
 
     else:
 
-        def execute_sql(self, return_id=False):  # type: ignore[misc] # noqa # check typing only for Django >= 3.0
+        def execute_sql(self, return_id=False):  # type: ignore[misc] # noqa pylint:disable=arguments-differ
             # copied from Django 1.11, with one line patch
             assert not (
                 return_id and len(self.query.objs) != 1 and
                 not self.connection.features.can_return_ids_from_bulk_insert
             )
-            self.return_id = return_id
+            self.return_id = return_id  # pylint:disable=attribute-defined-outside-init
             with self.connection.cursor() as cursor:
                 # this line is the added patch:
                 cursor.prepare_query(self.query)

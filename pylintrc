@@ -60,9 +60,17 @@ confidence=
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
 disable=
-    fixme,  # only the "TODO" word shoud be used here for easy grep
-    missing-docstring,
-    inconsistent-return-statements,  # similar style to Django
+    missing-docstring,       # C0115
+    too-many-ancestors,      # R0901 (caused by inheriting from Django)
+    too-many-arguments,      # R0913 (caused by inheriting from Django)
+    invalid-name,            # C0103 "Function name ... doesn't conform to..."
+    too-many-statements,     # R0915
+    raise-missing-from,      # W0707 "Consider explicitly re-raising using the 'from' keyword"
+    # unused-import,           # W0611 (better checked by flake8 including annotation) "Unused import salesforce.backend.models_lookups"
+    too-few-public-methods,  # R0903 (some of them can be dataclasses when Python >= 3.7)
+    fixme,        # W0511 (ignored: only the "TODO" word should be used here; grep is better)
+    inconsistent-return-statements,  # R1710 (similar style to Django) "Either all return statements in
+                                     # a function should return an expression, or none of them should."
 
 
 [REPORTS]

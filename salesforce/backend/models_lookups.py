@@ -9,6 +9,8 @@ from django.db.models import lookups
 class IsNull(models.lookups.IsNull):
     def override_as_sql(self, compiler, connection):  # pylint:disable=unused-argument
         # it must be relabeled if used for a children rows set
+        if compiler.soql_trans is None:
+            compiler.get_from_clause()
         sql, params = compiler.compile(self.lhs.relabeled_clone(compiler.soql_trans))
         return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
 
@@ -33,16 +35,11 @@ class Count(models.aggregates.Count):
     # pylint:disable=abstract-method,too-many-ancestors  # undefined __and__, __or__, __rand__, __ror__
 
     def override_as_sql(self, *args, **kwargs):
-        if (len(self.source_expressions) == 1 and
-                isinstance(self.source_expressions[0], models.expressions.Value) and
-                self.source_expressions[0].value == '*'):
+        if len(self.source_expressions) == 1 and isinstance(self.source_expressions[0], models.expressions.Star):
+            # patch for compile "Count('*')
+            # (an alternative verbose solution is: f"COUNT({args[0].query.model._meta.db_table}.Id)")
             return 'COUNT(Id)', []
-        # a normal Count('some_field')
-        # TODO write test for Count(... distinct=True)
-        #     tests can use some of following:
-        #     args[0].query.add_annotation(Count('pk'), alias='__count', is_summary=True)
-        #     obj.add_annotation(Count('*'), alias='__count', is_summary=True
-        #     self.source_expressions[0] = models.expressions.Col('__count', args[0].query.model._meta.fields[0])'
+        # compile a normal Count('some_field')
         sql, params = self.as_sql(*args, **kwargs)
         if sql.startswith('COUNT(DISTINCT '):
             sql = sql.replace('COUNT(DISTINCT ', 'COUNT_DISTINCT(')

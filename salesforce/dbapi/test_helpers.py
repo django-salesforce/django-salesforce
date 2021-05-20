@@ -6,7 +6,7 @@ from unittest import expectedFailure
 from unittest import mock  # pylint:disable=unused-import  # NOQA
 from typing import Any, Callable, List, Iterator, Optional, Tuple, Type, TYPE_CHECKING
 
-from salesforce.dbapi import connections, driver
+from salesforce.dbapi import thread_loc, driver
 TestMethod = Callable[..., None]
 
 
@@ -23,21 +23,26 @@ class QuietSalesforceErrors:
     It works on the default Salesforce connection. It can be nested.
     """
     def __init__(self, alias: Optional[str], verbs: Optional[List[str]] = None):
-        self.connection = connections[alias]
-        self.verbs = verbs
+        self.connection = thread_loc.connections[alias or 'salesforce']
+        self.verbs = verbs or []
         self.save_debug_verbs = None
 
     def __enter__(self) -> 'QuietSalesforceErrors':
-        self.save_debug_verbs = self.connection.connection.debug_verbs
-        self.connection.connection.debug_verbs = self.verbs
+        self.save_debug_verbs = self.connection.debug_verbs
+        self.connection.debug_verbs = self.verbs
         return self
 
     def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], exc_tb: Any
                  ) -> None:
         try:
-            self.connection.connection.debug_verbs = self.save_debug_verbs
+            self.connection.debug_verbs = self.save_debug_verbs
         except AttributeError:
             pass
+
+
+class PatchedSfConnection(QuietSalesforceErrors):
+    """A connection with a temporarily modified setting"""
+    # this is only a mnemonic name for other usage of the parent class
 
 
 if TYPE_CHECKING:
@@ -65,7 +70,7 @@ class LazyTestMixin(BaseLazyTestMixin):
     class LazyAssertionError(AssertionError):
         pass
 
-    def setUp(self) -> None:  # pylint:disable=invalid-name
+    def setUp(self) -> None:
         self.lazy_failure = None  # type: Optional[Tuple[Type[BaseException], BaseException, str]]
 
     def _lazy_assert(self, assert_method: TestMethod, *args: Any, **kwargs: Any) -> None:
@@ -81,7 +86,7 @@ class LazyTestMixin(BaseLazyTestMixin):
         if not getattr(self, 'lazy_failure', None):
             skip_frames = kwargs.pop('skip_frames', 2)
             # the name is like in unittests due to more readable test tracebacks
-            lazyAssertMethod = assert_method  # pylint:disable=invalid-name
+            lazyAssertMethod = assert_method
             try:
                 lazyAssertMethod(*args, **kwargs)
             except self.failureException:
@@ -106,7 +111,6 @@ class LazyTestMixin(BaseLazyTestMixin):
             )
             raise original_exception
 
-    # pylint:disable=invalid-name
     def lazyAssertTrue(self, expr: Any, msg: Optional[str] = None) -> None:
         self._lazy_assert(self.assertTrue, expr, msg=msg)
 

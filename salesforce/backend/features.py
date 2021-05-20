@@ -29,7 +29,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 
     if DJANGO_30_PLUS:
         can_return_columns_from_insert = True
-        can_return_rows_from_bulk_insert = True  # pylint:disable=invalid-name
+        can_return_rows_from_bulk_insert = True
     else:
         can_return_id_from_insert = True
         can_return_ids_from_bulk_insert = True
@@ -39,7 +39,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # autocommits_when_autocommit_is_off = True
     # ignores_table_name_case = True
 
-    supported_explain_formats = set('JSON')
+    supported_explain_formats = set(['JSON'])
 
     # Though Salesforce doesn't support transactions, the setting
     # `supports_transactions` is used only for switching between rollback or
@@ -53,9 +53,14 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # setting for Oracle, while Salesforce saves nulls as empty strings not vice
     # versa.
 
+    supports_partial_indexes = False  # Django 2.2+
+    supports_table_check_constraints = False
+
     can_introspect_json_field = False  # Django 3.1+
+    supports_deferrable_unique_constraints = False
 
     supports_collation_on_charfield = False  # Django 3.2+
     supports_collation_on_textfield = False
     supports_non_deterministic_collations = False
+    supports_covering_indexes = False
     supports_expression_indexes = False

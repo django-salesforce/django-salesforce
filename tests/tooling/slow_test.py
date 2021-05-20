@@ -24,9 +24,9 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.tooling.settings'
 django.setup()
 
 # these 3 lines must be imported after: path, environ, django.setup()
-from django.db import connections  # NOQA
-from tests.tooling import models as mdl  # NOQA
-from salesforce.backend.base import SalesforceError  # NOQA
+from django.db import connections  # noqa
+from tests.tooling import models as mdl  # noqa
+from salesforce.backend.base import SalesforceError  # noqa
 
 
 # see https://developer.salesforce.com/docs/atlas.en-us.api_tooling.meta/api_tooling/reference_objects_soql_limits.htm
@@ -79,6 +79,8 @@ def run():
         'InventorySettings', 'SecuritySettings',
         # in API 51.0 Spring '21
         'EmployeeUserSettings',
+        # in API 52.0 Summer '21
+        'EinsteinAgentSettings'
     }
     problematic_write = {
         # any SalesforceError

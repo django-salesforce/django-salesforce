@@ -20,7 +20,7 @@ class TestExpectedFailure(TestCase):
         assert False
 
 
-class TestLazyAssert(TestCase, LazyTestMixin):
+class TestLazyAssert(LazyTestMixin, TestCase):
 
     def test_lazy_assert_fail(self):
         """example of an failed test if any lazy_assert fails"""
@@ -36,6 +36,7 @@ class TestLazyAssert(TestCase, LazyTestMixin):
         self.lazyAssertTrue(False)
         with self.assertRaises(ZeroDivisionError):
             1 / 0
+        with self.assertRaises(self.LazyAssertionError):
             self.lazy_check()
 
     def test_ok(self):
@@ -62,11 +63,11 @@ class TestLazyAssert(TestCase, LazyTestMixin):
         self.assertTrue(clean_up)
 
 
-class TestLazyAssertNoSetup(TestCase, LazyTestMixin):
+class TestLazyAssertNoSetup(LazyTestMixin, TestCase):
+    """Verify that LazyTestMixin works also if omitted super().setUp()"""
 
     def setUp(self):
-        # this overshadowed "setUp" in LazyTestMixin
-        # by omitting  super().setUp()
+        # verify that super().setUp() is not necessary for LazyTestMixin
         pass
 
     def test_fail(self):
@@ -79,7 +80,7 @@ class TestLazyAssertNoSetup(TestCase, LazyTestMixin):
         self.lazy_check()
 
 
-class LazyAssertRequests(TestCase, LazyTestMixin):
+class LazyAssertRequests(LazyTestMixin, TestCase):
 
     def test_ok(self):
         """example that more asserts can be checked together"""
@@ -98,9 +99,18 @@ class LazyAssertRequests(TestCase, LazyTestMixin):
             self.lazy_check()
 
     def test_error(self):
-        """example that an error is more important than a lazy test"""
+        """example that a more important error can be caught later
+        or than an assert in a lazy test"""
         with self.lazy_assert_n_requests(1):
             driver.request_count += 2  # then check requests
         with self.assertRaises(ZeroDivisionError):
             1 / 0
+        with self.assertRaises(self.LazyAssertionError) as cm:
             self.lazy_check()
+        exc_class, exc_value, exc_traceback_str = cm.test_case.lazy_failure
+        self.assertTrue(issubclass(exc_class, AssertionError))
+        self.assertEqual(
+            ''.join(exc_value.args),
+            '1 != 2 : expected requests != real requests;  checked by:\n    with self.lazy_assert_n_requests(1):'
+        )
+        self.assertRegex(exc_traceback_str, r'^File ".*", line ')

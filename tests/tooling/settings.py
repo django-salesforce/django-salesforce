@@ -1,4 +1,4 @@
-from salesforce.testrunner.settings import *  # NOQA pylint: disable=unused-wildcard-import,wildcard-import
+from salesforce.testrunner.settings import *  # noqa pylint: disable=unused-wildcard-import,wildcard-import
 from salesforce.testrunner.settings import INSTALLED_APPS
 
 # replace the test app

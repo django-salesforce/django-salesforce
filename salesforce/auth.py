@@ -11,8 +11,10 @@ oauth login support for the Salesforce API
 All data are ascii str.
 """
 
+from abc import ABC, abstractmethod
+from html import escape as html_escape
 from subprocess import PIPE, Popen
-from typing import Any, Callable, Dict, Optional, Sequence, Type
+from typing import Any, Callable, cast, Dict, Optional, Sequence, Type
 from urllib.parse import parse_qs, urlencode, urlsplit
 import base64
 import hashlib
@@ -29,7 +31,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
-from salesforce.dbapi import connections, get_max_retries
+from salesforce import API_VERSION
+from salesforce.dbapi import thread_loc, get_max_retries
 from salesforce.dbapi.exceptions import (
     SalesforceAuthError,  # error from SFCD
     OperationalError,     # authentication error by invalid usage
@@ -52,7 +55,7 @@ def base64urlencode(input_bytes: bytes) -> str:
     return base64.urlsafe_b64encode(input_bytes).decode('ascii').rstrip('=')
 
 
-class SalesforceAuth(AuthBase):
+class SalesforceAuth(AuthBase, ABC):
     """
     Authentication object that encapsulates all auth settings and holds the auth token.
 
@@ -80,6 +83,8 @@ class SalesforceAuth(AuthBase):
                             http://docs.python-requests.org/en/latest/user/advanced/#custom-authentication
     """
 
+    # The key 'ENGINE' in settings_dict is required only by Django
+    # to can find django-salesforce. It doesn't make sense to check 'ENGINE' here.
     required_fields = []  # type: Sequence[str]
 
     def __init__(self, db_alias: str, settings_dict: Optional[Dict[str, Any]] = None,
@@ -88,6 +93,8 @@ class SalesforceAuth(AuthBase):
         Set values for authentication
             Params:
                 db_alias:  The database alias e.g. the default SF alias 'salesforce'.
+                        The 'alias' must be unique (It is not possible to open more
+                        connections with the same alias from the same thread.)
                 settings_dict: It is only important for the first connecting.
                         It should be e.g. django.conf.settings.DATABASES['salesforce'],
                         because it is not known initially in the connection.settings_dict.
@@ -97,7 +104,7 @@ class SalesforceAuth(AuthBase):
             self.settings_dict = settings_dict
         else:
             assert db_alias
-            self.settings_dict = connections[db_alias].settings_dict
+            self.settings_dict = thread_loc.connections[db_alias].settings_dict
 
         self.db_alias = db_alias
         self.validate_settings()
@@ -105,18 +112,19 @@ class SalesforceAuth(AuthBase):
         self.dynamic = None   # type: Optional[Dict[str, str]]
         self._session = _session or requests.Session()
 
+    @abstractmethod
     def authenticate(self) -> Dict[str, str]:
-        return {}
+        pass
 
     def authenticate_and_cache(self) -> Dict[str, str]:
         """authenticate and save the result to cache (in static auth)"""
         return self.authenticate()
 
+    @abstractmethod
     def get_auth(self) -> Dict[str, str]:
         """
         Cached value of authenticate()
         """
-        raise NotImplementedError("This method should be subclassed.")
 
     def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
         """Standard auth hook on the "requests" request r"""
@@ -124,6 +132,7 @@ class SalesforceAuth(AuthBase):
         r.headers['Authorization'] = 'OAuth %s' % access_token
         return r
 
+    @abstractmethod
     def reauthenticate(self) -> str:
         return ''
 
@@ -158,13 +167,13 @@ class SalesforceAuth(AuthBase):
 
 class StaticGlobalAuth(SalesforceAuth):
 
+    @abstractmethod
     def authenticate(self) -> Dict[str, str]:
         """
         Authenticate to the Salesforce API with the provided credentials.
 
         This function will be called only if a token is not in this object or in the auth cache.
         """
-        raise NotImplementedError("This method should be subclassed.")
 
     def authenticate_and_cache(self) -> Dict[str, str]:
         return self.get_auth()
@@ -223,7 +232,7 @@ class DynamicAuth(SalesforceAuth):
             connections['salesforce'].sf_auth.dynamic_start(access_token, instance_url)
     """
 
-    required_fields = ['ENGINE']
+    required_fields = []
 
     def dynamic_start(self, access_token: str, instance_url: str, **kw: Any) -> None:
         """
@@ -266,7 +275,7 @@ class SalesforcePasswordAuth(StaticGlobalAuth):
     is provided by the ancestor class.
     """
 
-    required_fields = ['ENGINE', 'HOST']
+    required_fields = ['HOST', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'USER', 'PASSWORD']
 
     def authenticate(self) -> Dict[str, str]:
         """
@@ -304,6 +313,8 @@ class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
     It never uses the static auth more after the end of dynamic.
     """
 
+    required_fields = ['HOST']
+
     def get_auth(self) -> Dict[str, str]:
         if self.dynamic is None:
             return super().get_auth()
@@ -315,10 +326,70 @@ class PasswordAndDynamicAuth(SalesforcePasswordAuth, DynamicAuth):
         self.dynamic = None
 
     def reauthenticate(self) -> str:
-        if self.dynamic is None:
+        if self.dynamic is None:  # pylint:disable=no-else-return
             return super().reauthenticate()
         else:
             return DynamicAuth.reauthenticate(self)  # raises
+
+
+class SimpleSfPasswordAuth(StaticGlobalAuth):
+    """
+    The simplest authentication from simple-salesforce
+    """
+
+    required_fields = ['HOST', 'USER', 'PASSWORD']
+
+    def authenticate(self) -> Dict[str, str]:
+        """
+        Authenticate to the Salesforce API with the provided credentials (password).
+        """
+        def tag_content(tag: str) -> str:
+            match = re.search('<{tag}>(.*)</{tag}>'.format(tag=tag), response.text)
+            assert match
+            return match.group(1)
+
+        simple_soap_login_template = (
+            """<?xml version="1.0" encoding="utf-8" ?>
+            <env:Envelope
+                    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+                    xmlns:urn="urn:partner.soap.sforce.com">
+                <env:Header>
+                    <urn:CallOptions>
+                        <urn:client>{client_id}</urn:client>
+                        <urn:defaultNamespace>sf</urn:defaultNamespace>
+                    </urn:CallOptions>
+                </env:Header>
+                <env:Body>
+                    <n1:login xmlns:n1="urn:partner.soap.sforce.com">
+                        <n1:username>{username}</n1:username>
+                        <n1:password>{password}</n1:password>
+                    </n1:login>
+                </env:Body>
+            </env:Envelope>
+            """
+        )
+        settings_dict = self.settings_dict
+        request_body = simple_soap_login_template.format(
+            username=html_escape(settings_dict['USER']),
+            password=html_escape(settings_dict['PASSWORD']),  # including a personal security_token
+            client_id='django-salesforce',
+        )
+        request_headers = {'content-type': 'text/xml', 'charset': 'UTF-8', 'SOAPAction': 'login'}
+        url = '{}/services/Soap/u/{}'.format(settings_dict['HOST'], API_VERSION)
+        log.info("authentication to %s as %s", settings_dict['HOST'], settings_dict['USER'])
+        if settings_dict['HOST'] not in self._session.adapters:
+            self._session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=get_max_retries()))
+        response = self._session.post(url, request_body, headers=request_headers)
+        if response.status_code != 200:
+            raise SalesforceAuthError("login failed for user '%s': %s" % (
+                self.settings_dict['USER'], tag_content('faultstring'))
+            )
+        match_instance_url = re.match(r'(https://[^/]+)/', tag_content('serverUrl'))
+        assert match_instance_url
+        instance_url = match_instance_url.group(1)
+        return {'access_token': tag_content('sessionId'), 'instance_url': instance_url}
 
 
 # --- SFDX
@@ -329,7 +400,7 @@ class SfdxWebAuth(StaticGlobalAuth):
 
     no private data are saved to disk by django-salesforce, only data by sfdx
     """
-    required_fields = ['ENGINE', 'HOST', 'USER']
+    required_fields = ['HOST', 'USER']
     data = None  # type:Dict[str, Any]
 
     def authenticate(self) -> Dict[str, str]:
@@ -348,18 +419,21 @@ class SfdxWebAuth(StaticGlobalAuth):
                                           "user %r" % (user, data['username']))
         return {'access_token': data['accessToken'], 'instance_url': data['instanceUrl']}
 
+    @abstractmethod
     def ask_sfdx_org_data(self, user: str) -> Dict[str, Any]:
         # stub - because not implemented in this parent
-        return {'stack': None, 'message': 'search is not used in this class'}
+        # return {'stack': None, 'message': 'search is not used in this class'}
+        pass
 
     def sfdx(self, command: Sequence[str], no_raise: str = '') -> Dict[str, Any]:
         """Run a SFDX command. Don't raise on the expected error names (comma delimited)"""
         # not intercept OSError e.g. file not found - raise directly
         # stderr is not redirected, because it can be used for some interactive dialogs
-        proc = Popen(command, stdout=PIPE)
-        stdout, stderr = proc.communicate()
+        with Popen(command, stdout=PIPE) as proc:
+            stdout, _ = proc.communicate()
+            returncode = proc.returncode
 
-        if proc.returncode != 0:
+        if returncode != 0:
             self.data = {}
             # proc.returncode is the same as json "status" (and json "exitCode" if not zero)
             try:
@@ -383,10 +457,10 @@ class SfdxOrgWebAuth(SfdxWebAuth):
     Authenticate by "org:display" or "auth:web:login" in SFDX CLI
     """
 
-    required_fields = ['ENGINE', 'HOST', 'USER']
+    required_fields = ['HOST', 'USER']
 
     def ask_sfdx_org_data(self, user: str) -> Dict[str, Any]:
-        """Ask SFDX if it the use is connected to it"""
+        """Ask SFDX if it the user is connected to it"""
 
         cmd = 'sfdx force:org:display --json -u'.split() + [user]
 
@@ -403,7 +477,7 @@ class SfdxOrgAuth(SfdxOrgWebAuth):
     Authenticate by "org:display" in SFDX CLI
     """
 
-    required_fields = ['ENGINE', 'USER']
+    required_fields = ['USER']
 
     def authenticate(self) -> Dict[str, str]:
         host = self.settings_dict.get('HOST')
@@ -422,6 +496,8 @@ class SfdxOrgAuth(SfdxOrgWebAuth):
         return {'access_token': data['accessToken'], 'instance_url': data['instanceUrl']}
 
 
+# ---
+
 class RefreshTokenAuth(StaticGlobalAuth):
     """
     Authenticate by refresh token or get the refresh token interactive
@@ -433,19 +509,22 @@ class RefreshTokenAuth(StaticGlobalAuth):
     # use refresh token
     # https://help.salesforce.com/articleView?id=remoteaccess_oauth_refresh_token_flow.htm&type=5
 
-    required_fields = ['ENGINE', 'HOST', 'USER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'REFRESH_TOKEN']
+    redirect_uri = None  # type: str
+    code_verifier = None  # type: str
 
-    def authenticate(self, old_auth: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    required_fields = ['HOST', 'USER', 'CONSUMER_KEY', 'CONSUMER_SECRET', 'REFRESH_TOKEN']
+
+    def authenticate(self, old_auth: Optional[Dict[str, str]] = None  # pylint:disable=arguments-differ
+                     ) -> Dict[str, str]:
         host = self.settings_dict['HOST']
         user = self.settings_dict['USER']
         refresh_token = self.settings_dict['REFRESH_TOKEN']
         if refresh_token == '?':
             if not old_auth:
                 return self.get_refresh_token_interactive()
-            else:
-                refresh_token = old_auth['refresh_token']
-                if refresh_token == 'invalid':
-                    raise SalesforceAuthError("Invalid refresh token in database %r" % self.db_alias)
+            refresh_token = old_auth['refresh_token']
+            if refresh_token == 'invalid':
+                raise SalesforceAuthError("Invalid refresh token in database %r" % self.db_alias)
 
         log.info("authentication by Refresh Token to %s as %s", host, user)
 
@@ -497,30 +576,7 @@ class RefreshTokenAuth(StaticGlobalAuth):
 
         The dialog is: visit a URL manually, authorize and paste the final URL to console
         """
-        host = self.settings_dict['HOST']
-        user = self.settings_dict['USER']
-        if 'CALLBACK_URL' in self.settings_dict:
-            redirect_uri = self.settings_dict['CALLBACK_URL']
-        else:
-            redirect_uri = host
-        log.info("Get a Refresh Token for user %s", user)
-
-        # see https://developer.salesforce.com/forums/?id=906F0000000D6kjIAC
-        code_verifier = base64urlencode(os.urandom(128))
-        code_verifier = base64urlencode(32 * 'A'.encode('ascii'))
-        code_challenge = base64urlencode(hashlib.sha256(code_verifier.encode('ascii')).digest())
-        url_params = {
-            'client_id': self.settings_dict['CONSUMER_KEY'],
-            'redirect_uri': redirect_uri,
-            'response_type': 'code',
-            # optional
-            'scope': 'api refresh_token',  # or 'full refresh_token'
-            'login_hint': user,
-            'prompt': 'consent',
-            'code_challenge': code_challenge,
-            }
-        query = urlencode(url_params,  quote_via=quote_no_plus)
-        url_login = self.settings_dict['HOST'] + '/services/oauth2/authorize?' + query
+        url_login = self.get_auth_redirect_url()
         print()
         print(url_login)
         print("\nOpen the URL above in your browser and follow (optionally Login to Salesforce, "
@@ -528,22 +584,58 @@ class RefreshTokenAuth(StaticGlobalAuth):
               "Paste it here and Press Enter (The URL expires in 15 minutes.)\n"
               )
         final_url = input('? ')
-        code, = parse_qs(urlsplit(final_url).query)['code']
+        auth_data = self.authorization_code_processing(final_url)
+        print("\nCopy this line to settings DATABASES[%r]:\n        "
+              "'REFRESH_TOKEN': %r," % (self.db_alias, auth_data['refresh_token']))
+        return auth_data
+
+    def get_auth_redirect_url(self, user: Optional[str] = None) -> str:
+        host = self.settings_dict['HOST']
+        user_hint = user or self.settings_dict['USER']
+        if 'CALLBACK_URL' in self.settings_dict:
+            self.redirect_uri = self.settings_dict['CALLBACK_URL']
+        else:
+            self.redirect_uri = host
+        log.info("Get a Refresh Token for user %s", user_hint)
+
+        # see https://developer.salesforce.com/forums/?id=906F0000000D6kjIAC
+        self.code_verifier = base64urlencode(os.urandom(128))
+        self.code_verifier = base64urlencode(os.urandom(32))
+        # code_verifier = base64urlencode(32 * 'A'.encode('ascii'))
+        code_challenge = base64urlencode(hashlib.sha256(self.code_verifier.encode('ascii')).digest())
+        url_params = {
+            'client_id': self.settings_dict['CONSUMER_KEY'],
+            'redirect_uri': self.redirect_uri,
+            'response_type': 'code',
+            # optional
+            'scope': self.settings_dict.get('OAUTH_SCOPE', 'api refresh_token'),  # or 'full refresh_token'
+            'prompt': 'consent',
+            'code_challenge': code_challenge,
+            }
+        if user_hint:
+            url_params['login_hint'] = user_hint
+        query = urlencode(url_params,  quote_via=quote_no_plus)
+        url_login = cast(str, self.settings_dict['HOST']) + '/services/oauth2/authorize?' + query
+        return url_login
+
+    def authorization_code_processing(self, final_url: str) -> Dict[str, Any]:
+        query = parse_qs(urlsplit(final_url).query)
+        if 'error' in query:
+            raise SalesforceError("Salesforce OAuth2 Error: {query}".format(query=query))
+        code, = query['code']
         url = self.settings_dict['HOST'] + '/services/oauth2/token'
         data = urlencode(dict(
             grant_type='authorization_code',
             code=code,
             client_id=self.settings_dict['CONSUMER_KEY'],
             client_secret=self.settings_dict['CONSUMER_SECRET'],
-            redirect_uri=redirect_uri,
-            code_verifier=code_verifier,
+            redirect_uri=self.redirect_uri,
+            code_verifier=self.code_verifier,
             format='json',
         ))
         headers = {'Content-type': 'application/x-www-form-urlencoded'}
         response = requests.post(url, data=data, headers=headers)
         auth_data = self.checked_auth_response(response)
-        print("\nCopy this line to settings DATABASES[%r]:\n        "
-              "'REFRESH_TOKEN': %r," % (self.db_alias, auth_data['refresh_token']))
         return auth_data
 
 
@@ -558,6 +650,9 @@ class MockAuth(SalesforceAuth):
     def get_auth(self) -> Dict[str, str]:
         # this is never cached
         return self.authenticate()
+
+    def reauthenticate(self) -> str:
+        return ''
 
     def del_token(self) -> None:
         pass
@@ -587,4 +682,4 @@ class TimeStatistics:
 
 
 time_statistics = TimeStatistics(300)
-quote_no_plus = urllib.parse.quote  # type: Callable[[str, str, Optional[str], Optional[str]], str]
+quote_no_plus = urllib.parse.quote  # type: Callable[[str, str, str, str], str]

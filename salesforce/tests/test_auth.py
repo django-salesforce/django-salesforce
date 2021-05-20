@@ -5,6 +5,7 @@
 # See LICENSE.md for details
 #
 
+import requests
 from django.test import TestCase
 from django.conf import settings
 
@@ -23,15 +24,14 @@ class OAuthTest(TestCase):
     def validate_oauth(self, settings_dict):
         for key in ('access_token', 'id', 'instance_url', 'issued_at', 'signature'):
             if key not in settings_dict:
-                self.fail("Missing %s key in returned oauth data." % key)
+                self.fail("Missing %s key in returned oauth data." % key)           # pragma: no cover
             elif not settings_dict[key]:
-                self.fail("Empty value for %s key in returned oauth data." % key)
+                self.fail("Empty value for %s key in returned oauth data." % key)   # pragma: no cover
 
     def test_token_renewal(self):
         # import salesforce
         # _session=salesforce.backend.fake.base.FakeAuthSession()
         # _session.bind('default')
-        import requests
         _session = requests.Session()
 
         auth_obj = auth.SalesforcePasswordAuth(sf_alias, settings_dict=settings.DATABASES[sf_alias],

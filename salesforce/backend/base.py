@@ -27,7 +27,7 @@ from salesforce.dbapi import driver as Database
 from salesforce.dbapi.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA pylint:disable=unused-import
 
 if TYPE_CHECKING:
-    from django.db.backends.base.base import ProtoCursor
+    from django.db.backends.base.base import ProtoCursor  # pylint:disable=ungrouped-imports,no-name-in-module
 
 
 __all__ = ('DatabaseWrapper', 'DatabaseError', 'SalesforceError',)
@@ -116,13 +116,6 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     def create_cursor(self, name: Optional[str] = None) -> 'ProtoCursor':
         row_type = {'dict': dict, 'list': list, None: None}[name]
         return self.connection.cursor(row_type=row_type)
-
-    def quote_name(self, name: str) -> str:
-        """
-        Do not quote column and table names in the SOQL dialect.
-        """
-        # pylint:disable=no-self-use
-        return name
 
     @property
     def is_sandbox(self) -> bool:

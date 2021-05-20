@@ -72,7 +72,7 @@ class SalesforceQuery(Query, Generic[_T]):
         sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
         return self.get_compiler(sf_alias).as_sql()
 
-    def clone(self, klass=None, memo=None) -> 'SalesforceQuery[_T]':  # pylint: disable=arguments-differ
+    def clone(self) -> 'SalesforceQuery[_T]':
         return cast(SalesforceQuery, Query.clone(self))
 
     def sf(self,

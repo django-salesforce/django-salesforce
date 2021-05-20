@@ -9,18 +9,19 @@
 Customized fields for Salesforce, especially the primary key. (like django.db.models.fields)
 """
 
-from typing import Tuple
-import typing
+from typing import Any, Callable, Optional, Tuple, Type, TYPE_CHECKING, Union
 import warnings
 from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import gettext_lazy as _
+from django.db.backends.base.base import BaseDatabaseWrapper as DatabaseWrapper
 from django.db.models import fields
 from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-import
 from django.db import models
 
-from salesforce.defaults import DEFAULTED_ON_CREATE, DefaultedOnCreate
+from salesforce.defaults import DEFAULTED_ON_CREATE, DefaultedOnCreate, BaseDefault
+
 
 # None of field types defined here don't need a "deconstruct" method.
 # Their parameters only describe the different, but stable nature of SF standard objects.
@@ -48,21 +49,21 @@ class SalesforceAutoField(fields.AutoField):
         'invalid': _('This value must be a valid Salesforce ID.'),
     }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         # The parameter 'sf_read_only' is not used normally, maybe only if someone
         # added SalesforceAutoFields to the Model manually
         kwargs.pop('sf_read_only', None)
         super().__init__(*args, **kwargs)
 
-    def to_python(self, value):
+    def to_python(self, value: Any) -> Optional[str]:
         if isinstance(value, str) or value is None:
             return value
         return str(value)
 
-    def get_prep_value(self, value):
+    def get_prep_value(self, value: Any) -> Any:
         return self.to_python(value)
 
-    def contribute_to_class(self, cls, name, **kwargs):
+    def contribute_to_class(self, cls: Type[models.Model], name: str, private_only: bool = False) -> None: # noqa pylint:disable=arguments-differ
         name = name if self.name is None else self.name
         # we can't require "self.auto_created==True" due to backward compatibility
         # with old migrations created before v0.6. Other conditions are enough.
@@ -86,7 +87,7 @@ class SalesforceAutoField(fields.AutoField):
             # with the same default SalesforceAutoField. Therefore the second should be
             # ignored.
             return
-        super().contribute_to_class(cls, name, **kwargs)
+        super().contribute_to_class(cls, name, private_only=private_only)
         cls._meta.auto_field = self
 
 
@@ -104,7 +105,7 @@ class SfField(models.Field):
 
         custom=True : Add '__c' to the column name if no db_column is defined.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.sf_read_only = kwargs.pop('sf_read_only', 0)
         self.sf_custom = kwargs.pop('custom', None)
         self.sf_namespace = ''
@@ -138,13 +139,13 @@ class SfField(models.Field):
                 column = self.sf_namespace + column + '__c'
         return attname, column
 
-    def contribute_to_class(self, cls, name, private_only=False):
+    def contribute_to_class(self, cls: Type[models.Model], name: str, private_only: bool = False) -> None:
         super().contribute_to_class(cls, name, private_only=private_only)
         if self.sf_custom is None and hasattr(cls._meta, 'sf_custom'):
             # Only custom fields in models explicitly marked by
             # Meta custom=True are recognized automatically - for
             # backward compatibility reasons.
-            self.sf_custom = cls._meta.sf_custom
+            self.sf_custom = cls._meta.sf_custom  # type: ignore[attr-defined]
         if self.sf_custom and '__' in cls._meta.db_table[:-3]:
             self.sf_namespace = cls._meta.db_table.split('__')[0] + '__'
         self.set_attributes_from_name(name)
@@ -199,7 +200,7 @@ class DecimalField(SfField, models.DecimalField):
     is integer,then it is without '.0'.
     DecimalField is the default numeric type used by itrospection inspectdb.
     """
-    def to_python(self, value):
+    def to_python(self, value: Any) -> Any:
         if str(value) == '':
             return value
         ret = super().to_python(value)
@@ -209,7 +210,7 @@ class DecimalField(SfField, models.DecimalField):
                 ret = Decimal(int(ret))
         return ret
 
-    def from_db_value(self, value, expression, connection):
+    def from_db_value(self, value: Any, expression: Any, connection: DatabaseWrapper) -> Any:
         # pylint:disable=unused-argument
         # TODO refactor and move to the driver like in other backends
         if isinstance(value, float):
@@ -228,10 +229,11 @@ class FloatField(SfField, models.FloatField):
 class BooleanField(SfField, models.BooleanField):
     """BooleanField with sf_read_only attribute for Salesforce.
 
-    No NullBooleanField exist for Salesforce and every BooleanField has
-    a default value. Implicit default is False if not specified.
+    Every BooleanField has a default value. It is False if default
+    value checkbox is unchecked or True if checked.
+    No NullBooleanField exist for Salesforce.
     """
-    def __init__(self, default=False, **kwargs):
+    def __init__(self, default: Union[bool, BaseDefault] = False, **kwargs: Any) -> None:
         super().__init__(default=default, **kwargs)
 
 
@@ -242,7 +244,7 @@ class DateTimeField(SfField, models.DateTimeField):
 class DateField(SfField, models.DateField):
     """DateField with sf_read_only attribute for Salesforce."""
 
-    def from_db_value(self, value, expression, connection):
+    def from_db_value(self, value: Any, expression: Any, connection: DatabaseWrapper) -> Any:
         # pylint:disable=unused-argument
         return self.to_python(value)
 
@@ -250,12 +252,12 @@ class DateField(SfField, models.DateField):
 class TimeField(SfField, models.TimeField):
     """TimeField with sf_read_only attribute for Salesforce."""
 
-    def from_db_value(self, value, expression, connection):
+    def from_db_value(self, value: Any, expression: Any, connection: DatabaseWrapper) -> Any:
         # pylint:disable=unused-argument
         return self.to_python(value)
 
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     # static typing of a mixin requires an additional base, that is not necessary
     # at runtime
     _MixinTypingBase = models.ForeignObject
@@ -264,7 +266,8 @@ else:
 
 
 class SfForeignObjectMixin(SfField, _MixinTypingBase):
-    def __init__(self, to, on_delete, *args, **kwargs):
+    def __init__(self, to: Union[Type[models.Model], str], on_delete: Callable[..., None], *args: Any, **kwargs: Any
+                 ) -> None:
         # Checks parameters before call to ancestor.
         if on_delete.__name__ not in ('PROTECT', 'DO_NOTHING'):
             # The option CASCADE (currently fails) would be unsafe after a fix
@@ -301,20 +304,20 @@ class OneToOneField(SfForeignObjectMixin, models.OneToOneField):
     """OneToOneField with sf_read_only attribute that is acceptable by Salesforce."""
 
 
-class XJSONField(TextField):  # type: ignore[no-redef] # noqa
+class XJSONField(TextField):
     """
     Salesforce internal "complexvalue" field similar to JSON, used by SFDC for metadata,
 
     this field should not be used for normal data or with other database backends.
     """
 
-    def get_internal_type(self):
+    def get_internal_type(self) -> str:
         return "TextField"
 
-    def get_prep_value(self, value):
+    def get_prep_value(self, value: Any) -> Any:
         return value
 
-    def to_python(self, value):
+    def to_python(self, value: Any) -> Any:
         return value
 
 

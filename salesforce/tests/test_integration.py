@@ -4,14 +4,13 @@
 # (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
 # See LICENSE.md for details
 #
-# pylint:disable=deprecated-method,invalid-name,protected-access,too-many-lines,unused-variable
+# pylint:disable=protected-access,too-many-lines,unused-variable
 
 from decimal import Decimal
 from distutils.util import strtobool  # pylint: disable=no-name-in-module,import-error # venv inst pylint false positiv
 import datetime
 import logging
 import os
-import re
 import warnings
 from typing import Any, cast, List, TypeVar
 
@@ -21,23 +20,25 @@ from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max, Model, query as models_query
 from django.test import TestCase
 from django.utils import timezone
+from django.utils.crypto import get_random_string
 
 import salesforce
 from salesforce import router
-from salesforce.backend import DJANGO_22_PLUS
-from salesforce.backend.test_helpers import (  # NOQA pylint:disable=unused-import
+from salesforce.backend import DJANGO_21_PLUS, DJANGO_22_PLUS
+from salesforce.backend.test_helpers import (  # noqa pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless)
 from salesforce.backend.test_helpers import (
     current_user, default_is_sf, sf_alias, uid_version as uid,
     QuietSalesforceErrors, LazyTestMixin)
 from salesforce.dbapi.exceptions import SalesforceWarning
+from salesforce.dbapi.test_helpers import PatchedSfConnection
 from salesforce.models import SalesforceModel
 from salesforce.testrunner.example.models import (
-        Account, Contact, Lead, User,
+        Attachment, Account, Contact, Lead, User,
         ApexEmailNotification, BusinessHours, Campaign, CronTrigger,
         Opportunity, OpportunityContactRole,
         Product, Pricebook, PricebookEntry, Note, Task,
-        Organization, models_template,
+        Organization, models_template, Test,
         )
 
 log = logging.getLogger(__name__)
@@ -77,7 +78,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Add contact if less than 2 exist"""
         super(BasicSOQLRoTest, cls).setUpClass()
         if User.objects.count() == 0:
-            User.objects.create(Username=current_user)
+            User.objects.create(Username=current_user)                       # pragma: no test
         some_accounts = list(Account.objects.all()[:1])
         if not some_accounts:
             some_accounts = [Account.objects.create(Name='sf_test account_0')]
@@ -193,7 +194,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                 sql_end = 'FROM Contact WHERE (Contact.Account.OwnerId != null AND Contact.Id != null)'
             else:
                 sql_end = 'FROM Contact WHERE (Contact.Id != null AND Contact.Account.OwnerId != null)'
-            self.assertTrue(sql_end, str(qs.query))
+            self.assertIn(sql_end, str(qs.query))
             self.assertGreater(len(list(qs)), 0)
             self.assertGreater(qs[0].Owner.Username, '')
 
@@ -241,16 +242,15 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         current_sf_user = User.objects.get(Username=current_user)
         orig_objects = list(ApexEmailNotification.objects.filter(
             Q(user=current_sf_user) | Q(email='apex.bugs@example.com')))
-        _ = orig_objects  # NOQA
+        _ = orig_objects  # noqa
+        new_u, new_e = None, None
         try:
             notifier_u = current_sf_user.apex_email_notification
-            new_u = None
         except ApexEmailNotification.DoesNotExist:
             notifier_u = new_u = ApexEmailNotification(user=current_sf_user)
             notifier_u.save()
         try:
             notifier_e = ApexEmailNotification.objects.get(email='apex.bugs@example.com')
-            new_e = None
         except ApexEmailNotification.DoesNotExist:
             notifier_e = new_e = ApexEmailNotification(email='apex.bugs@example.com')
             notifier_e.save()
@@ -275,6 +275,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             # test 3: relation to the parent
             result = ApexEmailNotification.objects.filter(user__Username=notifier_u.user.Username)
             self.assertEqual(len(result), 1)
+            # sometimes mypy error: '"ApexEmailNotification" has no attribute "user_id"'
+            # probably caused by .mypy_cache  # TODO report it if reproduced with a new django-stubs version
             self.assertEqual(result[0].user_id, notifier_u.user_id)
         finally:
             if new_u:
@@ -474,7 +476,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_simple_custom_object(self) -> None:
         """Create, read and delete a simple custom object `django_Test__c`.
         """
-        from salesforce.testrunner.example.models import Attachment, Test
         if 'django_Test__c' not in sf_tables():
             self.skipTest("Not found custom object 'django_Test__c'")
         results = Test.objects.all()[0:1]
@@ -519,7 +520,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test insert and delete an account (normal or personal SF config)
         """
         if settings.PERSON_ACCOUNT_ACTIVATED:
-            test_account = Account(FirstName='IntegrationTest',  # type: ignore[misc] # noqa # skip this branch
+            test_account = Account(FirstName='IntegrationTest',  # type: ignore[misc] # skip this branch
                                    LastName='Account')
         else:
             test_account = Account(Name='IntegrationTest Account')
@@ -585,6 +586,16 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         finally:
             account_0.delete()
             account_1.delete()
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_queryset_update_foreign_key(self) -> None:
+        contact = Contact.objects.exclude(account=None)[0]
+        Contact.objects.filter(Id=contact.Id).update(account=contact.account)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_queryset_none_filter_update(self) -> None:
+        """Test that this can be compiled and the SOQL is valid"""
+        Contact.objects.filter(pk=None).update(last_name='a')
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_bulk_delete_and_update(self) -> None:
@@ -838,6 +849,71 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertEqual(soql, expected_soql)
         self.assertEqual(params, ('',))
         self.assertEqual(set(list(qs)[0].keys()), {'account_id', 'cnt'})
+        list(qs)
+
+    def test_having_compile(self) -> None:
+        """Test GROUP BY ... HAVING compile for a ManyToMany field"""
+        qs = (Contact.objects.values('testdetail__parent__test_bool').order_by()
+              .annotate(val=Max('testdetail__parent__test_text'))
+              .filter(val__contains='b', val__gt='a')
+              )
+        expected_soql = (
+            "SELECT django_Test_detail__c.Parent__r.TestBool__c,"
+            " MAX(django_Test_detail__c.Parent__r.TestText__c) val "
+            "FROM django_Test_detail__c "
+            "GROUP BY django_Test_detail__c.Parent__r.TestBool__c "
+            "HAVING (MAX(django_Test_detail__c.Parent__r.TestText__c) LIKE '%b%'"
+            " AND MAX(django_Test_detail__c.Parent__r.TestText__c) > 'a')"
+        )
+        self.assertEqual(str(qs.query), expected_soql)
+        if not ('django_Test__c' in sf_tables() and 'django_Test_detail__c' in sf_tables()):
+            self.skipTest("Not found custom object 'django_Test__c'")
+        list(qs)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_order_by_compile(self) -> None:
+        """Test order_by() compile for a field by ManyToMany relationship"""
+        qs = Contact.objects.values('pk').order_by('testdetail__parent__test_text')
+        soql, params = qs.query.get_compiler('salesforce').as_sql()
+        expected_soql = (
+            'SELECT django_Test_detail__c.Contact__r.Id FROM django_Test_detail__c '
+            'ORDER BY django_Test_detail__c.Parent__r.TestText__c ASC'
+        )
+        self.assertEqual(soql, expected_soql)
+        self.assertEqual(params, ())
+        if not ('django_Test__c' in sf_tables() and 'django_Test_detail__c' in sf_tables()):
+            self.skipTest("Not found custom object 'django_Test__c'")
+        list(qs)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_count_distinct(self) -> None:
+        """Test Count(some_field, distinct=True)"""
+        qs = (Contact.objects.order_by().values('account_id')
+              .annotate(cnt=Count('first_name', distinct=True))
+              )
+        soql, params = qs.query.get_compiler('salesforce').as_sql()
+        expected_soql = (
+            'SELECT Contact.AccountId, COUNT_DISTINCT(Contact.FirstName) cnt FROM Contact '
+            'GROUP BY Contact.AccountId'
+        )
+        self.assertEqual(soql, expected_soql)
+        self.assertEqual(params, ())
+        self.assertEqual(set(list(qs)[0].keys()), {'account_id', 'cnt'})
+        list(qs)
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    def test_count_asterisk(self) -> None:
+        """Test Count('*')"""
+        with PatchedSfConnection(sf_alias, verbs=['use_debug_info']):
+            ret = Contact.objects.aggregate(cnt=Count('*'))
+            debug_info = connections[sf_alias].connection.debug_info
+        self.assertEqual(debug_info['soql'][:2], ('SELECT COUNT(Id) cnt FROM Contact', []))
+        self.assertTrue('cnt' in ret)
+
+        qs = Contact.objects.order_by().values('account_id').annotate(cnt=Count('*'))
+        soql, params = qs.query.get_compiler('salesforce').as_sql()
+        self.assertEqual(soql, 'SELECT Contact.AccountId, COUNT(Id) cnt FROM Contact GROUP BY Contact.AccountId')
+        list(qs)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_errors(self) -> None:
@@ -1015,7 +1091,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         with self.lazy_assert_n_requests(1):
             _ = contact.email
         self.lazy_check()
-        _  # NOQA
+        _  # noqa
 
     def test_incomplete_raw(self) -> None:
         """Test that omitted model fields can be queried by dot."""
@@ -1135,7 +1211,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
         are correctly compiled. (__r, __c etc.)
         """
-        from salesforce.testrunner.example.models import Attachment, Test
         if 'django_Test__c' not in sf_tables():
             self.skipTest("Not found custom object 'django_Test__c'")
         qs = Attachment.objects.filter(parent__name='abc')
@@ -1156,16 +1231,27 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertTrue(models_template)
         self.assertIn('@', Organization.objects.get().created_by.Username)
 
-    def test_big_soql(self):
+    def test_big_soql(self) -> None:
         """Test that a query of length almost 100000 is possible"""
         contact = Contact.objects.all()[0]
-        # 4750 items * 21 characters == 99750
-        qs = Contact.objects.filter(pk__in=4750 * [contact.pk])
-        self.assertEqual(list(qs.values_list('pk', flat=True)), [contact.pk])
+        # 4534 items * 22 characters == 99748
+        names = [get_random_string(18) for _ in range(4534)]
+        names.append(contact.name)
+        qs = Contact.objects.filter(name__in=names)
+        with PatchedSfConnection(sf_alias, verbs=['use_debug_info']):
+            self.assertIn(contact.pk, list(qs.values_list('pk', flat=True)))
+        processed_soql = connections[sf_alias].connection.debug_info['soql'][2]
+        self.assertGreater(len(processed_soql), 90000)
 
-    def test_empty_slice(self):
+    def test_empty_slice(self) -> None:
         """Test queryset with empty slice - if high/low limits equals"""
         self.assertEqual(len(Contact.objects.all()[1:1]), 0)
+
+    @skipUnless(DJANGO_21_PLUS, "Method .explain() is only in Django >= 2.1")
+    def test_select_explan(self) -> None:
+        """Test EXPLAIN SELECT ..."""
+        qs = Contact.objects.all()[:2]
+        self.assertRegex(qs.explain(), r"^{'plans': \[{")
 
 # ============= Tests that need setUp Lead ==================
 
@@ -1301,14 +1387,3 @@ class BasicLeadSOQLTest(TestCase):
             note_1.delete()
             note_2.delete()
             test_contact.delete()
-
-
-def clean_test_data() -> None:
-    """Clean test objects after an interrupted test.
-
-    All tests are written so that a failed test should not leave objects,
-    but a test interrupted by debugger or Ctrl-C could do it.
-    """
-    ids = [x for x in Product.objects.filter(Name__startswith='test ')
-           if re.match(r'test [a-z_0-9]+', x.Name)]
-    Product.objects.filter(pk__in=ids).delete()

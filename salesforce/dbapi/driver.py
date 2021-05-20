@@ -13,7 +13,6 @@ import json
 import logging
 import pprint
 import re
-import socket
 import sys
 import threading
 import time
@@ -30,18 +29,18 @@ import requests
 from requests.adapters import HTTPAdapter
 
 import salesforce
-from salesforce.auth import SalesforceAuth, time_statistics
-from salesforce.dbapi import get_max_retries
+from salesforce.auth import SalesforceAuth, time_statistics as time_statistics
+from salesforce.dbapi import get_max_retries, thread_loc
 from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
-    Error, InterfaceError, DatabaseError, DataError, OperationalError, IntegrityError,
-    InternalError, ProgrammingError, NotSupportedError, SalesforceError, SalesforceWarning,
-    warn_sf,
+    Error, InterfaceError as InterfaceError, DatabaseError as DatabaseError, DataError, OperationalError,
+    IntegrityError, InternalError, ProgrammingError, NotSupportedError, SalesforceError as SalesforceError,
+    SalesforceWarning, warn_sf,
     FakeReq, FakeResp, GenResponse)
 from salesforce.dbapi.subselect import QQuery, _TRow
 
 try:
-    import beatbox  # type: ignore[import]  # pylint: disable=unused-import
+    import beatbox as beatbox  # type: ignore[import]  # pylint: disable=unused-import,useless-import-alias
 except ImportError:
     beatbox = None
 
@@ -60,11 +59,11 @@ apilevel = "2.0"  # see https://www.python.org/dev/peps/pep-0249
 # Create the connection by `connect(**params)` if you use it with Django or
 # with another app that has its own thread safe connection pool. and
 # create the connection by connect(**params).
-threadsafety = 1
+# threadsafety = 1
 
 # Or create and access the connection by `get_connection(alias, **params)`
 # if the pool should be managed by this driver. Then you can expect:
-# threadsafety = 2
+threadsafety = 2
 
 # (Both variants allow multitenant architecture with dynamic authentication
 # where a thread can frequently change the organization domain that it serves.)
@@ -84,7 +83,6 @@ SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 request_count = 0  # global counter
 
 connect_lock = threading.Lock()
-thread_connections = threading.local()
 
 ErrInfo = Tuple[Type[Exception], Exception]
 
@@ -98,7 +96,7 @@ class SfSession(requests.Session):
 class RawConnection:
     """
     parameters:
-        settings_dict:  like settings.SADABASES['salesforce'] in Django
+        settings_dict:  like settings.DATABASES['salesforce'] in Django
         alias:          important if the authentication should be shared for more thread
         errorhandler: function with following signature
             ``errorhandler(connection, cursor, errorclass, errorvalue)``
@@ -119,16 +117,23 @@ class RawConnection:
     def __init__(self, settings_dict: Dict[str, Any], alias: Optional[str] = None,
                  errorhandler: Optional[ErrorHandler] = None, use_introspection: Optional[bool] = None) -> None:
 
+        if alias in thread_loc.connections:
+            del thread_loc.connections[alias]
+            raise InterfaceError(
+                "Tried to open more database connections with the same alias {alias} from the same thread."
+                "The previous connection has been closed now however.".format(alias=alias))
+        thread_loc.connections[alias] = self
+
         # private members:
         self.alias = cast(str, alias)
         self.errorhandler = errorhandler
-        self.use_introspection = use_introspection if use_introspection is not None else True  # TODO
+        self.use_introspection = use_introspection if use_introspection is not None else True  # TODO implement
         self.settings_dict = settings_dict
         self.messages = []           # type: List[ErrInfo]
 
         self._sf_session = None      # type: Optional[SfSession]
         self._api_version = settings_dict.get('API_VERSION', salesforce.API_VERSION)  # type: str
-        self.debug_verbs = None      # type: Optional[List[str]]
+        self.debug_verbs = []        # type: List[str]
         self.composite_type = 'sobject-collections'  # 'sobject-collections' or 'composite'
 
         self.sf_auth = SalesforceAuth.create_subclass_instance(db_alias=self.alias,
@@ -137,6 +142,7 @@ class RawConnection:
         # are running. Some tests don't require a connection.
         if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):  # TODO don't use argv
             self.make_session()
+        self.debug_info = {}         # type:Dict[str, Any]
 
     # -- public methods
 
@@ -170,10 +176,24 @@ class RawConnection:
     @overload  # noqa
     def cursor(self, row_type: Type[_TRow]) -> 'Cursor[_TRow]': ...
 
-    def cursor(self, row_type=list):  # type: ignore[no-untyped-def] # noqa
+    def cursor(self, row_type=list):  # type: ignore[no-untyped-def]
         return Cursor(self, row_type)
 
     # -- private attributes
+
+    def __enter__(self) -> 'RawConnection':
+        return self
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], exc_tb: Any
+                 ) -> None:
+        try:
+            self.close()
+        except AttributeError:
+            pass
+
+    def check(self) -> None:
+        if self != thread_loc.connections.get(self.alias):
+            raise InterfaceError("The connection has been closed previously")
 
     @property
     def sf_session(self) -> SfSession:
@@ -288,6 +308,8 @@ class RawConnection:
             response = session.request(method, url, **kwargs_in)
         except requests.exceptions.Timeout:
             raise SalesforceError("Timeout, URL=%s" % url)
+        except requests.exceptions.ConnectionError as exc:
+            raise SalesforceError("ConnectionError, URL=%s, %r" % (url, exc))
         if (response.status_code == 401                      # Unauthorized
                 and 'json' in response.headers['content-type']
                 and response.json()[0]['errorCode'] == 'INVALID_SESSION_ID'):
@@ -311,15 +333,16 @@ class RawConnection:
         # status codes docs (400, 403, 404, 405, 415, 500)
         # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/errorcodes.htm
         self.raise_errors(response)
-        return  # type: ignore[return-value]  # noqa
+        return  # type: ignore[return-value]
 
-    def raise_errors(self, response: GenResponse) -> None:
+    @staticmethod
+    def raise_errors(response: GenResponse) -> None:
         """The innermost part - report errors by exceptions"""
         # Errors: 400, 403 permissions or REQUEST_LIMIT_EXCEEDED, 404, 405, 415, 500)
         # TODO extract a case ID for Salesforce support from code 500 messages
 
         # TODO disabled 'debug_verbs' temporarily, after writing better default messages
-        verb = self.debug_verbs  # NOQA pylint:disable=unused-variable
+        # verb = self.debug_verbs
         method = response.request.method
         data = None
         is_json = 'json' in response.headers.get('Content-Type', '') and response.text
@@ -393,10 +416,10 @@ class RawConnection:
         bad_resp_headers.update({'Content-Type': resp.headers['Content-Type']})
 
         bad_resp = FakeResp(bad_response['httpStatusCode'], bad_resp_headers, json.dumps(body), bad_req
-                            ) # type: requests.Response # type: ignore[assignment]  # noqa
+                            )  # type: requests.Response # type: ignore[assignment]
 
         self.raise_errors(bad_resp)
-        return  # type: ignore[return-value]  # noqa
+        return  # type: ignore[return-value]  # TODO analyze whether this line is accessible in the case of 404 code
 
     @staticmethod
     def _group_results(resp_data: List[Dict[str, Any]], records: Sequence[Dict[str, Any]], all_or_none: bool
@@ -494,9 +517,9 @@ def connect(**params: Any) -> Connection:
 
 
 def get_connection(alias: str, **params: Any) -> Connection:
-    if not hasattr(thread_connections, alias):
-        setattr(thread_connections, alias, connect(alias=alias, **params))
-    return cast(Connection, getattr(thread_connections, alias))
+    if alias not in thread_loc.connections:
+        connect(alias=alias, **params)
+    return cast(Connection, thread_loc.connections[alias])
 
 
 class Cursor(Generic[_TRow]):
@@ -529,7 +552,7 @@ class Cursor(Generic[_TRow]):
         self.arraysize = 1  # writable, but ignored finally
         # db api extensions
         self.rownumber = None             # type: Optional[int]  # cursor position index
-        self.connection = connection
+        self._connection = connection     # type: Connection
         self.messages = []                # type: List[ErrInfo]
         self.lastrowid = None  # TODO to be used for INSERT id, but insert is not implemented by cursor
         self.errorhandler = connection.errorhandler
@@ -546,6 +569,7 @@ class Cursor(Generic[_TRow]):
         self.qquery = None                # type: Optional[QQuery]
         self._raw_iterator = None         # type: Optional[Iterator[Dict[str, Any]]]
         self._iter = not_executed_yet()   # type: Iterator[_TRow]
+        self.closed = False
 
     # -- DB API methods
 
@@ -553,11 +577,15 @@ class Cursor(Generic[_TRow]):
 
     def close(self) -> None:
         self._clean()
+        self.closed = True
 
     def execute(self, soql: str, parameters: Optional[Iterable[Any]] = None, query_all: bool = False,
                 tooling_api: bool = False) -> None:
         self._clean()
         parameters = parameters or []
+        if 'use_debug_info' in self.connection.debug_verbs:
+            processed_soql = str(soql) % tuple(arg_to_soql(x) for x in parameters)
+            self.connection.debug_info['soql'] = (soql, parameters, processed_soql)
         sqltype = soql.split(None, 1)[0].upper()
         if sqltype == 'SELECT':
             self.execute_select(soql, parameters, query_all=query_all, tooling_api=tooling_api)
@@ -565,7 +593,7 @@ class Cursor(Generic[_TRow]):
             assert not tooling_api
             self.execute_explain(soql, parameters, query_all=query_all)
         else:
-            # INSERT UPDATE DELETE EXPLAIN
+            # INSERT UPDATE DELETE
             raise ProgrammingError("Unexpected command '{}'".format(sqltype))
 
     def executemany(self, operation: str, seq_of_parameters: Iterable[Iterable[Any]]) -> None:
@@ -592,8 +620,8 @@ class Cursor(Generic[_TRow]):
         # The undocumented structure of 'nextRecordsUrl' is
         #     'query/{query_id}-{offset}'  e.g.
         #     '/services/data/v44.0/query/01gM000000zr0N0IAI-3012'
-        warnings.warn("cursor.scroll is based on an undocumented info. Long "
-                      "jump in a big query may be unsupported.")
+        warnings.warn("cursor.scroll is based on an undocumented Salesforce info. "
+                      "Long jump in a big query may be unsupported.")
         assert mode in ('absolute', 'relative')
         # The possible offset range is from 0 to resp.json()['totalSize']
         # An exception IndexError should be raised if the offset is invalid [PEP 429]
@@ -625,6 +653,26 @@ class Cursor(Generic[_TRow]):
         return self._iter.__next__()
 
     # -- private methods
+
+    def __enter__(self) -> 'Cursor[_TRow]':
+        return self
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]], exc_value: Optional[BaseException], exc_tb: Any
+                 ) -> None:
+        try:
+            self.close()
+        except AttributeError:
+            pass
+
+    @property
+    def connection(self) -> Connection:
+        self.check()
+        return self._connection
+
+    def check(self) -> None:
+        self._connection.check()
+        if self.closed:
+            raise InterfaceError("Cursor is closed")
 
     def __iter__(self) -> 'Cursor[_TRow]':
         return self
@@ -682,7 +730,7 @@ class Cursor(Generic[_TRow]):
         self.rownumber = 0
         self._iter = iter(self._gen())
 
-    def query_more(self, nextRecordsUrl: str) -> None:  # pylint:disable=invalid-name
+    def query_more(self, nextRecordsUrl: str) -> None:
         self._check()
         if len(nextRecordsUrl) < 15500:
             ret = self.handle_api_exceptions('GET', nextRecordsUrl).json()
@@ -719,11 +767,41 @@ class Cursor(Generic[_TRow]):
     def handle_api_exceptions(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
         return self.connection.handle_api_exceptions(method, *url_parts, cursor_context=self, **kwargs)
 
+    # --- custom extension methods
 
-#                              The first two items are mandatory. (name, type)
+    def urls_request(self) -> Any:  # Dict[str, Any]
+        """Empty REST API request is useful after long inactivity before POST.
+
+        It ensures that the token will remain valid for at least half life time
+        of the new token. Otherwise it would be an awkward doubt if a timeout on
+        a lost connection is possible together with token expire in a post
+        request (insert).
+        """
+        ret = self.handle_api_exceptions('GET', '')
+        return ret.json()
+
+    def id_request(self) -> Any:  # Dict[str, Any]
+        """The Force.com Identity Service (return type dict of str)"""
+        # https://developer.salesforce.com/page/Digging_Deeper_into_OAuth_2.0_at_Salesforce.com?language=en&language=en#The_Force.com_Identity_Service
+        oauth = self.connection.sf_session.auth.get_auth()
+        if 'id' in oauth:
+            url = oauth['id']
+        else:
+            # dynamic auth without 'id' parameter
+            url = self.urls_request()['identity']
+        ret = self.handle_api_exceptions('GET', url)  # TODO
+        return ret.json()
+
+    def versions_request(self) -> Any:  # List[Dict[str, str]]
+        """List Available REST API Versions"""
+        return self.handle_api_exceptions('GET', '', api_ver='').json()
+
+
+# ---
+
 CursorDescription = NamedTuple(
     'CursorDescription', [
-        ('name', str),
+        ('name', str),          # The first two items are mandatory. (name, type)
         ('type_code', Any),
         ('display_size', bool),
         ('internal_size', int),
@@ -731,9 +809,9 @@ CursorDescription = NamedTuple(
         ('scale', int),
         ('null_ok', bool),
         ('default', Any),
-        ('params', dict),  # type: ignore[type-arg] # noqa
+        ('params', dict),  # type: ignore[type-arg]
     ])
-CursorDescription.__new__.__defaults__ = 7 * (None,)  # type: ignore[attr-defined]  # noqa
+CursorDescription.__new__.__defaults__ = 7 * (None,)  # type: ignore[attr-defined]
 
 
 def standard_errorhandler(connection: Connection, cursor: Optional[Cursor[Any]], errorclass: Type[Exception],
@@ -744,8 +822,9 @@ def standard_errorhandler(connection: Connection, cursor: Optional[Cursor[Any]],
         connection.messages.append((errorclass, errorvalue))
 
 
-def verbose_error_handler(connection: Connection, cursor: Optional[Cursor[Any]], errorclass: Type[Exception],
-                          errorvalue: Exception) -> None:  # pylint:disable=unused-argument
+def verbose_error_handler(connection: Connection, cursor: Optional[Cursor[Any]],  # pylint:disable=unused-argument
+                          errorclass: Type[Exception], errorvalue: Exception,  # pylint:disable=unused-argument
+                          ) -> None:
     pprint.pprint(errorvalue.__dict__)
 
 
@@ -769,25 +848,6 @@ def signalize_extensions() -> None:
     warnings.warn("DB-API extension cursor.__iter__(, SalesforceWarning) used")
     warnings.warn("DB-API extension cursor.lastrowid used", SalesforceWarning)
     warnings.warn("DB-API extension .errorhandler used", SalesforceWarning)
-
-
-# --  LOW LEVEL
-
-
-# pylint:disable=too-many-arguments
-def getaddrinfo_wrapper(host: Any, port: Any, family: int = socket.AF_INET,
-                        socktype: int = 0, proto: int = 0, flags: int = 0) -> Any:
-    """Patched 'getaddrinfo' with default family IPv4 (enabled by settings IPV4_ONLY=True)"""
-    return orig_getaddrinfo(host, port, family, socktype, proto, flags)
-# pylint:enable=too-many-arguments
-
-
-# patch to IPv4 if required and not patched by anything other yet
-if getattr(settings, 'IPV4_ONLY', False) and socket.getaddrinfo.__module__ in ('socket', '_socket'):
-    log.info("Patched socket to IPv4 only")
-    orig_getaddrinfo = socket.getaddrinfo
-    # replace the original socket.getaddrinfo by our version
-    socket.getaddrinfo = cast(Any, getaddrinfo_wrapper)
 
 
 # ----
@@ -878,10 +938,6 @@ register_conversion(decimal.Decimal, json_conv=float, subclass=True)
 # the type models.Model is registered from backend, because it is a Django type
 
 
-def merge_dict(dict_1: Dict[Any, Any], *other: Dict[Any, Any], **kw: Any) -> Dict[Any, Any]:
-    """Merge two or more dict including kw into result dict."""
-    tmp = dict_1.copy()
-    for x in other:
-        tmp.update(x)
-    tmp.update(kw)
-    return tmp
+def merge_dict(dict_1: Dict[Any, Any], **kw: Any) -> Dict[Any, Any]:
+    """Merge a dict with some keys and values (or another dict)."""
+    return {**dict_1, **kw}

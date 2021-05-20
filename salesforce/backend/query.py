@@ -9,7 +9,7 @@
 Salesforce object query and queryset customizations.  (like django.db.models.query)
 """
 from typing import Dict, Generic, Iterable, List, NoReturn, Optional, TYPE_CHECKING, Type, TypeVar
-import typing
+import typing  # pylint:disable=unused-import
 
 from django.conf import settings
 from django.db import NotSupportedError, models
@@ -71,7 +71,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
         """
         return self.sf(query_all=True)
 
-    def simple_select_related(self, *fields: str) -> NoReturn:
+    def simple_select_related(self, *fields: str) -> NoReturn:  # pylint:disable=no-self-use
         raise NotSupportedError("Obsoleted method .simple_select_related(), use .select_related() instead")
 
     def bulk_create(self, objs: Iterable[_T], batch_size: Optional[int] = None, ignore_conflicts: bool = False
@@ -126,7 +126,8 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             query.insert_values(fields, objs, raw=raw)
             return query.get_compiler(using=using).execute_sql(returning_fields)
     elif DJANGO_22_PLUS:
-        def _insert(self, objs, fields, return_id=False, raw=False, using=None, ignore_conflicts=False):  # type: ignore[misc] # noqa
+        def _insert(self, objs, fields, return_id=False, raw=False,  # type: ignore[misc] # noqa pylint:disable=arguments-differ
+                    using=None, ignore_conflicts=False):
             """
             Insert a new record for the given model. This provides an interface to
             the InsertQuery class and is how Model.save() is implemented.
@@ -139,7 +140,8 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             query.insert_values(fields, objs, raw=raw)
             return query.get_compiler(using=using).execute_sql(return_id)
     else:
-        def _insert(self, objs, fields, return_id=False, raw=False, using=None):  # type: ignore[misc] # noqa
+        def _insert(self, objs, fields, return_id=False,  # type: ignore[misc] # pylint:disable=arguments-differ
+                    raw=False, using=None):
             self._for_write = True
             if using is None:
                 using = self.db
@@ -165,7 +167,7 @@ def bulk_update_small(objs: 'typing.Collection[models.Model]', fields: Iterable[
         values['id'] = item.pk
         values['type_'] = item._meta.db_table
         records.append(values)
-        dbs.add(item._state.db)
+        dbs.add(item._state.db)  # pylint:disable=protected-access
     db = dbs.pop()
     if dbs or not is_sf_database(db):
         raise ValueError("All updated objects must be from the same Salesforce database.")

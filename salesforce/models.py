@@ -14,8 +14,9 @@ issue, but normal use of `db_column` and `db_table` parameters should work.
 """
 
 from inspect import isclass
-from typing import Any, Dict, Generic, Iterable, Type, TYPE_CHECKING, TypeVar  # noqa
+from typing import Any, Dict, Generic, Iterable, TYPE_CHECKING, TypeVar
 import logging
+import re
 import types
 import warnings
 
@@ -26,8 +27,16 @@ from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-w
 # from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
 
 from salesforce.defaults import DefaultedOnCreate, DEFAULTED_ON_CREATE
-from salesforce.fields import SalesforceAutoField, SF_PK, SfField, ForeignKey
+from salesforce.fields import (  # pylint:disable=useless-import-alias
+    SalesforceAutoField as SalesforceAutoField, SF_PK, SfField, ForeignKey as ForeignKey)
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
+from salesforce.fields import (  # noqa pylint:disable=useless-import-alias  # for other modules, but unused here
+    AutoField as AutoField, BigIntegerField as BigIntegerField, BooleanField as BooleanField,
+    CharField as CharField, DateField as DateField, DateTimeField as DateTimeField,
+    DecimalField as DecimalField, EmailField as EmailField, FloatField as FloatField,
+    IntegerField as IntegerField, OneToOneField as OneToOneField, SmallIntegerField as SmallIntegerField,
+    TextField as TextField, TimeField as TimeField, URLField as URLField, XJSONField as XJSONField,
+)
 from salesforce.fields import *  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 from salesforce.backend.indep import LazyField
 if not TYPE_CHECKING:
@@ -52,14 +61,14 @@ class SalesforceModelBase(ModelBase):
     and replaces it with code that defaults to the model name.
     """
     # pylint: disable=no-value-for-parameter
-    def __new__(cls, name, bases, attrs, **kwargs):  # type: ignore [no-untyped-def] # noqa
+    def __new__(cls, name, bases, attrs, **kwargs):  # type: ignore [no-untyped-def]
         attr_meta = attrs.get('Meta', None)
         supplied_db_table = getattr(attr_meta, 'db_table', None)
         if getattr(attr_meta, 'dynamic_field_patterns', None):
             pattern_module, dynamic_field_patterns = getattr(attr_meta, 'dynamic_field_patterns')
             make_dynamic_fields(pattern_module, dynamic_field_patterns, attrs)
             delattr(attr_meta, 'dynamic_field_patterns')
-        result = super(SalesforceModelBase, cls     # type: ignore [call-overload] # noqa
+        result = super(SalesforceModelBase, cls     # type: ignore [call-overload]
                        ).__new__(cls, name, bases, attrs, **kwargs)
         if models.Model not in bases and supplied_db_table is None:
             result._meta.db_table = result._meta.concrete_model._meta.object_name
@@ -77,9 +86,9 @@ class SalesforceModelBase(ModelBase):
             if hasattr(value.meta, 'sf_tooling_api_model'):
                 sf_tooling_api_model = value.meta.sf_tooling_api_model
                 delattr(value.meta, 'sf_tooling_api_model')
-            super(SalesforceModelBase, cls).add_to_class(name, value)  # type: ignore[misc] # noqa
-            setattr(cls._meta, 'sf_custom', sf_custom)  # type: ignore[attr-defined] # noqa
-            setattr(cls._meta, 'sf_tooling_api_model', sf_tooling_api_model)  # type: ignore[attr-defined] # noqa
+            super(SalesforceModelBase, cls).add_to_class(name, value)  # type: ignore[misc]
+            setattr(cls._meta, 'sf_custom', sf_custom)  # type: ignore[attr-defined]
+            setattr(cls._meta, 'sf_tooling_api_model', sf_tooling_api_model)  # type: ignore[attr-defined]
         else:
             if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
                 # this is for better migrations because: obj._constructor_args = (args, kwargs)
@@ -88,26 +97,24 @@ class SalesforceModelBase(ModelBase):
                 # value = manager.SalesforceManager()
                 value._constructor_args = _constructor_args
 
-            super(SalesforceModelBase, cls).add_to_class(name, value)  # type: ignore[misc] # noqa
+            super(SalesforceModelBase, cls).add_to_class(name, value)  # type: ignore[misc]
 
 
 if TYPE_CHECKING:
     class SalesforceModel(models.Model, Generic[_T], metaclass=SalesforceModelBase):
         _salesforce_object = ...
 
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:  # pylint:disable=super-init-not-called
             tmp = models.manager.Manager()  # type: models.manager.Manager[_T]
             self.objects = tmp
 
         class Meta:
             ...
 else:
-    # pylint:disable=too-few-public-methods
     class SalesforceModel(models.Model, metaclass=SalesforceModelBase):
         """
         Abstract model class for Salesforce objects.
         """
-        # pylint:disable=invalid-name
         _salesforce_object = 'standard'
 
         # If both managers are specified in this class, they should be different objects,
@@ -138,7 +145,7 @@ def make_dynamic_fields(pattern_module: types.ModuleType, dynamic_field_patterns
         pattern_module:  Module where to search additional fields settings.
            It is an imported module created by introspection (inspectdb),
            usually named `models_template.py`. (You will probably not add it
-           to version control for you because the diffs are frequent and huge.)
+           to version control because the diffs are frequent and huge.)
         dynamic_field_patterns:  List of regular expression for Salesforce
             field names that should be included automatically into the model.
         attrs:  Input/Output dictionary of model attributes. (no need to
@@ -167,8 +174,7 @@ def make_dynamic_fields(pattern_module: types.ModuleType, dynamic_field_patterns
             db_table = 'Contact'
             dynamic_patterns = exported.models, ['Last', '.*Date$']
     """
-    # pylint:disable=invalid-name,too-many-branches,too-many-locals
-    import re
+    # pylint:disable=too-many-branches,too-many-locals
     attr_meta = attrs['Meta']
     db_table = getattr(attr_meta, 'db_table', None)
     if not db_table:
@@ -222,9 +228,9 @@ def make_dynamic_fields(pattern_module: types.ModuleType, dynamic_field_patterns
             enabled = False
         if enabled:
             if issubclass(obj.klass, ForeignKey):
-                to = obj.kw['to']
+                to = obj.args[0]
                 if isclass(to) and issubclass(to, ModelTemplate):
-                    obj.kw['to'] = to.__name__
+                    obj.args = (to.__name__,) + obj.args[1:]
             field = obj.create()
             attrs[name] = field
     assert pattern_module  # maybe rarely locked while running inspectdb

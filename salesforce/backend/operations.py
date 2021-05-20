@@ -23,7 +23,7 @@ Default database operations, with unquoted names.
 """
 
 
-class DatabaseOperations(BaseDatabaseOperations):
+class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-public-methods
     # undefined abstract methods:
     #       date_extract_sql, date_interval_sql,     date_trunc_sql,  datetime_cast_date_sql
     #   datetime_extract_sql,                    datetime_trunc_sql,
@@ -33,30 +33,14 @@ class DatabaseOperations(BaseDatabaseOperations):
     # pylint:disable=abstract-method,no-self-use,unused-argument
 
     compiler_module = "salesforce.backend.compiler"
+    explain_prefix = 'EXPLAIN'
 
-    def connection_init(self):
-        pass
-
-    def sql_flush(self, style, tables, sequences, allow_cascade=False):
-        return []
+    def sql_flush(self, style, tables, *, reset_sequences=False, allow_cascade=False):
+        raise NotImplementedError('Salesforce does not allow to flush all tables.')
+        # return []
 
     def quote_name(self, name):
         return name
-
-    def value_to_db_datetime(self, value):
-        """
-        We let the JSON serializer handle dates for us.
-        """
-        return value
-
-    def value_to_db_date(self, value):
-        """
-        We let the JSON serializer handle dates for us.
-        """
-        return value
-
-    def last_insert_id(self, cursor, table_name, pk_name):
-        return cursor.lastrowid
 
     if DJANGO_30_PLUS:
 
@@ -134,7 +118,7 @@ class DatabaseOperations(BaseDatabaseOperations):
 
 
 def DefaultedOnCreate(*args, **kwargs):
-    import salesforce.defaults
+    import salesforce.defaults  # pylint:disable=import-outside-toplevel
     warnings.warn("Deprecated: the object DefaultedOnCreate should be imported from "
                   "salesforce.fields or salesforce.defaults or salesforce.models, "
                   "but not from salesforce.backend.operations")

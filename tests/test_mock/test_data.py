@@ -10,13 +10,13 @@ from tests.test_mock.mocksf import mock  # NOQA pylint:disable=unused-import
 class MockTest(MockTestCase):
     api_version = '20.0'
 
-    def setUp(self):
+    def setUp(self) -> None:
         super(MockTest, self).setUp()
         self.cursor = connections['salesforce'].cursor()
 
     # ---------------------
 
-    def test_version(self):
+    def test_version(self) -> None:
         "Get the Salesforce Version"
         self.mock_add_expected(
             MockJsonRequest(
@@ -29,12 +29,12 @@ class MockTest(MockTestCase):
                     }
                     ...
                 ]""",))
-        ret = self.cursor.versions_request()
+        ret = self.cursor.cursor.versions_request()
         self.assertEqual(ret, [{'version': '20.0', 'url': '/services/data/v20.0', 'label': "Winter '11"}])
 
     # ---------------------
 
-    def test_resources(self):
+    def test_resources(self) -> None:
         "Get a List of Resources"
         self.mock_add_expected(
             MockJsonRequest(
@@ -46,12 +46,12 @@ class MockTest(MockTestCase):
                     "recent" : "/services/data/v20.0/recent"
                     ...
                 }""",))
-        ret = self.cursor.urls_request()
+        ret = self.cursor.cursor.urls_request()
         self.assertEqual(ret['sobjects'], '/services/data/v20.0/sobjects')
 
     # ---------------------
 
-    def test_foo(self):
+    def test_foo(self) -> None:
         "..."
         self.mock_add_expected(
             MockJsonRequest(
@@ -60,7 +60,7 @@ class MockTest(MockTestCase):
                 {
                     ...
                 }""",))
-        ret = self.cursor.urls_request()
+        ret = self.cursor.cursor.urls_request()
         self.assertEqual(ret, {})
 
 # ---------------------
@@ -73,11 +73,11 @@ class SObjectCollectionsTest(MockTestCase):
     """
     api_version = '42.0'
 
-    def setUp(self):
+    def setUp(self) -> None:
         super(SObjectCollectionsTest, self).setUp()
         self.cursor = connections['salesforce'].cursor()  # TODO not important
 
-    def test_create(self):
+    def test_create(self) -> None:
         "Create Multiple Records with Fewer Round-Trips"
         # This test data were recorded from REST API documentation in August 2016
 
@@ -190,7 +190,7 @@ class SObjectCollectionsTest(MockTestCase):
         #    ret = self.cursor.db.connection.sobject_collections_request('POST', data, all_or_none=True)
 
 
-def parse_this():
+def parse_this() -> MockRequest:
     # OAuth error codes are in
     # https://support.salesforce.com/articleView?id=remoteaccess_errorcodes.htm&type=5
 
@@ -198,7 +198,7 @@ def parse_this():
     #   response.text.startswith('<response><faultcode>LOGIN_OAUTH_INVALID_TOKEN')
     return MockRequest(
         '...', request_type='application/xml',
-        status_code='401',
+        status_code=401,
         # response headers {'Sfdc-OAuth-Error': '1703',...}
         response_type='text/html; charset=UTF-8',
         req="""

@@ -12,7 +12,7 @@ Salesforce introspection code.  (like django.db.backends.*.introspection)
 import logging
 import re
 from collections import OrderedDict, namedtuple
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from django.db.backends.base.introspection import (
     BaseDatabaseIntrospection, FieldInfo as BaseFieldInfo, TableInfo,
@@ -20,19 +20,19 @@ from django.db.backends.base.introspection import (
 from django.utils.text import camel_case_to_spaces
 from django.db.backends.utils import CursorWrapper as _Cursor  # for typing
 # require "simplejson" to ensure that it is available to "requests" hook.
-import simplejson  # NOQA pylint:disable=unused-import
+import simplejson  # noqa pylint:disable=unused-import
 
 from salesforce.backend import DJANGO_32_PLUS
 import salesforce.fields
 
 log = logging.getLogger(__name__)
 
-FieldInfo = namedtuple(  # type:ignore[misc]
+FieldInfo = namedtuple(  # type: ignore[misc]
     'FieldInfo',
     'name type_code display_size internal_size precision scale null_ok default'
     + (' collation' if DJANGO_32_PLUS else '') +
     ' params'  # the last name 'params' is our extension for Salesforce
-)  # pylint:disable=invalid-name
+)
 assert FieldInfo._fields[:-1] == BaseFieldInfo._fields
 
 # these sObjects are not tables - ignore them
@@ -109,19 +109,21 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         self._converted_lead_status = None  # type: Optional[str]
         self.is_tooling_api = False  # modified by other modules
 
-    def filter_table_list(self, table_names):
+    def filter_table_list(self, table_names: Iterable[str]):
+        # value "self._table_list_cache" is never None after avaluating the property "self.table_list_cache"
+        assert self.table_list_cache and self._table_list_cache
         self._table_list_cache['sobjects'] = [
             x for x in self.table_list_cache['sobjects'] if x['name'] in table_names
         ]
         self._table_names = self._table_names.intersection(table_names)
-        unknown_tables = [x for x in table_names if x not in self.connection.introspection._table_names]
+        unknown_tables = [x for x in table_names if x not in self.connection.introspection._table_names]  # noqa pylint:disable=protected-access
         if unknown_tables:
             raise ValueError('These tables are not a part of the inspected Salesforce database: '
                              '{}'.format(unknown_tables))
 
-    def reset_table_list(self, table_names):
+    def reset_table_list(self) -> None:
         self._table_list_cache = None
-        self.table_list_cache
+        self.table_list_cache  # pylint:disable=pointless-statement
 
     @property
     def sobjects_prefix(self) -> str:
@@ -162,7 +164,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         result = [TableInfo(SfProtectName(x['name']), 't') for x in self.table_list_cache['sobjects']]
         return result
 
-    def get_field_params(self, field: Dict[str, Any]) -> Dict[str, Any]:
+    def get_field_params(self, field: Dict[str, Any]) -> Dict[str, Any]:  # pylint:disable=too-many-branches
         params = OrderedDict()
         if field['label'] and field['label'] != camel_case_to_spaces(re.sub('__c$', '', field['name'])).title():
             params['verbose_name'] = field['label']
@@ -195,7 +197,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 params['ref_comment'] = 'References to missing tables: {}'.format(self.references_to(field, all=True))
         return params
 
-    def references_to(self, field: Dict[str, Any], all: bool = False) -> Optional[List[str]]:
+    def references_to(self, field: Dict[str, Any], all: bool = False) -> Optional[List[str]]:  # pylint:disable=redefined-builtin # noqa
         if field['type'] != 'reference':
             return None
         reference_to_valid = [x for x in field['referenceTo'] if x in self._table_names]
@@ -221,7 +223,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             optional_kw = {'collation': None} if DJANGO_32_PLUS else {}
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
-            result.append(FieldInfo(  # type:ignore[call-arg] # problem with a conditional type
+            result.append(FieldInfo(  # type: ignore[call-arg] # problem with a conditional type
                 field['name'],       # name,
                 field['type'],       # type_code,
                 field['length'],     # display_size,
@@ -236,12 +238,14 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             ))
         return result
 
-    def get_sequences(self, cursor: _Cursor, table_name: str, table_fields=()) -> List[Dict[str, str]]:
+    # unused because feature 'supports_table_check_constraints == False'
+    def get_sequences(self, cursor: _Cursor, table_name: str, table_fields=()  # pragma: no cover
+                      ) -> List[Dict[str, str]]:
         pk_col = self.get_primary_key_column(cursor, table_name) or 'Id'
         return [{'table': table_name, 'column': pk_col}]
 
     # never used until real migrations will be supported
-    def get_key_columns(self, cursor: _Cursor, table_name: str) -> List[Tuple[str, str, str]]:
+    def get_key_columns(self, cursor: _Cursor, table_name: str) -> List[Tuple[str, str, str]]:  # pragma: no cover
         """
             (column_name, referenced_table_name, referenced_column_name)
         """
@@ -257,7 +261,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         representing all relationships to the given table. Indexes are 0-based.
         """
         # pylint:disable=global-statement,too-many-locals,too-many-nested-blocks,unused-argument
-        def table2model(table_name):
+        def table2model(table_name: str) -> str:
             return SfProtectName(table_name).title().replace(' ', '').replace('-', '')
         global last_introspection
         result = {}
@@ -346,8 +350,6 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             self._converted_lead_status = cur.fetchone()[0]
         return self._converted_lead_status
 
-# pylint:disable=too-few-public-methods
-
 
 class SymbolicModelsName:
     """A symbolic name from the `models` module.
@@ -390,10 +392,6 @@ class SfProtectName(str):
     def title(self) -> str:
         name = re.sub(r'__c$', '', self)   # fixed custom name
         return re.sub(r'([a-z0-9])(?=[A-Z])', r'\1_', name).title().replace('_', '')
-
-    @property
-    def name(self) -> 'SfProtectName':
-        return self
 
 
 reverse_models_names = dict((obj.value, obj) for obj in

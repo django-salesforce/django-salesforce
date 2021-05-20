@@ -1,11 +1,11 @@
 # indep - optional functions and classes that should be independent on the
 #         rest of salesforce to not make dependency graphs complicated
 import uuid
-from inspect import getcallargs
-from typing import Any, Callable, Dict, Type
+from inspect import signature
+from typing import Any, Callable, Dict, Tuple, Type
 
 from django.conf import settings
-from django.db.models import Field
+from django.db.models import Field  # pylint:disable=unused-import
 
 
 class LazyField:
@@ -19,20 +19,19 @@ class LazyField:
         """Instantiate the field type"""
         self.klass = klass
         self.kw = {}  # type: Dict[str, Any]
-        self.args = ()
+        self.args = ()  # type: Tuple[Any, ...]
         self.called = False
         self.counter = self.counter
 
     def __call__(self, *args: Any, **kwargs: Any) -> 'LazyField':
         """Instantiate a new field with options"""
         assert not self.called
-        obj = type(self)(self.klass)
         # check valid args and check duplicite
-        kw = getcallargs(self.klass.__init__, self, *args, **kwargs)  # pylint:disable=deprecated-method
-        del kw['self']
-        obj.args = kw.pop('args', ())
-        kw.update(kw.pop('kwargs', {}))
-        obj.kw = kw
+        # the method Signature.bind() prefers *args over **kwargs if it is ambiguaous
+        bound_args = signature(self.klass.__init__).bind(self, *args, **kwargs)
+        obj = type(self)(self.klass)
+        obj.args = bound_args.args[1:]
+        obj.kw = bound_args.kwargs
         setattr(type(self), 'counter', getattr(type(self), 'counter') + 1)
         return obj
 

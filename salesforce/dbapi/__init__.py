@@ -14,6 +14,7 @@ on Salesforce (but not on Django) has to be better for development,
 maintenance and testing.
 """
 
+import threading
 from typing import Any
 import logging
 log = logging.getLogger(__name__)
@@ -24,19 +25,15 @@ log = logging.getLogger(__name__)
 try:
     settings = None  # type: Any
     from django.conf import settings
-    from django.db import connections as connections
 except ImportError:
     # mock for some tests without a real Django
     import importlib
     import os
-    from threading import local
 
     settings = importlib.import_module(os.environ['DJANGO_SETTINGS_MODULE'])
 
     if not getattr(settings, 'SF_CAN_RUN_WITHOUT_DJANGO', False):
         raise
-
-    connections = local()
 
 
 def get_max_retries() -> int:
@@ -49,3 +46,7 @@ def get_max_retries() -> int:
     1: one retry
     """
     return getattr(settings, 'REQUESTS_MAX_RETRIES', 1)  # type: ignore[no-any-return] # noqa
+
+
+thread_loc = threading.local()
+thread_loc.connections = {}

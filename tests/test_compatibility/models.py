@@ -1,5 +1,6 @@
 """Backward compatible behaviour with primary key 'Id' and upper-case field names"""
 
+import datetime
 from salesforce import models
 from salesforce.models import SalesforceModel
 
@@ -37,3 +38,16 @@ class AtoB(SalesforceModel):
 
     class Meta:
         db_table = 'AtoB__c'
+
+
+class TryDefaults(SalesforceModel):
+    # this model doesn't exist in Salesforce, but it should be valid
+    # it is only for coverage of code by tests
+    example_str = models.CharField(max_length=50, default=models.DefaultedOnCreate('client'))
+    example_datetime = models.DateTimeField(default=models.DefaultedOnCreate(datetime.datetime(2021, 3, 31, 23, 59)))
+    # example_date = models.DateTimeField(default=models.DefaultedOnCreate(datetime.date(2021, 3, 31)))
+    example_time = models.DateTimeField(default=models.DefaultedOnCreate(datetime.time(23, 59)))
+    example_foreign_key = models.ForeignKey(User, on_delete=models.DO_NOTHING, default=models.DefaultedOnCreate())
+    # ,default=models.DefaultedOnCreate(User(pk='000000000000000')))
+    example_bool = models.BooleanField(default=models.DefaultedOnCreate(True))
+    example_bool_2 = models.BooleanField(default=models.DefaultedOnCreate(False))

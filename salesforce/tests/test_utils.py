@@ -52,7 +52,7 @@ class UtilitiesTest(TestCase):
                 # and Opportunity objects.
                 try:
                     account = Account.objects.get(pk=ret['accountId'])
-                except Exception:  # pylint:disable=broad-except
+                except Exception:  # pylint:disable=broad-except        # pragma: no cover
                     # this allows to recycle the account even if the queryset code is broken
                     account = Account(pk=ret['accountId'])
                     account._state.db = lead._state.db

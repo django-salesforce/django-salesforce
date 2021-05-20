@@ -20,8 +20,9 @@ Interesting not yet implemented ideas are:
   - Could be useful for tests with realistic data on a database with rollback.
 """
 
-from typing import Generic, TYPE_CHECKING
+from typing import Any, Generic, TYPE_CHECKING
 from django.db import models, router
+from django.db.backends.base.base import BaseDatabaseWrapper as DatabaseWrapper
 
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.backend.indep import get_sf_alt_pk
@@ -38,29 +39,31 @@ class SfCharAutoField(SalesforceAutoField):
     # db_returning = False  # this was a simple fix for Django >= 3.0,
     #                       # but a fix by "_do_insert()" is better.
 
-    def get_internal_type(self):
-        return None
+    def get_internal_type(self) -> str:
+        return 'CharField'
 
-    def db_type(self, connection):
+    def db_type(self, connection: DatabaseWrapper) -> str:
         if connection.vendor != 'salesforce':
             # it is 'varchar(32)'
             return models.CharField(max_length=32).db_type(connection=connection)
+        return 'AutoField'
 
-    def rel_db_type(self, connection):
+    def rel_db_type(self, connection: DatabaseWrapper) -> str:
         if connection.vendor != 'salesforce':
             return models.CharField(max_length=32).db_type(connection=connection)
+        return 'AutoField'
 
 
 if TYPE_CHECKING:
-    class SalesforceModel(models.Model, Generic[_T],  # type:ignore[no-redef] # pylint:disable=function-redefined #noqa
+    class SalesforceModel(models.Model, Generic[_T],  # type: ignore[no-redef] # pylint:disable=function-redefined
                           metaclass=SalesforceModelBase):
         _salesforce_object = ...
 
-        def __init__(self, *args, **kwargs) -> None:  # pylint:disable=super-init-not-called
+        def __init__(self, *args: Any, **kwargs: Any) -> None:  # pylint:disable=super-init-not-called
             tmp = models.manager.Manager()  # type: models.manager.Manager[_T]
             self.objects = tmp
 else:
-    # pylint:disable=too-few-public-methods,function-redefined
+    # pylint:disable=function-redefined
     class SalesforceModel(models.Model, metaclass=SalesforceModelBase):  # pylint:disable=function-redefined
         """
         Abstract model class for Salesforce objects that can be saved to other db.
@@ -69,7 +72,6 @@ else:
         a big problem if we don't check inheritance but only the '_salesforce_object'
         attribute or if we use only this or only the original implementation.)
         """
-        # pylint:disable=invalid-name
         _salesforce_object = 'extended'
         objects = manager.SalesforceManager()  # type: manager.SalesforceManager[_T]
 
@@ -91,7 +93,7 @@ else:
 
         if DJANGO_30_PLUS:
 
-            def _do_insert(self, manager, using, fields, returning_fields, raw):
+            def _do_insert(self, manager, using, fields, returning_fields, raw):  # pylint:disable=redefined-outer-name
                 # the check "is_sf_database(using)" is used for something unexpected
                 if self.pk and not is_sf_database(using):
                     returning_fields = []
