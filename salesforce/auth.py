@@ -14,7 +14,7 @@ All data are ascii str.
 from abc import ABC, abstractmethod
 from html import escape as html_escape
 from subprocess import PIPE, Popen
-from typing import Any, Callable, cast, Dict, Optional, Sequence, Type
+from typing import Any, Callable, cast, Dict, List, Optional, Sequence, Type
 from urllib.parse import parse_qs, urlencode, urlsplit
 import base64
 import hashlib
@@ -32,7 +32,7 @@ from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
 from salesforce import API_VERSION
-from salesforce.dbapi import thread_loc, get_max_retries
+from salesforce.dbapi import get_thread_connections, get_max_retries
 from salesforce.dbapi.exceptions import (
     SalesforceAuthError,  # error from SFCD
     OperationalError,     # authentication error by invalid usage
@@ -104,7 +104,7 @@ class SalesforceAuth(AuthBase, ABC):
             self.settings_dict = settings_dict
         else:
             assert db_alias
-            self.settings_dict = thread_loc.connections[db_alias].settings_dict
+            self.settings_dict = get_thread_connections()[db_alias].settings_dict
 
         self.db_alias = db_alias
         self.validate_settings()
@@ -232,7 +232,7 @@ class DynamicAuth(SalesforceAuth):
             connections['salesforce'].sf_auth.dynamic_start(access_token, instance_url)
     """
 
-    required_fields = []
+    required_fields = []  # type: List[str]
 
     def dynamic_start(self, access_token: str, instance_url: str, **kw: Any) -> None:
         """

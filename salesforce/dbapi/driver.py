@@ -30,7 +30,7 @@ from requests.adapters import HTTPAdapter
 
 import salesforce
 from salesforce.auth import SalesforceAuth, time_statistics as time_statistics
-from salesforce.dbapi import get_max_retries, thread_loc
+from salesforce.dbapi import get_max_retries, get_thread_connections
 from salesforce.dbapi import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
     Error, InterfaceError as InterfaceError, DatabaseError as DatabaseError, DataError, OperationalError,
@@ -97,7 +97,7 @@ class RawConnection:
     """
     parameters:
         settings_dict:  like settings.DATABASES['salesforce'] in Django
-        alias:          important if the authentication should be shared for more thread
+        alias:          important if the authentication should be shared for more threads
         errorhandler: function with following signature
             ``errorhandler(connection, cursor, errorclass, errorvalue)``
         use_introspection: bool
@@ -117,12 +117,13 @@ class RawConnection:
     def __init__(self, settings_dict: Dict[str, Any], alias: Optional[str] = None,
                  errorhandler: Optional[ErrorHandler] = None, use_introspection: Optional[bool] = None) -> None:
 
-        if alias in thread_loc.connections:
-            del thread_loc.connections[alias]
+        thread_connections = get_thread_connections()
+        if alias in thread_connections:
+            del thread_connections[alias]
             raise InterfaceError(
                 "Tried to open more database connections with the same alias {alias} from the same thread."
                 "The previous connection has been closed now however.".format(alias=alias))
-        thread_loc.connections[alias] = self
+        thread_connections[alias] = self
 
         # private members:
         self.alias = cast(str, alias)
@@ -192,7 +193,7 @@ class RawConnection:
             pass
 
     def check(self) -> None:
-        if self != thread_loc.connections.get(self.alias):
+        if self != get_thread_connections().get(self.alias):
             raise InterfaceError("The connection has been closed previously")
 
     @property
@@ -517,9 +518,9 @@ def connect(**params: Any) -> Connection:
 
 
 def get_connection(alias: str, **params: Any) -> Connection:
-    if alias not in thread_loc.connections:
+    if alias not in get_thread_connections():
         connect(alias=alias, **params)
-    return cast(Connection, thread_loc.connections[alias])
+    return cast(Connection, get_thread_connections()[alias])
 
 
 class Cursor(Generic[_TRow]):

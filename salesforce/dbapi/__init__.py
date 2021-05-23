@@ -15,7 +15,7 @@ maintenance and testing.
 """
 
 import threading
-from typing import Any
+from typing import Any, Dict, Optional
 import logging
 log = logging.getLogger(__name__)
 
@@ -48,5 +48,10 @@ def get_max_retries() -> int:
     return getattr(settings, 'REQUESTS_MAX_RETRIES', 1)  # type: ignore[no-any-return] # noqa
 
 
+def get_thread_connections() -> Dict[Optional[str], Any]:
+    if not hasattr(thread_loc, 'connections'):
+        thread_loc.connections = {}
+    return thread_loc.connections
+
+
 thread_loc = threading.local()
-thread_loc.connections = {}

@@ -6,7 +6,7 @@ from unittest import expectedFailure
 from unittest import mock  # pylint:disable=unused-import  # NOQA
 from typing import Any, Callable, List, Iterator, Optional, Tuple, Type, TYPE_CHECKING
 
-from salesforce.dbapi import thread_loc, driver
+from salesforce.dbapi import get_thread_connections, driver
 TestMethod = Callable[..., None]
 
 
@@ -23,7 +23,7 @@ class QuietSalesforceErrors:
     It works on the default Salesforce connection. It can be nested.
     """
     def __init__(self, alias: Optional[str], verbs: Optional[List[str]] = None):
-        self.connection = thread_loc.connections[alias or 'salesforce']
+        self.connection = get_thread_connections()[alias or 'salesforce']
         self.verbs = verbs or []
         self.save_debug_verbs = None
 
