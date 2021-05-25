@@ -194,6 +194,6 @@ LOGGING = {
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'  # not important for Salesforce, but for Django warnings
 
 try:
-    from salesforce.testrunner.local_settings import *  # type: ignore[import] # NOQA pylint:disable=unused-wildcard-import,wildcard-import
+    from salesforce.testrunner.local_settings import *  # noqa pylint:disable=unused-wildcard-import,wildcard-import
 except ImportError:
     pass

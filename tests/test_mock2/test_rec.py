@@ -12,6 +12,7 @@ from tests.test_mock.mocksf import MockJsonRequest, MockRequest, MockTestCase  #
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.exceptions import SalesforceError
 
+
 @override_settings(SF_MOCK_MODE='mixed')
 class TestMock(MockTestCase):
     api_ver = '51.0'
