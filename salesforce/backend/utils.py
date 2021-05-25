@@ -16,6 +16,7 @@ from salesforce.dbapi.driver import (
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
 if not DJANGO_30_PLUS:
+    # a "do nothing" stub for Django < 3.0, where is no decorator @async_unsafe
     F = TypeVar('F', bound=Callable)
     F2 = TypeVar('F2', bound=Callable)
 
@@ -39,7 +40,9 @@ if not DJANGO_30_PLUS:
         return decorator
 else:
 
-    from django.utils.asyncio import async_unsafe  # type: ignore[import,no-redef] # pylint:disable=unused-import,ungrouped-imports # noqa
+    from django.utils.asyncio import (  # type: ignore[import,no-redef] # noqa pylint:disable=unused-import,ungrouped-imports
+        async_unsafe
+    )
 
 log = logging.getLogger(__name__)
 
