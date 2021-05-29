@@ -87,7 +87,7 @@ def extract_values_inner(row, query):
                 continue
             if hasattr(value, 'default'):
                 warnings.warn(
-                    "The field '{}.{}' has not been saved again with DEFAULTED_ON_CREATE value. "
+                    "The field '{}.{}' has been saved again with DEFAULTED_ON_CREATE value. "
                     "It is better to set a real value to it or to refresh it from the database "
                     "or restrict updated fields explicitly by 'update_fields='."
                     .format(field.model._meta.object_name, field.name),
