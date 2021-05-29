@@ -14,7 +14,6 @@ import logging
 import pprint
 import re
 import sys
-import threading
 import time
 import warnings
 from itertools import islice
@@ -81,8 +80,6 @@ SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'
 # ---
 
 request_count = 0  # global counter
-
-connect_lock = threading.Lock()
 
 ErrInfo = Tuple[Type[Exception], Exception]
 
@@ -205,19 +202,18 @@ class RawConnection:
 
     def make_session(self) -> None:
         """Authenticate and get the name of assigned SFDC data server"""
-        with connect_lock:
-            if self._sf_session is None:
-                auth_data = self.sf_auth.authenticate_and_cache()
-                sf_instance_url = auth_data.get('instance_url')
-                sf_session = SfSession()
-                sf_session.auth = self.sf_auth  # a name for "requests" package
-                if sf_instance_url and sf_instance_url not in sf_session.adapters:
-                    # a repeated mount to the same prefix would cause a warning about unclosed SSL socket
-                    sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
-                    sf_session.mount(sf_instance_url, sf_requests_adapter)
-                # Additional headers work, but the same are added automatically by "requests' package.
-                # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
-                self._sf_session = sf_session
+        if self._sf_session is None:
+            auth_data = self.sf_auth.authenticate_and_cache()
+            sf_instance_url = auth_data.get('instance_url')
+            sf_session = SfSession()
+            sf_session.auth = self.sf_auth  # a name for "requests" package
+            if sf_instance_url and sf_instance_url not in sf_session.adapters:
+                # a repeated mount to the same prefix would cause a warning about unclosed SSL socket
+                sf_requests_adapter = HTTPAdapter(max_retries=get_max_retries())
+                sf_session.mount(sf_instance_url, sf_requests_adapter)
+            # Additional headers work, but the same are added automatically by "requests' package.
+            # sf_session.header = {'accept-encoding': 'gzip, deflate', 'connection': 'keep-alive'}
+            self._sf_session = sf_session
 
     def rest_api_url(self, *url_parts_: str, **kwargs: Any) -> str:
         """Join the URL of REST_API
