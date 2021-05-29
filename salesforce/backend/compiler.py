@@ -18,7 +18,7 @@ from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import # required for activation of lookups
 from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
-from salesforce.dbapi.driver import DatabaseError
+from salesforce.dbapi import DatabaseError
 from salesforce.dbapi.subselect import AGGREGATION_WORDS
 # pylint:disable=no-else-return,too-many-branches,too-many-locals
 

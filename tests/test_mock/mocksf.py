@@ -53,8 +53,9 @@ from django.conf import settings
 
 import salesforce
 # from salesforce.dbapi import settings
-from salesforce.auth import MockAuth, SalesforceAuth, TimeStatistics
+from salesforce.auth import MockAuth, SalesforceAuth
 from salesforce.dbapi import driver
+from salesforce.dbapi.common import TimeStatistics
 from salesforce.dbapi.driver import SfSession
 from salesforce.dbapi.exceptions import DatabaseError
 from salesforce.backend import DJANGO_22_PLUS

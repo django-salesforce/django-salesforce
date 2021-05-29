@@ -6,7 +6,8 @@ from unittest import expectedFailure
 from unittest import mock  # pylint:disable=unused-import  # NOQA
 from typing import Any, Callable, List, Iterator, Optional, Tuple, Type, TYPE_CHECKING
 
-from salesforce.dbapi import get_thread_connections, driver
+from salesforce.dbapi import driver
+from salesforce.dbapi.common import get_thread_connections
 TestMethod = Callable[..., None]
 
 
