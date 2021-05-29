@@ -1,7 +1,6 @@
 # Django settings for testrunner project.
 from typing import Any, Dict, Optional, Tuple, Union
 import os
-from django.utils.crypto import get_random_string
 
 DEBUG = True
 
@@ -88,8 +87,8 @@ STATICFILES_FINDERS = (
     # 'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
-# get_random_string() is good for tests, but not for multiprocessing in production
-SECRET_KEY = get_random_string(length=32)
+# Make this unique, and don't share it with anybody.
+SECRET_KEY = '6$y&o(28l)#o1_2rafojb_&zxi*jnivkv)ygj#!01kt0ypsxe$'  # used only in tests
 
 SITE_ID = 1
 
