@@ -1,12 +1,3 @@
-"""
-Dummy Salesforce driver that simulates part of DB API 2.0
-
-https://www.python.org/dev/peps/pep-0249/
-
-It can run without Django installed, but still Django is the main purpose.
-
-Low level code for Salesforce is also here.
-"""
 import datetime
 import decimal
 import json
@@ -28,9 +19,9 @@ import requests
 from requests.adapters import HTTPAdapter
 
 import salesforce
-from salesforce.auth import SalesforceAuth, time_statistics as time_statistics
-from salesforce.dbapi import get_max_retries, get_thread_connections
-from salesforce.dbapi import settings  # i.e. django.conf.settings
+from salesforce.auth import SalesforceAuth
+from salesforce.dbapi.common import get_max_retries, get_thread_connections, time_statistics as time_statistics
+from salesforce.dbapi.common import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
     Error, InterfaceError as InterfaceError, DatabaseError as DatabaseError, DataError, OperationalError,
     IntegrityError, InternalError, ProgrammingError, NotSupportedError, SalesforceError as SalesforceError,
@@ -44,32 +35,6 @@ except ImportError:
     beatbox = None
 
 log = logging.getLogger(__name__)
-
-# -- API global constants
-
-apilevel = "2.0"  # see https://www.python.org/dev/peps/pep-0249
-
-# Every thread should use its own database connection, because waiting
-# on a network connection for query response would be a bottle neck within
-# REST API.
-
-# Two thread-safety models are possible:
-
-# Create the connection by `connect(**params)` if you use it with Django or
-# with another app that has its own thread safe connection pool. and
-# create the connection by connect(**params).
-# threadsafety = 1
-
-# Or create and access the connection by `get_connection(alias, **params)`
-# if the pool should be managed by this driver. Then you can expect:
-threadsafety = 2
-
-# (Both variants allow multitenant architecture with dynamic authentication
-# where a thread can frequently change the organization domain that it serves.)
-
-
-# This paramstyle uses '%s' parameters.
-paramstyle = 'format'
 
 # --- private global constants
 
@@ -94,7 +59,7 @@ class RawConnection:
     """
     parameters:
         settings_dict:  like settings.DATABASES['salesforce'] in Django
-        alias:          important if the authentication should be shared for more threads
+        alias:          important if the authentication is statis and should be shared for more threads
         errorhandler: function with following signature
             ``errorhandler(connection, cursor, errorclass, errorvalue)``
         use_introspection: bool

@@ -23,7 +23,6 @@ import json
 import logging
 import os
 import re
-import time
 import threading
 import urllib
 
@@ -32,7 +31,7 @@ from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase
 
 from salesforce import API_VERSION
-from salesforce.dbapi import get_thread_connections, get_max_retries
+from salesforce.dbapi.common import get_thread_connections, get_max_retries, time_statistics
 from salesforce.dbapi.exceptions import (
     SalesforceAuthError,  # error from SFCD
     OperationalError,     # authentication error by invalid usage
@@ -658,28 +657,4 @@ class MockAuth(SalesforceAuth):
         pass
 
 
-class TimeStatistics:
-
-    def __init__(self, expiration: float = 300) -> None:
-        self.expiration = expiration
-        self.data = {}  # type: Dict[str, float]
-
-    def update_callback(self, url: str, callback: Optional[Callable[[], Any]] = None) -> None:
-        """Update the statistics for the domain"""
-        domain = self.domain(url)
-        last_req = self.data.get(domain, 0)
-        t_new = time.time()
-        do_call = (t_new - last_req > self.expiration)
-        self.data[domain] = t_new
-        if do_call and callback:
-            callback()
-
-    @staticmethod
-    def domain(url: str) -> str:
-        match = re.match(r'^(?:https|mock)://([^/]*)/?', url)
-        assert match
-        return match.groups()[0]
-
-
-time_statistics = TimeStatistics(300)
 quote_no_plus = urllib.parse.quote  # type: Callable[[str, str, str, str], str]
