@@ -96,9 +96,9 @@ class SalesforceQuery(Query, Generic[_T]):
                     True or False.)
 
             `edge_updates`: methods update() and delete() on querysets with related tables
-                could be unsafe if the queryset is not checked. It safe to rewrite it to two
+                could be unsafe if the queryset is not checked. It is safe to rewrite it to two
                 nested querysets or if it is correct then if can be allowed by `edge_updates`.
-                default is False.
+                The default value is False.
         """
         clone = self.clone()
         clone.sf_params = copy.copy(self.sf_params)

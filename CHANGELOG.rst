@@ -16,6 +16,8 @@ experimental.
 
 [3.2.1] Unpublished
 -------------------
+* Add: Implement queryset.bulk_update() method #236
+* Fix: SOQL command in queryset.raw() is supported case insensitive
 * Fix: ManyToMany relationships compiled also with GROUP BY, HAVING, ORDER BY. #264
 * Fix: Lookup IsNull() in 'queryset.filter(...=None).update(...)' #283
 * Fix: DefaultedOnCreate() to work with new sqlite3 and new Django

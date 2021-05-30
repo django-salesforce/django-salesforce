@@ -351,6 +351,7 @@ class RawConnection:
         of error, to be possible to use the same error hanler with a clear
         message as with an individual request.
         """
+        # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_sobjects_collections.htm
         post_data = {'compositeRequest': data, 'allOrNone': True}
         resp = self.handle_api_exceptions('POST', 'composite', json=post_data)
         comp_resp = resp.json()['compositeResponse']
@@ -410,6 +411,7 @@ class RawConnection:
                                     records: Sequence[Dict[str, Any]],
                                     all_or_none: bool = True
                                     ) -> List[str]:
+        # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_composite_composite.htm
         # pylint:disable=too-many-locals
         assert method in ('GET', 'POST', 'PATCH', 'DELETE')
         if method == 'DELETE':
