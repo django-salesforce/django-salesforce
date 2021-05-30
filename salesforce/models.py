@@ -127,8 +127,7 @@ else:
             abstract = True
             base_manager_name = 'base_manager'
 
-        # Name of primary key 'Id' can be easily changed to 'id'
-        # by "settings.SF_PK='id'".
+        # Name of primary key 'id' can be changed to 'Id' by "settings.SF_PK='id'".
         id = SalesforceAutoField(primary_key=True, name=SF_PK, db_column='Id',
                                  verbose_name='ID', auto_created=True)
 

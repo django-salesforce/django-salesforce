@@ -107,6 +107,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         self._converted_lead_status = None  # type: Optional[str]
         self.is_tooling_api = False  # modified by other modules
 
+    # -- custom methods
+
     def filter_table_list(self, table_names: Iterable[str]):
         # value "self._table_list_cache" is never None after avaluating the property "self.table_list_cache"
         assert self.table_list_cache and self._table_list_cache
@@ -157,10 +159,18 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             del field_list[field_list.index(id_field)]
         return self._table_description_cache[table]
 
+    # -- standard methods
+
+    def identifier_converter(self, name: str) -> str:
+        """A conversion to the identifier for the purposes of comparison."""
+        return name
+
     def get_table_list(self, cursor: _Cursor) -> List[TableInfo]:
         "Returns a list of table names in the current database."
         result = [TableInfo(SfProtectName(x['name']), 't') for x in self.table_list_cache['sobjects']]
         return result
+
+    # -- custom methods
 
     def get_field_params(self, field: Dict[str, Any]) -> Dict[str, Any]:  # pylint:disable=too-many-branches
         params = OrderedDict()
@@ -202,6 +212,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         reference_to_invalid = ['-{}'.format(x) for x in field['referenceTo'] if x not in self._table_names]
         return reference_to_valid + reference_to_invalid if all else reference_to_valid
 
+    # -- standard methods
+
     def get_table_description(self, cursor: _Cursor, table_name: str) -> List[FieldInfo]:
         "Returns a description of the table, with the DB-API cursor.description interface."
         # pylint:disable=too-many-locals,unused-argument
@@ -241,17 +253,6 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                       ) -> List[Dict[str, str]]:
         pk_col = self.get_primary_key_column(cursor, table_name) or 'Id'
         return [{'table': table_name, 'column': pk_col}]
-
-    # never used until real migrations will be supported
-    def get_key_columns(self, cursor: _Cursor, table_name: str) -> List[Tuple[str, str, str]]:  # pragma: no cover
-        """
-            (column_name, referenced_table_name, referenced_column_name)
-        """
-        key_columns = []
-        for name, item in self.get_constraints(cursor, table_name).items():
-            if not item['primary_key']:
-                key_columns.append((name,) + item['foreign_key'])
-        return key_columns
 
     def get_relations(self, cursor: _Cursor, table_name: str) -> Dict[str, Tuple[str, 'SfProtectName']]:
         """
@@ -304,6 +305,17 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         )
         return result
 
+    # never used until real migrations will be supported
+    def get_key_columns(self, cursor: _Cursor, table_name: str) -> List[Tuple[str, str, str]]:  # pragma: no cover
+        """
+            (column_name, referenced_table_name, referenced_column_name)
+        """
+        key_columns = []
+        for name, item in self.get_constraints(cursor, table_name).items():
+            if not item['primary_key']:
+                key_columns.append((name,) + item['foreign_key'])
+        return key_columns
+
     def get_constraints(self, cursor: _Cursor, table_name: str) -> Dict[str, Dict[str, Any]]:
         """
         Retrieves any constraints or keys (unique, pk, fk, check, index)
@@ -331,6 +343,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                     check=False,
                 )
         return result
+
+    # -- custom methods
 
     def get_additional_meta(self, table_name: str) -> List[str]:
         item = [x for x in self.table_list_cache['sobjects'] if x['name'] == table_name][0]
