@@ -138,6 +138,8 @@ class Contact(SalesforceModel):
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
                               default=models.DefaultedOnCreate(User),
                               related_name='contact_owner_set')
+    if getattr(settings, 'SF_CUSTOM_INSTALLED', False):
+        vs = models.DecimalField(custom=True, unique=True, max_digits=10, decimal_places=0, blank=True, null=True)
 
     def __str__(self):
         return self.name
@@ -429,6 +431,12 @@ class Campaign(models.Model):
     name = models.CharField(max_length=80)
     number_sent = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Num Sent', blank=True, null=True)
     parent = models.ForeignKey('Campaign', on_delete=models.DO_NOTHING, blank=True, null=True)
+
+
+class CampaignMember(models.Model):
+    campaign = models.ForeignKey(Campaign, on_delete=models.DO_NOTHING)
+    contact = models.ForeignKey(Contact, on_delete=models.DO_NOTHING)
+    status = models.CharField(max_length=40)
 
 
 # this model will be removed to test removing in migrations
