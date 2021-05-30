@@ -182,6 +182,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     # -- custom methods
 
+    def get_field_names(self, table_name: str) -> List[str]:
+        return [x['name'] for x in self.table_description_cache(table_name)['fields']]
+
     def get_field_params(self, field: Dict[str, Any]) -> Dict[str, Any]:  # pylint:disable=too-many-branches
         params = OrderedDict()
         if field['label'] and field['label'] != camel_case_to_spaces(re.sub('__c$', '', field['name'])).title():
