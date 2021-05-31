@@ -127,3 +127,4 @@ class Test(unittest.TestCase):
         # obj._state.__dict__.update({'db': 'salesforce', 'adding': False})
         obj.donor_class = None  # None can be saved to Salesforce, even if null=False
         obj.save()
+        obj.delete()
