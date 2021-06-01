@@ -59,6 +59,11 @@ def sf_tables() -> List[str]:
     return _sf_tables
 
 
+# The field name 'id' or 'Id' must be never used in Python code in tests that
+# should work with both variants of SF_PK. The universale name 'pk' should be
+# used insted.
+# The name 'Id' should be used in SQL code, but the name 'id' would work just as well.
+
 def refresh(obj: _M) -> _M:
     """Get the same object refreshed from the same db.
     """
@@ -590,7 +595,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_queryset_update_foreign_key(self) -> None:
         contact = Contact.objects.exclude(account=None)[0]
-        Contact.objects.filter(Id=contact.Id).update(account=contact.account)
+        Contact.objects.filter(pk=contact.pk).update(account=contact.account)
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_queryset_none_filter_update(self) -> None:
@@ -1040,7 +1045,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_only_fields(self) -> None:
         """Verify that access to "only" fields doesn't require a request, but others do.
         """
-        # print([(x.id, x.last_name) for x in Contact.objects.only('last_name').order_by('id')[:2]])
+        # print([(x.pk, x.last_name) for x in Contact.objects.only('last_name').order_by('pk')[:2]])
         with self.lazy_assert_n_requests(0):
             sql = User.objects.only('Username').query.get_compiler('salesforce').as_sql()[0]
             self.assertEqual(sql, 'SELECT User.Id, User.Username FROM User')
