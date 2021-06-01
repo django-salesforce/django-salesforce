@@ -188,6 +188,7 @@ LOGGING = {
 
 # Name of primary key - by default 'id'. The value 'Id' was the default for
 # version "django-salesforce < 0.5".
+# The value SF_PK can not be changed after any migration for Salesforce has been created
 # SF_PK = 'Id'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'  # not important for Salesforce, but for Django warnings
