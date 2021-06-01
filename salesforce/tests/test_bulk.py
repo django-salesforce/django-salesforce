@@ -111,6 +111,9 @@ class BulkCreateTest(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.contacts = list(Contact.objects.filter(name__startswith='sf_test')[:2])
+        if len(cls.contacts) < 2:
+            cls.contacts.extend([Contact.objects.create(last_name='sf_test  {}'.format(i))
+                                 for i in range(2 - len(cls.contacts))])
         campaigns = Campaign.objects.all()[:1]
         if campaigns:
             cls.campaign = campaigns[0]
