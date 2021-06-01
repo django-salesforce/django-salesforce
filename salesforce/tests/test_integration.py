@@ -114,9 +114,10 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_raw_translations(self) -> None:
         """Read a Contact raw and translate it to Lead fields."""
         contact = Contact.objects.all()[0]
+        # `translation` dictionary keys must be lowercase now
         false_lead_raw = list(Lead.objects.raw(
             "SELECT Id, LastName FROM Contact WHERE Id=%s", params=[contact.pk],
-            translations={'LastName': 'Company'}))
+            translations={'lastname': 'Company'}))
         self.assertEqual(len(false_lead_raw), 1)
         self.assertEqual(false_lead_raw[0].Company, contact.last_name)
 
