@@ -27,7 +27,10 @@ def get_soap_client(db_alias: str, client_class: 'beatbox.PythonClient' = None) 
     if not beatbox:
         raise InterfaceError("To use SOAP API, you'll need to install the Beatbox package.")
     if client_class is None:
-        client_class = beatbox.PythonClient
+        if hasattr(beatbox, 'PythonClient'):
+            client_class = beatbox.PythonClient  # https://github.com/davisagli/beatbox
+        else:
+            client_class = beatbox.Client        # https://github.com/superfell/Beatbox
     soap_client = client_class()
 
     # authenticate if known that not authenticated
