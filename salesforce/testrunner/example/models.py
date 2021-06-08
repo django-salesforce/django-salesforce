@@ -276,7 +276,7 @@ class SalesforceParentModel(SalesforceModel):
     # This is not a custom field because is not defined in a custom model.
     # The API name is therefore 'Name'.
     name = models.CharField(max_length=80)
-    last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+    last_modified_date = models.DateTimeField(sf_read_only=models.READ_ONLY, auto_now=True)
     # This model is not custom because it has not an explicit attribute
     # `custom = True` in Meta and also has not a `db_table` that ends with
     # '__c'.
@@ -299,7 +299,7 @@ class Opportunity(SalesforceModel):
     )
     close_date = models.DateField()
     stage = models.CharField(max_length=255, db_column='StageName')  # e.g. "Prospecting"
-    created_date = models.DateTimeField(sf_read_only=models.READ_ONLY)
+    created_date = models.DateTimeField(sf_read_only=models.READ_ONLY, auto_now_add=True)
     amount = models.DecimalField(max_digits=18, decimal_places=2, blank=True, null=True)
     probability = models.DecimalField(
         max_digits=3, decimal_places=0, verbose_name='Probability (%)',

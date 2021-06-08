@@ -75,10 +75,11 @@ def extract_values_inner(row, query):
     fields = query.model._meta.fields
     for _, field in enumerate(fields):
         sf_read_only = getattr(field, 'sf_read_only', 0)
+        is_date_auto = getattr(field, 'auto_now', False) or getattr(field, 'auto_now_add', False)
         if field.get_internal_type() == 'AutoField':
             continue
         if isinstance(query, subqueries.UpdateQuery):
-            if (sf_read_only & NOT_UPDATEABLE) != 0:
+            if (sf_read_only & NOT_UPDATEABLE) != 0 or is_date_auto:
                 continue
             value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
             if value_or_empty:
