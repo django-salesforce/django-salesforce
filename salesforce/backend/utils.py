@@ -3,6 +3,7 @@ CursorWrapper (like django.db.backends.utils)
 """
 import decimal
 import logging
+import re
 import warnings
 from itertools import islice
 from typing import Any, Callable, Iterable, Iterator, List, Tuple, TypeVar, Union, overload
@@ -50,8 +51,6 @@ log = logging.getLogger(__name__)
 
 
 DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
-
-MIGRATIONS_QUERY_TO_BE_IGNORED = "SELECT django_migrations.app, django_migrations.name FROM django_migrations"
 
 
 def extract_values(query):
@@ -142,6 +141,7 @@ class CursorWrapper:
         """
         Send a query to the Salesforce API.
         """
+        print('** execute', q, args)
         # pylint:disable=too-many-branches
         self.rowcount = None
         response = None
@@ -212,27 +212,27 @@ class CursorWrapper:
         return response
 
     def execute_select(self, soql: str, args) -> None:
-        if soql != MIGRATIONS_QUERY_TO_BE_IGNORED:
+        query_all = False
+        tooling_api = False
+        if soql.endswith('FROM django_migrations'):
+            # "SELECT django_migrations.id, django_migrations.app, django_migrations.name, django_migrations.applied "
+            # "FROM django_migrations"
+            soql = re.sub(r'(\.(?:app\b|name|applied))', '\\1__c', soql)
+            soql = soql.replace('django_migrations', 'django_migrations__c')
+        elif self.query:
             # normal query
-            query_all = self.query and self.query.sf_params.query_all
-            tooling_api = self.query and self.query.model._meta.sf_tooling_api_model
-            self.cursor.execute(soql, args, query_all=query_all, tooling_api=tooling_api)
-        else:
-            # Nothing queried about django_migrations to SFDC and immediately responded that
-            # nothing about migration status is recorded in SFDC.
-            #
-            # That is required by "makemigrations" to accept this query.
-            # Empty results are possible.
-            # (It could be eventually replaced by: "SELECT app__c, Name FROM django_migrations__c")
-            self.cursor._iter = iter([])  # pylint:disable=protected-access
-            self.cursor.rowcount = 0
+            query_all = self.query.sf_params.query_all
+            tooling_api = self.query.model._meta.sf_tooling_api_model
+        self.cursor.execute(soql, args, query_all=query_all, tooling_api=tooling_api)
         self.rowcount = self.cursor.rowcount
 
     def execute_insert(self, query):
         table = query.model._meta.db_table
-        if table == 'django_migrations':
-            return
         post_data = extract_values(query)
+        if table == 'django_migrations':
+            import pdb; pdb.set_trace()
+            table = 'django_migrations__c'
+            post_data = [{k + '__c': v for k, v in row.items()} for row in post_data]
         obj_url = self.db.connection.rest_api_url('sobjects', table, relative=True)
         if len(post_data) == 1:
             # single object

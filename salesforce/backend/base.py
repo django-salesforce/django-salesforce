@@ -43,6 +43,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     vendor = 'salesforce'
     display_name = 'Salesforce'
 
+    data_types = {
+        'BooleanField': 'Checkbox',
+        'CharField': 'Text',
+        'DateTimeField': 'DateTime',
+    }
+
     # Operators [contains, startswithm, endswith] are incorrectly
     # case insensitive like sqlite3.
     operators = {

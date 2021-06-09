@@ -138,6 +138,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             response = self.connection.connection.handle_api_exceptions('GET', self.sobjects_prefix + '/')
             # charset is detected from headers by requests package
             self._table_list_cache = response.json(object_pairs_hook=OrderedDict)
+            for x in self._table_list_cache['sobjects']:
+                if x['name'] == 'django_migrations__c':
+                    x['name'] = 'django_migrations'
             self._table_list_cache['sobjects'] = [
                 x for x in self._table_list_cache['sobjects']
                 if x['name'] not in PROBLEMATIC_OBJECTS and not x['name'].endswith('ChangeEvent')

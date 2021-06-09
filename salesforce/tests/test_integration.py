@@ -410,7 +410,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         test_lead = Lead(FirstName="User", LastName="Unittest Inserts",
                          Email='test-djsf-inserts-email@example.com',
                          Company="Some company")
-        test_lead.save()
+        with self.lazy_assert_n_requests(1):
+            test_lead.save()
         try:
             self.assertEqual(len(test_lead.pk), 18)
         finally:

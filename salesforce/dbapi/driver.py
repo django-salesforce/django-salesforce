@@ -519,7 +519,7 @@ class Cursor(Generic[_TRow]):
         self.rownumber = None             # type: Optional[int]  # cursor position index
         self._connection = connection     # type: Connection
         self.messages = []                # type: List[ErrInfo]
-        self.lastrowid = None  # TODO to be used for INSERT id, but insert is not implemented by cursor
+        self.lastrowid = None             # type: Optional[List[str]]
         self.errorhandler = connection.errorhandler
         # private
         assert row_type in (list, dict, None)
@@ -554,6 +554,9 @@ class Cursor(Generic[_TRow]):
         sqltype = soql.split(None, 1)[0].upper()
         if sqltype == 'SELECT':
             self.execute_select(soql, parameters, query_all=query_all, tooling_api=tooling_api)
+        elif sqltype == 'INSERT':
+            assert not tooling_api
+            self.execute_select(soql, parameters)
         elif sqltype == 'EXPLAIN':
             assert not tooling_api
             self.execute_explain(soql, parameters, query_all=query_all)
@@ -705,6 +708,37 @@ class Cursor(Generic[_TRow]):
         self.rowcount = ret['totalSize']  # may be more accurate than the initial approximate value
         self._chunk = ret['records']
         self._next_records_url = ret.get('nextRecordsUrl')
+
+    def execute_insert(self, sql: str, args: Sequence[Any], all_or_none: bool = False) -> None:
+        pattern = r'INSERT INTO (\w+) \(((?:\w+, )*\w+)\) VALUES \(((?:%s, )*%s)\)'
+        match = re.match(pattern, sql)
+        assert match
+        table, fields_str, param_symb = match.groups()
+        fields = fields_str.split(', ')
+        assert param_symb == ', '.join(len(fields) * ['%s'])
+        import pdb; pdb.set_trace()
+        if not isinstance(args[0], (list, tuple)):
+            args = [args]
+        assert len(args[0]) == len(fields)
+        post_data = [dict(zip(fields, x)) for x in args]
+        # post_data = [extract_values_inner(x, self.query) for x in post_data]
+
+        if len(args) == 1:
+            # single object
+            headers = {'Content-Type': 'application/json'}
+            url = self.connection.rest_api_url('sobjects', table, relative=True)
+            log.debug('INSERT %s%s', table, post_data)
+            ret = self.handle_api_exceptions('POST', url, headers=headers, data=json.dumps(post_data),
+                                             _cursor=self)
+            import pdb; pdb.set_trace()
+            assert ret.status_code == 201
+        else:
+            # bulk by REST
+            records = [merge_dict(x, type_=table) for x in post_data]
+            ret2 = self.connection.sobject_collections_request('POST', records, all_or_none=all_or_none)
+            self.lastrowid = ret2
+            self.rowcount = len(ret2)
+            return
 
     def _check(self) -> None:
         if not self.connection:

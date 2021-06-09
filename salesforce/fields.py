@@ -136,8 +136,6 @@ class SfField(models.Field):
         assert not self.sf_namespace or self.sf_custom is not False
         if kwargs.get('default') is DEFAULTED_ON_CREATE:
             kwargs['default'] = DefaultedOnCreate(internal_type=self.get_internal_type())
-        if self.sf_managed:
-            kwargs.setdefault('managed', True)
         super().__init__(*args, **kwargs)
 
     def deconstruct(self) -> Tuple[Any, Any, Any, Any]:
@@ -159,6 +157,8 @@ class SfField(models.Field):
                     kwargs['db_column'] = column
                 elif 'db_column' in kwargs:
                     del kwargs['db_column']
+        if self.sf_managed:
+            kwargs['sf_managed'] = True
         return name, path, args, kwargs
 
     def get_attname_column(self) -> Tuple[str, str]:

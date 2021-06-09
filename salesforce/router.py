@@ -83,7 +83,7 @@ class ModelRouter:
             # SF models can be migrated if SALESFORCE_DB_ALIAS is e.g.
             # a sqlite3 database or any non-SF database.
             if not (is_sf_database(db) or db == self.sf_alias):
-                return False
+                return model._meta.sf_managed  # type: ignore[attr-defined,no-any-return]
         else:
             if is_sf_database(db) or self.sf_alias != 'default' and db == self.sf_alias:
                 return False
