@@ -307,6 +307,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         try:
             contact.email_bounced_date = now
             contact.save()
+            if not settings.USE_TZ:
+                now = timezone.make_aware(now, timezone.get_current_timezone())
             self.assertEqual(refresh(contact).email_bounced_date, now)
         finally:
             contact.delete()
@@ -318,6 +320,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         contact = Contact(first_name='Joe', last_name='Freelancer', email_bounced_date=now)
         contact.save()
         try:
+            if not settings.USE_TZ:
+                now = timezone.make_aware(now, timezone.get_current_timezone())
             self.assertEqual(refresh(contact).email_bounced_date, now)
         finally:
             contact.delete()

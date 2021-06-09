@@ -1,6 +1,7 @@
 """Test djangoBackward compatible behaviour with primary key 'Id'."""
 import datetime
 import pytz
+from django.conf import settings
 from django.test import TestCase
 
 from salesforce import defaults
@@ -93,7 +94,8 @@ class DefaultDbTest(TestCase):
         obj = TryDefaults.objects.create()
         obj = TryDefaults.objects.get(pk=obj.pk)
         self.assertEqual(obj.example_str, 'client')
-        self.assertEqual(obj.example_datetime_2, datetime.datetime(2021, 3, 31, 23, 59, tzinfo=pytz.utc))
+        tzinfo = pytz.utc if settings.USE_TZ else None
+        self.assertEqual(obj.example_datetime_2, datetime.datetime(2021, 3, 31, 23, 59, tzinfo=tzinfo))
         self.assertEqual(obj.example_time, datetime.time(23, 59))
         self.assertIs(obj.example_bool, True)
         self.assertIs(obj.example_bool_3, False)

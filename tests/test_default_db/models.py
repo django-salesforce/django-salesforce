@@ -1,10 +1,15 @@
 import datetime
 import pytz
+from django.conf import settings
 from salesforce import models, models_extend
 
+tzinfo = pytz.utc if settings.USE_TZ else None
 
-def now_aware():
-    return pytz.utc.localize(datetime.datetime.utcnow())
+
+def now_aware_or_naive():
+    if settings.USE_TZ:
+        return pytz.utc.localize(datetime.datetime.utcnow())
+    return datetime.datetime.utcnow()
 
 
 class Account(models_extend.SalesforceModel):
@@ -31,10 +36,10 @@ class TryDefaults(models.SalesforceModel):
     example_bool = models.BooleanField(default=models.DefaultedOnCreate(True), db_column='ExampleBool__c')
     example_bool_2 = models.BooleanField(db_column='ExampleBool2__c', default=models.DefaultedOnCreate(False))
     example_bool_3 = models.BooleanField(db_column='ExampleBool3__c', default=models.DEFAULTED_ON_CREATE)
-    example_datetime = models.DateTimeField(default=models.DefaultedOnCreate(now_aware),
+    example_datetime = models.DateTimeField(default=models.DefaultedOnCreate(now_aware_or_naive),
                                             db_column='ExampleDatetime__c')
     example_datetime_2 = models.DateTimeField(
-        default=models.DefaultedOnCreate(datetime.datetime(2021, 3, 31, 23, 59, tzinfo=pytz.utc)))
+        default=models.DefaultedOnCreate(datetime.datetime(2021, 3, 31, 23, 59)))
     example_date = models.DateField(default=datetime.date.today)
     example_date_2 = models.DateField(default=models.DefaultedOnCreate(datetime.date(2021, 3, 31)))
     example_foreign_key = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
