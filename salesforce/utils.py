@@ -30,7 +30,7 @@ def get_soap_client(db_alias: str, client_class: 'beatbox.PythonClient' = None) 
         if hasattr(beatbox, 'PythonClient'):
             client_class = beatbox.PythonClient  # https://github.com/davisagli/beatbox
         else:
-            client_class = beatbox.Client        # https://github.com/superfell/Beatbox
+            client_class = beatbox.Client        # https://github.com/superfell/Beatbox # pylint:disable=no-member
     soap_client = client_class()
 
     # authenticate if known that not authenticated

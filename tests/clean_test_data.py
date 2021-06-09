@@ -25,8 +25,8 @@ class CleanTests(TestCase):
             Opportunity.objects.filter(name__in=('test op', 'Example Opportunity')).delete(),
             Product.objects.filter(Name__startswith='test ').delete(),
         ]
-        if 'django_Test__c' not in sf_tables():
-            ret.append(Test.objects.filter(test_text='sf_test').delete())
+        if 'django_Test__c' in sf_tables():
+            ret.append(Test.objects.all().delete())
         print("Deleted objects={}".format(sum(x[0] for x in ret)))
 
     def test_clean_all_test_data(self):
