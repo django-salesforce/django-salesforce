@@ -39,7 +39,7 @@ class TryDefaults(models.SalesforceModel):
     example_datetime = models.DateTimeField(default=models.DefaultedOnCreate(now_aware_or_naive),
                                             db_column='ExampleDatetime__c')
     example_datetime_2 = models.DateTimeField(
-        default=models.DefaultedOnCreate(datetime.datetime(2021, 3, 31, 23, 59)))
+        default=models.DefaultedOnCreate(datetime.datetime(2021, 3, 31, 23, 59, tzinfo=tzinfo)))
     example_date = models.DateField(default=datetime.date.today)
     example_date_2 = models.DateField(default=models.DefaultedOnCreate(datetime.date(2021, 3, 31)))
     example_foreign_key = models.ForeignKey(Account, on_delete=models.DO_NOTHING,
