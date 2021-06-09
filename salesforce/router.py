@@ -79,7 +79,7 @@ class ModelRouter:
             # SalesforceModels
             model = hints.get('model')
 
-        if hasattr(model, '_salesforce_object'):
+        if model and hasattr(model, '_salesforce_object'):
             # SF models can be migrated if SALESFORCE_DB_ALIAS is e.g.
             # a sqlite3 database or any non-SF database.
             if not (is_sf_database(db) or db == self.sf_alias):

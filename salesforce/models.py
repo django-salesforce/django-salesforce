@@ -80,15 +80,22 @@ class SalesforceModelBase(ModelBase):
         if name == '_meta':
             sf_custom = False
             sf_tooling_api_model = False
+            sf_managed = False
             if hasattr(value.meta, 'custom'):
                 sf_custom = value.meta.custom
                 delattr(value.meta, 'custom')
             if hasattr(value.meta, 'sf_tooling_api_model'):
                 sf_tooling_api_model = value.meta.sf_tooling_api_model
                 delattr(value.meta, 'sf_tooling_api_model')
+            if hasattr(value.meta, 'sf_managed'):
+                sf_managed = value.meta.sf_managed
+                delattr(value.meta, 'sf_managed')
+
             super(SalesforceModelBase, cls).add_to_class(name, value)  # type: ignore[misc]
-            setattr(cls._meta, 'sf_custom', sf_custom)  # type: ignore[attr-defined]
+
+            setattr(cls._meta, 'sf_custom', sf_custom)                        # type: ignore[attr-defined]
             setattr(cls._meta, 'sf_tooling_api_model', sf_tooling_api_model)  # type: ignore[attr-defined]
+            setattr(cls._meta, 'sf_managed', sf_managed)                      # type: ignore[attr-defined]
         else:
             if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
                 # this is for better migrations because: obj._constructor_args = (args, kwargs)

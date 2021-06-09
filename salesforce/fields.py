@@ -65,6 +65,7 @@ class SalesforceAutoField(fields.AutoField):
     default_error_messages = {
         'invalid': _('This value must be a valid Salesforce ID.'),
     }
+    sf_managed = False
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         # The parameter 'sf_read_only' is not used normally, maybe only if someone

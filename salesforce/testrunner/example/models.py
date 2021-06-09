@@ -144,6 +144,9 @@ class Contact(SalesforceModel):
     if getattr(settings, 'SF_CUSTOM_INSTALLED', False):
         vs = models.DecimalField(custom=True, unique=True, max_digits=10, decimal_places=0, blank=True, null=True)
 
+    class Meta:
+        sf_managed = True
+
     def __str__(self):
         return self.name
 

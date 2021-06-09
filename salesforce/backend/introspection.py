@@ -352,6 +352,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                     columns=[field['name']],
                     primary_key=(field['type'] == 'id'),
                     unique=field['unique'],
+                    db_index=field['unique'],
                     foreign_key=(field['referenceTo'], 'id'),
                     check=False,
                 )
