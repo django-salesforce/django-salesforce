@@ -9,6 +9,7 @@
 Salesforce introspection code.  (like django.db.backends.*.introspection)
 """
 
+import json
 import logging
 import re
 from collections import OrderedDict, namedtuple
@@ -200,13 +201,26 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             # use symbolic names NOT_UPDATEABLE, NOT_CREATABLE, READ_ONLY instead of 1, 2, 3
             sf_read_only = (0 if field['updateable'] else 1) | (0 if field['createable'] else 2)
             params['sf_read_only'] = reverse_models_names[sf_read_only]
-        if field['defaultedOnCreate'] and field['createable']:
-            if field['defaultValue'] is None:
-                params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
+
+        if field['defaultValue'] is not None:
+            default: Optional[SymbolicModelsName] = field['defaultValue']
+        elif field['defaultValueFormula']:
+            if re.match(r'^(?:(?:-?[0-9]+(?:\.[0-9]+)?)|(?:"(?:[^"]|\")*"))$', field['defaultValueFormula']):
+                # (int, float, str)
+                default = json.loads(field['defaultValueFormula'])
+            elif field['defaultValueFormula'].lower() in ('true', 'false'):
+                # bool not important - probably not used
+                default = field['defaultValueFormula'].lower() == 'true'
             else:
-                params['default'] = field['defaultValue']
-        elif field['defaultValue'] is not None:
-            params['default'] = field['defaultValue']
+                default = None
+                params['ref_comment'] = 'Warning: not a simple defaultValueFormula'
+        else:
+            default = None
+        if default is not None:
+            params['default'] = default
+        elif field['defaultedOnCreate'] and field['createable']:
+            params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
+
         if field['inlineHelpText']:
             params['help_text'] = field['inlineHelpText']
         if field['picklistValues']:
