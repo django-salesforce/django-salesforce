@@ -272,7 +272,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                     duplicate.save()
             except salesforce.backend.base.SalesforceError as exc:
                 # TODO uncovered line, baybe bug
-                self.assertEqual(exc.data[0]['errorCode'], 'DUPLICATE_VALUE')  # type: ignore
+                self.assertEqual(exc.data[0]['errorCode'], 'DUPLICATE_VALUE')  # type: ignore[index]
             else:
                 self.assertRaises(salesforce.backend.base.SalesforceError, duplicate.save)
 

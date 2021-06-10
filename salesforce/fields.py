@@ -207,7 +207,9 @@ class SfField(models.Field):
 
 class CharField(SfField, models.CharField):
     """CharField with sf_read_only attribute for Salesforce."""
-    pass
+
+    def db_type(self, connection: Any) -> str:
+        return 'Text' if not self.choices else 'PickList'
 
 
 class EmailField(SfField, models.EmailField):
