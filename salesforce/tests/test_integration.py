@@ -230,7 +230,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
         # the same without 'not_in' lookup by two requests and exclude()
         with self.lazy_assert_n_requests(2):
-            sub_ids = Contact.objects.filter(account_id__gt='').values_list('account_id', flat=True)[:100]
+            sub_ids = Contact.objects.exclude(account=None).values_list('account_id', flat=True)[:100]
             qs = Account.objects.exclude(pk__in=list(sub_ids)).select_related('Owner')
             list(qs)
         soql = str(qs.query)
