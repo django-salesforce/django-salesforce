@@ -1,7 +1,7 @@
 """
 Module for models for a combined storage with a Salesforce and normal database.
 
-usage e.g.:
+usage purposes e.g.:
   - Backup salesforce objects including its primary keys.
   - Use the backup in queries, including ForeignKeys related correctly to the same database.
   - Update the object in Salesfoce to the original values from backup object
@@ -31,6 +31,8 @@ from salesforce.models import SalesforceAutoField, SalesforceModelBase, SF_PK, _
 from salesforce.router import is_sf_database
 if not TYPE_CHECKING:
     from salesforce.backend import manager
+
+__all__ = ('SalesforceModel',)
 
 
 class SfCharAutoField(SalesforceAutoField):
