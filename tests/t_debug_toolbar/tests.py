@@ -56,7 +56,7 @@ class DebugToolbarAdminTest(TestCase):
     @expectedFailure
     # This fails currently: not enough valid data for this web form because Lead object
     # has many reguired fields. This Lead object is not a good example for web tests.
-    # However i works if all required fields are filled manually.
+    # However it works if all required fields are filled manually.
     def test_defaulted_bool_create(self):
         resp = self.client.post('/admin/example/lead/add/', dict(Company='test_' + uid, LastName='some lastname'))
         self.assertEqual(resp.status_code, 302, "Object not created")
