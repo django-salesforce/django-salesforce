@@ -12,7 +12,10 @@ import django
 from django.conf import settings
 
 from salesforce import models
-from salesforce.models import SalesforceModel as SalesforceModelParent
+if not getattr(settings, 'SF_EXTENDED_MODELS', False):
+    from salesforce.models import SalesforceModel as SalesforceModelParent
+else:
+    from salesforce.models_extend import SalesforceModel as SalesforceModelParent
 
 
 SALUTATIONS = [
@@ -249,7 +252,7 @@ class ChargentOrder(SalesforceModel):
 
     Name = models.CharField(max_length=255, db_column='Name')
     # example of automatically recognized name  db_column='ChargentOrders__Balance_Due__c'
-    Balance_Due = models.CharField(max_length=255)
+    Balance_Due = models.CharField(max_length=255, sf_namespace='ChargentOrders')
 
 
 class CronTrigger(SalesforceModel):
@@ -285,7 +288,7 @@ class SalesforceParentModel(SalesforceModel):
         abstract = True
 
 
-class Note(models.Model):
+class Note(SalesforceModel):
     title = models.CharField(max_length=80)
     body = models.TextField(null=True)
     parent_id = models.CharField(max_length=18)
@@ -333,7 +336,7 @@ except ImportError:
     models_template = None
 
 
-class Organization(models.Model):
+class Organization(SalesforceModel):
     name = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE)
     division = models.CharField(max_length=80, sf_read_only=models.NOT_CREATEABLE, blank=True)
     organization_type = models.CharField(max_length=40, verbose_name='Edition',
@@ -378,26 +381,26 @@ class Test(SalesforceParentModel):
     """
     # This is a custom field because it is defined in the custom model.
     # The API name is therefore 'TestField__c'
-    test_text = models.CharField(max_length=40)
-    test_bool = models.BooleanField(default=False)
-    contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING)
+    test_text = models.CharField(max_length=40, db_column='TestText__c')
+    test_bool = models.BooleanField(default=False, db_column='TestBool__c')
+    contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING, custom=True)
 
     class Meta:
         custom = True
         db_table = 'django_Test__c'
 
 
-class TestDetail(models.Model):
+class TestDetail(SalesforceModel):
     parent = models.ForeignKey(Test, models.DO_NOTHING, db_column='Parent__c', sf_read_only=models.NOT_UPDATEABLE)
     contact = models.ForeignKey('Contact', models.DO_NOTHING, db_column='Contact__c', blank=True, null=True)
 
-    class Meta(models.Model.Meta):
+    class Meta(SalesforceModel.Meta):
         db_table = 'django_Test_detail__c'
 
 
 # example of relationship from builtin object to custom object
 
-class Attachment(models.Model):
+class Attachment(SalesforceModel):
     # A standard SFDC object that can have a relationship to any custom object
     name = models.CharField(max_length=80)
     parent = models.ForeignKey(Test, sf_read_only=models.NOT_UPDATEABLE, on_delete=models.DO_NOTHING)
@@ -405,7 +408,7 @@ class Attachment(models.Model):
     body = models.TextField()
 
 
-class Task(models.Model):
+class Task(SalesforceModel):
     # Reference to tables [Contact, Lead]
     who = models.ForeignKey(Lead, on_delete=models.DO_NOTHING, blank=True, null=True)
     # Refer
@@ -414,7 +417,7 @@ class Task(models.Model):
 
 # OneToOneField
 
-class ApexEmailNotification(models.Model):
+class ApexEmailNotification(SalesforceModel):
     """Stores who should be notified when unhandled Apex exceptions occur.
 
     The target can be more Salesforce users or an external email addresses.
@@ -427,13 +430,13 @@ class ApexEmailNotification(models.Model):
     email = models.CharField(unique=True, max_length=255, verbose_name='email', blank=True)
 
 
-class Campaign(models.Model):
+class Campaign(SalesforceModel):
     name = models.CharField(max_length=80)
     number_sent = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Num Sent', blank=True, null=True)
     parent = models.ForeignKey('Campaign', on_delete=models.DO_NOTHING, blank=True, null=True)
 
 
-class CampaignMember(models.Model):
+class CampaignMember(SalesforceModel):
     campaign = models.ForeignKey(Campaign, on_delete=models.DO_NOTHING)
     contact = models.ForeignKey(Contact, on_delete=models.DO_NOTHING)
     status = models.CharField(max_length=40)

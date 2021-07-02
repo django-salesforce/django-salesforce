@@ -11,7 +11,7 @@ from salesforce import fields, models
 from salesforce.dbapi import driver
 from salesforce.testrunner.example.models import (
         Contact, Opportunity, OpportunityContactRole, ChargentOrder)
-from salesforce.backend.test_helpers import LazyTestMixin
+from salesforce.backend.test_helpers import default_is_sf, LazyTestMixin, skipUnless
 from salesforce.backend.utils import sobj_id
 
 
@@ -120,6 +120,7 @@ class TestQueryCompiler(TestCase, LazyTestMixin):
                          r'\(SELECT Opportunity\.Id FROM Opportunity WHERE Opportunity\.StageName = %s ?\)')
         self.assertRegex(sql, 'OpportunityContactRole.Role = %s')
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_subquery_filter_on_child(self):
         """Filter with a Subquery() on a child object.
 
@@ -151,6 +152,7 @@ class TestTopologyCompiler(TestCase):
         ret = compiler.query_topology(alias_map_items)
         self.assertEqual(ret, expected)
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_topology_compiler(self):
         # Contact.objects.all()
         # SELECT Contact.Id FROM Contact

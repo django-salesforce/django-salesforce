@@ -93,7 +93,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                 Contact.objects.create(first_name='sf_test demo', last_name='Test %d' % i,
                                        account=some_accounts[0])
 
-    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_raw(self) -> None:
         """Read two contacts by raw.
 
@@ -191,6 +190,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             test_contact.delete()
             test_account.delete()
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_select_related_child_subquery(self) -> None:
         """Test select_related with a subquery by children objects.
         """
@@ -204,6 +204,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             self.assertGreater(len(list(qs)), 0)
             self.assertGreater(qs[0].Owner.Username, '')
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_select_related_child_filter(self) -> None:
         """Test select_related with a subquery by children objects.
         """
@@ -215,6 +216,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         soql = str(qs.query)
         self.assertTrue(soql.endswith("FROM Account WHERE Account.Id IN (SELECT Contact.AccountId FROM Contact)"))
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_select_related_child_exclude(self) -> None:
         """Test select_related with a subquery by children objects.
         """
@@ -242,8 +244,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_one_to_one_field(self) -> None:
-        # test 1a is unique field
-        self.assertEqual(ApexEmailNotification._meta.get_field('user').unique, True)
+        # test that a OneToOneField is a unique field
+        self.assertEqual(ApexEmailNotification._meta.get_field('user').unique, True)  # type: ignore[attr-defined]
 
         current_sf_user = User.objects.get(Username=current_user)
         orig_objects = list(ApexEmailNotification.objects.filter(
@@ -529,7 +531,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_account_insert_delete(self) -> None:
         """Test insert and delete an account (normal or personal SF config)
         """
-        if settings.PERSON_ACCOUNT_ACTIVATED:
+        if getattr(settings, 'PERSON_ACCOUNT_ACTIVATED', False):
             test_account = Account(FirstName='IntegrationTest',  # type: ignore[misc] # skip this branch
                                    LastName='Account')
         else:
@@ -683,6 +685,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """
         len(list(Contact.objects.raw("SELECT Id, FirstName FROM Contact WHERE FirstName='nonsense'")))
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_range_simple(self) -> None:
         """Test simple range filters".
         """
@@ -691,6 +694,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertIn("(Contact.Name >= %s AND Contact.Name <= %s)", soql)
         len(qs)
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_range_combined(self) -> None:
         """Test combined filters "a OR b AND c".
         """
@@ -699,6 +703,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertIn("Contact.Name = %s OR (Contact.Name >= %s AND Contact.Name <= %s)", soql)
         len(qs)
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_range_lookup(self) -> None:
         """Get the test opportunity record by range condition.
         """
@@ -861,6 +866,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertEqual(set(list(qs)[0].keys()), {'account_id', 'cnt'})
         list(qs)
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_having_compile(self) -> None:
         """Test GROUP BY ... HAVING compile for a ManyToMany field"""
         qs = (Contact.objects.values('testdetail__parent__test_bool').order_by()
@@ -1178,6 +1184,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             test_task.delete()
             test_lead.delete()
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_many2many_relationship(self) -> None:
         """Verify that the related set of Many2Many relationship works
 
@@ -1243,11 +1250,13 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
         self.assertEqual(Contact.objects.using(None)._db, alias)
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_dynamic_fields(self) -> None:
         """Test that fields can be copied dynamically from other model"""
         self.assertTrue(models_template)
         self.assertIn('@', Organization.objects.get().created_by.Username)
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_big_soql(self) -> None:
         """Test that a query of length almost 100000 is possible"""
         contact = Contact.objects.all()[0]
@@ -1265,6 +1274,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertEqual(len(Contact.objects.all()[1:1]), 0)
 
     @skipUnless(DJANGO_21_PLUS, "Method .explain() is only in Django >= 2.1")
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_select_explan(self) -> None:
         """Test EXPLAIN SELECT ..."""
         qs = Contact.objects.all()[:2]

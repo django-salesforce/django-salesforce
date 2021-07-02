@@ -7,25 +7,37 @@ from django.conf import settings
 from django.test import TestCase
 from salesforce import SalesforceError
 from salesforce.backend import DJANGO_22_PLUS
-from salesforce.backend.test_helpers import skipUnless
+from salesforce.backend.test_helpers import default_is_sf, skipUnless
 from salesforce.testrunner.example.models import Campaign, CampaignMember, Contact
 
 SF_CUSTOM_INSTALLED = getattr(settings, 'SF_CUSTOM_INSTALLED', False)
+
+
+def common_setup_contacts(n: int) -> List[Contact]:
+    contact_names = ['sf_test {}'.format(i) for i in range(n)]
+    contacts = {x.name: x for x in Contact.objects.filter(name__startswith='sf_test ')[:n]}
+    missing_contacts = [Contact(last_name=x) for x in contact_names if x not in contacts]
+    if missing_contacts:
+        Contact.objects.bulk_create(missing_contacts)
+    return list(contacts.values()) + missing_contacts
 
 
 class BulkUpdateTest(TestCase):
     """The method queryset.bulk_update() is tested by a Contact with a unique custom field"""
 
     databases = '__all__'
+    contacts = None  # type: List[Contact]
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        cls.contacts = common_setup_contacts(9)
         if SF_CUSTOM_INSTALLED and not Contact.objects.update(vs=None) >= 9:
             Contact.objects.bulk_create([Contact(last_name='sf_test {}'.format(i)) for i in range(9)])
 
-    @skipUnless(DJANGO_22_PLUS and SF_CUSTOM_INSTALLED,
-                "bulk_update() does not exist before Django 2.2. and Salesforce customization is required")
+    @skipUnless(DJANGO_22_PLUS, "bulk_update() does not exist before Django 2.2.")
+    @skipUnless(SF_CUSTOM_INSTALLED, "requires Salesforce customization")
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def setUp(self) -> None:
         pass
 
@@ -68,10 +80,12 @@ class QuerysetUpdateTest(TestCase):
     """The method queryset.update() is tested by a Contact with a unique custom field"""
 
     databases = '__all__'
+    contacts = None  # type: List[Contact]
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        cls.contacts = common_setup_contacts(2)
         if SF_CUSTOM_INSTALLED:
             assert Contact.objects.update(vs=None) >= 2
 
@@ -110,10 +124,7 @@ class BulkCreateTest(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        cls.contacts = list(Contact.objects.filter(name__startswith='sf_test')[:2])
-        if len(cls.contacts) < 2:
-            cls.contacts.extend([Contact.objects.create(last_name='sf_test  {}'.format(i))
-                                 for i in range(2 - len(cls.contacts))])
+        cls.contacts = common_setup_contacts(2)
         campaigns = Campaign.objects.all()[:1]
         if campaigns:
             cls.campaign = campaigns[0]
@@ -124,6 +135,7 @@ class BulkCreateTest(TestCase):
     def tearDown(self) -> None:
         CampaignMember.objects.filter(campaign=self.campaign, contact__in=self.contacts).delete()
 
+    @skipUnless(default_is_sf, "depends on Salesforce database.")
     def common_bulk_create_error(self, expected: Tuple[int, int, int], all_or_none: Optional[bool] = None) -> None:
         expect_errors, expect_rollbacks, expect_success = expected
         members = [
