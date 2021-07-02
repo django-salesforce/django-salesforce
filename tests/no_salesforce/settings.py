@@ -15,8 +15,11 @@ DEBUG = True
 ALLOWED_HOSTS = []  # type: List[str]
 
 INSTALLED_APPS = [
-    'tests.no_salesforce'
+    'tests.no_salesforce',
+    # 'tests.test_default_db',
 ]
+if os.environ.get('SF_WITH_EXAMPLE') == 'on':
+    INSTALLED_APPS.append('salesforce.testrunner.example')
 
 ROOT_URLCONF = None
 
@@ -32,3 +35,6 @@ TIME_ZONE = 'UTC'
 USE_TZ = True
 STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+SALESFORCE_DB_ALIAS = 'default'
+SF_EXAMPLE_EXTENDED_MODELS = True
+SF_EXAMPLE_CUSTOM_INSTALLED = True

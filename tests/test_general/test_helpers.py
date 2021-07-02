@@ -6,7 +6,11 @@
 from unittest import TestCase
 
 from salesforce.dbapi import driver
+from salesforce.dbapi.common import get_thread_connections
 from salesforce.dbapi.test_helpers import LazyTestMixin, expectedFailureIf
+
+# simulate that a connection exists. It is necessary for `lazy_check()`.
+get_thread_connections()['dummy'] = 'dummy'
 
 
 class TestExpectedFailure(TestCase):

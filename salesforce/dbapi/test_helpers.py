@@ -99,7 +99,8 @@ class LazyTestMixin(BaseLazyTestMixin):
     def lazy_check(self) -> None:
         """Check all previous `lazy_assert_*`"""
         lazy_failure = getattr(self, 'lazy_failure', None)
-        if lazy_failure:
+        if lazy_failure and get_thread_connections():
+            # check it only if any Salesforce connection is initialized
             exc_type, original_exception, traceback_part_text = lazy_failure
             msg = original_exception.args[0]
             original_exception = self.LazyAssertionError(
