@@ -35,6 +35,23 @@ SF_PK = getattr(settings, 'SF_PK', 'id')
 if SF_PK not in ('id', 'Id'):
     raise ImproperlyConfigured("Value of settings.SF_PK must be 'id' or 'Id' or undefined.")
 
+STANDARD_FIELDS = {
+    x.lower() for x in (
+        'Id',
+        'Name',
+        'RecordType',
+        'CreatedDate',
+        'CreatedBy',
+        'LastModifiedDate',
+        'LastModifiedBy',
+        'SystemModstamp',
+        'LastActivityDate',
+        'LastViewdDate',
+        'LastReferencedDate',
+        'IsDeleted',
+    )
+}
+
 
 class SalesforceAutoField(fields.AutoField):
     """
@@ -105,13 +122,41 @@ class SfField(models.Field):
 
         custom=True : Add '__c' to the column name if no db_column is defined.
     """
+    column = None  # type: str
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self.sf_read_only = kwargs.pop('sf_read_only', 0)
-        self.sf_custom = kwargs.pop('custom', None)
-        self.sf_namespace = ''
+        self.sf_read_only = kwargs.pop('sf_read_only', 0)   # type: int
+        self.sf_custom = kwargs.pop('custom', None)         # type: Optional[bool]
+        self.sf_namespace = kwargs.pop('sf_namespace', '')  # type: str
+        self.sf_managed = kwargs.pop('sf_managed', False)   # type: bool
+
+        assert (self.sf_custom is None or kwargs.get('db_column') is None or
+                self.sf_custom == kwargs['db_column'].endswith('__c'))
+        assert not self.sf_namespace or self.sf_custom is not False
         if kwargs.get('default') is DEFAULTED_ON_CREATE:
             kwargs['default'] = DefaultedOnCreate(internal_type=self.get_internal_type())
         super().__init__(*args, **kwargs)
+
+    def deconstruct(self) -> Tuple[Any, Any, Any, Any]:
+        name, path, args, kwargs = super().deconstruct()
+        if self.name:
+            policy = 'minimal'
+            _, column = self.get_attname_column()
+            if '__' in column or policy != 'minimal':
+                kwargs['db_column'] = column
+            else:
+                tmp_db_column = self.db_column
+                self.db_column = None
+                _, auto_db_column = self.get_attname_column()
+                self.db_column = tmp_db_column
+
+                if self.name == 'test_bool':
+                    import pdb; pdb.set_trace()
+                if column != auto_db_column:
+                    kwargs['db_column'] = column
+                elif 'db_column' in kwargs:
+                    del kwargs['db_column']
+        return name, path, args, kwargs
 
     def get_attname_column(self) -> Tuple[str, str]:
         """
@@ -136,19 +181,23 @@ class SfField(models.Field):
                 column = self.name.title().replace('_', '')
             # Fix custom fields
             if self.sf_custom:
-                column = self.sf_namespace + column + '__c'
+                column = column + '__c'
+                if self.sf_namespace:
+                    column = self.sf_namespace + '__' + column
         return attname, column
 
     def contribute_to_class(self, cls: Type[models.Model], name: str, private_only: bool = False) -> None:
         super().contribute_to_class(cls, name, private_only=private_only)
-        if self.sf_custom is None and hasattr(cls._meta, 'sf_custom'):
-            # Only custom fields in models explicitly marked by
-            # Meta custom=True are recognized automatically - for
+        is_custom_model = getattr(cls._meta, 'sf_custom', False)
+        if self.sf_custom is None and is_custom_model and self.column.lower() not in STANDARD_FIELDS:
+            # Automatically recognized custom fields can be only in custom models explicitly marked by Meta custom=True
+            # are recognized automatically - for
             # backward compatibility reasons.
-            self.sf_custom = cls._meta.sf_custom  # type: ignore[attr-defined]
-        if self.sf_custom and '__' in cls._meta.db_table[:-3]:
-            self.sf_namespace = cls._meta.db_table.split('__')[0] + '__'
+            self.sf_custom = True
+            # set an empty value to be fixed on the next line
+            self.column = ''
         self.set_attributes_from_name(name)
+
 
 # pylint:disable=unnecessary-pass,too-many-ancestors
 
