@@ -303,7 +303,8 @@ class RawConnection:
         # Errors: 400, 403 permissions or REQUEST_LIMIT_EXCEEDED, 404, 405, 415, 500)
         # TODO extract a case ID for Salesforce support from code 500 messages
 
-        # TODO disabled 'debug_verbs' temporarily, after writing better default messages
+        # TODO extend or remove 'debug_verbs'. (It is disabled temporarily after writing
+        #      better default messages solved the need of quied mode.)
         # verb = self.debug_verbs
         method = response.request.method
         data = None

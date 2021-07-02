@@ -2,7 +2,7 @@
 #         rest of salesforce to not make dependency graphs complicated
 import uuid
 from inspect import signature
-from typing import Any, Callable, Dict, Tuple, Type
+from typing import Any, Callable, Dict, Tuple, Type  # pylint:disable=unused-import # Type
 
 from django.conf import settings
 from django.db.models import Field  # pylint:disable=unused-import

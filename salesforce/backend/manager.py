@@ -26,7 +26,7 @@ _T = TypeVar("_T", bound=Model, covariant=True)
 
 class SalesforceManager(manager.Manager, Generic[_T]):
 
-    if sys.version_info[:2] < (3, 6):
+    if sys.version_info[:2] < (3, 6):  # Python 3.5 - remove soon
         # this is a fix for Generic type issue https://github.com/python/typing/issues/498
         __copy__ = None
 
