@@ -214,7 +214,7 @@ class CursorWrapper:
     def execute_select(self, soql: str, args) -> None:
         query_all = False
         tooling_api = False
-        if soql.endswith('FROM django_migrations'):
+        if re.search(r'FROM django_migrations\b', soql):
             # "SELECT django_migrations.id, django_migrations.app, django_migrations.name, django_migrations.applied "
             # "FROM django_migrations"
             soql = re.sub(r'(\.(?:app\b|name|applied))', '\\1__c', soql)
@@ -230,7 +230,6 @@ class CursorWrapper:
         table = query.model._meta.db_table
         post_data = extract_values(query)
         if table == 'django_migrations':
-            import pdb; pdb.set_trace()
             table = 'django_migrations__c'
             post_data = [{k + '__c': v for k, v in row.items()} for row in post_data]
         obj_url = self.db.connection.rest_api_url('sobjects', table, relative=True)
@@ -347,6 +346,8 @@ class CursorWrapper:
 
     def execute_delete(self, query):
         table = query.model._meta.db_table
+        if table == 'django_migrations':
+            table = 'django_migrations__c'
         pks = self.get_pks_from_query(query)
 
         log.debug('DELETE %s(%s)', table, pks)

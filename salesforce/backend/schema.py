@@ -40,6 +40,26 @@ CREATE_OBJECT = """<?xml version="1.0" encoding="UTF-8"?>
 </soapenv:Envelope>
 """
 
+DELETE_METADATA = """<?xml version="1.0" encoding="UTF-8"?>
+<SOAP-ENV:Envelope xmlns:ns0="http://soap.sforce.com/2006/04/metadata"
+                   xmlns:ns1="http://schemas.xmlsoap.org/soap/envelope/"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xmlns:tns="http://soap.sforce.com/2006/04/metadata"
+                   xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+    <SOAP-ENV:Header>
+        <tns:SessionHeader>
+            <tns:sessionId>{__ACCESS_TOKEN__}</tns:sessionId>
+        </tns:SessionHeader>
+    </SOAP-ENV:Header>
+    <ns1:Body>
+        <ns0:deleteMetadata>
+            <ns0:type>{__METADATA_TYPE__}</ns0:type>
+            <ns0:fullNames>{__CUSTOM_OBJECT_NAME____c}</ns0:fullNames>
+        </ns0:deleteMetadata>
+    </ns1:Body>
+</SOAP-ENV:Envelope>
+"""
+
 
 class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     # pylint:disable=abstract-method  # undefined: prepare_default, quote_value
@@ -67,6 +87,26 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if exc_type is None:
             for sql in self.deferred_sql:
                 self.execute(sql)
+
+    def delete_metadata(self, metadata_type: str, full_names: str) -> None:
+        assert len(full_names) == 1
+        data = DELETE_METADATA.format(
+            __ACCESS_TOKEN__=self.conn.sf_session.auth.get_auth()['access_token'],
+            __METADATA_TYPE__=metadata_type,
+            __CUSTOM_OBJECT_NAME____c=full_names[0],
+        )
+        self.cur.execute('select id from Organization')
+        org_id, = self.cur.fetchone()
+        url = '{instance_url}/services/Soap/m/{api_version}/{org_id}'.format(
+            instance_url=self.conn.sf_auth.instance_url,
+            api_version=self.conn.api_ver,
+            org_id=org_id,
+        )
+        headers = {'SOAPAction': 'delete', 'Content-Type': 'text/xml; charset=utf-8'}
+        import pdb; pdb.set_trace()
+        ret = requests.request('POST', url, data=data, headers=headers)
+        assert ret.status_code == 200
+        assert 'success>true</success>' in ret.text
 
     def create_model(self, model):
         if model._meta.db_table == 'django_migrations':
@@ -214,10 +254,15 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         sf_managed = getattr(field, 'sf_managed', False)
         if sf_managed:
             full_name = model._meta.db_table + '.' + field.column
-            self.cur.execute("select Id from CustomField where FullName = %s", full_name)
-            pk, = self.cur.fetchone()
-            ret = self.request('DELETE', 'tooling/sobjects/CustomField', pk)
-            assert ret and ret.status_code == 204
+            self.delete_metadata('CustomField', [full_name])
+            # developer_name = field.column.rsplit('__', 1)[0]
+            # self.cur.execute("select Id from CustomField where TableEnumOrId = %s and DeveloperName = %s",
+            #                  [model._meta.db_table, developer_name],
+            #                   tooling_api=True)
+            # pk, = self.cur.fetchone()
+            # # SalesforceError: INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
+            # ret = self.request('DELETE', 'tooling/sobjects/CustomField/{}'.format(pk))
+            # assert ret and ret.status_code == 204
 
     def alter_field(self, model, old_field, new_field, strict=False):
         import pdb; pdb.set_trace()
