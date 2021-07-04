@@ -3,61 +3,56 @@ Minimal code to support ignored makemigrations  (like django.db.backends.*.schem
 
 without interaction to SF (without migrate)
 """
+from typing import Any, Type, Union
 import re
 import time
 
 import requests
 from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
+from django.db.backends.ddl_references import Statement
+from django.db.models import Field, Model, PROTECT
+from salesforce.dbapi.exceptions import SalesforceError
 
 # souce: https://gist.github.com/wadewegner/9139536
-CREATE_OBJECT = """<?xml version="1.0" encoding="UTF-8"?>
+METADATA_ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:apex="http://soap.sforce.com/2006/08/apex"
                   xmlns:cmd="http://soap.sforce.com/2006/04/metadata"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-   <soapenv:Header>
-      <cmd:SessionHeader>
-         <cmd:sessionId>{session_id}</cmd:sessionId>
-      </cmd:SessionHeader>
-   </soapenv:Header>
-   <soapenv:Body>
-      <create xmlns="http://soap.sforce.com/2006/04/metadata">
-         <metadata xsi:type="CustomObject">
-            <fullName>{full_name}</fullName>
-            <label>{label}</label>
-            <pluralLabel>{plural_label}</pluralLabel>
-            <deploymentStatus>Deployed</deploymentStatus>
-            <sharingModel>ReadWrite</sharingModel>
-            <nameField>
-               <label>ID</label>
-               <type>AutoNumber</type>
-            </nameField>
-         </metadata>
-      </create>
-   </soapenv:Body>
+  <soapenv:Header>
+    <cmd:SessionHeader>
+      <cmd:sessionId>{session_id}</cmd:sessionId>
+    </cmd:SessionHeader>
+  </soapenv:Header>
+  <soapenv:Body>
+{body}
+  </soapenv:Body>
 </soapenv:Envelope>
 """
 
-DELETE_METADATA = """<?xml version="1.0" encoding="UTF-8"?>
-<SOAP-ENV:Envelope xmlns:ns0="http://soap.sforce.com/2006/04/metadata"
-                   xmlns:ns1="http://schemas.xmlsoap.org/soap/envelope/"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                   xmlns:tns="http://soap.sforce.com/2006/04/metadata"
-                   xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
-    <SOAP-ENV:Header>
-        <tns:SessionHeader>
-            <tns:sessionId>{__ACCESS_TOKEN__}</tns:sessionId>
-        </tns:SessionHeader>
-    </SOAP-ENV:Header>
-    <ns1:Body>
-        <ns0:deleteMetadata>
-            <ns0:type>{__METADATA_TYPE__}</ns0:type>
-            <ns0:fullNames>{__CUSTOM_OBJECT_NAME____c}</ns0:fullNames>
-        </ns0:deleteMetadata>
-    </ns1:Body>
-</SOAP-ENV:Envelope>
+CREATE_OBJECT_BODY = """
+    <create xmlns="http://soap.sforce.com/2006/04/metadata">
+      <metadata xsi:type="CustomObject">
+        <fullName>{full_name}</fullName>
+        <label>{label}</label>
+        <pluralLabel>{plural_label}</pluralLabel>
+        <deploymentStatus>Deployed</deploymentStatus>
+        <sharingModel>ReadWrite</sharingModel>
+        <nameField>
+           <label>ID</label>
+           <type>AutoNumber</type>
+        </nameField>
+      </metadata>
+    </create>
+"""
+
+DELETE_METADATA_BODY = """
+    <cmd:deleteMetadata>
+      <cmd:type>{metadata_type}</cmd:type>
+      <cmd:fullNames>{custom_object_name}</cmd:fullNames>
+    </cmd:deleteMetadata>
 """
 
 
@@ -82,18 +77,17 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         self.deferred_sql = []  # pylint:disable=attribute-defined-outside-init
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
         # print('** DatabaseSchemaEditor __exit__')
         if exc_type is None:
             for sql in self.deferred_sql:
                 self.execute(sql)
 
-    def delete_metadata(self, metadata_type: str, full_names: str) -> None:
-        assert len(full_names) == 1
-        data = DELETE_METADATA.format(
-            __ACCESS_TOKEN__=self.conn.sf_session.auth.get_auth()['access_token'],
-            __METADATA_TYPE__=metadata_type,
-            __CUSTOM_OBJECT_NAME____c=full_names[0],
+    def metadata_command(self, action: str, body: str) -> str:
+        # TODO move to the driver
+        data = METADATA_ENVELOPE.format(
+            session_id=self.conn.sf_session.auth.get_auth()['access_token'],
+            body=body,
         )
         self.cur.execute('select id from Organization')
         org_id, = self.cur.fetchone()
@@ -102,34 +96,32 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             api_version=self.conn.api_ver,
             org_id=org_id,
         )
-        headers = {'SOAPAction': 'delete', 'Content-Type': 'text/xml; charset=utf-8'}
-        import pdb; pdb.set_trace()
+        headers = {'SOAPAction': action, 'Content-Type': 'text/xml; charset=utf-8'}
+        # the header {'Expect': '100-continue'} is useful if sending much data and want
+        # to check headers by the server before uploading the body
         ret = requests.request('POST', url, data=data, headers=headers)
-        assert ret.status_code == 200
-        assert 'success>true</success>' in ret.text
+        if ret.status_code != 200 or 'success>true</success>' not in ret.text:
+            raise SalesforceError("Failed metadata {action}, code: {status_code}, response {text!r}".format(
+                action=action, status_code=ret.status_code, text=ret.text
+            ))
+        return ret.text
 
-    def create_model(self, model):
+    def delete_metadata(self, metadata_type: str, full_name: str) -> None:
+        # can be modified to a list of custom fields field names
+        body = DELETE_METADATA_BODY.format(metadata_type=metadata_type, custom_object_name=full_name)
+        self.metadata_command(action='delete', body=body)
+
+    def create_model(self, model: Type[Model]) -> None:
         if model._meta.db_table == 'django_migrations':
             model._meta.db_table += '__c'
         db_table = model._meta.db_table
-        data = CREATE_OBJECT.format(
-            session_id=self.conn.sf_session.auth.get_auth()['access_token'],
+        body = CREATE_OBJECT_BODY.format(
             full_name=db_table,
             label=model._meta.verbose_name,
             plural_label=model._meta.verbose_name_plural,
         )
-        self.cur.execute('select id from Organization')
-        org_id, = self.cur.fetchone()
-        url = '{instance_url}/services/Soap/m/{api_version}/{org_id}'.format(
-            instance_url=self.conn.sf_auth.instance_url,
-            api_version=self.conn.api_ver,
-            org_id=org_id,
-        )
-        headers = {'SOAPAction': 'create', 'Content-Type': 'text/xml; charset=utf-8', 'Expect': '100-continue'}
-        cur = self.conn.cursor(dict)
-        ret = requests.request('POST', url, data=data, headers=headers)
-        assert ret.status_code == 200
-        print(ret.text)
+        text = self.metadata_command(action='create', body=body)
+        cur = self.cur
         # <?xml version="1.0" encoding="UTF-8"?>
         # <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
         #                   xmlns="http://soap.sforce.com/2006/04/metadata">
@@ -143,7 +135,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         #     </createResponse>
         #   </soapenv:Body>
         # </soapenv:Envelope>
-        match = re.match(r'.*<id>([0-9A-Za-z]{18})</id>', ret.text)
+        match = re.match(r'.*<id>([0-9A-Za-z]{18})</id>', text)
+        assert match
         # how to use the Id?
         pk = match.group(1)
         t0 = time.time()
@@ -187,7 +180,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 # field.db_column += '__c'
             self.add_field(model, field)
 
-    def add_field(self, model, field):
+    def add_field(self, model: Type[Model], field: Field) -> None:
         sf_managed = getattr(field, 'sf_managed', False) or model._meta.db_table == 'django_migrations__c'
         db_type = field.db_type(self.connection)
         if sf_managed:
@@ -197,7 +190,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 'type': db_type,
                 'inlineHelpText': field.help_text,
                 'required': not field.null,
-                'unique': field.unique,
+                'unique': field.unique,  # type: ignore[attr-defined]
             }
             # if
             #    metadata['defaultValue'] =
@@ -208,21 +201,21 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             elif db_type in ('Date', 'DateTime'):
                 pass
             elif db_type == 'Number':
-                metadata['precision'] = field.decimal_places
-                metadata['length'] = field.scale   # TODO
+                metadata['precision'] = field.decimal_places  # type: ignore[attr-defined]
+                metadata['length'] = field.scale  # type: ignore[attr-defined] # TODO
             elif db_type in ('Text', 'Email', 'URL'):
                 metadata['length'] = field.max_length
             elif db_type == 'Lookup':
                 del metadata['defaultValue']
                 # TODO "Related List Label" "Child Relationship Name"
-                metadata['relatedTo'] = field.related_model._meta.db_table
-                metadata['relationshipLabel'] = field.remote_field.get_accessor_name()
-                metadata['deleteConstraint'] = ('Restrict' if field.remote_field.on_delete is field.PROTECT
-                                                else 'SetNull')
+                metadata['relatedTo'] = field.related_model._meta.db_table  # type: ignore[union-attr]
+                metadata['relationshipLabel'] = field.remote_field.get_accessor_name()  # type: ignore[attr-defined]
+                metadata['deleteConstraint'] = (
+                    'Restrict' if field.remote_field.on_delete is PROTECT  # type: ignore[attr-defined]
+                    else 'SetNull')
             elif db_type == 'PickList':
                 pass  # TODO copy from sf_syncdb
             else:
-                import pdb; pdb.set_trace()
                 raise NotImplementedError
 
             data = {
@@ -250,11 +243,11 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 ret = self.request('POST', 'sobjects/FieldPermissions', json=field_permissions_data)
                 assert ret.status_code == 201
 
-    def remove_field(self, model, field):
+    def remove_field(self, model: Type[Model], field: Field) -> None:
         sf_managed = getattr(field, 'sf_managed', False)
         if sf_managed:
             full_name = model._meta.db_table + '.' + field.column
-            self.delete_metadata('CustomField', [full_name])
+            self.delete_metadata('CustomField', full_name)
             # developer_name = field.column.rsplit('__', 1)[0]
             # self.cur.execute("select Id from CustomField where TableEnumOrId = %s and DeveloperName = %s",
             #                  [model._meta.db_table, developer_name],
@@ -264,13 +257,16 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             # ret = self.request('DELETE', 'tooling/sobjects/CustomField/{}'.format(pk))
             # assert ret and ret.status_code == 204
 
-    def alter_field(self, model, old_field, new_field, strict=False):
+    def alter_field(self, model: Type[Model], old_field: Field, new_field: Field, strict: bool = False
+                    ) -> None:
         import pdb; pdb.set_trace()
         sf_managed = getattr(old_field, 'sf_managed', False) or getattr(new_field, 'sf_managed', False)
         if sf_managed:
             print(f"\n** alter field {model} {old_field} {new_field}")
 
-    def execute(self, sql, params=()):
+    def execute(self, sql: Union[Statement, str], params: Any = ()) -> None:
+        import pdb; pdb.set_trace()
+        assert isinstance(sql, str)
         if (sql == 'CREATE TABLE django_migrations ()'
                 or sql.startswith('DROP TABLE ')) and not params:
             return
