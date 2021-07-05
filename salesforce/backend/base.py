@@ -51,7 +51,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         'DecimalField': 'Number',
         'EmailField': 'Email',
         'FloatField': 'Number',
-        'ForeignKey': 'Lookup',
+        # 'ForeignKey': 'Lookup',
         'IntegerField': 'Number',
         'TextField': 'TextArea',
         'URLField': 'URL',

@@ -90,15 +90,14 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if model._meta.db_table == 'django_migrations':
             model._meta.db_table += '__c'
         db_table = model._meta.db_table
-        sf_managed = getattr(model._meta, 'sf_managed', False) or model._meta.db_table == 'django_migrations__c'
-        if sf_managed:
+        sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
+        if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             body = CREATE_OBJECT_BODY.format(
                 full_name=db_table,
                 label=model._meta.verbose_name,
                 plural_label=model._meta.verbose_name_plural,
             )
-            text = self.metadata_command(action='create', body=body)
-            cur = self.cur
+            text = self.metadata_command(action='create', body=body, is_async=True)
             # <?xml version="1.0" encoding="UTF-8"?>
             # <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
             #                   xmlns="http://soap.sforce.com/2006/04/metadata">
@@ -114,29 +113,11 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             # </soapenv:Envelope>
             match = re.match(r'.*<id>([0-9A-Za-z]{18})</id>', text)
             assert match
-            # how to use the Id?
-            pk = match.group(1)
-            t0 = time.time()
-            dt = 0.05
-            # wait for table creation
-            while True:
-                if time.time() - t0 > 30:
-                    raise TimeoutError()
-                time.sleep(dt)
-                dt *= 1.2
-                soql = "select DeveloperName from CustomObject where DeveloperName = %s limit 2"
-                soql = ("select DeveloperName, Label, QualifiedApiName, DeploymentStatus, RunningUserEntityAccessId "
-                        "from EntityDefinition where QualifiedApiName = %s limit 2")
-                cur.execute(soql, [model._meta.db_table], tooling_api=True)
-                rows = cur.fetchall()
-                if rows:
-                    assert len(rows) == 1
-                    entity_id = rows[0]['RunningUserEntityAccessId'].split('.')[0]
-                    log.debug('create_model %s; time:%f, pk:%s, rows:%s', db_table, round(time.time() - t0, 3), pk, rows)
-                    break
+            async_result_id = match.group(1)
+            entity_id = self.wait_for_entity(db_table, async_result_id)
 
-            cur.execute("select Id from PermissionSet where Label = %s", ['Django Salesforce'])
-            ps_id = cur.fetchone()['Id']
+            self.cur.execute("select Id from PermissionSet where Label = %s", ['Django Salesforce'])
+            ps_id, = self.cur.fetchone()
             object_permissions_data = dict(
                 # selection by `db_table` was be not reliable if the same object is in the trash
                 SobjectType=entity_id,
@@ -155,7 +136,6 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             sf_managed_field = (getattr(field, 'sf_managed', False) or db_table == 'django_migrations__c'
                                 and field.column.lower() != 'id')
             if sf_managed_field:
-                import pdb; pdb.set_trace()
                 if db_table == 'django_migrations__c':
                     field.column += '__c'
                 self.add_field(model, field)
@@ -163,9 +143,10 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def delete_model(self, model: Type[Model]) -> None:
         if model._meta.db_table == 'django_migrations':
             model._meta.db_table += '__c'
-        sf_managed = getattr(model._meta, 'sf_managed', False) or model._meta.db_table == 'django_migrations__c'
-        if sf_managed:
+        sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
+        if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             import pdb; pdb.set_trace()
+            log.debug("delete_model %s", model)
             self.delete_metadata('CustomObject', model._meta.db_table)
         else:
             for field in model._meta.fields:
@@ -181,7 +162,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             metadata = self.make_field_metadata(field)
             data = {'Metadata': metadata, 'FullName': full_name}
 
-            log.debug("add field %s %s", model, field)
+            log.debug("add_field %s %s", model, full_name)
             ret = self.request('POST', 'tooling/sobjects/CustomField', json=data)
             assert ret.status_code == 201
             # ret.json() == {'id': '00NM0000002KYDHMA4', 'success': True, 'errors': [], 'warnings': [], 'infos': []}
@@ -191,7 +172,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
             # FeldPermissions.objects.create(sobject_type='Donation__c', field='Donation__c.Amount__c',
             #                                permissions_edit=True, permissions_read=True, parent=ps)
-            if not metadata['required']:
+            if not metadata.get('required'):
                 field_permissions_data = {
                     'SobjectType': model._meta.db_table,
                     'Field': full_name,
@@ -203,11 +184,12 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 assert ret.status_code == 201
 
     def remove_field(self, model: Type[Model], field: Field) -> None:
-        sf_managed = getattr(field, 'sf_managed', False)
-        if sf_managed:
+        sf_managed_field = getattr(field, 'sf_managed', False)
+        if sf_managed_field:
             full_name = model._meta.db_table + '.' + field.column
+            log.debug("remove_field %s %s", model, full_name)
             self.delete_metadata('CustomField', full_name)
-            # developer_name = field.column.rsplit('__', 1)[0]
+            # developer_name = self.developer_name(old_field.column)
             # self.cur.execute("select Id from CustomField where TableEnumOrId = %s and DeveloperName = %s",
             #                  [model._meta.db_table, developer_name],
             #                   tooling_api=True)
@@ -219,9 +201,9 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def alter_field(self, model: Type[Model], old_field: Field, new_field: Field, strict: bool = False
                     ) -> None:
         """This can rename a field or change the type or the parameters"""
-        sf_managed = getattr(old_field, 'sf_managed', False) or getattr(new_field, 'sf_managed', False)
-        if sf_managed:
-            developer_name = old_field.column.rsplit('__', 1)[0]
+        sf_managed_field = getattr(old_field, 'sf_managed', False) or getattr(new_field, 'sf_managed', False)
+        if sf_managed_field:
+            developer_name = self.developer_name(old_field.column)
             self.cur.execute("select Id from CustomField where TableEnumOrId = %s and DeveloperName = %s",
                              [model._meta.db_table, developer_name],
                              tooling_api=True)
@@ -229,20 +211,21 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             full_name = model._meta.db_table + '.' + new_field.column
             metadata = self.make_field_metadata(new_field)
             data = {'Metadata': metadata, 'FullName': full_name}
+            log.debug("alter_field %s %s to %s", model, old_field, full_name)
             ret = self.request('PATCH', 'tooling/sobjects/CustomField/{}'.format(field_id), json=data)
             assert ret.status_code == 204
 
     def execute(self, sql: Union[Statement, str], params: Any = ()) -> None:
         assert isinstance(sql, str)
-        import pdb; pdb.set_trace()
-        if (sql == 'CREATE TABLE django_migrations ()'
-                or sql.startswith('DROP TABLE ')) and not params:
-            return
         raise NotSupportedError("Migration SchemaEditor: %r, %r" % (sql, params))
 
     # -- private methods
 
-    def metadata_command(self, action: str, body: str) -> str:
+    @staticmethod
+    def developer_name(api_name: str) -> str:
+        return api_name.rsplit('__', 1)[0]
+
+    def metadata_command(self, action: str, body: str, is_async: bool = False) -> str:
         # TODO move to the driver
         data = METADATA_ENVELOPE.format(
             session_id=self.conn.sf_session.auth.get_auth()['access_token'],
@@ -259,7 +242,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         # the header {'Expect': '100-continue'} is useful if sending much data and want
         # to check headers by the server before uploading the body
         ret = requests.request('POST', url, data=data, headers=headers)
-        if ret.status_code != 200 or 'success>true</success>' not in ret.text:
+        async_progress = is_async and '<state>InProgress</state>' in ret.text
+        if ret.status_code != 200 or 'success>true</success>' not in ret.text and not async_progress:
             raise SalesforceError("Failed metadata {action}, code: {status_code}, response {text!r}".format(
                 action=action, status_code=ret.status_code, text=ret.text
             ))
@@ -278,25 +262,28 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         #    metadata['defaultValue'] =
 
         # by db_type
-        if db_type == 'CheckBox':
+        if db_type == 'Checkbox':
             del metadata['required']
+            metadata['defaultValue'] = field.default
         elif db_type in ('Date', 'DateTime'):
             pass
         elif db_type == 'Number':
+            # TODO try with a default value and without
             metadata['precision'] = field.decimal_places  # type: ignore[attr-defined]
             metadata['length'] = field.scale  # type: ignore[attr-defined] # TODO
         elif db_type in ('Text', 'Email', 'URL'):
             metadata['length'] = field.max_length
         elif db_type == 'Lookup':
-            del metadata['defaultValue']
+            metadata.pop('defaultValue', None)
             # TODO "Related List Label" "Child Relationship Name"
-            metadata['relatedTo'] = field.related_model._meta.db_table  # type: ignore[union-attr]
-            metadata['relationshipLabel'] = field.remote_field.get_accessor_name()  # type: ignore[attr-defined]
+            metadata['referenceTo'] = field.related_model._meta.db_table  # type: ignore[union-attr]
+            metadata['relationshipName'] = field.remote_field.get_accessor_name()  # type: ignore[attr-defined]
+            # metadata['relationshipLabel'] = metadata['relationshipName']  # not important
             metadata['deleteConstraint'] = (
                 'Restrict' if field.remote_field.on_delete is PROTECT  # type: ignore[attr-defined]
                 else 'SetNull')
         elif db_type == 'PickList':
-            pass  # TODO copy from sf_syncdb
+            pass  # TODO copy choices from sf_syncdb
         else:
             raise NotImplementedError
         return metadata
@@ -305,3 +292,26 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         # can be modified to a list of custom fields field names
         body = DELETE_METADATA_BODY.format(metadata_type=metadata_type, custom_object_name=full_name)
         self.metadata_command(action='delete', body=body)
+
+    def wait_for_entity(self, db_table: str, deploy_result_id: str) -> str:
+        t0 = time.time()
+        dt = 0.05
+        # wait for table creation
+        cur2 = self.conn.cursor(dict)
+        while True:
+            if time.time() - t0 > 30:
+                raise TimeoutError()
+            time.sleep(dt)
+            dt *= 1.2
+            # soql = "select DeveloperName from CustomObject where DeveloperName = %s limit 2"
+            soql = ("select DeveloperName, Label, QualifiedApiName, DeploymentStatus, RunningUserEntityAccessId "
+                    "from EntityDefinition where QualifiedApiName = %s limit 2")
+            cur2.execute(soql, [db_table], tooling_api=True)
+            rows = cur2.fetchall()
+            if rows:
+                assert len(rows) == 1
+                entity_id = rows[0]['RunningUserEntityAccessId'].split('.')[0]
+                wait_elapsed = round(time.time() - t0, 3)
+                log.debug('create_model %s; time:%f, pk:%s, rows:%s', db_table, wait_elapsed, deploy_result_id, rows)
+                break
+        return entity_id

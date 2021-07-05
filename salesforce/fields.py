@@ -65,12 +65,15 @@ class SalesforceAutoField(fields.AutoField):
     default_error_messages = {
         'invalid': _('This value must be a valid Salesforce ID.'),
     }
-    sf_managed = False
+    # the model can be managed by Django also in SFDC databases if 'self.sf_managed_model = True'
+    sf_managed_model = False
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         # The parameter 'sf_read_only' is not used normally, maybe only if someone
         # added SalesforceAutoFields to the Model manually
         kwargs.pop('sf_read_only', None)
+        self.sf_managed = False
+        self.sf_managed_model = kwargs.pop('sf_managed_model', False)
         super().__init__(*args, **kwargs)
 
     def to_python(self, value: Any) -> Optional[str]:
@@ -81,7 +84,8 @@ class SalesforceAutoField(fields.AutoField):
     def get_prep_value(self, value: Any) -> Any:
         return self.to_python(value)
 
-    def contribute_to_class(self, cls: Type[models.Model], name: str, private_only: bool = False) -> None: # noqa pylint:disable=arguments-differ
+    def contribute_to_class(self, cls: Type[models.Model], name: str,  # noqa pylint:disable=arguments-differ
+                            private_only: bool = False) -> None:
         name = name if self.name is None else self.name
         # we can't require "self.auto_created==True" due to backward compatibility
         # with old migrations created before v0.6. Other conditions are enough.
@@ -90,23 +94,32 @@ class SalesforceAutoField(fields.AutoField):
                 "SalesforceAutoField must be a primary key"
                 "with the name '%s' (configurable by settings)." % SF_PK)
         if cls._meta.auto_field:
-            # pylint:disable=unidiomatic-typecheck
-            if not (type(self) == type(cls._meta.auto_field) and self.model._meta.abstract and  # NOQA type eq
-                    cls._meta.auto_field.name == SF_PK):
-                raise ImproperlyConfigured(
-                    "The model %s can not have more than one AutoField, "
-                    "but currently: (%s=%s, %s=%s)" % (
-                        cls,
-                        cls._meta.auto_field.name, cls._meta.auto_field,
-                        name, self
-                    )
+            # A model has another auto_field yet and a new auto field is added.
+            same_type = type(self) == type(cls._meta.auto_field)  # noqa pylint:disable=unidiomatic-typecheck
+            # If the previous auto field was created automatically by inheritation from more abstract classes
+            # then it is OK and ignore it. In all other cases it is error.
+            if same_type and self.model._meta.abstract and cls._meta.auto_field.name == SF_PK:
+                return
+            raise ImproperlyConfigured(
+                "The model %s can not have more than one AutoField, "
+                "but currently: (%s=%s, %s=%s)" % (
+                    cls,
+                    cls._meta.auto_field.name, cls._meta.auto_field,
+                    name, self
                 )
-            # A model is created  that inherits fields from more abstract classes
-            # with the same default SalesforceAutoField. Therefore the second should be
-            # ignored.
-            return
+            )
+        if getattr(cls._meta, 'sf_managed', False):
+            self.sf_managed_model = True
         super().contribute_to_class(cls, name, private_only=private_only)
         cls._meta.auto_field = self
+
+    def deconstruct(self):
+        name, path, args, kwargs = super().deconstruct()
+        if self.db_column == 'Id' and 'db_column' in kwargs:
+            del kwargs['db_column']
+        if self.sf_managed_model:
+            kwargs['sf_managed_model'] = True
+        return name, path, args, kwargs
 
 
 class SfField(models.Field):
@@ -129,7 +142,7 @@ class SfField(models.Field):
         self.sf_read_only = kwargs.pop('sf_read_only', 0)   # type: int
         self.sf_custom = kwargs.pop('custom', None)         # type: Optional[bool]
         self.sf_namespace = kwargs.pop('sf_namespace', '')  # type: str
-        self.sf_managed = kwargs.pop('sf_managed', False)   # type: bool
+        self.sf_managed = kwargs.pop('sf_managed', None)    # type: Optional[bool]
 
         assert (self.sf_custom is None or kwargs.get('db_column') is None or
                 self.sf_custom == kwargs['db_column'].endswith('__c'))
@@ -155,8 +168,8 @@ class SfField(models.Field):
                     kwargs['db_column'] = column
                 elif 'db_column' in kwargs:
                     del kwargs['db_column']
-        if self.sf_managed:
-            kwargs['sf_managed'] = True
+        if self.sf_managed is not None:
+            kwargs['sf_managed'] = self.sf_managed
         return name, path, args, kwargs
 
     def get_attname_column(self) -> Tuple[str, str]:
@@ -198,6 +211,11 @@ class SfField(models.Field):
             # set an empty value to be fixed on the next line
             self.column = ''
         self.set_attributes_from_name(name)
+        column = self.column
+        assert column
+        sf_managed_model = getattr(cls._meta, 'sf_managed', False)
+        if self.sf_managed is None and sf_managed_model and self.column and column.endswith('__c'):
+            self.sf_managed = True
 
 
 # pylint:disable=unnecessary-pass,too-many-ancestors
@@ -351,9 +369,19 @@ class SfForeignObjectMixin(SfField, _MixinTypingBase):
 class ForeignKey(SfForeignObjectMixin, models.ForeignKey):
     """ForeignKey with sf_read_only attribute that is acceptable by Salesforce."""
 
+    def db_type(self, connection: Any) -> str:
+        if connection.vendor == 'salesforce':
+            return 'Lookup'
+        return super().db_type(connection)
+
 
 class OneToOneField(SfForeignObjectMixin, models.OneToOneField):
     """OneToOneField with sf_read_only attribute that is acceptable by Salesforce."""
+
+    def db_type(self, connection: Any) -> str:
+        if connection.vendor == 'salesforce':
+            return 'Lookup'
+        return super().db_type(connection)
 
 
 class XJSONField(TextField):
