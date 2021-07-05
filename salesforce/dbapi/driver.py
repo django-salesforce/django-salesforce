@@ -716,7 +716,6 @@ class Cursor(Generic[_TRow]):
         table, fields_str, param_symb = match.groups()
         fields = fields_str.split(', ')
         assert param_symb == ', '.join(len(fields) * ['%s'])
-        import pdb; pdb.set_trace()
         if not isinstance(args[0], (list, tuple)):
             args = [args]
         assert len(args[0]) == len(fields)
@@ -730,7 +729,6 @@ class Cursor(Generic[_TRow]):
             log.debug('INSERT %s%s', table, post_data)
             ret = self.handle_api_exceptions('POST', url, headers=headers, data=json.dumps(post_data),
                                              _cursor=self)
-            import pdb; pdb.set_trace()
             assert ret.status_code == 201
         else:
             # bulk by REST

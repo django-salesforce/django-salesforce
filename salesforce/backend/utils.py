@@ -141,7 +141,6 @@ class CursorWrapper:
         """
         Send a query to the Salesforce API.
         """
-        print('** execute', q, args)
         # pylint:disable=too-many-branches
         self.rowcount = None
         response = None

@@ -141,12 +141,9 @@ class Contact(SalesforceModel):
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
                               default=models.DefaultedOnCreate(User),
                               related_name='contact_owner_set')
-    xyz3 = models.CharField(max_length=40, null=True, blank=True, sf_managed=True, custom=True)
+    xyz3 = models.CharField(max_length=41, null=True, blank=True, sf_managed=True, custom=True, db_column='Xyz4__c')
     if getattr(settings, 'SF_CUSTOM_INSTALLED', False):
         vs = models.DecimalField(custom=True, unique=True, max_digits=10, decimal_places=0, blank=True, null=True)
-
-    class Meta:
-        sf_managed = True
 
     def __str__(self):
         return self.name
@@ -363,25 +360,8 @@ class Test(SalesforceParentModel):
     """
     Simple custom model with one custom and more standard fields.
 
-    Salesforce object for this model can be created:
-    A) automatically from the branch hynekcer/tooling-api-and-metadata
-       by commands:
-        $ python manage.py shell
-            >> from salesforce.backend import tooling
-            >> tooling.install_metadata_service()
-            >> tooling.create_demo_test_object()
-    or
-    B) manually can create the same object with `API Name`: `django_Test__c`
-        `Data Type` of the Record Name: `Text`
-
-       Create three fields:
-       Type            | API Name | Label
-       ----------------+----------+----------
-       Text            | TestText | Test Text
-       Checkbox        | TestBool | Test Bool
-       Lookup(Contact) | Contact  | Contact
-
-       Set it accessible by you. (`Set Field-Leved Security`)
+    Salesforce object for this model can be created by:
+        python manage.py migrate example --database=salesforce
     """
     # This is a custom field because it is defined in the custom model.
     # The API name is therefore 'TestField__c'
@@ -392,6 +372,7 @@ class Test(SalesforceParentModel):
     class Meta:
         custom = True
         db_table = 'django_Test__c'
+        sf_managed = True
 
 
 class TestDetail(SalesforceModel):
@@ -400,6 +381,7 @@ class TestDetail(SalesforceModel):
 
     class Meta(SalesforceModel.Meta):
         db_table = 'django_Test_detail__c'
+        sf_managed = True
 
 
 # example of relationship from builtin object to custom object

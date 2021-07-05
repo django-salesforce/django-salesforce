@@ -151,8 +151,6 @@ class SfField(models.Field):
                 _, auto_db_column = self.get_attname_column()
                 self.db_column = tmp_db_column
 
-                if self.name == 'test_bool':
-                    import pdb; pdb.set_trace()
                 if column != auto_db_column:
                     kwargs['db_column'] = column
                 elif 'db_column' in kwargs:

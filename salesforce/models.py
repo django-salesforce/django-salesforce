@@ -96,6 +96,9 @@ class SalesforceModelBase(ModelBase):
             setattr(cls._meta, 'sf_custom', sf_custom)                        # type: ignore[attr-defined]
             setattr(cls._meta, 'sf_tooling_api_model', sf_tooling_api_model)  # type: ignore[attr-defined]
             setattr(cls._meta, 'sf_managed', sf_managed)                      # type: ignore[attr-defined]
+            if sf_managed:
+                import pdb; pdb.set_trace()
+                setattr(cls.Meta, 'sf_managed', sf_managed)                   # type: ignore[attr-defined]
         else:
             if type(value) is models.manager.Manager:  # pylint:disable=unidiomatic-typecheck
                 # this is for better migrations because: obj._constructor_args = (args, kwargs)

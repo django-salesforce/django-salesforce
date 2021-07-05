@@ -249,7 +249,6 @@ class Command(BaseCommand):
                     elif isinstance(field, fields.FloatField):
                         template = float_field_template
                     elif isinstance(field, fields.ForeignKey):
-                        # import pdb; pdb.set_trace()
                         template = lookup_field_template
                         context['related_db_table'] = field.related_model._meta.db_table
                         context['remote_related_name'] = field.remote_field.get_accessor_name()
