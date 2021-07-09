@@ -104,7 +104,6 @@ class Migration(migrations.Migration):
                 ('name', salesforce.fields.CharField(max_length=121, verbose_name='Full Name')),
                 ('email', salesforce.fields.EmailField(blank=True, max_length=254, null=True)),
                 ('email_bounced_date', salesforce.fields.DateTimeField(blank=True, null=True)),
-                ('vs', salesforce.fields.DecimalField(blank=True, db_column='Vs__c', decimal_places=0, max_digits=10, null=True, unique=True)),
                 ('account', salesforce.fields.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.DO_NOTHING, to='example.account')),
             ],
             options={
@@ -239,36 +238,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 'db_table': 'Product2',
-                'abstract': False,
-                'managed': True,
-            },
-            managers=[
-                ('base_manager', django.db.models.manager.Manager()),
-            ],
-        ),
-        migrations.CreateModel(
-            name='Test',
-            fields=[
-                ('id', salesforce.fields.SalesforceAutoField(auto_created=True, primary_key=True, serialize=False, sf_managed_model=True, verbose_name='ID')),
-                ('name', salesforce.fields.CharField(max_length=80)),
-                ('last_modified_date', salesforce.fields.DateTimeField(auto_now=True)),
-                ('test_text', salesforce.fields.CharField(db_column='TestText__c', max_length=40, sf_managed=True)),
-                ('test_bool', salesforce.fields.BooleanField(db_column='TestBool__c', default=False, sf_managed=True)),
-            ],
-            options={
-                'db_table': 'django_Test__c',
-            },
-            managers=[
-                ('base_manager', django.db.models.manager.Manager()),
-            ],
-        ),
-        migrations.CreateModel(
-            name='TestDetail',
-            fields=[
-                ('id', salesforce.fields.SalesforceAutoField(auto_created=True, primary_key=True, serialize=False, sf_managed_model=True, verbose_name='ID')),
-            ],
-            options={
-                'db_table': 'django_Test_detail__c',
                 'abstract': False,
                 'managed': True,
             },
@@ -432,7 +401,7 @@ class Migration(migrations.Migration):
                 ('id', salesforce.fields.SalesforceAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', salesforce.fields.CharField(max_length=80)),
                 ('body', salesforce.fields.TextField()),
-                ('parent', salesforce.fields.ForeignKey(on_delete=django.db.models.deletion.DO_NOTHING, to='example.test')),
+                ('parent', salesforce.fields.ForeignKey(on_delete=django.db.models.deletion.DO_NOTHING, to='example.contact')),
             ],
             options={
                 'db_table': 'Attachment',

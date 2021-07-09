@@ -11,6 +11,7 @@ from salesforce import fields, models
 from salesforce.dbapi import driver
 from salesforce.testrunner.example.models import (
         Contact, Opportunity, OpportunityContactRole, ChargentOrder)
+from salesforce.backend.schema import to_xml
 from salesforce.backend.test_helpers import default_is_sf, LazyTestMixin, skipUnless
 from salesforce.backend.utils import sobj_id
 
@@ -233,3 +234,12 @@ class RegisterConversionTest(TestCase):
         self.assertNotIn(models.SalesforceModel, driver.json_conversions)
         self.assertNotIn(models.SalesforceModel, driver.sql_conversions)
         self.assertNotIn(models.SalesforceModel, driver.subclass_conversions)
+
+
+class ToXml(TestCase):
+    def test(self) -> None:
+        import pdb; pdb.set_trace()
+        self.assertEqual(to_xml({'a': '<&>'}), '<a>&lt;&amp;&gt;</a>')
+        self.assertEqual(to_xml({'int': 1, 'str': '1'}), '<int>1</int>\n<str>1</str>')
+        self.assertEqual(to_xml({'a': {'b': {'c': 1}}}), '<a>\n  <b>\n    <c>1</c>\n  </b>\n</a>')
+        self.assertEqual(to_xml({'r': {'a': 'a', 'b': [1, 2]}}), '<r>\n  <a>a</a>\n  <b>1</b>\n  <b>2</b>\n</r>')

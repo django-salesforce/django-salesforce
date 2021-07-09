@@ -32,7 +32,7 @@ class BulkUpdateTest(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.contacts = common_setup_contacts(9)
-        if SF_CUSTOM_INSTALLED and not Contact.objects.update(vs=None) >= 9:
+        if SF_CUSTOM_INSTALLED and not Contact.objects.update(cf=None) >= 9:
             Contact.objects.bulk_create([Contact(last_name='sf_test {}'.format(i)) for i in range(9)])
 
     @skipUnless(DJANGO_22_PLUS, "bulk_update() does not exist before Django 2.2.")
@@ -42,26 +42,26 @@ class BulkUpdateTest(TestCase):
         pass
 
     def tearDown(self) -> None:
-        Contact.objects.update(vs=None)
+        Contact.objects.update(cf=None)
 
     def test_bulk_update_normal(self) -> None:
         contacts = Contact.objects.all()[:9]
         for i, x in enumerate(contacts):
-            x.vs = i
-        Contact.objects.bulk_update(contacts, ['vs'])
+            x.cf = i
+        Contact.objects.bulk_update(contacts, ['cf'])
         qs = Contact.objects.filter(vs__gte=0)
-        self.assertEqual(sorted(qs.values_list('vs', flat=True)), [0, 1, 2, 3, 4, 5, 6, 7, 8])
+        self.assertEqual(sorted(qs.values_list('cf', flat=True)), [0, 1, 2, 3, 4, 5, 6, 7, 8])
 
     def common_bulk_update_error(self, expected_count: int, all_or_none: Optional[bool] = None) -> None:
         contacts = list(Contact.objects.all()[:9])
         for i, x in enumerate(contacts):
-            x.vs = i
-        contacts[6].vs = 5  # duplicate value 5
+            x.cf = i
+        contacts[6].cf = 5  # duplicate value 5
         with self.assertRaises(SalesforceError) as cm:
-            Contact.objects.bulk_update(contacts, ['vs'], batch_size=4,  # type: ignore[call-arg] # all_or_none
+            Contact.objects.bulk_update(contacts, ['cf'], batch_size=4,  # type: ignore[call-arg] # all_or_none
                                         all_or_none=all_or_none)
         self.assertIn('Contact  DUPLICATE_VALUE', cm.exception.args[0])
-        self.assertEqual(Contact.objects.exclude(vs=None).count(), expected_count)
+        self.assertEqual(Contact.objects.exclude(cf=None).count(), expected_count)
 
     def test_bulk_update_error(self) -> None:
         """Verify that also valid data in the chunk after an error are updated"""
@@ -87,20 +87,20 @@ class QuerysetUpdateTest(TestCase):
         super().setUpClass()
         cls.contacts = common_setup_contacts(2)
         if SF_CUSTOM_INSTALLED:
-            assert Contact.objects.update(vs=None) >= 2
+            assert Contact.objects.update(cf=None) >= 2
 
     @skipUnless(SF_CUSTOM_INSTALLED, "requires Salesforce customization")
     def setUp(self) -> None:
         pass
 
     def tearDown(self) -> None:
-        Contact.objects.update(vs=None)
+        Contact.objects.update(cf=None)
 
     def common_qs_update_error(self, expected_count: int, all_or_none: Optional[bool] = None) -> None:
         with self.assertRaises(SalesforceError) as cm:
-            Contact.objects.sf(all_or_none=all_or_none).update(vs=1)  # type: ignore[attr-defined] # sf
+            Contact.objects.sf(all_or_none=all_or_none).update(cf=1)  # type: ignore[attr-defined] # sf
         self.assertIn('Contact  DUPLICATE_VALUE', cm.exception.args[0])
-        self.assertEqual(Contact.objects.filter(vs=1).count(), expected_count)
+        self.assertEqual(Contact.objects.filter(cf=1).count(), expected_count)
 
     def test_qs_update_error(self) -> None:
         """Verify that also valid data in the chunk after an error are updated"""

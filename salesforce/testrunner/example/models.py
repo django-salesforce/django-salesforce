@@ -143,7 +143,8 @@ class Contact(SalesforceModel):
                               related_name='contact_owner_set')
     # xyz3 = models.CharField(max_length=41, null=True, blank=True, sf_managed=True, custom=True, db_column='Xyz4__c')
     if getattr(settings, 'SF_CUSTOM_INSTALLED', False):
-        vs = models.DecimalField(custom=True, unique=True, max_digits=10, decimal_places=0, blank=True, null=True)
+        cf = models.DecimalField(custom=True, unique=True, max_digits=10, decimal_places=0, blank=True, null=True,
+                                 sf_managed=True, db_column='Cf__c')
 
     def __str__(self):
         return self.name

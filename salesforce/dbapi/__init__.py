@@ -9,10 +9,10 @@ SQL commands INSERT, UPDATE and DELETE could be implemented easily, but it is no
 important because the current object implementation in Django is good enough.
 
 Purpose:
-Splitting Django-Salesforce to a high level part that depends on Django
+Django-Salesforce is splitted to a high level part that depends on Django
 (especially on a Django version) and a low level part that depends
-on Salesforce (but not on Django) has to be better for development,
-maintenance and testing.
+on Salesforce API, but not on Django.
+It is better for development, maintenance and testing.
 
 This module can run without Django installed, but Django is still main purpose.
 Configuration parameters are passed by `settings_dict` the same way as in Django.
@@ -99,6 +99,7 @@ from salesforce.dbapi.driver import (  # noqa pylint:disable=useless-import-alia
 )
 from salesforce.dbapi.exceptions import (  # noqa pylint:disable=useless-import-alias
     IntegrityError as IntegrityError, DatabaseError as DatabaseError, SalesforceError as SalesforceError,
+    OperationalError as OperationalError,
 )
 
 log = logging.getLogger(__name__)

@@ -113,7 +113,7 @@ class SalesforceAutoField(fields.AutoField):
         super().contribute_to_class(cls, name, private_only=private_only)
         cls._meta.auto_field = self
 
-    def deconstruct(self):
+    def deconstruct(self) -> Tuple[Any, Any, Any, Any]:
         name, path, args, kwargs = super().deconstruct()
         if self.db_column == 'Id' and 'db_column' in kwargs:
             del kwargs['db_column']

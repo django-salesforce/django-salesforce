@@ -3,7 +3,7 @@ Minimal code to support ignored makemigrations  (like django.db.backends.*.schem
 
 without interaction to SF (without migrate)
 """
-from typing import Any, Dict, Type, Union
+from typing import Any, Dict, List, Type, Union
 import logging
 import re
 import time
@@ -13,7 +13,7 @@ from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.ddl_references import Statement
 from django.db.models import Field, Model, PROTECT
-from salesforce.dbapi.exceptions import SalesforceError
+from salesforce.dbapi.exceptions import OperationalError, SalesforceError
 
 log = logging.getLogger(__name__)
 
@@ -38,15 +38,7 @@ METADATA_ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
 CREATE_OBJECT_BODY = """
     <create xmlns="http://soap.sforce.com/2006/04/metadata">
       <metadata xsi:type="CustomObject">
-        <fullName>{full_name}</fullName>
-        <label>{label}</label>
-        <pluralLabel>{plural_label}</pluralLabel>
-        <deploymentStatus>Deployed</deploymentStatus>
-        <sharingModel>ReadWrite</sharingModel>
-        <nameField>
-           <label>ID</label>
-           <type>AutoNumber</type>
-        </nameField>
+{body}
       </metadata>
     </create>
 """
@@ -58,9 +50,40 @@ DELETE_METADATA_BODY = """
     </cmd:deleteMetadata>
 """
 
+T_PY2XML = Union[str, int, float, Dict[str, Union['T_PY2XML', List['T_PY2XML']]]]  # type: ignore[misc] # recursive
+
+
+def to_xml(data: T_PY2XML, indent: int = 0) -> str:
+    """Format a simple XML body for SOAP API from data very similar to REST API
+
+    Examples are in: salesforce.tests.test_unit.ToXml
+    """
+    INDENT = 2  # indent step
+    if isinstance(data, str):
+        return data.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    elif isinstance(data, (int, float)):
+        return str(data)
+    elif isinstance(data, dict):
+        out = []  # type: List[str]
+        for tag, val in data.items():
+            assert re.match(r'[A-Za-z][0-9A-Za-z_:]*$', tag)
+            if not isinstance(val, list):
+                val = [val]
+            for item in val:
+                v_str = to_xml(item, indent + 1)
+                wrap_start = '\n' if v_str.endswith('>') else ''
+                wrap_end = '\n' + indent * INDENT * ' ' if v_str.endswith('>') else ''
+                out.append(indent * INDENT * ' ' + '<{tag}>{wrap_start}{v_str}{wrap_end}</{tag}>'
+                           .format(tag=tag, v_str=v_str, wrap_start=wrap_start, wrap_end=wrap_end))
+        return '\n'.join(out)
+    else:
+        raise NotImplementedError("Not implemented conversion from type {} to xml".format(type(data)))
+
 
 class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     # pylint:disable=abstract-method  # undefined: prepare_default, quote_value
+
+    DISPLAY_FORMAT = 'A-{0}'
 
     def __init__(self, connection, collect_sql=False, atomic=True):
         self.conn = connection.connection
@@ -71,6 +94,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         log.debug('DatabaseSchemaEditor __init__')
         self.cur = self.conn.cursor()
         self.request = self.conn.handle_api_exceptions
+        self._permission_set_id = None  # Optional[str]
+        self.permission_set_id  # require the permission set
         super().__init__(connection, collect_sql=collect_sql, atomic=atomic)
 
     # State-managing methods
@@ -92,12 +117,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         db_table = model._meta.db_table
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
-            body = CREATE_OBJECT_BODY.format(
-                full_name=db_table,
-                label=model._meta.verbose_name,
-                plural_label=model._meta.verbose_name_plural,
-            )
-            text = self.metadata_command(action='create', body=body, is_async=True)
+            body = CREATE_OBJECT_BODY.format(body=to_xml(self.make_model_metadata(model), indent=4))
+            response_text = self.metadata_command(action='create', body=body, is_async=True)
             # <?xml version="1.0" encoding="UTF-8"?>
             # <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
             #                   xmlns="http://soap.sforce.com/2006/04/metadata">
@@ -111,23 +132,21 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             #     </createResponse>
             #   </soapenv:Body>
             # </soapenv:Envelope>
-            match = re.match(r'.*<id>([0-9A-Za-z]{18})</id>', text)
+            match = re.match(r'.*<id>([0-9A-Za-z]{18})</id>', response_text)
             assert match
             async_result_id = match.group(1)
             entity_id = self.wait_for_entity(db_table, async_result_id)
 
-            self.cur.execute("select Id from PermissionSet where Label = %s", ['Django Salesforce'])
-            ps_id, = self.cur.fetchone()
             object_permissions_data = dict(
-                # selection by `db_table` was be not reliable if the same object is in the trash
+                # selection by `db_table` was not reliable if the same object is in the trash
                 SobjectType=entity_id,
-                ParentId=ps_id,
+                ParentId=self.permission_set_id,
                 # PermissionsViewAllRecords=True,
                 # PermissionsModifyAllRecords=True,
                 PermissionsRead=True,
                 PermissionsEdit=True,
-                # PermissionsCreate=True,
-                # PermissionsDelete=True
+                PermissionsCreate=True,
+                PermissionsDelete=True,
             )
             ret = self.request('POST', 'sobjects/ObjectPermissions', json=object_permissions_data)
             assert ret.status_code == 201
@@ -145,14 +164,12 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             model._meta.db_table += '__c'
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
-            import pdb; pdb.set_trace()
             log.debug("delete_model %s", model)
             self.delete_metadata('CustomObject', model._meta.db_table)
         else:
             for field in model._meta.fields:
                 sf_managed_field = getattr(field, 'sf_managed', False)
                 if sf_managed_field:
-                    import pdb; pdb.set_trace()
                     self.remove_field(model, field)
 
     def add_field(self, model: Type[Model], field: Field) -> None:
@@ -167,16 +184,13 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             assert ret.status_code == 201
             # ret.json() == {'id': '00NM0000002KYDHMA4', 'success': True, 'errors': [], 'warnings': [], 'infos': []}
 
-            self.cur.execute("select Id from PermissionSet where Label = %s", ['Django Salesforce'])
-            ps_id, = self.cur.fetchone()
-
             # FeldPermissions.objects.create(sobject_type='Donation__c', field='Donation__c.Amount__c',
             #                                permissions_edit=True, permissions_read=True, parent=ps)
             if not metadata.get('required'):
                 field_permissions_data = {
                     'SobjectType': model._meta.db_table,
                     'Field': full_name,
-                    'ParentId': ps_id,
+                    'ParentId': self.permission_set_id,
                     'PermissionsEdit': True,
                     'PermissionsRead': True,
                 }
@@ -225,6 +239,17 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def developer_name(api_name: str) -> str:
         return api_name.rsplit('__', 1)[0]
 
+    @property
+    def permission_set_id(self) -> str:
+        if not self._permission_set_id:
+            self.cur.execute("select Id from PermissionSet where Name = %s", ['Django_Salesforce'])
+            rows = self.cur.fetchall()
+            if rows:
+                self._permission_set_id, = rows[0]
+            else:
+                raise OperationalError("Can not migrate because the Permission Set 'Django_Salesforce' doesn't exist")
+        return self._permission_set_id
+
     def metadata_command(self, action: str, body: str, is_async: bool = False) -> str:
         # TODO move to the driver
         data = METADATA_ENVELOPE.format(
@@ -269,8 +294,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             pass
         elif db_type == 'Number':
             # TODO try with a default value and without
-            metadata['precision'] = field.decimal_places  # type: ignore[attr-defined]
-            metadata['length'] = field.scale  # type: ignore[attr-defined] # TODO
+            metadata['precision'] = field.max_digits  # type: ignore[attr-defined]
+            metadata['scale'] = field.decimal_places  # type: ignore[attr-defined]
         elif db_type in ('Text', 'Email', 'URL'):
             metadata['length'] = field.max_length
         elif db_type == 'Lookup':
@@ -286,6 +311,31 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             pass  # TODO copy choices from sf_syncdb
         else:
             raise NotImplementedError
+        return metadata
+
+    def make_model_metadata(self, model: Type[Model]) -> Dict[str, Any]:
+        for field in model._meta.fields:
+            if field.column == 'Name':
+                name_field = field
+                break
+        else:
+            name_field = None
+        name_writable = getattr(name_field, 'sf_read_only', 3) == 0
+        name_label = getattr(name_field, 'name', 'Name')
+        name_metadata = {
+            'label': name_label,
+            'type': 'Text' if name_writable else 'AutoNumber',
+        }
+        if not name_writable:
+            name_metadata['displayFormat'] = self.DISPLAY_FORMAT
+        metadata = {
+            'fullName': model._meta.db_table,
+            'label': model._meta.verbose_name,
+            'pluralLabel': str(model._meta.verbose_name_plural),
+            'deploymentStatus': 'Deployed',
+            'sharingModel': 'ReadWrite',
+            'nameField': name_metadata,
+        }
         return metadata
 
     def delete_metadata(self, metadata_type: str, full_name: str) -> None:
