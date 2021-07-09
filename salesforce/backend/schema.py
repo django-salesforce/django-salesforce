@@ -3,8 +3,9 @@ Minimal code to support ignored makemigrations  (like django.db.backends.*.schem
 
 without interaction to SF (without migrate)
 """
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Callable, Dict, List, Type, Union
 import logging
+import random
 import re
 import time
 
@@ -12,7 +13,7 @@ import requests
 from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.ddl_references import Statement
-from django.db.models import Field, Model, PROTECT
+from django.db.models import Field, ForeignKey, Model, PROTECT
 from salesforce.dbapi.exceptions import OperationalError, SalesforceError
 
 log = logging.getLogger(__name__)
@@ -80,6 +81,34 @@ def to_xml(data: T_PY2XML, indent: int = 0) -> str:
         raise NotImplementedError("Not implemented conversion from type {} to xml".format(type(data)))
 
 
+def wrap_debug(func: Callable[..., None]) -> Callable[..., None]:
+    def wrapped(self, model: Type[Model], *args: Any, **kwargs: Any) -> None:
+        skip = False
+        if self.connection.migrate_options.get('ask'):
+            params = ['<model {}>'.format(model._meta.object_name)]
+            params.extend([repr(x) for x in args])
+            params.extend(['{}={}'.format(k, v) for k, v in kwargs.items()])
+
+            print('\n{}({})'.format(func.__name__, ', '.join(params)))
+            answer = input('Run this command [Y/n]:')
+            skip = answer.upper() not in ['Y', '']
+            if skip:
+                return None
+        try:
+            return func(self, model, *args, **kwargs)
+        except SalesforceError as exc:
+            print(exc)
+            answer = input('Stop after this error? [Stop / debug / continue]:').upper()
+            if answer == 'C':  # continue
+                return None
+            elif answer == 'D':  # debug
+                import pdb; pdb.set_trace()  # noqa
+                return None
+            raise
+
+    return wrapped
+
+
 class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     # pylint:disable=abstract-method  # undefined: prepare_default, quote_value
 
@@ -111,13 +140,14 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             for sql in self.deferred_sql:
                 self.execute(sql)
 
+    @wrap_debug
     def create_model(self, model: Type[Model]) -> None:
         if model._meta.db_table == 'django_migrations':
             model._meta.db_table += '__c'
         db_table = model._meta.db_table
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
-            # TODO if self.connection.migrate.options['batch']:  create also fields by the same request
+            # TODO if self.connection.migrate_options['batch']:  create also fields by the same request
             body = CREATE_OBJECT_BODY.format(body=to_xml(self.make_model_metadata(model), indent=4))
             response_text = self.metadata_command(action='create', body=body, is_async=True)
             # <?xml version="1.0" encoding="UTF-8"?>
@@ -160,12 +190,26 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                     field.column += '__c'
                 self.add_field(model, field)
 
+    @wrap_debug
     def delete_model(self, model: Type[Model]) -> None:
         if model._meta.db_table == 'django_migrations':
             model._meta.db_table += '__c'
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             log.debug("delete_model %s", model)
+            for field in model._meta.fields:
+                if isinstance(field, ForeignKey) and getattr(field, 'sf_managed', False):
+                    # prevent a duplicit related_name for more deleted copies
+                    related_name_orig = field.remote_field.get_accessor_name()  # type: ignore[attr-defined]
+                    for retry in range(10):
+                        del_suffix = '_del_{:04}'.format(random.randint(0, 9999))
+                        field.remote_field.related_name = related_name_orig + del_suffix  # type: ignore[attr-defined]
+                        try:
+                            self._alter_field(model, field, field)
+                            break
+                        except SalesforceError as exc:
+                            if not ('DUPLICATE_DEVELOPER_NAME' in str(exc) and 'Child Relationship' in str(exc)):
+                                raise
             self.delete_metadata('CustomObject', model._meta.db_table)
         else:
             for field in model._meta.fields:
@@ -198,30 +242,35 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 ret = self.request('POST', 'sobjects/FieldPermissions', json=field_permissions_data)
                 assert ret.status_code == 201
 
+    @wrap_debug
     def remove_field(self, model: Type[Model], field: Field) -> None:
         sf_managed_field = getattr(field, 'sf_managed', False)
         if sf_managed_field:
             full_name = model._meta.db_table + '.' + field.column
             log.debug("remove_field %s %s", model, full_name)
             self.delete_metadata('CustomField', full_name)
-            # developer_name = self.developer_name(old_field.column)
-            # self.cur.execute("select Id from CustomField where TableEnumOrId = %s and DeveloperName = %s",
-            #                  [model._meta.db_table, developer_name],
-            #                   tooling_api=True)
-            # pk, = self.cur.fetchone()
-            # # SalesforceError: INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY
-            # ret = self.request('DELETE', 'tooling/sobjects/CustomField/{}'.format(pk))
-            # assert ret and ret.status_code == 204
 
+    @wrap_debug
     def alter_field(self, model: Type[Model], old_field: Field, new_field: Field, strict: bool = False
                     ) -> None:
+        return self._alter_field(model, old_field, new_field, strict)
+
+    def _alter_field(self, model: Type[Model], old_field: Field, new_field: Field, strict: bool = False
+                     ) -> None:
         """This can rename a field or change the type or the parameters"""
         sf_managed_field = getattr(old_field, 'sf_managed', False) or getattr(new_field, 'sf_managed', False)
         if sf_managed_field:
+            if model._meta.db_table.endswith('__c'):
+                soql = "select RunningUserEntityAccessId from EntityDefinition where QualifiedApiName = %s limit 2"
+                self.cur.execute(soql, [model._meta.db_table], tooling_api=True)
+                rows = self.cur.fetchall()
+                assert len(rows) == 1
+                table_enum_or_id = rows[0][0].split('.')[0]
+            else:
+                table_enum_or_id = model._meta.db_table
             developer_name = self.developer_name(old_field.column)
             self.cur.execute("select Id from CustomField where TableEnumOrId = %s and DeveloperName = %s",
-                             [model._meta.db_table, developer_name],
-                             tooling_api=True)
+                             [table_enum_or_id, developer_name], tooling_api=True)
             field_id, = self.cur.fetchone()
             full_name = model._meta.db_table + '.' + new_field.column
             metadata = self.make_field_metadata(new_field)
@@ -284,8 +333,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             'required': not field.null,
             'unique': field.unique,  # type: ignore[attr-defined]
         }
-        # if
-        #    metadata['defaultValue'] =
+        # if ...:
+        #    metadata['defaultValue'] = ...
 
         # by db_type
         if db_type == 'Checkbox':
@@ -354,7 +403,6 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 raise TimeoutError()
             time.sleep(dt)
             dt *= 1.2
-            # soql = "select DeveloperName from CustomObject where DeveloperName = %s limit 2"
             soql = ("select DeveloperName, Label, QualifiedApiName, DeploymentStatus, RunningUserEntityAccessId "
                     "from EntityDefinition where QualifiedApiName = %s limit 2")
             cur2.execute(soql, [db_table], tooling_api=True)

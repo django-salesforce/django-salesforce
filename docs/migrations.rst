@@ -22,41 +22,72 @@ Example:
 
 .. code:: python
 
+    class Contact(SalesforceModel):
+        # we add a custom field "my_field" to a standard object "Contact"
+        last_name = models.CharField(max_length=50)
+        my_field = models.CharField(max_length=50, null=True, sf_managed=True)
+
     class MyObject(SalesforceModel):
-        name = models.CharField(max_length=50)  # a field e.g. with API name "Name" is created automatically by SFDC
-        my_field = models.CharField(max_length=50, null=True)  # this is a custom field and sf_managed
+        # a field with API name "Name" is created automatically by SFDC. "max_length" is ignored.
+        name = models.CharField(max_length=50, verbose_name="My Object Name")
+        my_field = models.CharField(max_length=50, null=True)  # this is a custom field and it is sf_managed
 
         Meta:
             sf_managed = True
             # db_table = MyObject__c
 
-    class Contact(SalesforceModel):
-        last_name = models.CharField(max_length=50)
-        my_field = models.CharField(max_length=50, null=True, sf_managed=True)
+    class OtherObject2(SalesforceModel):
+        # we prefer an automatic read only name here in style "A-{0000}" here
+        name = models.CharField(max_length=50, sf_read_only=models.READ_ONLY)
+        ...
 
+        Meta:
+            sf_managed = True
+            # db_table = OtherObject2__c
+
+
+.. code:: shell
+
+    $ python manage.py makemigrations
+    $ python manage.py migrate --database=salesforce
 
 Custom fields in objects managed by Django are also managed by Django by default,
 but it is possible to set a parameter ``sf_managed=False`` to disable it.
 
 If you want to start to manage a field that has been created manually then also read and edit
-permissions for that field must be enabled in "Django_Salesforce" permission set evan if the field
-is accessible by a user profile yet.
+permissions for that field must be enabled in "Django_Salesforce" permission set even if the field
+is accessible also by a user profile.
+
+
+Troubleshooting
+---------------
+
+Migrations are excellent in develomment especially if they are used since the beginning.
+They can be problematic if management by Django has been combined with some manual administration of the same objects.
+
+An interactive option ``--ask`` is implemented that allows to interactively skip
+any individual part of migration if it failed because a duplicit object is created
+or an object is deleted, but it has been deleted previously.
+It allows also to ignore an error interactively or raise or to start debugging
+if the printed error message wad pythons be insufficient.
+
+.. code::
+
+    $ python manage.py migrate --ask --database=salesforce ...
+
+    Running migrations:
+        Applying example.0001_initial...
+    create_model(<model Test>)
+    Run this command [Y/n]: n
 
 
 Unimplemented features - caveats
 --------------------------------
 
-(The implementation is keep simple until usefulness of migrations will be appreciated,
-e.g. by sponsorship.)
+(The implementation is kept simple until usefulness of migrations will be appreciated enough,)
 
 All migration operations are currently implemented without transactions and without
 any optimization. Every field is processed by an individual command.
 
-Migrations can be excellent in develomment especially if they have been used since the beging,
-but they can be problematic if a management by Django is combined in the same application
-with manual administration.
-
-No interactive feature "migrate" command is currenly implemented, although it could
-be very useful in future e.g. to select continue or quit after an error e.g. if the field exists yet.
 
 All deleted objects and fields remain in a trash bin and they are not purged on delete.
