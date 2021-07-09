@@ -93,6 +93,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         super().__init__(settings_dict, alias)
 
         self._is_sandbox = None  # type: Optional[bool]
+        self.migrate_options = {}  # type: Dict[str, Any]
 
     @property
     def sf_session(self) -> Database.SfSession:

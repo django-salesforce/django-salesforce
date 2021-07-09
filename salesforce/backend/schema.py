@@ -117,6 +117,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         db_table = model._meta.db_table
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
+            # TODO if self.connection.migrate.options['batch']:  create also fields by the same request
             body = CREATE_OBJECT_BODY.format(body=to_xml(self.make_model_metadata(model), indent=4))
             response_text = self.metadata_command(action='create', body=body, is_async=True)
             # <?xml version="1.0" encoding="UTF-8"?>

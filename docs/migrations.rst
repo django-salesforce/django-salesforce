@@ -18,7 +18,9 @@ Custom object in Salesforce that should be created and managed by Django must be
 Custom fields can be created also in standard objects or in other objects not managed
 by Django if a field is marked by a parameter ``sf_managed=True``.
 
-Example:_
+Example:
+
+.. code:: python
 
     class MyObject(SalesforceModel):
         name = models.CharField(max_length=50)  # a field e.g. with API name "Name" is created automatically by SFDC
@@ -31,9 +33,6 @@ Example:_
     class Contact(SalesforceModel):
         last_name = models.CharField(max_length=50)
         my_field = models.CharField(max_length=50, null=True, sf_managed=True)
-
-        Meta:
-            # db_table = MyObject__c
 
 
 Custom fields in objects managed by Django are also managed by Django by default,
