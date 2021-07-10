@@ -13,12 +13,13 @@ import requests
 from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.ddl_references import Statement
-from django.db.models import Field, ForeignKey, Model, PROTECT
+from django.db.models import Field, ForeignKey, Model, NOT_PROVIDED, PROTECT
 from salesforce.dbapi.exceptions import OperationalError, SalesforceError
+from salesforce import defaults
 
 log = logging.getLogger(__name__)
 
-# souce: https://gist.github.com/wadewegner/9139536
+# source: https://gist.github.com/wadewegner/9139536
 METADATA_ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:apex="http://soap.sforce.com/2006/08/apex"
@@ -84,21 +85,24 @@ def to_xml(data: T_PY2XML, indent: int = 0) -> str:
 def wrap_debug(func: Callable[..., None]) -> Callable[..., None]:
     def wrapped(self, model: Type[Model], *args: Any, **kwargs: Any) -> None:
         skip = False
-        if self.connection.migrate_options.get('ask'):
-            params = ['<model {}>'.format(model._meta.object_name)]
-            params.extend([repr(x) for x in args])
-            params.extend(['{}={}'.format(k, v) for k, v in kwargs.items()])
+        if not self.connection.migrate_options.get('ask'):
+            return func(self, model, *args, **kwargs)
 
-            print('\n{}({})'.format(func.__name__, ', '.join(params)))
-            answer = input('Run this command [Y/n]:')
-            skip = answer.upper() not in ['Y', '']
-            if skip:
-                return None
+        params = ['<model {}>'.format(model._meta.object_name)]
+        params.extend([repr(x) for x in args])
+        params.extend(['{}={}'.format(k, v) for k, v in kwargs.items()])
+
+        print('\n{}({})'.format(func.__name__, ', '.join(params)))
+        answer = input('Run this command [Y/n]:')
+        skip = answer.upper() not in ['Y', '']
+        if skip:
+            return None
+
         try:
             return func(self, model, *args, **kwargs)
         except SalesforceError as exc:
             print(exc)
-            answer = input('Stop after this error? [Stop / debug / continue]:').upper()
+            answer = input('Stop after this error? [S(stop) / c(continue) / d(debug)]:').upper()
             if answer == 'C':  # continue
                 return None
             elif answer == 'D':  # debug
@@ -217,6 +221,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 if sf_managed_field:
                     self.remove_field(model, field)
 
+    @wrap_debug
     def add_field(self, model: Type[Model], field: Field) -> None:
         sf_managed = getattr(field, 'sf_managed', False) or model._meta.db_table == 'django_migrations__c'
         if sf_managed:
@@ -226,6 +231,10 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
             log.debug("add_field %s %s", model, full_name)
             ret = self.request('POST', 'tooling/sobjects/CustomField', json=data)
+            # if the error message is "SalesforceError: JSON_PARSER_ERROR ... at [line:1, column:39]
+            # then the first invalid character is before the end of
+            #     `json.dumps(data['Metadata'], separators=(',', ':'))[:column]`
+            # maybe in the half of word
             assert ret.status_code == 201
             # ret.json() == {'id': '00NM0000002KYDHMA4', 'success': True, 'errors': [], 'warnings': [], 'infos': []}
 
@@ -316,15 +325,17 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         headers = {'SOAPAction': action, 'Content-Type': 'text/xml; charset=utf-8'}
         # the header {'Expect': '100-continue'} is useful if sending much data and want
         # to check headers by the server before uploading the body
-        ret = requests.request('POST', url, data=data, headers=headers)
+        ret = requests.request('POST', url, data=data.encode('utf-8'), headers=headers)
         async_progress = is_async and '<state>InProgress</state>' in ret.text
         if ret.status_code != 200 or 'success>true</success>' not in ret.text and not async_progress:
+            # TODO parse xml for a better error message
             raise SalesforceError("Failed metadata {action}, code: {status_code}, response {text!r}".format(
                 action=action, status_code=ret.status_code, text=ret.text
             ))
         return ret.text
 
     def make_field_metadata(self, field: Field) -> Dict[str, Any]:
+        # TODO test all db_type with a default value and without
         db_type = field.db_type(self.connection)
         metadata = {
             'label': field.verbose_name,
@@ -333,32 +344,49 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             'required': not field.null,
             'unique': field.unique,  # type: ignore[attr-defined]
         }
-        # if ...:
-        #    metadata['defaultValue'] = ...
+        if isinstance(field.default, defaults.BaseDefault):
+            # for backward compatibility of models
+            if not isinstance(field.default, defaults.CallableDefault) and len(field.default.args) == 1:
+                metadata['defaultValue'] = field.default.args[0]
+        elif field.default is not None and field.default is not NOT_PROVIDED:
+            metadata['defaultValue'] = field.default
 
         # by db_type
         if db_type == 'Checkbox':
             del metadata['required']
-            metadata['defaultValue'] = field.default
+            assert 'defaultValue' in metadata
         elif db_type in ('Date', 'DateTime'):
             pass
         elif db_type == 'Number':
-            # TODO try with a default value and without
             metadata['precision'] = field.max_digits  # type: ignore[attr-defined]
             metadata['scale'] = field.decimal_places  # type: ignore[attr-defined]
         elif db_type in ('Text', 'Email', 'URL'):
             metadata['length'] = field.max_length
         elif db_type == 'Lookup':
-            metadata.pop('defaultValue', None)
-            # TODO "Related List Label" "Child Relationship Name"
+            metadata.pop('defaultValue', None)  # TODO maybe write a warning if a defaultValue exists
             metadata['referenceTo'] = field.related_model._meta.db_table  # type: ignore[union-attr]
             metadata['relationshipName'] = field.remote_field.get_accessor_name()  # type: ignore[attr-defined]
             # metadata['relationshipLabel'] = metadata['relationshipName']  # not important
             metadata['deleteConstraint'] = (
                 'Restrict' if field.remote_field.on_delete is PROTECT  # type: ignore[attr-defined]
                 else 'SetNull')
-        elif db_type == 'PickList':
-            pass  # TODO copy choices from sf_syncdb
+        elif db_type == 'Picklist':
+            # deactivated Picklist values are not visible by a normal metadata query
+            # we don't need to work with them
+            metadata['valueSet'] = {
+                'restricted': False,
+                'valueSetDefinition': {
+                    'sorted': False,
+                    'value': [
+                        {
+                            'fullName': ch_name,
+                            'label': ch_label,
+                            'default': ch_name == field.default,
+                        }
+                        for ch_name, ch_label in field.choices
+                    ],
+                }
+            }
         else:
             raise NotImplementedError
         return metadata
@@ -390,6 +418,9 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
     def delete_metadata(self, metadata_type: str, full_name: str) -> None:
         # can be modified to a list of custom fields field names
+        # If we want purgeOnDelete read this:
+        # https://salesforce.stackexchange.com/questions/68798/using-metadata-api-to-deploy-destructive-changes-to-delete-custom-fields
+        # https://salesforce.stackexchange.com/questions/69926/deleting-custom-object-via-destructivechanges-xml-and-metadata-api-deploy
         body = DELETE_METADATA_BODY.format(metadata_type=metadata_type, custom_object_name=full_name)
         self.metadata_command(action='delete', body=body)
 

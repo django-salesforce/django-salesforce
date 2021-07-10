@@ -3,18 +3,20 @@ Migrations
 
 new in 3.2.1
 
-Django-Salesforce can create custom objects and custom fields in a Salesforce (SFDC) database by
-``migrate`` command.
-A general practice in Saleforce is that more packages from more vendors are installed and not
+Django-Salesforce can create custom objects and custom fields in a Salesforce database (SFDC) by
+``migrate`` command. A general practice with Saleforce is that more packages from more vendors
+are installed in the organization and not
 all custom objects and fields should be managed by Django. Therefore the management by Django
-must be explicitly enabled in the Django model and also in Salesforce administration to prevent
-a mistake that a database is managed unitentionally.
+modifies SFDC only if it is explicitly enabled in the Django model and also in Salesforce administration,
+to prevent a mistake that some part of the database is managed unitentionally.
 
-If and only if you want to run migrations on a Salesforce database then create a permission set
-with the API name ``Django_Salesforce``. Assign that permission set also to the current user
-to can access data in new object types that will be created by Django.
+TODO: check of permissions is not yet implemented.
 
-Custom object in Salesforce that should be created and managed by Django must be marked by Meta: ``sf_managed = True``.
+If and only if you want to run migrations on a Salesforce database then:_
+1) create a permission set with the API name ``Django_Salesforce``.
+2) Assign that permission set also to the current user to can access data in new object types that will be created by Django.
+
+3) Custom object in Salesforce that should be created and managed by Django must be marked by Meta: ``sf_managed = True``.
 Custom fields can be created also in standard objects or in other objects not managed
 by Django if a field is marked by a parameter ``sf_managed=True``.
 
@@ -54,9 +56,15 @@ Example:
 Custom fields in objects managed by Django are also managed by Django by default,
 but it is possible to set a parameter ``sf_managed=False`` to disable it.
 
-If you want to start to manage a field that has been created manually then also read and edit
-permissions for that field must be enabled in "Django_Salesforce" permission set even if the field
-is accessible also by a user profile.
+Objects and fields created by Django are enabled in Django_Salesforce permission set and can be
+also modified and deleted by Django. If an existing sf_managed field or object is not enabled
+in the pemission set then it is skipped with a warning and its settings can not be modified.
+
+This security feature doesn't work for required sf_managed custom fields in standard objects 
+because required fields are always readable and writable.
+If you want to start to manage a field that has been created manually then enable read and edit
+permissions for that field in "Django_Salesforce" permission set even if the field
+is accessible by the user profile yet.
 
 
 Troubleshooting
@@ -80,11 +88,14 @@ if the printed error message wad pythons be insufficient.
     create_model(<model Test>)
     Run this command [Y/n]: n
 
+All fields managed by Django in SFDC have an explicit parameter ``sf_managed=True`` in ``migrations/*.py``
+while in ``models.py`` the right value can be usually recognized from a simple model. It could be useful
+to search for "sf_managged" in migrations files.
 
 Unimplemented features - caveats
 --------------------------------
 
-(The implementation is kept simple until usefulness of migrations will be appreciated enough,)
+The implementation is kept simple until usefulness of migrations will be appreciated enough.
 
 All migration operations are currently implemented without transactions and without
 any optimization. Every field is processed by an individual command.

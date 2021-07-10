@@ -238,7 +238,6 @@ class RegisterConversionTest(TestCase):
 
 class ToXml(TestCase):
     def test(self) -> None:
-        import pdb; pdb.set_trace()
         self.assertEqual(to_xml({'a': '<&>'}), '<a>&lt;&amp;&gt;</a>')
         self.assertEqual(to_xml({'int': 1, 'str': '1'}), '<int>1</int>\n<str>1</str>')
         self.assertEqual(to_xml({'a': {'b': {'c': 1}}}), '<a>\n  <b>\n    <c>1</c>\n  </b>\n</a>')

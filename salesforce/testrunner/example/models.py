@@ -366,18 +366,25 @@ class Test(SalesforceParentModel):
     """
     # This is a custom field because it is defined in the custom model.
     # The API name is therefore 'TestField__c'
-    test_text = models.CharField(max_length=40, db_column='TestText__c')
+    name = models.CharField(max_length=20, verbose_name='name ')
+    test_text = models.CharField(max_length=41, db_column='TestText__c', verbose_name='text_', help_text="unicode Θöá")
+    test_picklist = models.CharField(max_length=40, db_column='TestPicklist__c', choices=[('a', 'A'), ('b', 'B')],
+                                     null=True)
     test_bool = models.BooleanField(default=False, db_column='TestBool__c')
+    test_decimal = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     contact = models.ForeignKey(Contact, null=True, on_delete=models.DO_NOTHING, custom=True)
 
     class Meta:
         custom = True
         db_table = 'django_Test__c'
         sf_managed = True
+        verbose_name = "Test"
+        verbose_name_plural = "Tests"
 
 
 class TestDetail(SalesforceModel):
-    parent = models.ForeignKey(Test, models.DO_NOTHING, db_column='Parent__c', sf_read_only=models.NOT_UPDATEABLE, null=True)
+    parent = models.ForeignKey(Test, models.DO_NOTHING, db_column='Parent__c', sf_read_only=models.NOT_UPDATEABLE,
+                               null=True)
     contact = models.ForeignKey('Contact', models.DO_NOTHING, db_column='Contact__c', blank=True, null=True)
 
     class Meta(SalesforceModel.Meta):
