@@ -3,7 +3,7 @@ Minimal code to support ignored makemigrations  (like django.db.backends.*.schem
 
 without interaction to SF (without migrate)
 """
-from typing import Any, Callable, Dict, List, Type, Union
+from typing import Any, Callable, Dict, Iterable, List, Type, Union
 import logging
 import random
 import re
@@ -38,29 +38,6 @@ METADATA_ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
 </soapenv:Envelope>
 """
 
-CREATE_OBJECT_BODY = """
-    <tns:createMetadata>
-      <metadata xsi:type="CustomObject">
-{body}
-      </metadata>
-    </tns:createMetadata>
-"""
-
-UPDATE_OBJECT_BODY = """
-    <tns:updateMetadata xmlns="http://soap.sforce.com/2006/04/metadata">
-      <tns:metadata xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="tns:CustomObject">
-{body}
-      </tns:metadata>
-    </tns:updateMetadata>
-"""
-
-DELETE_METADATA_BODY = """
-    <tns:deleteMetadata>
-      <tns:type>{metadata_type}</tns:type>
-      <tns:fullNames>{custom_object_name}</tns:fullNames>
-    </tns:deleteMetadata>
-"""
-
 T_PY2XML = Union[str, int, float, Dict[str, Union['T_PY2XML', List['T_PY2XML']]]]  # type: ignore[misc] # recursive
 
 
@@ -72,20 +49,21 @@ def to_xml(data: T_PY2XML, indent: int = 0) -> str:
     INDENT = 2  # indent step
     if isinstance(data, str):
         return data.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-    elif isinstance(data, (int, float)):
-        return str(data)
+    elif isinstance(data, (int, float, bool)):
+        return str(data).lower()
     elif isinstance(data, dict):
         out = []  # type: List[str]
         for tag, val in data.items():
-            assert re.match(r'[A-Za-z][0-9A-Za-z_:]*$', tag)
+            assert re.match(r'[A-Za-z][0-9A-Za-z_:]*(?: xsi:type="[A-Za-z]+")?$', tag)
+            end_tag = tag.split()[0]
             if not isinstance(val, list):
                 val = [val]
             for item in val:
                 v_str = to_xml(item, indent + 1)
                 wrap_start = '\n' if v_str.endswith('>') else ''
                 wrap_end = '\n' + indent * INDENT * ' ' if v_str.endswith('>') else ''
-                out.append(indent * INDENT * ' ' + '<{tag}>{wrap_start}{v_str}{wrap_end}</{tag}>'
-                           .format(tag=tag, v_str=v_str, wrap_start=wrap_start, wrap_end=wrap_end))
+                out.append(indent * INDENT * ' ' + '<{tag}>{wrap_start}{v_str}{wrap_end}</{end_tag}>'
+                           .format(tag=tag, end_tag=end_tag, v_str=v_str, wrap_start=wrap_start, wrap_end=wrap_end))
         return '\n'.join(out)
     else:
         raise NotImplementedError("Not implemented conversion from type {} to xml".format(type(data)))
@@ -171,21 +149,9 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             # TODO if self.connection.migrate_options['batch']:  create also fields by the same request
-            body = CREATE_OBJECT_BODY.format(body=to_xml(self.make_model_metadata(model), indent=4))
-            response_text = self.metadata_command(action='create', body=body)
-            # <?xml version="1.0" encoding="UTF-8"?>
-            # <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-            #                   xmlns="http://soap.sforce.com/2006/04/metadata">
-            #   <soapenv:Body>
-            #     <createResponse>
-            #       <result>
-            #         <done>false</done>
-            #         <id>04sM0000001l43CIAQ</id>
-            #         <state>InProgress</state>
-            #       </result>
-            #     </createResponse>
-            #   </soapenv:Body>
-            # </soapenv:Envelope>
+            body = to_xml({'createMetadata': {
+                'metadata xsi:type="tns:CustomObject"': self.make_model_metadata(model)}})
+            _ = self.metadata_command(action='create', body=body)
             entity_id = self.wait_for_entity(db_table, '')
 
             object_permissions_data = dict(
@@ -245,12 +211,13 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if sf_managed_model:
             self.check_permissions(model)
             if new_db_table != old_db_table:
-                # TODO implement it by renameMetadata()
-                raise NotImplementedError("df_table rename is not yet implemented")
-            body = UPDATE_OBJECT_BODY.format(body=to_xml(self.make_model_metadata(model), indent=4))
-            import pdb; pdb.set_trace()
-            response_text = self.metadata_command(action='update', body=body)
-            import pdb; pdb.set_trace()
+                body = to_xml({"renameMetadata": {"type": 'CustomObject',
+                                                  "oldFullName": old_db_table,
+                                                  "newFullName": new_db_table}})
+                _ = self.metadata_command(action='rename', body=body)
+            body = to_xml({'updateMetadata': {
+                'metadata xsi:type="CustomObject"': self.make_model_metadata(model)}})
+            _ = self.metadata_command(action='update', body=body)
 
     @wrap_debug
     def add_field(self, model: Type[Model], field: Field) -> None:
@@ -303,24 +270,16 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             return self.alter_db_table(model, model._meta.db_table, model._meta.db_table)
         sf_managed_field = getattr(old_field, 'sf_managed', False) or getattr(new_field, 'sf_managed', False)
         if sf_managed_field:
-            if model._meta.db_table.endswith('__c'):
-                soql = "select RunningUserEntityAccessId from EntityDefinition where QualifiedApiName = %s limit 2"
-                self.cur.execute(soql, [model._meta.db_table], tooling_api=True)
-                rows = self.cur.fetchall()
-                assert len(rows) == 1
-                table_enum_or_id = rows[0][0].split('.')[0]
-            else:
-                table_enum_or_id = model._meta.db_table
-            developer_name = self.developer_name(old_field.column)
-            self.cur.execute("select Id from CustomField where TableEnumOrId = %s and DeveloperName = %s",
-                             [table_enum_or_id, developer_name], tooling_api=True)
-            field_id, = self.cur.fetchone()
-            full_name = model._meta.db_table + '.' + new_field.column
-            metadata = self.make_field_metadata(new_field)
-            data = {'Metadata': metadata, 'FullName': full_name}
-            log.debug("alter_field %s %s to %s", model, old_field, full_name)
-            ret = self.request('PATCH', 'tooling/sobjects/CustomField/{}'.format(field_id), json=data)
-            assert ret.status_code == 204
+            if new_field.column != old_field.column:
+                body = to_xml({"renameMetadata": {"type": 'CustomField',
+                                                  "oldFullName": model._meta.db_table + '.' + old_field.column,
+                                                  "newFullName": model._meta.db_table + '.' + new_field.column}})
+                _ = self.metadata_command(action='rename', body=body)
+
+            body = to_xml({"updateMetadata": {
+                'metadata xsi:type="CustomField"': self.make_field_metadata(new_field)}})
+            _ = self.metadata_command(action='update', body=body)
+            log.debug("alter_field %s %s to %s", model, old_field, new_field)
 
     def execute(self, sql: Union[Statement, str], params: Any = ()) -> None:
         assert isinstance(sql, str)
@@ -476,12 +435,12 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         }
         return metadata
 
-    def delete_metadata(self, metadata_type: str, full_name: str) -> None:
+    def delete_metadata(self, metadata_type: str, full_names: Iterable[str]) -> None:
         # can be modified to a list of custom fields field names
         # If we want purgeOnDelete read this:
         # https://salesforce.stackexchange.com/questions/68798/using-metadata-api-to-deploy-destructive-changes-to-delete-custom-fields
         # https://salesforce.stackexchange.com/questions/69926/deleting-custom-object-via-destructivechanges-xml-and-metadata-api-deploy
-        body = DELETE_METADATA_BODY.format(metadata_type=metadata_type, custom_object_name=full_name)
+        body = to_xml({"deleteMetadata": {"type": metadata_type, "fullNames": list(full_names)}})
         self.metadata_command(action='delete', body=body)
 
     def wait_for_entity(self, db_table: str, deploy_result_id: str) -> str:

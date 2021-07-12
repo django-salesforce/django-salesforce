@@ -99,8 +99,12 @@ The implementation is kept simple until usefulness of migrations will be appreci
 All migration operations are currently implemented without transactions and without
 any optimization. Every field is processed by an individual command.
 
-Database table rename is not implemented.
+It is not possible to detect only a change of model Meta options ``verbose_name`` or ``verbose_name_plural``.
+You should change change also someting unimportant in the ``Name`` field of that model
+in the same transaction e.g. change the unused ``max_length`` parameter or add a space
+at the end of ``verbose_name`` of Name field. That will trigger update of metadata of
+the CustomObject in Salesforce.
 
-It is not possible te detect a change in model Meta options.
+Master-Detail Relationship is not currently implemented even that it is an important type.
 
 All deleted objects and fields remain in a trash bin and they are not purged on delete.
