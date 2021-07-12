@@ -3,7 +3,7 @@ Minimal code to support ignored makemigrations  (like django.db.backends.*.schem
 
 without interaction to SF (without migrate)
 """
-from typing import Any, Callable, Dict, Iterable, List, Type, Union
+from typing import Any, Callable, Dict, List, Type, Union
 import logging
 import random
 import re
@@ -54,7 +54,7 @@ def to_xml(data: T_PY2XML, indent: int = 0) -> str:
     elif isinstance(data, dict):
         out = []  # type: List[str]
         for tag, val in data.items():
-            assert re.match(r'[A-Za-z][0-9A-Za-z_:]*(?: xsi:type="[A-Za-z]+")?$', tag)
+            assert re.match(r'[A-Za-z][0-9A-Za-z_:]*(?: xsi:type="(?:tns:)?[A-Za-z]+")?$', tag)
             end_tag = tag.split()[0]
             if not isinstance(val, list):
                 val = [val]
@@ -75,6 +75,19 @@ def wrap_debug(func: Callable[..., None]) -> Callable[..., None]:
         interactive = self.connection.migrate_options.get('ask')
         interact_destructive_production = self.is_production and getattr(func, 'no_destructive_production', False)
         if not interactive and not interact_destructive_production:
+            return func(self, model, *args, **kwargs)
+
+        assert issubclass(model, Model)
+        sf_managed = model._meta.db_table == 'django_migrations__c'
+        if args and isinstance(args[0], Field):
+            field = args[0]
+            sf_managed = sf_managed or getattr(field, 'sf_managed', False)
+            if args[1:] and isinstance(args[1], Field):
+                new_field = args[1]
+                sf_managed = sf_managed or getattr(new_field, 'sf_managed', False)
+        else:
+            sf_managed = sf_managed or getattr(model._meta.auto_field, 'sf_managed_model', False)
+        if not sf_managed:
             return func(self, model, *args, **kwargs)
 
         params = ['<model {}>'.format(model._meta.object_name)]
@@ -198,7 +211,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                         except SalesforceError as exc:
                             if not ('DUPLICATE_DEVELOPER_NAME' in str(exc) and 'Child Relationship' in str(exc)):
                                 raise
-            self.delete_metadata('CustomObject', model._meta.db_table)
+            self.delete_metadata('CustomObject', [model._meta.db_table])
         else:
             for field in model._meta.fields:
                 sf_managed_field = getattr(field, 'sf_managed', False)
@@ -256,7 +269,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if sf_managed_field:
             full_name = model._meta.db_table + '.' + field.column
             log.debug("remove_field %s %s", model, full_name)
-            self.delete_metadata('CustomField', full_name)
+            self.delete_metadata('CustomField', [full_name])
 
     @wrap_debug
     def alter_field(self, model: Type[Model], old_field: Field, new_field: Field, strict: bool = False
@@ -344,9 +357,10 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         headers = {'SOAPAction': '""', 'Content-Type': 'text/xml; charset=utf-8'}
         # the header {'Expect': '100-continue'} is useful if sending much data and want
         # to check headers by the server before uploading the body
+        if 'update' in data and "CustomField" in data:
+            import pdb; pdb.set_trace()
         ret = requests.request('POST', url, data=data.encode('utf-8'), headers=headers)
-        async_progress = is_async and '<state>InProgress</state>' in ret.text
-        if ret.status_code != 200 or 'success>true</success>' not in ret.text and not async_progress:
+        if ret.status_code != 200 or 'success>true</success>' not in ret.text:
             # TODO parse xml for a better error message
             raise SalesforceError("Failed metadata {action}, code: {status_code}, response {text!r}".format(
                 action=action, status_code=ret.status_code, text=ret.text
@@ -435,7 +449,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         }
         return metadata
 
-    def delete_metadata(self, metadata_type: str, full_names: Iterable[str]) -> None:
+    def delete_metadata(self, metadata_type: str, full_names: List[str]) -> None:
         # can be modified to a list of custom fields field names
         # If we want purgeOnDelete read this:
         # https://salesforce.stackexchange.com/questions/68798/using-metadata-api-to-deploy-destructive-changes-to-delete-custom-fields
