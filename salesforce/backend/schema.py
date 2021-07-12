@@ -218,9 +218,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             log.debug("delete_model %s", model)
-            if not self.get_model_permissions(model)['PermissionsModifyAllRecords']:
-                raise IntegrityError("the deleted model {} is not enabled in Object Permisions "
-                                     "PermissionsModifyAllRecords")
+            self.check_permissions(model)
             for field in model._meta.fields:
                 if isinstance(field, ForeignKey) and getattr(field, 'sf_managed', False):
                     # prevent a duplicit related_name for more deleted copies
@@ -245,8 +243,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def alter_db_table(self, model: Type[Model], old_db_table: str, new_db_table: str) -> None:
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model:
-            if not self.get_model_permissions(model)['PermissionsModifyAllRecords']:
-                raise IntegrityError("the deleted model {} is not enabled in Object Permisions")
+            self.check_permissions(model)
             if new_db_table != old_db_table:
                 # TODO implement it by renameMetadata()
                 raise NotImplementedError("df_table rename is not yet implemented")
@@ -354,17 +351,23 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             self._is_production = organization_type != 'Developer Edition' and not is_sandbox
         return self._is_production
 
-    def get_model_permissions(self, model: Type[Model]) -> Dict[str, bool]:
+    def get_object_permissions(self, db_table: str) -> Dict[str, bool]:
         cur = self.conn.cursor(dict)
         soql = ("SELECT Id, PermissionsCreate, PermissionsDelete, PermissionsRead, PermissionsEdit, "
                 "       PermissionsViewAllRecords, PermissionsModifyAllRecords "
                 "FROM ObjectPermissions WHERE ParentId = %s AND SobjectType = %s")
-        cur.execute(soql, [self.permission_set_id, model._meta.db_table])
+        cur.execute(soql, [self.permission_set_id, db_table])
         row = cur.fetchone()
         if row is None:
             row = {x[0]: False for x in cur.description if x[0] != 'Id'}
-        import pdb; pdb.set_trace()
         return row
+
+    def check_permissions(self, model: Type[Model]) -> None:
+        no_check_permissions = self.connection.migrate_options.get('no_check_permissions')
+        if not no_check_permissions:
+            if not self.get_object_permissions(model._meta.db_table)['PermissionsModifyAllRecords']:
+                raise IntegrityError("the model <model {}> is not enabled in Object Permisions "
+                                     "to ModifyAll".format(model._meta.object_name))
 
     def metadata_command(self, action: str, body: str, is_async: bool = False) -> str:
         # TODO move to the driver

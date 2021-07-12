@@ -14,6 +14,10 @@ class Command(MigrateCommand):
             '--ask', action='store_true',
             help='Run migrate subcommands interactive.',
         )
+        parser.add_argument(
+            '--no-check-permissions', action='store_true',
+            help='Run migrate withot check permissions of CustomObjects.',
+        )
 
     def handle(self, *args, **options):
         database = options['database']
@@ -22,5 +26,6 @@ class Command(MigrateCommand):
             connection.migrate_options = {
                 # 'batch': options['batch'],
                 'ask': options['ask'],
+                'no_check_permissions': options['no_check_permissions'],
             }
         super().handle(*args, **options)
