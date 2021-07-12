@@ -366,7 +366,7 @@ class Test(SalesforceParentModel):
     """
     # This is a custom field because it is defined in the custom model.
     # The API name is therefore 'TestField__c'
-    name = models.CharField(max_length=20, verbose_name='name ')
+    name = models.CharField(max_length=20, verbose_name='name')
     test_text = models.CharField(max_length=41, db_column='TestText__c', verbose_name='text_', help_text="unicode Θöá")
     test_picklist = models.CharField(max_length=40, db_column='TestPicklist__c', choices=[('a', 'A'), ('b', 'B')],
                                      null=True)

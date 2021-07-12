@@ -14,7 +14,7 @@ from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.ddl_references import Statement
 from django.db.models import Field, ForeignKey, Model, NOT_PROVIDED, PROTECT
-from salesforce.dbapi.exceptions import OperationalError, SalesforceError
+from salesforce.dbapi.exceptions import IntegrityError, OperationalError, SalesforceError
 from salesforce import defaults
 
 log = logging.getLogger(__name__)
@@ -23,13 +23,14 @@ log = logging.getLogger(__name__)
 METADATA_ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:apex="http://soap.sforce.com/2006/08/apex"
-                  xmlns:cmd="http://soap.sforce.com/2006/04/metadata"
+                  xmlns:tns="http://soap.sforce.com/2006/04/metadata"
+                  xmlns="http://soap.sforce.com/2006/04/metadata"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <soapenv:Header>
-    <cmd:SessionHeader>
-      <cmd:sessionId>{session_id}</cmd:sessionId>
-    </cmd:SessionHeader>
+    <tns:SessionHeader>
+      <tns:sessionId>{session_id}</tns:sessionId>
+    </tns:SessionHeader>
   </soapenv:Header>
   <soapenv:Body>
 {body}
@@ -38,18 +39,26 @@ METADATA_ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 CREATE_OBJECT_BODY = """
-    <create xmlns="http://soap.sforce.com/2006/04/metadata">
+    <tns:createMetadata>
       <metadata xsi:type="CustomObject">
 {body}
       </metadata>
-    </create>
+    </tns:createMetadata>
+"""
+
+UPDATE_OBJECT_BODY = """
+    <tns:updateMetadata xmlns="http://soap.sforce.com/2006/04/metadata">
+      <tns:metadata xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="tns:CustomObject">
+{body}
+      </tns:metadata>
+    </tns:updateMetadata>
 """
 
 DELETE_METADATA_BODY = """
-    <cmd:deleteMetadata>
-      <cmd:type>{metadata_type}</cmd:type>
-      <cmd:fullNames>{custom_object_name}</cmd:fullNames>
-    </cmd:deleteMetadata>
+    <tns:deleteMetadata>
+      <tns:type>{metadata_type}</tns:type>
+      <tns:fullNames>{custom_object_name}</tns:fullNames>
+    </tns:deleteMetadata>
 """
 
 T_PY2XML = Union[str, int, float, Dict[str, Union['T_PY2XML', List['T_PY2XML']]]]  # type: ignore[misc] # recursive
@@ -85,7 +94,9 @@ def to_xml(data: T_PY2XML, indent: int = 0) -> str:
 def wrap_debug(func: Callable[..., None]) -> Callable[..., None]:
     def wrapped(self, model: Type[Model], *args: Any, **kwargs: Any) -> None:
         skip = False
-        if not self.connection.migrate_options.get('ask'):
+        interactive = self.connection.migrate_options.get('ask')
+        interact_destructive_production = self.is_production and getattr(func, 'no_destructive_production', False)
+        if not interactive and not interact_destructive_production:
             return func(self, model, *args, **kwargs)
 
         params = ['<model {}>'.format(model._meta.object_name)]
@@ -97,6 +108,8 @@ def wrap_debug(func: Callable[..., None]) -> Callable[..., None]:
         skip = answer.upper() not in ['Y', '']
         if skip:
             return None
+        if not interactive:
+            return func(self, model, *args, **kwargs)
 
         try:
             return func(self, model, *args, **kwargs)
@@ -111,6 +124,11 @@ def wrap_debug(func: Callable[..., None]) -> Callable[..., None]:
             raise
 
     return wrapped
+
+
+def no_destructive_production(func: Callable[..., None]) -> Callable[..., None]:
+    setattr(func, 'no_destructive_production', True)
+    return func
 
 
 class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
@@ -128,6 +146,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         self.cur = self.conn.cursor()
         self.request = self.conn.handle_api_exceptions
         self._permission_set_id = None  # Optional[str]
+        self._is_production = None  # Optional[bool];
         self.permission_set_id  # require the permission set
         super().__init__(connection, collect_sql=collect_sql, atomic=atomic)
 
@@ -153,7 +172,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             # TODO if self.connection.migrate_options['batch']:  create also fields by the same request
             body = CREATE_OBJECT_BODY.format(body=to_xml(self.make_model_metadata(model), indent=4))
-            response_text = self.metadata_command(action='create', body=body, is_async=True)
+            response_text = self.metadata_command(action='create', body=body)
             # <?xml version="1.0" encoding="UTF-8"?>
             # <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
             #                   xmlns="http://soap.sforce.com/2006/04/metadata">
@@ -167,17 +186,14 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             #     </createResponse>
             #   </soapenv:Body>
             # </soapenv:Envelope>
-            match = re.match(r'.*<id>([0-9A-Za-z]{18})</id>', response_text)
-            assert match
-            async_result_id = match.group(1)
-            entity_id = self.wait_for_entity(db_table, async_result_id)
+            entity_id = self.wait_for_entity(db_table, '')
 
             object_permissions_data = dict(
                 # selection by `db_table` was not reliable if the same object is in the trash
                 SobjectType=entity_id,
                 ParentId=self.permission_set_id,
-                # PermissionsViewAllRecords=True,
-                # PermissionsModifyAllRecords=True,
+                PermissionsViewAllRecords=True,
+                PermissionsModifyAllRecords=True,
                 PermissionsRead=True,
                 PermissionsEdit=True,
                 PermissionsCreate=True,
@@ -195,12 +211,16 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 self.add_field(model, field)
 
     @wrap_debug
+    @no_destructive_production
     def delete_model(self, model: Type[Model]) -> None:
         if model._meta.db_table == 'django_migrations':
             model._meta.db_table += '__c'
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             log.debug("delete_model %s", model)
+            if not self.get_model_permissions(model)['PermissionsModifyAllRecords']:
+                raise IntegrityError("the deleted model {} is not enabled in Object Permisions "
+                                     "PermissionsModifyAllRecords")
             for field in model._meta.fields:
                 if isinstance(field, ForeignKey) and getattr(field, 'sf_managed', False):
                     # prevent a duplicit related_name for more deleted copies
@@ -220,6 +240,20 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 sf_managed_field = getattr(field, 'sf_managed', False)
                 if sf_managed_field:
                     self.remove_field(model, field)
+
+    @wrap_debug
+    def alter_db_table(self, model: Type[Model], old_db_table: str, new_db_table: str) -> None:
+        sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
+        if sf_managed_model:
+            if not self.get_model_permissions(model)['PermissionsModifyAllRecords']:
+                raise IntegrityError("the deleted model {} is not enabled in Object Permisions")
+            if new_db_table != old_db_table:
+                # TODO implement it by renameMetadata()
+                raise NotImplementedError("df_table rename is not yet implemented")
+            body = UPDATE_OBJECT_BODY.format(body=to_xml(self.make_model_metadata(model), indent=4))
+            import pdb; pdb.set_trace()
+            response_text = self.metadata_command(action='update', body=body)
+            import pdb; pdb.set_trace()
 
     @wrap_debug
     def add_field(self, model: Type[Model], field: Field) -> None:
@@ -252,6 +286,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 assert ret.status_code == 201
 
     @wrap_debug
+    @no_destructive_production
     def remove_field(self, model: Type[Model], field: Field) -> None:
         sf_managed_field = getattr(field, 'sf_managed', False)
         if sf_managed_field:
@@ -267,6 +302,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def _alter_field(self, model: Type[Model], old_field: Field, new_field: Field, strict: bool = False
                      ) -> None:
         """This can rename a field or change the type or the parameters"""
+        if new_field.column == 'Name':
+            return self.alter_db_table(model, model._meta.db_table, model._meta.db_table)
         sf_managed_field = getattr(old_field, 'sf_managed', False) or getattr(new_field, 'sf_managed', False)
         if sf_managed_field:
             if model._meta.db_table.endswith('__c'):
@@ -309,6 +346,26 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 raise OperationalError("Can not migrate because the Permission Set 'Django_Salesforce' doesn't exist")
         return self._permission_set_id
 
+    @property
+    def is_production(self):
+        if self._is_production is None:
+            self.cur.execute("select OrganizationType, IsSandbox from Organization")
+            organization_type, is_sandbox = self.cur.fetchone()
+            self._is_production = organization_type != 'Developer Edition' and not is_sandbox
+        return self._is_production
+
+    def get_model_permissions(self, model: Type[Model]) -> Dict[str, bool]:
+        cur = self.conn.cursor(dict)
+        soql = ("SELECT Id, PermissionsCreate, PermissionsDelete, PermissionsRead, PermissionsEdit, "
+                "       PermissionsViewAllRecords, PermissionsModifyAllRecords "
+                "FROM ObjectPermissions WHERE ParentId = %s AND SobjectType = %s")
+        cur.execute(soql, [self.permission_set_id, model._meta.db_table])
+        row = cur.fetchone()
+        if row is None:
+            row = {x[0]: False for x in cur.description if x[0] != 'Id'}
+        import pdb; pdb.set_trace()
+        return row
+
     def metadata_command(self, action: str, body: str, is_async: bool = False) -> str:
         # TODO move to the driver
         data = METADATA_ENVELOPE.format(
@@ -322,7 +379,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             api_version=self.conn.api_ver,
             org_id=org_id,
         )
-        headers = {'SOAPAction': action, 'Content-Type': 'text/xml; charset=utf-8'}
+        headers = {'SOAPAction': '""', 'Content-Type': 'text/xml; charset=utf-8'}
         # the header {'Expect': '100-continue'} is useful if sending much data and want
         # to check headers by the server before uploading the body
         ret = requests.request('POST', url, data=data.encode('utf-8'), headers=headers)

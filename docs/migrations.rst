@@ -10,7 +10,8 @@ all custom objects and fields should be managed by Django. Therefore the managem
 modifies SFDC only if it is explicitly enabled in the Django model and also in Salesforce administration,
 to prevent a mistake that some part of the database is managed unitentionally.
 
-TODO: check of permissions is not yet implemented.
+Another security feature is that all destructive operations ``delete_model`` and ``remove_fieldgare``
+are interactive on production databases and every delete must be confirmed.
 
 If and only if you want to run migrations on a Salesforce database then:_
 1) create a permission set with the API name ``Django_Salesforce``.
@@ -57,14 +58,12 @@ Custom fields in objects managed by Django are also managed by Django by default
 but it is possible to set a parameter ``sf_managed=False`` to disable it.
 
 Objects and fields created by Django are enabled in Django_Salesforce permission set and can be
-also modified and deleted by Django. If an existing sf_managed field or object is not enabled
+also modified and deleted by Django. If an existing sf_managed object is not enabled
 in the pemission set then it is skipped with a warning and its settings can not be modified.
 
-This security feature doesn't work for required sf_managed custom fields in standard objects 
-because required fields are always readable and writable.
-If you want to start to manage a field that has been created manually then enable read and edit
-permissions for that field in "Django_Salesforce" permission set even if the field
-is accessible by the user profile yet.
+If you want to start to manage an object that has been created manually then enable all
+Object Permissions for that object in "Django_Salesforce" permission set even if the field
+is accessible still by user profiles.
 
 
 Troubleshooting
@@ -100,5 +99,8 @@ The implementation is kept simple until usefulness of migrations will be appreci
 All migration operations are currently implemented without transactions and without
 any optimization. Every field is processed by an individual command.
 
+Database table rename is not implemented.
+
+It is not possible te detect a change in model Meta options.
 
 All deleted objects and fields remain in a trash bin and they are not purged on delete.
