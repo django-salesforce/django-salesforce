@@ -3,7 +3,7 @@ Tests that do not need to connect servers
 """
 # pylint:disable=unused-variable
 
-from typing import Type
+from typing import Any, Dict, Optional, Type
 from django.apps.registry import Apps
 from django.test import TestCase
 from django.db.models import DO_NOTHING, Subquery
@@ -11,7 +11,7 @@ from salesforce import fields, models
 from salesforce.dbapi import driver
 from salesforce.testrunner.example.models import (
         Contact, Opportunity, OpportunityContactRole, ChargentOrder)
-from salesforce.backend.schema import to_xml
+from salesforce.backend.schema import to_xml, ParseXml
 from salesforce.backend.test_helpers import default_is_sf, LazyTestMixin, skipUnless
 from salesforce.backend.utils import sobj_id
 
@@ -236,9 +236,40 @@ class RegisterConversionTest(TestCase):
         self.assertNotIn(models.SalesforceModel, driver.subclass_conversions)
 
 
-class ToXml(TestCase):
+class ToXmlTest(TestCase):
     def test(self) -> None:
         self.assertEqual(to_xml({'a': '<&>'}), '<a>&lt;&amp;&gt;</a>')
         self.assertEqual(to_xml({'int': 1, 'str': '1'}), '<int>1</int>\n<str>1</str>')
         self.assertEqual(to_xml({'a': {'b': {'c': 1}}}), '<a>\n  <b>\n    <c>1</c>\n  </b>\n</a>')
         self.assertEqual(to_xml({'r': {'a': 'a', 'b': [1, 2]}}), '<r>\n  <a>a</a>\n  <b>1</b>\n  <b>2</b>\n</r>')
+
+
+class ParseXmlTest(TestCase):
+    ENVELOPE = ('<?xml version="1.0"?><soapenv:Envelope'
+                ' xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"'
+                ' xmlns="http://soap.sforce.com/2006/04/metadata">'
+                '{}</soapenv:Envelope>')
+    ENVELOPE = '<?xml version="1.0"?><Envelope xmlns="ns">{}</Envelope>'
+
+    def go(self, text: str, type_hints: Optional[Dict[str, Type]] = None) -> Dict[str, Any]:
+        return ParseXml(self.ENVELOPE.format(text), type_hints, ns={'': 'ns'}).to_dict()
+
+    def test_parse_xml(self) -> None:
+        self.assertEqual(self.go('<a>text</a>'), {'a': 'text'})
+        self.assertEqual(self.go('<a>text</a><a>text</a>'), {'a': ['text', 'text']})
+        self.assertEqual(self.go('<a><b><c>text</c></b></a>'), {'a': {'b': {'c': 'text'}}})
+        self.assertEqual(self.go('<a>true</a>'),             {'a': 'true'})
+        self.assertEqual(self.go('<a>true</a>', {'a': bool}), {'a': True})
+        self.assertEqual(self.go('<a>1</a>', {'a': int}), {'a': 1})
+
+    def test_parse_soap_response(self) -> None:
+        example = (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"'
+            ' xmlns="http://soap.sforce.com/2006/04/metadata"><soapenv:Body><deleteMetadataResponse><result>'
+            '<fullName>django_Test__c.Contact__c</fullName><success>true</success></result>'
+            '</deleteMetadataResponse></soapenv:Body></soapenv:Envelope>'
+        )
+        expect = {'soapenv:Body': {'deleteMetadataResponse': {'result': [
+            {'fullName': 'django_Test__c.Contact__c', 'success': 'true'}]}}}
+        self.assertEqual(ParseXml(example, {'result': list}).to_dict(), expect)

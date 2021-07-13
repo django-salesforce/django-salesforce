@@ -3,17 +3,17 @@ Minimal code to support ignored makemigrations  (like django.db.backends.*.schem
 
 without interaction to SF (without migrate)
 """
-from typing import Any, Callable, Dict, List, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 import logging
 import random
 import re
-import time
 
 import requests
 from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.ddl_references import Statement
 from django.db.models import Field, ForeignKey, Model, NOT_PROVIDED, PROTECT
+import xml.etree.ElementTree as ET
 from salesforce.dbapi.exceptions import IntegrityError, OperationalError, SalesforceError
 from salesforce import defaults
 
@@ -39,6 +39,69 @@ METADATA_ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 T_PY2XML = Union[str, int, float, Dict[str, Union['T_PY2XML', List['T_PY2XML']]]]  # type: ignore[misc] # recursive
+
+
+class ParseXml:
+
+    T_hint = Union[Type[bool], Type[int], Type[str], Type[dict], Type[list]]
+    ns = {'soapenv': "http://schemas.xmlsoap.org/soap/envelope/",
+          '': "http://soap.sforce.com/2006/04/metadata"}
+
+    def __init__(self, text: str, type_hints: Optional[Dict[str, T_hint]] = None,
+                 ns: Optional[Dict[str, str]] = None) -> None:
+        self.reverse_ns = {uri: prefix for prefix, uri in (ns or self.ns).items()}
+        self.type_hints = type_hints or {}
+        self.root = ET.fromstring(text)
+        self.repeated_tags = set([v for k, v in self.type_hints.items() if v is Type])
+
+    def to_dict(self, node: Optional[ET.Element] = None) -> Dict[str, Any]:
+        """Reverse operation to 'to_xml'"""
+        if node is None:
+            node = self.root
+        out = {}  # type: Dict[str, Any]
+        for child in node:
+            if child.tag.startswith('{'):
+                ns, raw_tag = child.tag.lstrip('{').split('}')
+                prefix = self.reverse_ns[ns]
+                tag = (prefix + ':' + raw_tag) if prefix else raw_tag
+            else:
+                tag = 'no_ns:' + child.tag
+            child_tree = self.to_dict(child)
+            child_text = child.text
+            assert not child.attrib
+            hint = self.type_hints.get(tag)
+            if hint is None:
+                assert not child_tree or not child_text
+            elif issubclass(hint, (list, dict)):
+                assert not child_text
+            else:
+                assert not child_tree
+
+            child_out = None  # type: Any
+            if child_text:
+                if hint is None or issubclass(hint, str):
+                    child_out = child_text
+                elif issubclass(hint, bool):
+                    assert child_text in ('true', 'false')
+                    child_out = child_text == 'true'
+                elif issubclass(hint, int):
+                    child_out = hint(child_text)
+                else:
+                    raise NotImplementedError
+            else:
+                child_out = child_tree
+
+            if tag in out:
+                if not isinstance(out[tag], list):
+                    assert isinstance(child_out, type(out[tag]))
+                    out[tag] = [out[tag]]
+                out[tag].append(child_out)
+            else:
+                if hint is not None and issubclass(hint, list):
+                    out[tag] = [child_out]
+                else:
+                    out[tag] = child_out
+        return out
 
 
 def to_xml(data: T_PY2XML, indent: int = 0) -> str:
@@ -162,10 +225,16 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             # TODO if self.connection.migrate_options['batch']:  create also fields by the same request
-            body = to_xml({'createMetadata': {
+            log.debug('create_model %s', db_table)
+            self.metadata_command({'createMetadata': {
                 'metadata xsi:type="tns:CustomObject"': self.make_model_metadata(model)}})
-            _ = self.metadata_command(action='create', body=body)
-            entity_id = self.wait_for_entity(db_table, '')
+
+            soql = ("select RunningUserEntityAccessId, DeveloperName, Label, QualifiedApiName, DeploymentStatus "
+                    "from EntityDefinition where QualifiedApiName = %s limit 2")
+            self.cur.execute(soql, [db_table], tooling_api=True)
+            rows = self.cur.fetchall()
+            assert len(rows) == 1
+            entity_id = rows[0][0].split('.')[0]
 
             object_permissions_data = dict(
                 # selection by `db_table` was not reliable if the same object is in the trash
@@ -197,7 +266,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             log.debug("delete_model %s", model)
-            self.check_permissions(model)
+            self.check_permissions(model._meta.db_table)
             for field in model._meta.fields:
                 if isinstance(field, ForeignKey) and getattr(field, 'sf_managed', False):
                     # prevent a duplicit related_name for more deleted copies
@@ -222,36 +291,25 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def alter_db_table(self, model: Type[Model], old_db_table: str, new_db_table: str) -> None:
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
         if sf_managed_model:
-            self.check_permissions(model)
+            self.check_permissions(old_db_table)
             if new_db_table != old_db_table:
-                body = to_xml({"renameMetadata": {"type": 'CustomObject',
-                                                  "oldFullName": old_db_table,
-                                                  "newFullName": new_db_table}})
-                _ = self.metadata_command(action='rename', body=body)
-            body = to_xml({'updateMetadata': {
+                self.metadata_command({"renameMetadata": {
+                    "type": 'CustomObject', "oldFullName": old_db_table, "newFullName": new_db_table}})
+            self.metadata_command({'updateMetadata': {
                 'metadata xsi:type="CustomObject"': self.make_model_metadata(model)}})
-            _ = self.metadata_command(action='update', body=body)
 
     @wrap_debug
     def add_field(self, model: Type[Model], field: Field) -> None:
         sf_managed = getattr(field, 'sf_managed', False) or model._meta.db_table == 'django_migrations__c'
         if sf_managed:
             full_name = model._meta.db_table + '.' + field.column
-            metadata = self.make_field_metadata(field)
-            data = {'Metadata': metadata, 'FullName': full_name}
+            self.metadata_command({'createMetadata': {
+                'medatada xsi:type="CustomField"': self.make_field_metadata(field)}})
 
             log.debug("add_field %s %s", model, full_name)
-            ret = self.request('POST', 'tooling/sobjects/CustomField', json=data)
-            # if the error message is "SalesforceError: JSON_PARSER_ERROR ... at [line:1, column:39]
-            # then the first invalid character is before the end of
-            #     `json.dumps(data['Metadata'], separators=(',', ':'))[:column]`
-            # maybe in the half of word
-            assert ret.status_code == 201
-            # ret.json() == {'id': '00NM0000002KYDHMA4', 'success': True, 'errors': [], 'warnings': [], 'infos': []}
-
             # FeldPermissions.objects.create(sobject_type='Donation__c', field='Donation__c.Amount__c',
             #                                permissions_edit=True, permissions_read=True, parent=ps)
-            if not metadata.get('required'):
+            if field.null:  # if the field is not required
                 field_permissions_data = {
                     'SobjectType': model._meta.db_table,
                     'Field': full_name,
@@ -283,16 +341,16 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             return self.alter_db_table(model, model._meta.db_table, model._meta.db_table)
         sf_managed_field = getattr(old_field, 'sf_managed', False) or getattr(new_field, 'sf_managed', False)
         if sf_managed_field:
-            if new_field.column != old_field.column:
-                body = to_xml({"renameMetadata": {"type": 'CustomField',
-                                                  "oldFullName": model._meta.db_table + '.' + old_field.column,
-                                                  "newFullName": model._meta.db_table + '.' + new_field.column}})
-                _ = self.metadata_command(action='rename', body=body)
-
-            body = to_xml({"updateMetadata": {
-                'metadata xsi:type="CustomField"': self.make_field_metadata(new_field)}})
-            _ = self.metadata_command(action='update', body=body)
             log.debug("alter_field %s %s to %s", model, old_field, new_field)
+            if new_field.column != old_field.column:
+                self.metadata_command({"renameMetadata": {
+                    "type": 'CustomField',
+                    "oldFullName": model._meta.db_table + '.' + old_field.column,
+                    "newFullName": model._meta.db_table + '.' + new_field.column,
+                }})
+
+            self.metadata_command({"updateMetadata": {
+                'metadata xsi:type="CustomField"': self.make_field_metadata(new_field)}})
 
     def execute(self, sql: Union[Statement, str], params: Any = ()) -> None:
         assert isinstance(sql, str)
@@ -334,18 +392,18 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             row = {x[0]: False for x in cur.description if x[0] != 'Id'}
         return row
 
-    def check_permissions(self, model: Type[Model]) -> None:
+    def check_permissions(self, db_table: str) -> None:
         no_check_permissions = self.connection.migrate_options.get('no_check_permissions')
         if not no_check_permissions:
-            if not self.get_object_permissions(model._meta.db_table)['PermissionsModifyAllRecords']:
-                raise IntegrityError("the model <model {}> is not enabled in Object Permisions "
-                                     "to ModifyAll".format(model._meta.object_name))
+            if not self.get_object_permissions(db_table)['PermissionsModifyAllRecords']:
+                raise IntegrityError("the table '{}' is not enabled in Object Permisions "
+                                     "to ModifyAll".format(db_table))
 
-    def metadata_command(self, action: str, body: str, is_async: bool = False) -> str:
+    def metadata_command(self,  metadata: Dict[str, Any]) -> str:
         # TODO move to the driver
         data = METADATA_ENVELOPE.format(
             session_id=self.conn.sf_session.auth.get_auth()['access_token'],
-            body=body,
+            body=to_xml(metadata, indent=2),
         )
         self.cur.execute('select id from Organization')
         org_id, = self.cur.fetchone()
@@ -354,23 +412,34 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             api_version=self.conn.api_ver,
             org_id=org_id,
         )
-        headers = {'SOAPAction': '""', 'Content-Type': 'text/xml; charset=utf-8'}
+        action = list(metadata.keys())[0]
+        # the SOAPAction can be anything not empty string, e.g. '""'
+        headers = {'SOAPAction': action, 'Content-Type': 'text/xml; charset=utf-8'}
         # the header {'Expect': '100-continue'} is useful if sending much data and want
         # to check headers by the server before uploading the body
-        if 'update' in data and "CustomField" in data:
-            import pdb; pdb.set_trace()
         ret = requests.request('POST', url, data=data.encode('utf-8'), headers=headers)
-        if ret.status_code != 200 or 'success>true</success>' not in ret.text:
-            # TODO parse xml for a better error message
-            raise SalesforceError("Failed metadata {action}, code: {status_code}, response {text!r}".format(
-                action=action, status_code=ret.status_code, text=ret.text
+        if ret.status_code != 200 or '<success>false</success>' in ret.text:
+            resp = self.parse_simple_response(ret.text, action)
+            code_info = ' with code {}'.format(ret.status_code) if ret.status_code != 200 else ''
+            raise SalesforceError("Failed metadata {action}{code_info}, response {text!r}".format(
+                action=action, code_info=code_info, text=resp
             ))
         return ret.text
+
+    def parse_simple_response(self, text: str, action: str) -> Dict[str, Any]:
+        obj = ParseXml(text, type_hints={'success': bool})
+        tree = obj.to_dict()
+        try:
+            return tree['soapenv:Body'][action + 'Response']['result']
+        except KeyError:
+            # probably a '<soapenv:Fault>' element after status_code == 500
+            return tree['soapenv:Body']
 
     def make_field_metadata(self, field: Field) -> Dict[str, Any]:
         # TODO test all db_type with a default value and without
         db_type = field.db_type(self.connection)
         metadata = {
+            'fullName': field.model._meta.db_table + '.' + field.column,
             'label': field.verbose_name,
             'type': db_type,
             'inlineHelpText': field.help_text,
@@ -454,27 +523,4 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         # If we want purgeOnDelete read this:
         # https://salesforce.stackexchange.com/questions/68798/using-metadata-api-to-deploy-destructive-changes-to-delete-custom-fields
         # https://salesforce.stackexchange.com/questions/69926/deleting-custom-object-via-destructivechanges-xml-and-metadata-api-deploy
-        body = to_xml({"deleteMetadata": {"type": metadata_type, "fullNames": list(full_names)}})
-        self.metadata_command(action='delete', body=body)
-
-    def wait_for_entity(self, db_table: str, deploy_result_id: str) -> str:
-        t0 = time.time()
-        dt = 0.05
-        # wait for table creation
-        cur2 = self.conn.cursor(dict)
-        while True:
-            if time.time() - t0 > 30:
-                raise TimeoutError()
-            time.sleep(dt)
-            dt *= 1.2
-            soql = ("select DeveloperName, Label, QualifiedApiName, DeploymentStatus, RunningUserEntityAccessId "
-                    "from EntityDefinition where QualifiedApiName = %s limit 2")
-            cur2.execute(soql, [db_table], tooling_api=True)
-            rows = cur2.fetchall()
-            if rows:
-                assert len(rows) == 1
-                entity_id = rows[0]['RunningUserEntityAccessId'].split('.')[0]
-                wait_elapsed = round(time.time() - t0, 3)
-                log.debug('create_model %s; time:%f, pk:%s, rows:%s', db_table, wait_elapsed, deploy_result_id, rows)
-                break
-        return entity_id
+        self.metadata_command({"deleteMetadata": {"type": metadata_type, "fullNames": list(full_names)}})
