@@ -9,12 +9,13 @@ import random
 import re
 
 import requests
+import warnings
 from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.ddl_references import Statement
 from django.db.models import Field, ForeignKey, Model, NOT_PROVIDED, PROTECT
 import xml.etree.ElementTree as ET
-from salesforce.dbapi.exceptions import IntegrityError, OperationalError, SalesforceError
+from salesforce.dbapi.exceptions import IntegrityError, OperationalError, SalesforceError, SalesforceWarning
 from salesforce import defaults
 
 log = logging.getLogger(__name__)
@@ -110,7 +111,9 @@ def to_xml(data: T_PY2XML, indent: int = 0) -> str:
     Examples are in: salesforce.tests.test_unit.ToXml
     """
     INDENT = 2  # indent step
-    if isinstance(data, str):
+    if data is None:
+        return ''
+    elif isinstance(data, str):
         return data.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     elif isinstance(data, (int, float, bool)):
         return str(data).lower()
@@ -253,6 +256,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         for field in model._meta.fields:
             sf_managed_field = (getattr(field, 'sf_managed', False) or db_table == 'django_migrations__c'
                                 and field.column.lower() != 'id')
+            if self.check_name_field(field):
+                continue
             if sf_managed_field:
                 if db_table == 'django_migrations__c':
                     field.column += '__c'
@@ -435,6 +440,17 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             # probably a '<soapenv:Fault>' element after status_code == 500
             return tree['soapenv:Body']
 
+    def check_name_field(self, field: Field) -> bool:
+        if field.column.capitalize() == 'Name':
+            if field.db_type(self.connection) != 'Text' or field.null or field.unique:  # type: ignore[attr-defined]
+                warnings.warn(
+                    "A field with db_column='Name' must be CharField(... null=False, unique=False) "
+                    "because it is created automatically by SFDC either a normal text or prefix+auto_number "
+                    "alternatively you can create a custom name field with db_column='Name__c'.",
+                    SalesforceWarning)
+            return True
+        return False
+
     def make_field_metadata(self, field: Field) -> Dict[str, Any]:
         # TODO test all db_type with a default value and without
         db_type = field.db_type(self.connection)
@@ -450,7 +466,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             # for backward compatibility of models
             if not isinstance(field.default, defaults.CallableDefault) and len(field.default.args) == 1:
                 metadata['defaultValue'] = field.default.args[0]
-        elif field.default is not None and field.default is not NOT_PROVIDED:
+        elif field.default is not None and field.default is not NOT_PROVIDED and not callable(field.default):
             metadata['defaultValue'] = field.default
 
         # by db_type
@@ -458,7 +474,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             del metadata['required']
             assert 'defaultValue' in metadata
         elif db_type in ('Date', 'DateTime'):
-            pass
+            metadata.pop('defaultValue', None)
         elif db_type == 'Number':
             metadata['precision'] = field.max_digits  # type: ignore[attr-defined]
             metadata['scale'] = field.decimal_places  # type: ignore[attr-defined]
@@ -494,20 +510,19 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         return metadata
 
     def make_model_metadata(self, model: Type[Model]) -> Dict[str, Any]:
+        # name field metadata
         for field in model._meta.fields:
-            if field.column == 'Name':
+            if self.check_name_field(field):
                 name_field = field
+                name_writable = getattr(name_field, 'sf_read_only', 0) == 0
+                name_metadata = {'label': name_field.verbose_name,
+                                 'type': 'Text' if name_writable else 'AutoNumber'}
+                if not name_writable:
+                    name_metadata['displayFormat'] = self.DISPLAY_FORMAT
                 break
         else:
-            name_field = None
-        name_writable = getattr(name_field, 'sf_read_only', 3) == 0
-        name_label = getattr(name_field, 'name', 'Name')
-        name_metadata = {
-            'label': name_label,
-            'type': 'Text' if name_writable else 'AutoNumber',
-        }
-        if not name_writable:
-            name_metadata['displayFormat'] = self.DISPLAY_FORMAT
+            name_metadata = {'label': 'Name', 'type': 'AutoNumber', 'displayFormat': self.DISPLAY_FORMAT}
+        # table metadata
         metadata = {
             'fullName': model._meta.db_table,
             'label': model._meta.verbose_name,

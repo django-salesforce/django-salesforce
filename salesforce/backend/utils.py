@@ -216,7 +216,7 @@ class CursorWrapper:
         if re.search(r'FROM django_migrations\b', soql):
             # "SELECT django_migrations.id, django_migrations.app, django_migrations.name, django_migrations.applied "
             # "FROM django_migrations"
-            soql = re.sub(r'(\.(?:app\b|name|applied))', '\\1__c', soql)
+            soql = re.sub(r'(\.(?:app\b|applied))', '\\1__c', soql)
             soql = soql.replace('django_migrations', 'django_migrations__c')
         elif self.query:
             # normal query
@@ -230,7 +230,7 @@ class CursorWrapper:
         post_data = extract_values(query)
         if table == 'django_migrations':
             table = 'django_migrations__c'
-            post_data = [{k + '__c': v for k, v in row.items()} for row in post_data]
+            post_data = [{k + ('__c' if k != 'name' else ''): v for k, v in row.items()} for row in post_data]
         obj_url = self.db.connection.rest_api_url('sobjects', table, relative=True)
         if len(post_data) == 1:
             # single object
