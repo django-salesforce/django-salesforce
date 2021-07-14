@@ -376,10 +376,10 @@ class Test(SalesforceParentModel):
 
     class Meta:
         custom = True
-        db_table = 'django_Test2__c'
+        db_table = 'django_Test__c'
         sf_managed = True
         verbose_name = "Test"
-        verbose_name_plural = "Tests_"
+        verbose_name_plural = "Tests"
 
 
 class TestDetail(SalesforceModel):
