@@ -15,7 +15,7 @@ from salesforce.dbapi.exceptions import SalesforceError
 
 @override_settings(SF_MOCK_MODE='mixed')
 class TestMock(MockTestCase):
-    api_ver = '51.0'
+    api_version = '51.0'
     databases = {'salesforce'}
 
     @override_settings(SF_MOCK_MODE='record')
