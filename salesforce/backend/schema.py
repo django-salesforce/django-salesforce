@@ -65,7 +65,7 @@ class ParseXml:
                 prefix = self.reverse_ns[ns]
                 tag = (prefix + ':' + raw_tag) if prefix else raw_tag
             else:
-                tag = 'no_ns:' + child.tag
+                tag = ':' + child.tag
             child_tree = self.to_dict(child)
             child_text = child.text
             assert not child.attrib

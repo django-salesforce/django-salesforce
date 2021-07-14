@@ -3,12 +3,13 @@ PROJ=test_migrate
 SETTINGS=--settings=tests.$PROJ.settings
 
 # test for Issue 190
-#   "Best way to run in environments without connectivity to Salesforce API? #190
+#   "Best way to run in environments without connectivity to Salesforce API? #190"
 
-# Test that tables with SalesforceModels
+# Test with two "sqlite3" databases and SalesforceModels
+# Verify that tables with SalesforceModels
 # - are created in "salesforce" database and
 # - not created in "default" database
-# (if the default SalesforceRouter is used)
+# The default SalesforceRouter must be used.
 
 python manage.py makemigrations $SETTINGS $PROJ &&
 python manage.py test $SETTINGS tests.$PROJ &&
