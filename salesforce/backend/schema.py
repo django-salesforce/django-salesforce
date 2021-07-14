@@ -7,14 +7,14 @@ from typing import Any, Callable, Dict, List, Optional, Type, Union
 import logging
 import random
 import re
+import warnings
+import xml.etree.ElementTree as ET
 
 import requests
-import warnings
 from django.db import NotSupportedError
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.ddl_references import Statement
 from django.db.models import Field, ForeignKey, Model, NOT_PROVIDED, PROTECT
-import xml.etree.ElementTree as ET
 from salesforce.dbapi.exceptions import IntegrityError, OperationalError, SalesforceError, SalesforceWarning
 from salesforce import defaults
 
@@ -53,7 +53,6 @@ class ParseXml:
         self.reverse_ns = {uri: prefix for prefix, uri in (ns or self.ns).items()}
         self.type_hints = type_hints or {}
         self.root = ET.fromstring(text)
-        self.repeated_tags = set([v for k, v in self.type_hints.items() if v is Type])
 
     def to_dict(self, node: Optional[ET.Element] = None) -> Dict[str, Any]:
         """Reverse operation to 'to_xml'"""

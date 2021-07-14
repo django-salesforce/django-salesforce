@@ -16,6 +16,22 @@ experimental.
 
 [3.2.1] Unpublished
 -------------------
+* Add: Written documentation docs/migrations.rst about the system how to
+  restrict objects that should be managed in SFDC, which instance can be
+  managed and which custom models can be never destructed e.g. in production
+  instance even that they cen be destructed and created again in a development
+  instance.
+* Add: Command "migrate" can create, update, rename and delete models and fields
+  in Salesforce databases.
+* Add: Introspection use metadata for better detection of default values
+  in inspectdb.
+* Fix: Makemigrations with custom models
+* Add: Recognize standard fields in sustom models
+* Add: Support timestamps with "auto_now_add=True" and "auto_now=True".
+* Fix: Fix tests for Salesforce API 52.0 Summer '21 that broke the evaluation of
+  .filter(field__gt=''). Method .exlude(field=None) must be used.
+* Fix: Works also with obsoleted USE_TZ=False #221
+* Fix: Support also alternative clones of Beatbox #172
 * Add: Implement queryset.bulk_update() method #236
 * Fix: SOQL command in queryset.raw() is supported case insensitive
 * Fix: ManyToMany relationships compiled also with GROUP BY, HAVING, ORDER BY. #264
