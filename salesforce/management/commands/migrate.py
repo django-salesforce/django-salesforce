@@ -16,7 +16,11 @@ class Command(MigrateCommand):
         )
         parser.add_argument(
             '--no-check-permissions', action='store_true',
-            help='Run migrate withot check permissions of CustomObjects.',
+            help='Run migrate without check permissions of CustomObjects.',
+        )
+        parser.add_argument(
+            '--create-permission-set', action='store_true',
+            help='only Create PermissionSet "Django_Salesforce" on a new SF database to enable migrations.',
         )
 
     def handle(self, *args, **options):
@@ -28,4 +32,8 @@ class Command(MigrateCommand):
                 'ask': options['ask'],
                 'no_check_permissions': options['no_check_permissions'],
             }
-        super().handle(*args, **options)
+        if options['create_permission_set']:
+            from salesforce.backend.schema import DatabaseSchemaEditor
+            DatabaseSchemaEditor.create_permission_set(connection)
+        else:
+            super().handle(*args, **options)

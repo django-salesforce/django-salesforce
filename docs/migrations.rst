@@ -15,6 +15,10 @@ are interactive on production databases and every delete must be confirmed.
 
 If and only if you want to run migrations on a Salesforce database then:_
 1) create a permission set with the API name ``Django_Salesforce``.
+   ``python manage.py migrate --database=salesforce --create-permission-set``
+   That only creates the permission set and the table "django_migrations"
+   (label "migrations"), without running any migration.
+
 2) Assign that permission set also to the current user to can access data in new object types that will be created by Django.
 
 3) Custom object in Salesforce that should be created and managed by Django must be marked by Meta: ``sf_managed = True``.

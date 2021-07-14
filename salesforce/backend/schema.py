@@ -386,6 +386,17 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             self._is_production = organization_type != 'Developer Edition' and not is_sandbox
         return self._is_production
 
+    @staticmethod
+    def create_permission_set(connection) -> None:
+        connection.cursor()
+        data = {'name': 'Django_Salesforce', 'label': 'Django_Salesforce'}
+        try:
+            _ = connection.connection.handle_api_exceptions('POST', 'sobjects/PermissionSet', json=data)
+        except SalesforceError as exc:
+            if 'DUPLICATE_DEVELOPER_NAME' not in str(exc.data):
+                raise
+            print("Error: DUPLICATE_DEVELOPER_NAME - 'Django_Salesforce' need not to be created again")
+
     def get_object_permissions(self, db_table: str) -> Dict[str, bool]:
         cur = self.conn.cursor(dict)
         soql = ("SELECT Id, PermissionsCreate, PermissionsDelete, PermissionsRead, PermissionsEdit, "
