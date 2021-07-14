@@ -216,16 +216,20 @@ Advanced usage
    and fields must have option ``db_column``, which is done by ``inspectdb``
    with default settings. Models exported by introspection ``inspectdb``
    do not specify the option ``managed`` because the default value is True.
-   (It is safe. Migrations in SFDC are not supported. If anything would
-   be implemented after all, only explicitly clearly selected fields and models
-   could be migrated in explicitly labeled SFDC databases.
-   Consequently, the setting ``managed = True`` is related only to an alternate
-   non SFDC database configured by ``SALESFORCE_DB_ALIAS``.)
 
-   There is probably no reason to collect old migrations of an application
-   that uses only SalesforceModel and all data are stored only in Salesforce.
-   Such old migrations can be easily deleted a new initial migration can be
-   created again if it would be necessary for offline tests and if that migrations
+   Models managed by migrations on SFDC require the option ``sf_managed=True``.
+   Detaild are described in `docs Migrations <docs/migrations.rst>`__.
+
+   (It is safe. When migrations in SFDC will be supported by the next version
+   4.0.1 then only for explicitly selected fields and models and on
+   explicitly labeled SFDC databases.
+   Consequently, the setting ``managed = True`` alone is related only to
+   an alternate non SFDC database configured by ``SALESFORCE_DB_ALIAS``.)
+
+   There is probably no reason now to collect old migrations of an application
+   that uses only SalesforceModel if they are related to data stored only in Salesforce.
+   Such old migrations can be easily deleted and a new initial migration can be
+   created again if it would be necessary for offline tests if that migrations
    directory seems big and obsoleted.
 
 -  **Exceptions** - Custom exceptions instead of standard Django database
