@@ -3,8 +3,7 @@ Migrations
 
 new in v3.2.1.
 
-Migrations in SFDC are suppported in Django >= 2.1 (while in Django 2.0 is a problem with
-table rename)
+Migrations command ``migrate`` is supported in SFDC.
 
 Django-Salesforce can create custom objects and custom fields in a Salesforce database (SFDC) by
 ``migrate`` command. A general practice with Saleforce is that more packages from more vendors
