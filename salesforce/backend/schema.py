@@ -228,8 +228,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if sf_managed_model or model._meta.db_table == 'django_migrations__c':
             # TODO if self.connection.migrate_options['batch']:  create also fields by the same request
             log.debug('create_model %s', db_table)
-            self.metadata_command({'createMetadata': {
-                'metadata xsi:type="tns:CustomObject"': self.make_model_metadata(model)}})
+            metadata = self.make_model_metadata(model)
+            self.metadata_command({'createMetadata': {'metadata xsi:type="tns:CustomObject"': metadata}})
 
             soql = ("select RunningUserEntityAccessId, DeveloperName, Label, QualifiedApiName, DeploymentStatus "
                     "from EntityDefinition where QualifiedApiName = %s limit 2")
@@ -297,18 +297,18 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if sf_managed_model:
             self.check_permissions(old_db_table)
             if new_db_table != old_db_table:
-                self.metadata_command({"renameMetadata": {
-                    "type": 'CustomObject', "oldFullName": old_db_table, "newFullName": new_db_table}})
-            self.metadata_command({'updateMetadata': {
-                'metadata xsi:type="CustomObject"': self.make_model_metadata(model)}})
+                metadata = {"type": 'CustomObject', "oldFullName": old_db_table, "newFullName": new_db_table}
+                self.metadata_command({"renameMetadata": metadata})
+            metadata = self.make_model_metadata(model)
+            self.metadata_command({'updateMetadata': {'metadata xsi:type="CustomObject"': metadata}})
 
     @wrap_debug
     def add_field(self, model: Type[Model], field: Field) -> None:
         sf_managed = getattr(field, 'sf_managed', False) or model._meta.db_table == 'django_migrations__c'
         if sf_managed:
             full_name = model._meta.db_table + '.' + field.column
-            self.metadata_command({'createMetadata': {
-                'medatada xsi:type="CustomField"': self.make_field_metadata(field)}})
+            metadata = self.make_field_metadata(field)
+            self.metadata_command({'createMetadata': {'medatada xsi:type="CustomField"': metadata}})
 
             log.debug("add_field %s %s", model, full_name)
             # FeldPermissions.objects.create(sobject_type='Donation__c', field='Donation__c.Amount__c',
@@ -347,14 +347,15 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         if sf_managed_field:
             log.debug("alter_field %s %s to %s", model, old_field, new_field)
             if new_field.column != old_field.column:
-                self.metadata_command({"renameMetadata": {
+                metadata = {
                     "type": 'CustomField',
                     "oldFullName": model._meta.db_table + '.' + old_field.column,
                     "newFullName": model._meta.db_table + '.' + new_field.column,
-                }})
+                }
+                self.metadata_command({"renameMetadata": metadata})
 
-            self.metadata_command({"updateMetadata": {
-                'metadata xsi:type="CustomField"': self.make_field_metadata(new_field)}})
+            metadata = self.make_field_metadata(new_field)
+            self.metadata_command({"updateMetadata": {'metadata xsi:type="CustomField"': metadata}})
 
     def execute(self, sql: Union[Statement, str], params: Any = ()) -> None:
         assert isinstance(sql, str)
