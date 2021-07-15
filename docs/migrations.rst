@@ -1,7 +1,10 @@
 Migrations
 ==========
 
-new in 3.2.1
+new in v3.2.1.
+
+Migrations in SFDC are suppported in Django >= 2.1 (while in Django 2.0 is a problem with
+table rename)
 
 Django-Salesforce can create custom objects and custom fields in a Salesforce database (SFDC) by
 ``migrate`` command. A general practice with Saleforce is that more packages from more vendors
@@ -67,6 +70,33 @@ If you want to start to manage an object that has been created manually then ena
 Object Permissions for that object in "Django_Salesforce" permission set even if the field
 is accessible still by user profiles.
 
+| **Terminology**:  
+| **Model** in Django terminology is an equivalent of **Table** in database terminology and
+an equivalent of **Object** in Salesforce terminology. These three points af vew are used in this text.  
+|
+| **Builtin** object and builtin field  have a name without any double underscore ``'__'``.  
+| **Custom** object and custom field ore in the form ``ApiName__c`` with only a suffix ``__c``
+and without any other double underscore.  
+| **Namespace** object and namespace field are in the form ``NameSpace__ApiName__c``.
+|  
+|  
+| Because custom fields can be managed by Django automatically in SFDC then their db_column
+is not too important if the algorithm is guaranted stable.
+If no **db_column** is specified then it can be derived from "django field name" this way:
+| If the django field name is not lower case then the default api name is the same.
+| Default API name from a lower case name is created by capitalizing and removing spaces:  
+| e.g. default api name "LastModifiedDate" can be created from "last_modified_date" or from
+"LastModifiedDate".
+| Custom field can be rocognized by "custom=True".
+| Namespace field can be recognized by "sf_prefix='NameSpacePrefix'".
+| All unspecified fields without "db_column" in custom objects are expected custom field,
+except a few standard well known system names like "LastModifiedDate".  
+|
+| If you find a new not recognized system name then report it as a bug and specify
+an explicit "custom=False" or an explicit "db_column=...", but it is extremely unprobable
+because I verify all system names in a new API before I enable that API version in a new
+version of django-salesforce.
+
 
 Troubleshooting
 ---------------
@@ -89,9 +119,19 @@ if the printed error message wad pythons be insufficient.
     create_model(<model Test>)
     Run this command [Y/n]: n
 
-All fields managed by Django in SFDC have an explicit parameter ``sf_managed=True`` in ``migrations/*.py``
-while in ``models.py`` the right value can be usually recognized from a simple model. It could be useful
-to search for "sf_managged" in migrations files.
+All fields that can be managed by Django in SFDC are identified in ``migrations/*.py``
+exactly by an explicit parameter ``sf_managed=True``.
+In ``models.py`` can be the right value ``field.sf_managed`` usually recognized from a simplified model:
+
+- Custom fields in sf_managed custom object are sf_managed by default.
+- Custom fields in non sf_managed objects are not sf_managed by default.
+- Builtin fields and namespace fields, builtin objects and namespace objects should be never sf_managed.
+- The "Name" field (a field with db_column='Name') is a special part of a database Object and
+  its sf_managed values is not important. Its sf_managed should be omitted or the same as the value
+  of the object.
+
+My useful answer how to use e.g. an option
+``**migrate --fake** at Stackoverflow <https://stackoverflow.com/a/46774336/448474>``__.
 
 Unimplemented features - caveats
 --------------------------------
@@ -106,6 +146,12 @@ You should change change also someting unimportant in the ``Name`` field of that
 in the same transaction e.g. change the unused ``max_length`` parameter or add a space
 at the end of ``verbose_name`` of Name field. That will trigger update of metadata of
 the CustomObject in Salesforce.
+
+There is a risk that a field can not be created becase e.g. a duplicit related name exist in trash bin
+and also that a field can not be deleted because it is used by something important in Salesforce.
+That are usual problems also with manual administrations, but that could cause an uncosistent migration,
+because a transaction is not currently used. There if you want to use migrations in production,
+verify debug it on a sandbox, then create a fresh sandbox from production and verify the migration again.
 
 Master-Detail Relationship is not currently implemented even that it is an important type.
 

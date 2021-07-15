@@ -49,7 +49,7 @@ class BulkUpdateTest(TestCase):
         for i, x in enumerate(contacts):
             x.cf = i
         Contact.objects.bulk_update(contacts, ['cf'])
-        qs = Contact.objects.filter(vs__gte=0)
+        qs = Contact.objects.filter(cf__gte=0)
         self.assertEqual(sorted(qs.values_list('cf', flat=True)), [0, 1, 2, 3, 4, 5, 6, 7, 8])
 
     def common_bulk_update_error(self, expected_count: int, all_or_none: Optional[bool] = None) -> None:

@@ -137,7 +137,7 @@ def to_xml(data: T_PY2XML, indent: int = 0) -> str:
 def wrap_debug(func: Callable[..., None]) -> Callable[..., None]:
     def wrapped(self, model: Type[Model], *args: Any, **kwargs: Any) -> None:
         skip = False
-        interactive = self.connection.migrate_options.get('ask')
+        interactive = self.sf_interactive
         interact_destructive_production = self.is_production and getattr(func, 'no_destructive_production', False)
         if not interactive and not interact_destructive_production:
             return func(self, model, *args, **kwargs)
@@ -195,12 +195,12 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     def __init__(self, connection, collect_sql=False, atomic=True):
         self.conn = connection.connection
         self.connection = connection.connection
+        self.sf_interactive = connection.migrate_options.get('ask')
         self.collect_sql = collect_sql
         # if self.collect_sql:
         #    self.collected_sql = []
         log.debug('DatabaseSchemaEditor __init__')
         self.cur = self.conn.cursor()
-        self.request = self.conn.handle_api_exceptions
         self._permission_set_id = None  # Optional[str]
         self._is_production = None  # Optional[bool];
         self.permission_set_id  # require the permission set
@@ -249,7 +249,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 PermissionsCreate=True,
                 PermissionsDelete=True,
             )
-            ret = self.request('POST', 'sobjects/ObjectPermissions', json=object_permissions_data)
+            ret = self.api_request('POST', 'sobjects/ObjectPermissions', json=object_permissions_data)
             assert ret.status_code == 201
 
         for field in model._meta.fields:
@@ -311,9 +311,12 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
             self.metadata_command({'createMetadata': {'medatada xsi:type="CustomField"': metadata}})
 
             log.debug("add_field %s %s", model, full_name)
+
             # FeldPermissions.objects.create(sobject_type='Donation__c', field='Donation__c.Amount__c',
             #                                permissions_edit=True, permissions_read=True, parent=ps)
-            if field.null:  # if the field is not required
+
+            # if the field is required then must be readable and writable and no permissions can be set on it
+            if field.null or 'defaultValue' in metadata:
                 field_permissions_data = {
                     'SobjectType': model._meta.db_table,
                     'Field': full_name,
@@ -321,7 +324,11 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                     'PermissionsEdit': True,
                     'PermissionsRead': True,
                 }
-                ret = self.request('POST', 'sobjects/FieldPermissions', json=field_permissions_data)
+                # a possible cryptic error is:
+                #   INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST
+                #       Field Name: bad value for restricted picklist field: SomeTable__c.SomeField__c
+                # that means that the field required and no permissions can not be set on it
+                ret = self.api_request('POST', 'sobjects/FieldPermissions', json=field_permissions_data)
                 assert ret.status_code == 201
 
     @wrap_debug
@@ -415,6 +422,15 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 raise IntegrityError("the table '{}' is not enabled in Object Permisions "
                                      "to ModifyAll".format(db_table))
 
+    def api_request(self, method: str, *url_parts: str, **kwargs: Any) -> requests.Response:
+        try:
+            return self.conn.handle_api_exceptions(method, *url_parts, **kwargs)
+        except SalesforceError:
+            if self.sf_interactive:
+                print("api_request{}".format((method,) + url_parts + (kwargs,)))
+                print()
+            raise
+
     def metadata_command(self,  metadata: Dict[str, Any]) -> str:
         # TODO move to the driver
         data = METADATA_ENVELOPE.format(
@@ -435,6 +451,9 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         # to check headers by the server before uploading the body
         ret = requests.request('POST', url, data=data.encode('utf-8'), headers=headers)
         if ret.status_code != 200 or '<success>false</success>' in ret.text:
+            if self.sf_interactive:
+                print(metadata)
+                print()
             resp = self.parse_simple_response(ret.text, action)
             code_info = ' with code {}'.format(ret.status_code) if ret.status_code != 200 else ''
             raise SalesforceError("Failed metadata {action}{code_info}, response {text!r}".format(
