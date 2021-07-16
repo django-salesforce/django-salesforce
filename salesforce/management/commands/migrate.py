@@ -38,7 +38,8 @@ class Command(MigrateCommand):
                 'sf_no_check_permissions': options['sf_no_check_permissions'],
                 'sf_noinput': not options['interactive'],
             }
-        if options['sf_create_permission_set']:
+
+        if options['sf_create_permission_set'] and connection.vendor == 'salesforce':
             from salesforce.backend.schema import DatabaseSchemaEditor
             DatabaseSchemaEditor.create_permission_set(connection)
         else:

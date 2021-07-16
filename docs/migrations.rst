@@ -3,17 +3,24 @@ Migrations
 
 new in v3.2.1.
 
-Migrations command ``migrate`` is supported in SFDC.
+Migrations are supported in Salesforce databases on SFDC site.
+The command ``python manage.py migrate --database=salesforce`` can create, update, rename or delete
+custom models and custom fields. It works with all Python and Django versions supported by django-salesforce.
+It is however recommended to use version supported by mainstream: Python >= 3.6 and Django >= 2.2.
 
-Django-Salesforce can create custom objects and custom fields in a Salesforce database (SFDC) by
-``migrate`` command. A general practice with Saleforce is that more packages from more vendors
-are installed in the organization and not
-all custom objects and fields should be managed by Django. Therefore the management by Django
-modifies SFDC only if it is explicitly enabled in the Django model and also in Salesforce administration,
-to prevent a mistake that some part of the database is managed unitentionally.
+An extended version of ``migrate`` command is installed by this package that add four new options
+``--sf-create-permission-set --sf-debug-info --sf-interactive --sf-no-check-permissions`` that
+modifies running on SFDC and have no impact on other databases.
 
-Another security feature is that all destructive operations ``delete_model`` and ``remove_fieldgare``
-are interactive on production databases and every delete must be confirmed.
+A general practice with Saleforce is that more packages made by more vendors are installed
+by the organization and not all custom objects and fields should be managed by Django.
+Therefore the management by Django modifies Salesforce only if it is explicitly enabled
+in the Django model and also enabled in Salesforce administration.
+This prevents a mistake that some part of the database are managed unitentionally.
+
+Another security feature is that all destructive operations ``delete_model`` and ``remove_field``
+are interactive on production databases and every delete must be confirmed like
+if option ``--sf-interactive`` is used.
 
 If and only if you want to run migrations on a Salesforce database then:
 
@@ -21,8 +28,8 @@ If and only if you want to run migrations on a Salesforce database then:
 |    ``python manage.py migrate --database=salesforce --create-permission-set``  
 |    That only creates the permission set and the table "django_migrations" (label "migrations"), without running any migration.  
 | 2) Assign that permission set also to the current user to can access data in new object types that will be created by Django.
-| 3) Custom object in Salesforce that should be created and managed by Django must be marked by Meta: ``sf_managed = True``.
-Custom fields can be created also in standard objects or in other objects not managed
+| 3) Custom object in Salesforce that should be created and managed by Django must use the Meta option: ``sf_managed = True``.
+Custom fields can be created also in standard objects and in other objects not managed
 by Django if a field is marked by a parameter ``sf_managed=True``.
 
 Example:
@@ -35,7 +42,7 @@ Example:
         my_field = models.CharField(max_length=50, null=True, sf_managed=True)
 
     class MyObject(SalesforceModel):
-        # a field with API name "Name" is created automatically by SFDC. "max_length" is ignored.
+        # a field with API name "Name" is created automatically by SFDC and its "max_length" is ignored.
         name = models.CharField(max_length=50, verbose_name="My Object Name")
         my_field = models.CharField(max_length=50, null=True)  # this is a custom field and it is sf_managed
 
@@ -58,7 +65,7 @@ Example:
     $ python manage.py makemigrations
     $ python manage.py migrate --database=salesforce
 
-Custom fields in objects managed by Django are also managed by Django by default,
+Custom fields in objects managed by Django are by default managed by Django,
 but it is possible to set a parameter ``sf_managed=False`` to disable it.
 
 Objects and fields created by Django are enabled in Django_Salesforce permission set and can be

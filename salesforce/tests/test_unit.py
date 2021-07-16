@@ -3,6 +3,7 @@ Tests that do not need to connect servers
 """
 # pylint:disable=unused-variable
 
+import sys
 from typing import Any, Dict, Optional, Type
 from django.apps.registry import Apps
 from django.test import TestCase
@@ -237,6 +238,7 @@ class RegisterConversionTest(TestCase):
 
 
 class ToXmlTest(TestCase):
+    @skipUnless(sys.version_info[:2] >= (3, 6), "require newer Python")
     def test(self) -> None:
         self.assertEqual(to_xml({'a': '<&>'}), '<a>&lt;&amp;&gt;</a>')
         self.assertEqual(to_xml({'int': 1, 'str': '1'}), '<int>1</int>\n<str>1</str>')
