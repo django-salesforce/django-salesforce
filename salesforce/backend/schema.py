@@ -340,30 +340,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
             log.debug("add_field %s %s", model, full_name)
 
-            if not self.get_object_permissions(db_table)['PermissionsEdit']:
-                self.set_table_permissions(
-                    db_table,
-                    dict(PermissionsRead=True, PermissionsEdit=True, PermissionsCreate=True, PermissionsDelete=True)
-                )
-
-            # FeldPermissions.objects.create(sobject_type='Donation__c', field='Donation__c.Amount__c',
-            #                                permissions_edit=True, permissions_read=True, parent=ps)
-
-            # if the field is required then must be readable and writable and no permissions can be set on it
-            if not metadata.get('required'):
-                field_permissions_data = {
-                    'SobjectType': db_table,
-                    'Field': full_name,
-                    'ParentId': self.permission_set_id,
-                    'PermissionsEdit': True,
-                    'PermissionsRead': True,
-                }
-                # a possible cryptic error was:
-                #   INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST
-                #       Field Name: bad value for restricted picklist field: SomeTable__c.SomeField__c
-                # that means that the field was yet required
-                ret = self.api_request('POST', 'sobjects/FieldPermissions', json=field_permissions_data)
-                assert ret.status_code == 201
+            self.set_field_permissions(field, {'PermissionsRead': True, 'PermissionsEdit': True})
 
     @wrap_debug
     @no_destructive_production
@@ -397,6 +374,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
             metadata2 = self.make_field_metadata(new_field)
             self.metadata_command({"updateMetadata": {'metadata xsi:type="CustomField"': metadata2}})
+            if not metadata2.get('required') and self.make_field_metadata(old_field).get('required'):
+                self.set_field_permissions(new_field, {'PermissionsRead': True, 'PermissionsEdit': True})
 
     def execute(self, sql: Union[Statement, str], params: Any = ()) -> None:
         assert isinstance(sql, str)
@@ -438,6 +417,28 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
         ret = self.api_request('POST', 'sobjects/ObjectPermissions', json=object_permissions_data)
         assert ret.status_code == 201
+
+    def set_field_permissions(self, field: Field, permissions: Dict[str, bool]) -> None:
+        full_name = field.model._meta.db_table + '.' + field.column
+        # FeldPermissions.objects.create(sobject_type='Donation__c', field='Donation__c.Amount__c',
+        #                                permissions_edit=True, permissions_read=True, parent=ps)
+
+        metadata = self.make_field_metadata(field)
+        # if the field is required then must be readable and writable and no permissions can be set on it
+        if not metadata.get('required'):
+            field_permissions_data = {
+                'SobjectType': field.model._meta.db_table,
+                'Field': full_name,
+                'ParentId': self.permission_set_id,
+                'PermissionsEdit': True,
+                'PermissionsRead': True,
+            }
+            # a possible cryptic error was:
+            #   INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST
+            #       Field Name: bad value for restricted picklist field: SomeTable__c.SomeField__c
+            # that means that the field was yet required
+            ret = self.api_request('POST', 'sobjects/FieldPermissions', json=field_permissions_data)
+            assert ret.status_code == 201
 
     @property
     def is_production(self):
@@ -538,7 +539,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         return False
 
     def make_field_metadata(self, field: Field) -> Dict[str, Any]:
-        # TODO test all db_type with a default value and without
+        # TODO test all db_type with a default value and without and transitions between them for some type
         db_type = field.db_type(self.connection)
         metadata = {
             'fullName': field.model._meta.db_table + '.' + field.column,

@@ -153,6 +153,11 @@ in the same transaction e.g. change the unused ``max_length`` parameter or add a
 at the end of ``verbose_name`` of Name field. That will trigger update of metadata of
 the CustomObject in Salesforce.
 
+Maybe a special NameField will be implemented, because it has a fixed option "null=False" ("required=True")
+and special options "dataType", "displayFormat" and "startingNumber" not yet implemented. CharField
+is good enough without them. Data type "Automatic Number" is derived from "sf_read_only=models.READ_ONLY",
+otherwise the data type is "Text"
+
 There is a risk that a field can not be created becase e.g. a duplicit related name exist in trash bin
 and also that a field can not be deleted because it is used by something important in Salesforce.
 That are usual problems also with manual administrations, but that could cause an uncosistent migration,
