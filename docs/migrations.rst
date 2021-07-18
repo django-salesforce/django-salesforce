@@ -8,29 +8,43 @@ The command ``python manage.py migrate --database=salesforce`` can create, updat
 custom models and custom fields. It works with all Python and Django versions supported by django-salesforce.
 It is however recommended to use version supported by mainstream: Python >= 3.6 and Django >= 2.2.
 
-An extended version of ``migrate`` command is installed by this package that add four new options
-``--sf-create-permission-set --sf-debug-info --sf-interactive --sf-no-check-permissions`` that
-modifies running on SFDC and have no impact on other databases.
+Quick start:
+
+.. code:: python
+
+    # for the first time
+    python manage.py migrate --database=salesforce --sf-create-permission-set
+
+    # every migration
+    python manage.py makemigrations
+    python manage.py migrate --database=salesforce
+
+The extended version of ``migrate`` command is installed in django-salesforce. Four new options are added in it.
+``--sf-create-permission-set --sf-debug-info --sf-interactive --sf-no-check-permissions``
+That modifies running on SFDC. It has no impact on other databases.
 
 A general practice with Saleforce is that more packages made by more vendors are installed
-by the organization and not all custom objects and fields should be managed by Django.
-Therefore the management by Django modifies Salesforce only if it is explicitly enabled
-in the Django model and also enabled in Salesforce administration.
-This prevents a mistake that some part of the database are managed unitentionally.
+by the organization. Not all custom objects and fields should be therefore managed by Django.
+The management by Django modifies Salesforce only if it is explicitly enabled
+by the Django model and also enabled in Salesforce administration.
+A custom table can be deleted  by Django only if it was created by Django.
+No field can be deleted by Django in a table if at least one field has been not created in that table.
+This prevents some mistakes that some part of the database are managed unitentionally.
 
 Another security feature is that all destructive operations ``delete_model`` and ``remove_field``
 are interactive on production databases and every delete must be confirmed like
-if option ``--sf-interactive`` is used.
+if option ``--sf-interactive`` was used.
 
 If and only if you want to run migrations on a Salesforce database then:
 
-| 1) Create a permission set with the API name ``Django_Salesforce``.  
-|    ``python manage.py migrate --database=salesforce --create-permission-set``  
-|    That only creates the permission set and the table "django_migrations" (label "migrations"), without running any migration.  
-| 2) Assign that permission set also to the current user to can access data in new object types that will be created by Django.
-| 3) Custom object in Salesforce that should be created and managed by Django must use the Meta option: ``sf_managed = True``.
-Custom fields can be created also in standard objects and in other objects not managed
-by Django if a field is marked by a parameter ``sf_managed=True``.
+| 1) Create a permission set with the API name ``Django_Salesforce`` and assign it to the current user
+by the command:  
+|    ``python manage.py migrate --database=salesforce --sf-create-permission-set``  
+
+
+The table "django_migrations__c" has a label "migrations" and it is created by the first "migrate" command.
+| 2) Custom object in Salesforce that should be created and managed by Django must use the Meta option: ``sf_managed = True``.
+Custom fields can be created also in objects not managed by Django if a field is marked by a parameter ``sf_managed=True``.
 
 Example:
 
