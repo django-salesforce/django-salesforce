@@ -253,6 +253,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         self._permission_set_id = None  # Optional[str]
         self._is_production = None  # Optional[bool];
         self.permission_set_id  # require the permission set
+        self.django_migration_exists = None  # Optional[bool]
         super().__init__(connection, collect_sql=collect_sql, atomic=atomic)
 
     # State-managing methods
@@ -271,6 +272,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
     @wrap_debug
     def create_model(self, model: Type[Model]) -> None:
         if model._meta.db_table == 'django_migrations':
+            if self.django_migration_exists:
+                return
             model._meta.db_table += '__c'
         db_table = model._meta.db_table
         sf_managed_model = getattr(model._meta.auto_field, 'sf_managed_model', False)
@@ -291,6 +294,8 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
                 if db_table == 'django_migrations__c':
                     field.column += '__c'
                 self.add_field(model, field)
+        if model._meta.db_table == 'django_migrations__c':
+            self.django_migration_exists = None  # Optional[bool]
 
     @wrap_debug
     @no_destructive_production
