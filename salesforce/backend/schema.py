@@ -265,6 +265,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         log.debug('DatabaseSchemaEditor __exit__')
+        print("DatabaseSchemaEditor exit")
         if exc_type is None:
             for sql in self.deferred_sql:
                 self.execute(sql)
