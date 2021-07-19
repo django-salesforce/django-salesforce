@@ -79,12 +79,12 @@ by a parameter ``sf_managed=True`` in a field definition.
 
 B) How to enable migration also in Salesforce administration.
 
-A basic security feature is that a permision set "Django_Salesforce" must be created by the command
+A basic security feature is that a permission set "Django_Salesforce" must be created by the command
 ``python manage.py migrate --database=salesforce --sf-create-permission-set``
 before any migration can run on SFDC.
 
 A custom table can be deleted or renamed by Django only if it has been created by Django originally.
-(More preciselyly: All object permissions are automatically assigned to a Salesforce object (table)
+(More precisely: All object permissions are automatically assigned to a Salesforce object (table)
 in "Django_Salesforce" Permission Set when it is created by Django,
 including "PermissionsModifyAllRecords" that is later verified if it has to be deleted or rename.)
 
@@ -103,14 +103,14 @@ and the migration is terminated.
 Troubleshooting
 ---------------
 
-Migrations are excellent in develomment especially if they are used since the beginning.
+Migrations are excellent in development especially if they are used since the beginning.
 They can be problematic if management by Django has been combined with some manual
 administration of the same objects or if an application should work on an existing instance
 and on a new empty instance.
 
 An ``--sf-interactive`` allows to interactively skip
-any individual part of migration and eventualy to continue if it is clear that ane error can be ignored,
-e.g. if iffailed because a duplicit object should bes created or an object should be deleted,
+any individual part of migration and eventually to continue if it is clear that ane error can be ignored,
+e.g. if it failed because a duplicit object should bes created or an object should be deleted,
 but it has been deleted previously.
 It allows to normally terminate or to ignore an error or to start debugging.
 
@@ -127,7 +127,7 @@ My answer ``**migrate --fake** at Stackoverflow <https://stackoverflow.com/a/467
 can be useful how the migration state can be set if you know how many initial migrations were applied
 manually on an instance before the migration system is enabled on it.
 
-The option ``--sf-debug-info`` will print a short useful context obout an error before raising an exception
+The option ``--sf-debug-info`` will print a short useful context about an error before raising an exception
 or before an error message if the was not raised in interactive mode .
 
 The option ``--sf-no-check-permissions`` is useful if the database contains no important data,
@@ -146,28 +146,28 @@ are answered "Y(es)" and all questions "Stop after this error?" are answered "c(
 
 ## Reference
 
-| **Terminology**:  
+| **Terminology**: 
 | **Model** in Django terminology is an equivalent of **Table** in database terminology and
-an equivalent of **Object** in Salesforce terminology. These three points of view are used in this text.  
+an equivalent of **Object** in Salesforce terminology. These three points of view are used in this text. 
 |
-| **Builtin** object and builtin field  have a name without any double underscore ``'__'``.  
+| **Builtin** object and builtin field  have a name without any double underscore ``'__'``. 
 | **Custom** object and custom field ore in the form ``ApiName__c`` with only a suffix ``__c``
-and without any other double underscore.  
+and without any other double underscore. 
 | **Namespace** object and namespace field are in the form ``NameSpace__ApiName__c``.
-|  
-|  
+| 
+| 
 | Because custom fields can be managed by Django automatically in SFDC the algorithm
-of conversion a name to db_column is guaranted stable then the db_column is not so important
+of conversion a name to db_column is guaranteed stable then the db_column is not so important
 as before.
 If no **db_column** is specified then it can be derived from "django field name" this way:
 | If the django field name is not lower case then the default api name is the same.
-| Default API name from a lower case name is created by capitalizing and removing spaces:  
+| Default API name from a lower case name is created by capitalizing and removing spaces: 
 | e.g. default api name "LastModifiedDate" can be created from "last_modified_date" or from
 "LastModifiedDate".
 | Custom field can be rocognized by "custom=True".
 | Namespace field can be recognized by "sf_prefix='NameSpacePrefix'".
 | All unspecified fields without "db_column" in custom objects are expected custom field,
-except a few standard well known system names like "LastModifiedDate".  
+except a few standard well known system names like "LastModifiedDate". 
 |
 | If you find a new not recognized system name then report it as a bug and specify
 an explicit "custom=False" or an explicit "db_column=...", but it is extremely unprobable
@@ -188,7 +188,7 @@ The right value ``field.sf_managed`` can be usually recognized correctly from a 
   of the object.
 
 if at least one field has not been created in that table.
-This prevents some mistakes that some part of the database are managed unitentionally.
+This prevents some mistakes that some part of the database are managed unintentionally.
 
 If and only if you want to run migrations on a Salesforce database then:
 
@@ -219,7 +219,7 @@ All migration operations are currently implemented without transactions and with
 any optimization. Every field is processed by an individual command.
 
 It is not possible to detect only a change of model Meta options ``verbose_name`` or ``verbose_name_plural``.
-You should change change also someting unimportant in the ``Name`` field of that model
+You should change change also something unimportant in the ``Name`` field of that model
 in the same transaction e.g. change the unused ``max_length`` parameter or add a space
 at the end of ``verbose_name`` of Name field. That will trigger update of metadata of
 the CustomObject in Salesforce.
@@ -229,9 +229,9 @@ and special options "dataType", "displayFormat" and "startingNumber" not yet imp
 is good enough without them. Data type "Automatic Number" is derived from "sf_read_only=models.READ_ONLY",
 otherwise the data type is "Text"
 
-There is a risk that a field can not be created becase e.g. a duplicit related name exist in trash bin
+There is a risk that a field can not be created because e.g. a duplicit related name exist in trash bin
 and also that a field can not be deleted because it is used by something important in Salesforce.
-That are usual problems also with manual administrations, but that could cause an uncosistent migration,
+That are usual problems also with manual administrations, but that could cause an inconsistent migration,
 because a transaction is not currently used. There if you want to use migrations in production,
 verify debug it on a sandbox, then create a fresh sandbox from production and verify the migration again.
 
