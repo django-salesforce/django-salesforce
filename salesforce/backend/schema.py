@@ -238,6 +238,7 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
         'PermissionsCreate',
         'PermissionsDelete',
     )
+    deferred_sql = None  # type: Optional[List]
 
     def __init__(self, connection, collect_sql=False, atomic=True):
         self.conn = connection.connection
@@ -260,12 +261,12 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
     def __enter__(self):
         log.debug('DatabaseSchemaEditor __enter__')
-        self.deferred_sql = []  # pylint:disable=attribute-defined-outside-init
+        self.deferred_sql = []
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
+        # called at the end of every migrations
         log.debug('DatabaseSchemaEditor __exit__')
-        print("DatabaseSchemaEditor exit")
         if exc_type is None:
             for sql in self.deferred_sql:
                 self.execute(sql)
