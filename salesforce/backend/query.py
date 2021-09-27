@@ -14,11 +14,12 @@ import typing  # pylint:disable=unused-import
 from django.conf import settings
 from django.db import NotSupportedError, models
 from django.db.models import query as models_query, Model
+from django.db.models.sql import where as sql_where
 from django.db.utils import DEFAULT_DB_ALIAS
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
-from salesforce.backend import compiler, DJANGO_22_PLUS, DJANGO_30_PLUS
+from salesforce.backend import compiler, DJANGO_22_PLUS, DJANGO_30_PLUS, DJANGO_40_PLUS
 from salesforce.backend.models_sql_query import SalesforceQuery
 from salesforce.backend.operations import BULK_BATCH_SIZE
 from salesforce.router import is_sf_database
@@ -36,6 +37,9 @@ if TYPE_CHECKING:
 #             self.query.get_columns()
 #         return self.query.cursor.rowcount
 
+if DJANGO_40_PLUS and not hasattr(sql_where.WhereNode, 'as_salesforce'):
+    setattr(sql_where.WhereNode, 'as_salesforce', compiler.SalesforceWhereNode.as_salesforce)
+
 
 class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
     """
@@ -51,7 +55,10 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
                  hints: Optional[Dict[str, Model]] = None
                  ) -> None:
         if query is None:
-            query = SalesforceQuery(model, where=compiler.SalesforceWhereNode)
+            if DJANGO_40_PLUS:
+                query = SalesforceQuery(model)
+            else:
+                query = SalesforceQuery(model, where=compiler.SalesforceWhereNode)
         super().__init__(model=model, query=query, using=using, hints=hints)
 
     def using(self, alias: Optional[str]) -> 'SalesforceQuerySet[_T]':

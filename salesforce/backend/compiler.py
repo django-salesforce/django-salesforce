@@ -17,7 +17,7 @@ from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import # required for activation of lookups
-from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS
+from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS
 from salesforce.dbapi import DatabaseError
 from salesforce.dbapi.subselect import AGGREGATION_WORDS
 # pylint:disable=no-else-return,too-many-branches,too-many-locals
@@ -227,7 +227,13 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                 result.append('HAVING %s' % having)
                 params.extend(h_params)
 
-            if DJANGO_21_PLUS:
+            if DJANGO_40_PLUS:
+                if self.query.explain_info:                # type: ignore[attr-defined]
+                    result.insert(0, self.connection.ops.explain_query_prefix(
+                        self.query.explain_info.format,    # type: ignore[attr-defined]
+                        **self.query.explain_info.options  # type: ignore[attr-defined]
+                    ))
+            elif DJANGO_21_PLUS:
                 if self.query.explain_query:
                     result.insert(0, self.connection.ops.explain_query_prefix(
                         self.query.explain_format,
