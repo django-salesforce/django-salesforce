@@ -254,6 +254,9 @@ class TimeField(SfField, models.TimeField):
 
     def from_db_value(self, value: Any, expression: Any, connection: DatabaseWrapper) -> Any:
         # pylint:disable=unused-argument
+        if isinstance(value, str):
+            # value from salesforce is a string "HH:MM:ss.000Z", value from other db is datetime.time().
+            value = value.rstrip('Z')
         return self.to_python(value)
 
 

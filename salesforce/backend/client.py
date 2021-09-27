@@ -19,3 +19,7 @@ def complain(*args, **kwargs):
 
 class DatabaseClient(BaseDatabaseClient):
     runshell = complain
+
+    @classmethod
+    def settings_to_cmd_args_env(cls, settings_dict, parameters):
+        complain()
