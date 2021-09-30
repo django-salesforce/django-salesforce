@@ -13,13 +13,13 @@ import warnings
 from itertools import islice
 from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union, overload
 
-from django.db import models, NotSupportedError
+from django.db import models
 from django.db.models import expressions as db_expressions
 from django.db.models.sql import subqueries, Query, RawQuery
 
 from salesforce.backend import DJANGO_30_PLUS, DJANGO_42_PLUS, DJANGO_50_PLUS
 from salesforce.dbapi.driver import (
-    DatabaseError, InternalError, SalesforceWarning, merge_dict,
+    DatabaseError, SalesforceWarning, merge_dict,
     register_conversion, arg_to_json)
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
 
@@ -68,58 +68,61 @@ DJANGO_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f-00:00'
 MIGRATIONS_QUERY_TO_BE_IGNORED = "SELECT django_migrations.app, django_migrations.name FROM django_migrations"
 
 
-def extract_values(query):
+def extract_insert_values(query) -> List[Dict[str, Any]]:  # TODO can be more strict
     """
-    Extract values from insert or update query.
+    Extract values from insert.
     Supports bulk_create
     """
-    if isinstance(query, subqueries.UpdateQuery):
-        row = query.values
-        return extract_values_inner(row, query)
-    if isinstance(query, subqueries.InsertQuery):
-        ret = []
-        for row in query.objs:
-            ret.append(extract_values_inner(row, query))
-        return ret
-    raise NotSupportedError
+    assert query.model
+    ret = []
+    for row in query.objs:
+        d = dict()
+        fields = query.model._meta.fields
+        for _, field in enumerate(fields):
+            sf_read_only = getattr(field, 'sf_read_only', 0)
+            if field.get_internal_type() == 'AutoField':
+                continue
+            value = getattr(row, field.attname)
+            if ((sf_read_only & NOT_CREATEABLE) != 0 or hasattr(value, 'default') or
+                    value is None and getattr(field, 'db_default', None) is not None):
+                continue  # skip not createable or DEFAULTED_ON_CREATE
+            d[field.column] = arg_to_json(value)
+        ret.append(d)
+    return ret
 
 
-def extract_values_inner(row, query):
+def extract_update_values(query: subqueries.UpdateQuery) -> Dict[str, Any]:  # TODO can be more strict
+    """
+    Extract values from update query.
+    """
     d = dict()
+    assert query.model
     fields = query.model._meta.fields
     for _, field in enumerate(fields):
         sf_read_only = getattr(field, 'sf_read_only', 0)
         is_date_auto = getattr(field, 'auto_now', False) or getattr(field, 'auto_now_add', False)
         if field.get_internal_type() == 'AutoField':
             continue
-        if isinstance(query, subqueries.UpdateQuery):
-            if (sf_read_only & NOT_UPDATEABLE) != 0 or is_date_auto:
-                continue
-            value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
-            if value_or_empty:
-                [value] = value_or_empty
-            else:
-                assert len(query.values) < len(fields), \
-                    "Match name can miss only with an 'update_fields' argument."
-                continue
-            if hasattr(value, 'default'):
-                warnings.warn(
-                    "The field '{}.{}' has been saved again with DEFAULTED_ON_CREATE value. "
-                    "It is better to use 'db_default=...' in Django >= 5.0 "
-                    "or to set a real value to it "
-                    "or to refresh it from the database after .save() "
-                    "or to restrict updated fields explicitly by 'update_fields='."
-                    .format(field.model._meta.object_name, field.name),
-                    SalesforceWarning
-                )
-                continue
-        elif isinstance(query, subqueries.InsertQuery):
-            value = getattr(row, field.attname)
-            if ((sf_read_only & NOT_CREATEABLE) != 0 or hasattr(value, 'default') or
-                    value is None and getattr(field, 'db_default', None) is not None):
-                continue  # skip not createable or DEFAULTED_ON_CREATE
+        if (sf_read_only & NOT_UPDATEABLE) != 0 or is_date_auto:
+            continue
+        value_or_empty = [value for qfield, model, value in query.values if qfield.name == field.name]
+        if value_or_empty:
+            [value] = value_or_empty
         else:
-            raise InternalError('invalid query type')
+            assert len(query.values) < len(fields), \
+                "Match name can miss only with an 'update_fields' argument."
+            continue
+        if hasattr(value, 'default'):
+            warnings.warn(
+                "The field '{}.{}' has been saved again with DEFAULTED_ON_CREATE value. "
+                "It is better to use 'db_default=...' in Django >= 5.0 "
+                "or to set a real value to it "
+                "or to refresh it from the database after .save() "
+                "or to restrict updated fields explicitly by 'update_fields='."
+                .format(field.model._meta.object_name, field.name),
+                SalesforceWarning
+            )
+            continue
         d[field.column] = arg_to_json(value)
     return d
 
@@ -256,15 +259,15 @@ class CursorWrapper:
 
     def execute_insert(self, query):
         table = query.model._meta.db_table
+        post_data = extract_insert_values(query)
         if table == 'django_migrations':
             return
-        post_data = extract_values(query)
         obj_url = self.db.connection.rest_api_url('sobjects', table, relative=True)
         if len(post_data) == 1:
             # single object
-            post_data = post_data[0]
-            self.our_fix_default(post_data)
-            return self.handle_api_exceptions('POST', obj_url, json=post_data)
+            post_data_0 = post_data[0]
+            self.our_fix_default(post_data_0)
+            return self.handle_api_exceptions('POST', obj_url, json=post_data_0)
         if self.db.connection.composite_type == 'sobject-collections':
             # SObject Collections
             records = [merge_dict(x, type_=table) for x in post_data]
@@ -325,7 +328,7 @@ class CursorWrapper:
 
     def execute_tooling_update(self, query):
         table = query.model._meta.db_table
-        post_data = extract_values(query)
+        post_data = extract_update_values(query)
         pks = self.get_pks_from_query(query)
         assert len(pks) == 1
         pk = pks[0]
@@ -351,7 +354,7 @@ class CursorWrapper:
         if query.model._meta.sf_tooling_api_model:
             return self.execute_tooling_update(query)
         table = query.model._meta.db_table
-        post_data = extract_values(query)
+        post_data = extract_update_values(query)
         pks = self.get_pks_from_query(query)
         log.debug('UPDATE %s(%s)%r', table, pks, post_data)
         if not pks:

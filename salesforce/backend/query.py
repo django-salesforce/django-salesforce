@@ -200,7 +200,7 @@ def bulk_update_small(objs: 'typing.Collection[models.Model]', fields: Iterable[
     for item in objs:
         query = django.db.models.sql.subqueries.UpdateQuery(item._meta.model)  # fake query
         query.add_update_values({field: getattr(item, field) for field in fields})
-        values = salesforce.backend.utils.extract_values(query)
+        values = salesforce.backend.utils.extract_update_values(query)
         values['id'] = item.pk
         values['type_'] = item._meta.db_table
         records.append(values)
