@@ -1,4 +1,4 @@
-sudo: false
+# It is important to set "Limit concurrent jobs" to "1" in repository settings in Travis-CI
 language: python
 # Ubuntu 20.04 Focal Fossa (has a default Python 3.8, suported 3.5 - 3.9)
 dist: focal
@@ -12,16 +12,17 @@ env:
 cache:
   directories:
     - $HOME/.pip-cache/
-    - $HOME/.pyenv/
-before_install:
- - git clone git://github.com/pyenv/pyenv-update.git $(pyenv root)/plugins/pyenv-update
- - pyenv install --list
- - pyenv install --skip-existing 3.5.4
- - pyenv install --skip-existing 3.6.7
 install:
-  - pip install rstcheck setuptools_git tox tox-pyenv
-  - pyenv local 3.5.4 3.6.7
+  - pip install tox
 script:
-  - rstcheck README.rst
   - echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
-  - tox -r -e dj32-py36,dj31-py36,dj30-py36,dj22-py36,dj20-py35,debug_toolbar-dj32-py36
+  - tox
+jobs:
+  include:
+    - python: 3.6
+      before_install:
+        - python3.6 -V
+        - python3.8 -V
+      env: TOXENV=docs_style,typing,dj20-py36,dj22-py38,dj30-py36,dj32-py38
+    - python: 3.9
+      env: TOXENV=dj40-py39,no_django-py39,debug_toolbar-dj32-py39
