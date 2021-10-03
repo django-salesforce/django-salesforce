@@ -71,6 +71,7 @@ disable=
     fixme,        # W0511 (ignored: only the "TODO" word should be used here; grep is better)
     inconsistent-return-statements,  # R1710 (similar style to Django) "Either all return statements in
                                      # a function should return an expression, or none of them should."
+    consider-using-f-string  # C209
 
 
 [REPORTS]
