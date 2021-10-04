@@ -20,7 +20,7 @@ the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
 Python 3.5.3 to 3.9, Django 2.0 to 3.2.
-(Tested also with Python 3.10.0b3)
+(Tested also with Python 3.10.0rc1 and Django 4.0 alpha 1)
 
 
 Quick Start
