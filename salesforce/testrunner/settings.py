@@ -23,7 +23,7 @@ DATABASES = {
         "CONSUMER_SECRET": os.environ.get('SF_CONSUMER_SECRET', ''),
         'USER': os.environ.get('SF_USER', ''),
         'PASSWORD': os.environ.get('SF_PASSWORD', ''),
-        'HOST': 'https://login.salesforce.com',
+        'HOST': os.environ.get('SF_HOST', 'https://login.salesforce.com'),
         'TEST': {
             'DEPENDENCIES': [],
             'MIGRATE': False,   # to run tests without migrations in Django 3.1+
