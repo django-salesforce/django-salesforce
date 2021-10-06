@@ -4,7 +4,7 @@
 #      created by older Python, Django and django-salesferce versions
 #      can be imported by newer versions.
 #      test it by command
-#      .tox/py..-dj.../bin/python manage.py check --settings=tests.inspectdb.settings --traceback
+#      .tox/dj..-py.../bin/python manage.py check --settings=tests.inspectdb.settings --traceback
 #      after version switching
 
 
