@@ -13,8 +13,8 @@ class VersionTest(TestCase):
         are in conflict. The righ version could be immediately uninstalled and
         replaced by an invalid version.
         """
-        match = re.search(r'/\.tox/py(\d+)-dj(\d+)/', django.__file__)
+        match = re.search(r'/\.tox/dj(\d+)-py(\d+)/', django.__file__)
         if match:
-            python_version_abbr, django_version_abbr = match.groups()
+            django_version_abbr, python_version_abbr = match.groups()
             self.assertEqual('{}{}'.format(*django.VERSION[:2]), django_version_abbr)
             self.assertEqual('{}{}'.format(*sys.version_info[:2]), python_version_abbr)
