@@ -44,6 +44,7 @@ PROBLEMATIC_OBJECTS = [
     'AsyncOperationEvent',  # new in API 46.0 Summer '19
     'AsyncOperationStatus',  # new in API 46.0 Summer '19
     'FlowExecutionErrorEvent',  # new in API 47.0 Winter '20 - missing 'Id'
+    'FlowOrchestrationEvent',  # new in API 53.0 Winter '22
 ]
 
 # this global variable is for `salesforce.management.commands.inspectdb`
@@ -153,7 +154,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             self._table_description_cache[table] = response.json(object_pairs_hook=OrderedDict)
             field_list = self._table_description_cache[table]['fields']
             # 'Id' field is sometimes not the first field in tooling metadata SObjects
-            id_field, = [x for x in field_list if x['name'] == 'Id']
+            id_fields = [x for x in field_list if x['name'] == 'Id']
+            assert len(id_fields) == 1, "Table {!r} must contain one field with name 'Id'".format(table)
+            id_field, = id_fields
             assert id_field['type'] == 'id', (
                 "Invalid type of the field 'Id' in table '{}'".format(table))
             del field_list[field_list.index(id_field)]
