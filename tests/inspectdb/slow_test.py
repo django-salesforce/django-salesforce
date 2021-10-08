@@ -45,6 +45,8 @@ def run():
         'Vote',  # 'OpportunityPartner', 'Product2Feed',
         # UNKNOWN_EXCEPTION:
         'TenantUsageEntitlement',
+        # special
+        'django_migrations',
         }
     problematic_write = {
         # Cannot modify managed objects

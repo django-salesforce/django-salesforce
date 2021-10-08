@@ -26,14 +26,15 @@ def get_classes_texts() -> Dict[str, str]:
     excluded_pattern = re.compile(r'^('
                                   r'# coding: utf-8|'
                                   r'# This is an auto-generated Django model|'
-                                  r'from salesforce import models$'
+                                  r'from salesforce import models$|'
+                                  r"# Unable to inspect table 'django_migrations'"
                                   r')')
     with open(relative_path('models.py'), 'r', newline=None) as f:
         for text in f.read().split('\n\n'):
             text = text.strip()
             if text and not excluded_pattern.match(text):
                 match = re.match(r'class (\w+)\(', text)
-                assert match
+                assert match, 'Unexpected line: %s' % text.split('\n')[0]
                 class_name = match.groups()[0]
                 result[class_name] = text
     return result
