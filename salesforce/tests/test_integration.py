@@ -529,7 +529,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_account_insert_delete(self) -> None:
         """Test insert and delete an account (normal or personal SF config)
         """
-        if settings.PERSON_ACCOUNT_ACTIVATED:
+        if getattr(settings, 'SF_EXAMPLE_PERSON_ACCOUNT_ACTIVATED', False):
             test_account = Account(FirstName='IntegrationTest',  # type: ignore[misc] # skip this branch
                                    LastName='Account')
         else:
