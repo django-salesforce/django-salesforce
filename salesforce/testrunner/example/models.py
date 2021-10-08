@@ -135,9 +135,10 @@ class Contact(SalesforceModel):
     # The `default=` with lambda function is easy readable, but can be
     # problematic with migrations in the future because it is not serializable.
     # It can be replaced by normal function.
-    owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=models.DefaultedOnCreate(User),
-                              related_name='contact_owner_set')
+    if not getattr(settings, 'SF_EXAMPLE_SIMPLE_DEFAULTS', False):
+        owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+                                  default=models.DefaultedOnCreate(User),
+                                  related_name='contact_owner_set')
     if getattr(settings, 'SF_EXAMPLE_CUSTOM_INSTALLED', False):
         vs = models.DecimalField(custom=True, unique=True, max_digits=10, decimal_places=0, blank=True, null=True)
 
@@ -191,9 +192,10 @@ class Lead(SalesforceModel):
                                             sf_read_only=models.NOT_CREATEABLE)
     # Deleted object can be found only in querysets with "query_all" SF method.
     IsDeleted = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
-    owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                              default=models.DefaultedOnCreate(User),
-                              related_name='lead_owner_set')
+    if not getattr(settings, 'SF_EXAMPLE_SIMPLE_DEFAULTS', False):
+        owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
+                                  default=models.DefaultedOnCreate(User),
+                                  related_name='lead_owner_set')
     last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, null=True,
                                          sf_read_only=models.READ_ONLY,
                                          related_name='lead_lastmodifiedby_set')
