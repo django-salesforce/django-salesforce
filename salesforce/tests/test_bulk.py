@@ -10,7 +10,7 @@ from salesforce.backend import DJANGO_22_PLUS
 from salesforce.backend.test_helpers import skipUnless
 from salesforce.testrunner.example.models import Campaign, CampaignMember, Contact
 
-SF_CUSTOM_INSTALLED = getattr(settings, 'SF_CUSTOM_INSTALLED', False)
+SF_EXAMPLE_CUSTOM_INSTALLED = getattr(settings, 'SF_EXAMPLE_CUSTOM_INSTALLED', False)
 
 
 class BulkUpdateTest(TestCase):
@@ -21,10 +21,10 @@ class BulkUpdateTest(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        if SF_CUSTOM_INSTALLED and not Contact.objects.update(vs=None) >= 9:
+        if SF_EXAMPLE_CUSTOM_INSTALLED and not Contact.objects.update(vs=None) >= 9:
             Contact.objects.bulk_create([Contact(last_name='sf_test {}'.format(i)) for i in range(9)])
 
-    @skipUnless(DJANGO_22_PLUS and SF_CUSTOM_INSTALLED,
+    @skipUnless(DJANGO_22_PLUS and SF_EXAMPLE_CUSTOM_INSTALLED,
                 "bulk_update() does not exist before Django 2.2. and Salesforce customization is required")
     def setUp(self) -> None:
         pass
@@ -72,10 +72,11 @@ class QuerysetUpdateTest(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        if SF_CUSTOM_INSTALLED:
+        cls.contacts = common_setup_contacts(2)
+        if SF_EXAMPLE_CUSTOM_INSTALLED:
             assert Contact.objects.update(vs=None) >= 2
 
-    @skipUnless(SF_CUSTOM_INSTALLED, "requires Salesforce customization")
+    @skipUnless(SF_EXAMPLE_CUSTOM_INSTALLED, "requires Salesforce customization")
     def setUp(self) -> None:
         pass
 

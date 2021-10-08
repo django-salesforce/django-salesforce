@@ -113,7 +113,7 @@ class PersonAccount(AbstractAccount):
         abstract = True
 
 
-if getattr(settings, 'PERSON_ACCOUNT_ACTIVATED', False):
+if getattr(settings, 'SF_EXAMPLE_PERSON_ACCOUNT_ACTIVATED', False):
     class Account(PersonAccount):  # pylint:disable=model-no-explicit-unicode
         pass
 else:
@@ -138,7 +138,7 @@ class Contact(SalesforceModel):
     owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
                               default=models.DefaultedOnCreate(User),
                               related_name='contact_owner_set')
-    if getattr(settings, 'SF_CUSTOM_INSTALLED', False):
+    if getattr(settings, 'SF_EXAMPLE_CUSTOM_INSTALLED', False):
         vs = models.DecimalField(custom=True, unique=True, max_digits=10, decimal_places=0, blank=True, null=True)
 
     def __str__(self):

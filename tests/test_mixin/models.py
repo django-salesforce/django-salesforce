@@ -52,7 +52,7 @@ class PersonAccount(SalesforceModel):
         abstract = True
 
 
-if not getattr(settings, 'PERSON_ACCOUNT_ACTIVATED', False):
+if not getattr(settings, 'SF_EXAMPLE_PERSON_ACCOUNT_ACTIVATED', False):
     class Account(CommonAccount, CoreAccount):
         pass
 else:

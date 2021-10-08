@@ -8,7 +8,7 @@ ADMINS = (
     # ('Your Name', 'your_email@example.com'),
 )
 
-PERSON_ACCOUNT_ACTIVATED = False
+SF_EXAMPLE_PERSON_ACCOUNT_ACTIVATED = False
 
 DATABASES = {
     'default': {
