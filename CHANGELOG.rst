@@ -16,6 +16,15 @@ experimental.
 
 [3.2.1] Unpublished
 -------------------
+* Add suport for Django 4.0 alpha 1 and declare support for Python 3.10 final,
+  Salesforce API 53.0 Winter '22.
+* Add: Support timestamps with "auto_now_add=True" and "auto_now=True".
+* Fix: Fix tests for Salesforce API 52.0 Summer '21 that broke syntax of
+  filters on a primary key or foreign keys: can not be compared to empty string
+  and allowed only =, !=, IN, NOT IN.
+  A ``.filter(field__gt='')`` must be replaced e.g. by ``.exlude(field=None)``.
+* Fix: Works also with obsoleted USE_TZ=False #221
+* Fix: Support also alternative clones of Beatbox #172
 * Add: Implement queryset.bulk_update() method #236
 * Fix: SOQL command in queryset.raw() is supported case insensitive
 * Fix: ManyToMany relationships compiled also with GROUP BY, HAVING, ORDER BY. #264
