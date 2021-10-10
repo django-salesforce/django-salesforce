@@ -35,7 +35,6 @@ from salesforce.dbapi.common import get_thread_connections, get_max_retries, tim
 from salesforce.dbapi.exceptions import (
     SalesforceAuthError,  # error from SFCD
     OperationalError,     # authentication error by invalid usage
-    IntegrityError,       # API doesn't match seriously
     import_string,
 )
 from salesforce.dbapi.exceptions import SalesforceError  # noqa unused # common superclass of above errors
@@ -214,7 +213,7 @@ class StaticGlobalAuth(SalesforceAuth):
                 )
             ).decode('ascii')
             if calc_signature != response_data['signature']:
-                raise IntegrityError('Invalid auth signature received')
+                raise OperationalError('Invalid auth signature received')
         else:
             raise SalesforceAuthError("oauth failed: %s: %s" % (self.settings_dict['USER'], response.text))
         return response_data
