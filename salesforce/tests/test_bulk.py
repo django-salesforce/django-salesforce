@@ -7,7 +7,7 @@ from django.conf import settings
 from django.test import TestCase
 from salesforce import SalesforceError
 from salesforce.backend import DJANGO_22_PLUS
-from salesforce.backend.test_helpers import default_is_sf, skipUnless
+from salesforce.backend.test_helpers import default_is_sf, skipUnless, expectedFailure
 from salesforce.testrunner.example.models import Campaign, CampaignMember, Contact
 
 SF_EXAMPLE_CUSTOM_INSTALLED = getattr(settings, 'SF_EXAMPLE_CUSTOM_INSTALLED', False)
@@ -15,7 +15,8 @@ SF_EXAMPLE_CUSTOM_INSTALLED = getattr(settings, 'SF_EXAMPLE_CUSTOM_INSTALLED', F
 
 def common_setup_contacts(n: int) -> List[Contact]:
     contact_names = ['sf_test {}'.format(i) for i in range(n)]
-    contacts = {x.name: x for x in Contact.objects.filter(name__startswith='sf_test ')[:n]}
+    contacts = {x.name: x for x in Contact.objects.filter(name__startswith='sf_test ')
+                if x.name in contact_names}
     missing_contacts = [Contact(last_name=x) for x in contact_names if x not in contacts]
     if missing_contacts:
         Contact.objects.bulk_create(missing_contacts)
@@ -124,7 +125,7 @@ class BulkCreateTest(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        cls.contacts = common_setup_contacts(2)
+        cls.contacts = common_setup_contacts(4)
         campaigns = Campaign.objects.all()[:1]
         if campaigns:
             cls.campaign = campaigns[0]
@@ -136,33 +137,39 @@ class BulkCreateTest(TestCase):
         CampaignMember.objects.filter(campaign=self.campaign, contact__in=self.contacts).delete()
 
     @skipUnless(default_is_sf, "depends on Salesforce database.")
-    def common_bulk_create_error(self, expected: Tuple[int, int, int], all_or_none: Optional[bool] = None) -> None:
-        expect_errors, expect_rollbacks, expect_success = expected
+    def common_bulk_create_error(self,
+                                 data: Tuple[int, ...],
+                                 expected: Tuple[int, int, int, int],
+                                 all_or_none: Optional[bool] = None) -> None:
+        expect_errors, expect_rollbacks, expect_success, expect_n = expected
         members = [
             CampaignMember(campaign=self.campaign, contact=self.contacts[i], status='Sent')
-            for i in range(2)
-            for _ in range(3)
+            for i in data
         ]
-        qs = CampaignMember.objects.all()
+        qs = CampaignMember.objects
         if all_or_none is not None:
             qs = qs.sf(all_or_none=all_or_none)  # type: ignore[attr-defined] # noqa # sf
         with self.assertRaises(SalesforceError) as cm:
-            qs.bulk_create(members, batch_size=3)
+            qs.bulk_create(members, batch_size=3, ignore_conflicts=True)
         error_summary = [x.strip() for x in cm.exception.args[0].split('\n') if 'Error Summary' in x][0]
         expected_summary = 'Error Summary: errors={}, rollback/cancel={}, success={}'.format(
             expect_errors, expect_rollbacks, expect_success)
         self.assertEqual(error_summary, expected_summary)
         self.assertIn('CampaignMember  DUPLICATE_VALUE', cm.exception.args[0])
         qs = CampaignMember.objects.filter(campaign=self.campaign, contact__in=self.contacts)
-        self.assertEqual(qs.count(), expect_success)
+        self.assertEqual(qs.count(), expect_n)
+        inserted_n = len([x for x in members if x.pk is not None])
+        self.assertEqual(inserted_n, expect_n)
 
+    @expectedFailure
     def test_bulk_create_error(self) -> None:
         """Verify that also valid data in the chunk after an error are inserted"""
-        self.common_bulk_create_error(expected=(2, 0, 1))
+        self.common_bulk_create_error((0, 1, 2, 3, 3, 3), expected=(2, 0, 1, 4))
 
+    @expectedFailure
     def test_bulk_create_error_all_or_none_true(self) -> None:
         """Verify that no data in the invalid chunk and after it are not inserted"""
-        self.common_bulk_create_error(expected=(2, 1, 0), all_or_none=True)
+        self.common_bulk_create_error((0, 1, 2, 3, 3, 3), expected=(2, 1, 0, 3), all_or_none=True)
 
     # def test_bulk_create_error_all_or_none_false(self) -> None:
     #     """Verify that all valid data are inserted, even in batches after error"""
