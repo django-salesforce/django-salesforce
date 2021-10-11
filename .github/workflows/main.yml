@@ -9,6 +9,10 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+concurrency: 
+  group: one-job-at-a-time
+  cancel-in-progress: true
+
 jobs:
   test-python36-python38:
     runs-on: ubuntu-focal
