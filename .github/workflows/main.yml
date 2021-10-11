@@ -13,6 +13,7 @@ jobs:
   test-python36-python38:
     runs-on: ubuntu-20.04
     env:
+      TOX_TESTENV_PASSENV: SF_CONSUMER_KEY SF_CONSUMER_SECRET SF_USER SF_PASSWORD SF_HOST
       TOXENV: docs_style,typing,dj20-py36,dj22-py38,dj30-py36,dj32-py38
     steps:
       - uses: actions/checkout@v2
@@ -21,7 +22,7 @@ jobs:
       - name: Pyenv Build
         uses: gabrielfalcao/pyenv-action@v7
         with:
-          versions: "3.6.12, 3.8.10"
+          versions: "3.6.12, 3.8.12"
       - name: Run tests
         run: |
           echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
@@ -29,6 +30,7 @@ jobs:
   test-python39:
     runs-on: ubuntu-20.04
     env:
+      TOX_TESTENV_PASSENV: SF_CONSUMER_KEY SF_CONSUMER_SECRET SF_USER SF_PASSWORD SF_HOST
       TOXENV: dj40-py39,no_django-py39,debug_toolbar-dj32-py39
     steps:
       - uses: actions/checkout@v2
@@ -37,7 +39,7 @@ jobs:
       - name: Pyenv Build
         uses: gabrielfalcao/pyenv-action@v7
         with:
-          versions: "3.6.12, 3.8.10, 3.9.7"
+          versions: "3.9.7"
       - name: Run tests
         run: |
           echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
