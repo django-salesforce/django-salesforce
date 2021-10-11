@@ -22,7 +22,7 @@ jobs:
       - name: Configure Python environment
         uses: gabrielfalcao/pyenv-action@v7
         with:
-          versions: "3.6.12, 3.8.12"
+          versions: "3.6.12, 3.8.6"
       - name: Run tests
         run: |
           echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
