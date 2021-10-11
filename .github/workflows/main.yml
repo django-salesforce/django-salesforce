@@ -1,4 +1,4 @@
-name: Django-Salesforce Test
+name: django-salesforce
 on:
   push:
     branches: [ main ]
@@ -17,9 +17,9 @@ jobs:
       TOXENV: docs_style,typing,dj20-py36,dj22-py38,dj30-py36,dj32-py38
     steps:
       - uses: actions/checkout@v2
-      - name: Install dependencies
+      - name: Install tox
         run: pip install tox
-      - name: Pyenv Build
+      - name: Configure Python environment
         uses: gabrielfalcao/pyenv-action@v7
         with:
           versions: "3.6.12, 3.8.12"
@@ -34,12 +34,12 @@ jobs:
       TOXENV: dj40-py39,no_django-py39,debug_toolbar-dj32-py39
     steps:
       - uses: actions/checkout@v2
-      - name: Install dependencies
+      - name: Install tox
         run: pip install tox
-      - name: Pyenv Build
+      - name: Configure Python environment
         uses: gabrielfalcao/pyenv-action@v7
         with:
-          versions: "3.9.7"
+          versions: "3.9.0"
       - name: Run tests
         run: |
           echo -e "SF_PK = 'Id'" > salesforce/testrunner/local_settings.py
