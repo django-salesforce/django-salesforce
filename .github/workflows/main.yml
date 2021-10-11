@@ -1,0 +1,55 @@
+name: django-salesforce test
+
+on:
+  push:
+    branches: [ main, actions ]
+  # pull_request:
+  #   branches: [ main ]
+# # prefer to teminate some queued jobs only manually, "max-parallel: 1" works enough
+# concurrency:
+#   group: one-job-at-a-time
+#   cancel-in-progress: true
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        python-version: [3.8, "3.10", 3.6, 3.9]
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies, Customize local_settings
+      run: |
+        python${{ matrix.python-version }} -V
+        pip install --upgrade pip
+        pip install tox
+        # this should be used only for a capitalized primary key 'Id' with migrations
+        # sed -i -e "s/'id', salesforce/'Id', salesforce/" salesforce/testrunner/example/migrations/0*.py
+    - name: Run Tests
+      env:
+        TOX_TESTENV_PASSENV: "SF_CONSUMER_KEY SF_CONSUMER_SECRET SF_USER SF_PASSWORD SF_HOST"
+        SF_CONSUMER_KEY: ${{ secrets.SF_CONSUMER_KEY }}
+        SF_CONSUMER_SECRET: ${{ secrets.SF_CONSUMER_SECRET }}
+        SF_USER: ${{ secrets.SF_USER }}
+        SF_PASSWORD: ${{ secrets.SF_PASSWORD }}
+        SF_HOST: ${{ secrets.SF_HOST }}
+
+        TOXENV_38:  "docs_style,typing,clean,dj22-py38,dj32-py38"
+        TOXENV_310: "dj40-py310"
+        TOXENV_36:  "dj20-py36,dj30-py36"
+        TOXENV_39:  "no_django-py39,debug_toolbar-dj32-py39"
+      run: |
+        TOXENV_NAME=$(echo TOXENV_${{ matrix.python-version }} | sed 's/\.//')
+        cat > salesforce/testrunner/local_settings.py <<'-- end local_settings --'
+        SF_PK = 'Id'
+        SF_LAZY_CONNECT = False
+        -- end local_settings --
+        echo "tox -e ${!TOXENV_NAME}"
+        tox -e ${!TOXENV_NAME}
