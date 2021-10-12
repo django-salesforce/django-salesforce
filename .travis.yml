@@ -2,6 +2,7 @@
 language: python
 # Ubuntu 20.04 Focal Fossa (has a default Python 3.8, suported 3.5 - 3.9)
 dist: focal
+if: branch = travis
 env:
   global:
     - secure: "Z6wS6a/YcyT8w5l+2HfMItbn2mbv+f1W43WixoqB4QkgiocjBWvmAQD6PN1sEgWVmZlRvWCABK8FcGG+Y6RPFeNdCE0U1h9hEgOiAnhUpWWH/AhOYDZ0PnFwA3/iRrHS2VFPmhdkjw1BUEfqXaJfDYtlZLgpMMfRvEjIJ8Uqq6M="
