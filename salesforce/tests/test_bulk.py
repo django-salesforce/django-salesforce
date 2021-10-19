@@ -115,6 +115,20 @@ class QuerysetUpdateTest(TestCase):
     # (without special validation rules on Salesforce)
 
 
+class BulkCreateSimpleTest(TestCase):
+    """Simple test of method queryset.bulk_create()"""
+
+    databases = '__all__'
+
+    def test(self) -> None:
+        contacts = [Contact(last_name=f"sf_test bulk {i}") for i in range(3)]
+        Contact.objects.bulk_create(contacts[:1])
+        Contact.objects.bulk_create(contacts[1:])
+        contact_ids = [x.pk for x in contacts]
+        self.assertEqual(Contact.objects.filter(pk__in=contact_ids).count(), 3)
+        Contact.objects.filter(pk__in=contact_ids).delete()
+
+
 class BulkCreateTest(TestCase):
     """The method queryset.bulk_create() is tested by a CampaignMember"""
 
