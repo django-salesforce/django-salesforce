@@ -46,10 +46,10 @@ class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-pub
 
         def fetch_returned_insert_columns(self, cursor, returning_params=None):
             # the parameter "returning_params" is for Django 3.1
-            return [cursor.lastrowid]
+            return (cursor.lastrowid,)
 
         def fetch_returned_insert_rows(self, cursor):
-            return [[x] for x in cursor.lastrowid]
+            return [(x,) for x in cursor.lastrowid]
 
         def return_insert_columns(self, fields):
             return '', ()  # dummy result
@@ -96,8 +96,8 @@ class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-pub
     def bulk_batch_size(self, fields, objs):
         return BULK_BATCH_SIZE
 
-    # This SQL is not important because we control the db from the compiler
-    # but something must exist
+    # This SQL is not important because we currently control the insert from a Salesforce compiler,
+    # but some method must exist.
     def bulk_insert_sql(self, fields, placeholder_rows):
         return "VALUES " + ", ".join(itertools.chain(*placeholder_rows))
 
