@@ -838,7 +838,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         ret = cursor.fetchall()
         count = ret[0][0]
         self.assertTrue(isinstance(count, int))
-        self.assertEqual(ret,  [[count]])
+        self.assertEqual(ret,  [(count,)])
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_cursor_dict_plain_count(self) -> None:

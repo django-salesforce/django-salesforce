@@ -135,11 +135,11 @@ class RawConnection:
         log.info("Rollback is not implemented in Salesforce.")
 
     @overload
-    def cursor(self) -> 'Cursor[List[Any]]': ...
+    def cursor(self) -> 'Cursor[Tuple[Any, ...]]': ...
     @overload  # noqa
     def cursor(self, row_type: Type[_TRow]) -> 'Cursor[_TRow]': ...
 
-    def cursor(self, row_type=list):  # type: ignore[no-untyped-def]
+    def cursor(self, row_type=tuple):  # type: ignore[no-untyped-def]
         return Cursor(self, row_type)
 
     # -- private attributes
@@ -522,11 +522,11 @@ class Cursor(Generic[_TRow]):
         self.lastrowid = None  # TODO to be used for INSERT id, but insert is not implemented by cursor
         self.errorhandler = connection.errorhandler
         # private
-        assert row_type in (list, dict, None)
-        if row_type is None or issubclass(row_type, list):
-            self.row_type = list          # type: Union[Type[Dict[str, Any]], Type[List[Any]]]
+        assert row_type in (tuple, list, dict, None)
+        if row_type is None:
+            self.row_type = tuple         # type: Union[Type[Dict[str, Any]], Type[Tuple[Any, ...]], Type[List[Any]]]
         else:
-            self.row_type = row_type      # dict
+            self.row_type = row_type
         self._chunk = []                  # type: List[Dict[str, Any]]  # it is in the native JSON format
         self._chunk_offset = None         # type: Optional[int]
         self._next_records_url = None     # type: Optional[str]

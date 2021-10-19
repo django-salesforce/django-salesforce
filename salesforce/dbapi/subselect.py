@@ -21,7 +21,7 @@ import re
 import pytz
 from salesforce.dbapi.exceptions import ProgrammingError
 
-_TRow = TypeVar('_TRow', List[Any], Dict[str, Any])
+_TRow = TypeVar('_TRow', Tuple[Any, ...], List[Any], Dict[str, Any])
 _T = TypeVar('_T')
 
 
@@ -161,18 +161,15 @@ class QQuery:
         return out
 
     @overload                   # noqa
-    def parse_rest_response(self, records: Iterable[Dict[str, Any]], rowcount: int, row_type: Type[Dict[Any, Any]]
-                            ) -> Iterable[Dict[str, Any]]: ...
-    @overload                   # noqa
-    def parse_rest_response(self, records: Iterable[Dict[str, Any]], rowcount: int, row_type: Type[List[Any]]
-                            ) -> Iterable[List[Any]]: ...
+    def parse_rest_response(self, records: Iterable[Dict[str, Any]], rowcount: int, row_type: Type[_TRow]
+                            ) -> Iterable[_TRow]: ...
     @overload                   # noqa
     def parse_rest_response(self, records: Iterable[Dict[str, Any]], rowcount: int,
-                            ) -> Iterable[Dict[str, Any]]: ...
+                            ) -> Iterable[Tuple[Any, ...]]: ...
     def parse_rest_response(self, records: Iterable[Dict[str, Any]], # type: ignore[no-untyped-def] # noqa
-                            rowcount: int, row_type=list) -> Iterable[Any]:
+                            rowcount: int, row_type=tuple) -> Iterable[Any]:
         """Parse the REST API response to DB API cursor flat response"""
-        assert row_type in (dict, list)
+        assert row_type in (dict, list, tuple)
         if self.is_plain_count:
             # result of "SELECT COUNT() FROM ... WHERE ..."
             assert list(records) == []
@@ -180,6 +177,8 @@ class QQuery:
                 yield {'count': rowcount}
             elif issubclass(row_type, list):
                 yield [rowcount]  # originally [resp.json()['totalSize']]
+            elif issubclass(row_type, tuple):
+                yield (rowcount,)
         else:
             for row_deep in records:
                 if list(row_deep.keys()) == ['explain']:
@@ -193,6 +192,8 @@ class QQuery:
                         yield {k: fix_data_type(row_flat[k.lower()]) for k in self.aliases}
                     elif issubclass(row_type, list):
                         yield [fix_data_type(row_flat[k.lower()]) for k in self.aliases]
+                    elif issubclass(row_type, tuple):
+                        yield tuple(fix_data_type(row_flat[k.lower()]) for k in self.aliases)
 
 
 SALESFORCE_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%f+0000'

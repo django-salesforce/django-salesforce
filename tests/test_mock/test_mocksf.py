@@ -32,7 +32,7 @@ class TestMock(MockTestCase):
         cur = connections[sf_alias].cursor()
         with mock.patch.object(cur.cursor.connection, '_api_version', '39.0'):
             cur.execute("SELECT Name FROM Contact LIMIT 1")
-        self.assertEqual(list(cur.fetchall()), [['django-salesforce test']])
+        self.assertEqual(list(cur.fetchall()), [('django-salesforce test',)])
 
     def test_mock_unused_playback(self) -> None:
         self.prepare_expected()
