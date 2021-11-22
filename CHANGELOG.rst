@@ -14,9 +14,12 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[3.2.1] Unpublished
--------------------
-* Add suport for Django 4.0 alpha 1 and declare support for Python 3.10 final,
+[4.0] Unpublished
+-----------------
+* Internal change: The default row type from salesforce Cursor is now a tuple,
+  not a list
+* Fix: Invalid primary key from bulk_create([one_object]) in Django 3.0 #298
+* Add suport for Django 4.0 (rc 1) and declare support for Python 3.10,
   Salesforce API 53.0 Winter '22.
 * Add: Support timestamps with "auto_now_add=True" and "auto_now=True".
 * Fix: Fix tests for Salesforce API 52.0 Summer '21 that broke syntax of
