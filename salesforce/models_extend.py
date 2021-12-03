@@ -42,7 +42,7 @@ class SfCharAutoField(SalesforceAutoField):
     #                       # but a fix by "_do_insert()" is better.
 
     def get_internal_type(self) -> str:
-        return 'CharField'
+        return 'AutoField'
 
     def db_type(self, connection: DatabaseWrapper) -> str:
         if connection.vendor != 'salesforce':
