@@ -41,6 +41,8 @@ class SfCharAutoField(SalesforceAutoField):
     # db_returning = False  # this was a simple fix for Django >= 3.0,
     #                       # but a fix by "_do_insert()" is better.
 
+    validators = ()
+
     def get_internal_type(self) -> str:
         return 'CharField'
 
@@ -82,7 +84,7 @@ else:
             abstract = True
             base_manager_name = 'objects'
 
-        id = SfCharAutoField(primary_key=True, name=SF_PK, db_column='Id', verbose_name='ID', auto_created=True)
+        id = SfCharAutoField(primary_key=True, name=SF_PK, db_column='Id', verbose_name='ID', auto_created=True, editable=False)
 
         def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
             using = using or router.db_for_write(self.__class__, instance=self)
