@@ -1,8 +1,8 @@
 django-salesforce
 =================
 
-.. image:: https://travis-ci.org/django-salesforce/django-salesforce.svg?branch=master
-   :target: https://travis-ci.org/django-salesforce/django-salesforce
+.. image:: https://travis-ci.com/django-salesforce/django-salesforce.svg?branch=master
+   :target: https://travis-ci.com/django-salesforce/django-salesforce
 
 .. image:: https://badge.fury.io/py/django-salesforce.svg
    :target: https://pypi.python.org/pypi/django-salesforce
