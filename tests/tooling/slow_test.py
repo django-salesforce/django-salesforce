@@ -80,7 +80,9 @@ def run():
         # in API 51.0 Spring '21
         'EmployeeUserSettings',
         # in API 52.0 Summer '21
-        'EinsteinAgentSettings'
+        'EinsteinAgentSettings',
+        # in API 54.0 Spring '22
+        'EinsteinDealInsightsSettings',
     }
     problematic_write = {
         # any SalesforceError
