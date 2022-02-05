@@ -62,7 +62,8 @@ def convert_lead(lead: Any, converted_status: Optional[str] = None, **kwargs: An
 
     kwargs: additional optional parameters according docs
     https://developer.salesforce.com/docs/atlas.en-us.api.meta/api/sforce_api_calls_convertlead.htm
-    e.g. `accountId` if the Lead should be merged with an existing Account.
+    e.g. `accountId`: if the Lead should be merged with an existing Account.
+         `doNotCreateOpportunity`: It specifies whether to create an Opportunity during a Lead conversion
 
     Return value:
         {'accountId':.., 'contactId':.., 'leadId':.., 'opportunityId':.., 'success':..}
