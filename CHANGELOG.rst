@@ -14,6 +14,24 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
+[4.1] Unpublished
+-----------------
+* Add: Support for Django 4.1
+* Add: Command ``inspectdb`` can introspect actual default values
+  of fields from a ``defaultValueFormula`` if it is a simple constant
+  like a number or a string.
+* Fix: A default value ``DefaultedOnCreate(value)`` is no longer created
+  by ``inspectdb`` in favour of a simple ``value``. If a simple default value
+  can not be known then a generic ``DEFAULTED_ON_CREATE`` is still used rarely
+  for default values created by a complicated or unknown function only
+  on Salesforce side. #280
+* Fix: Optionally don't use redundant table names before field names
+  if queried with ``.sf(minimal_aliases=True)``; important for some
+  special system objects #302
+* Fix: Tests with the newest Django, Salesforce, Python; including Python 3.11(beta)
+* Fix: Extended SalesforceModel with PostgreSQL backend and Django >= 3.0 #299
+
+
 [4.0] 2021-11-22
 ----------------
 * Internal change: The default row type from salesforce Cursor is now a tuple,

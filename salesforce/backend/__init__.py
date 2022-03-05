@@ -41,8 +41,8 @@ DJANGO_32_PLUS = django.VERSION[:2] >= (3, 2)
 DJANGO_40_PLUS = django.VERSION[:2] >= (4, 0)
 DJANGO_41_PLUS = django.VERSION[:2] >= (4, 1)
 is_dev_version = django.VERSION[3:] and re.match('(alpha|beta|rc)', django.VERSION[3])
-if django.VERSION[:2] < (2, 0) or django.VERSION[:2] > (4, 0) and not is_dev_version:
-    raise ImportError("Django version between 2.0 and 4.0 is required "
+if django.VERSION[:2] < (2, 0) or django.VERSION[:2] > (4, 1) and not is_dev_version:
+    raise ImportError("Django version between 2.0 and 4.1 is required "
                       "for this django-salesforce.")
     # Usually three or more blocking issues can be expected by every
     # new major Django version. Strict check before support is better.
