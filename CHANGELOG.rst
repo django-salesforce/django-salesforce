@@ -14,8 +14,15 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[4.0] Unpublished
------------------
+[4.0.1] Unpublished
+-------------------
+* Fix: Optionally don't use redundant table names before field names
+  if queried with minimal_aliases=True; important for some special system objects #302
+* Fix: Tests with the newest Django, Salesforce, Python; including Python 3.11 (alpha)
+* Fix: Extended SalesforceModel with PostgreSQL backend and Django >= 3.0 #299
+
+[4.0] 2021-11-22
+----------------
 * Internal change: The default row type from salesforce Cursor is now a tuple,
   not a list
 * Fix: Invalid primary key from bulk_create([one_object]) in Django 3.0 #298
