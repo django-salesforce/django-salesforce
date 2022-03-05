@@ -19,7 +19,7 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 3.6 to 3.10, Django 2.0 to 4.0.
+Python 3.6 to 3.10, Django 2.0 to 4.0. (Tested also with Python 3.11 alpha)
 
 
 Quick Start
