@@ -294,16 +294,15 @@ class MockTestCase(SimpleTestCase):
         driver.time_statistics.expiration = 1E10
 
     def tearDown(self) -> None:
-        result = self.defaultTestResult()  # these 2 methods have no side effects
-        self._feedErrorsToResult(result, self._outcome.errors)  # type: ignore[attr-defined] # hidden attributes used
-        error = self.list2reason(result.errors)
-        failure = self.list2reason(result.failures)
-        ok = not error and not failure
-        # # demo:   report short info immediately (not important)
-        # if not ok:
-        #     typ, text = ('ERROR', error) if error else ('FAIL', failure)
-        #     msg = [x for x in text.split('\n')[1:] if not x.startswith(' ')][0]
-        #     print("\n%s: %s\n     %s" % (typ, self.id(), msg))
+        # code https://stackoverflow.com/a/39606065/448474
+        if hasattr(self._outcome, 'errors'):  # type: ignore[attr-defined] # hidden attributes used
+            # Python 3.4 - 3.10  (these two methods have no side effects)
+            result = self.defaultTestResult()
+            self._feedErrorsToResult(result, self._outcome.errors)  # type: ignore[attr-defined]
+        else:
+            # Python 3.11+
+            result = self._outcome.result  # type: ignore[attr-defined]
+        ok = all(test != self for test, text in result.errors + result.failures)
 
         connection = self.sf_connection
         session = connection._sf_session  # pylint:disable=protected-access
