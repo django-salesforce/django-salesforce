@@ -14,8 +14,8 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[4.0] Unpublished
------------------
+[4.0] 2021-11-22
+----------------
 * Internal change: The default row type from salesforce Cursor is now a tuple,
   not a list
 * Fix: Invalid primary key from bulk_create([one_object]) in Django 3.0 #298
