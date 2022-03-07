@@ -196,7 +196,7 @@ class SfParamsTest(TestCase):
         qs_1 = Contact.objects.all()
         qs_2 = qs_1.sf(query_all=True)
         qs_3 = qs_2.filter(first_name__gt='A')
-        # a valua is propagated to the next level, but not to the previous
+        # a value is propagated to the next level, but not to the previous
         self.assertTrue(qs_3.query.sf_params.query_all)
         self.assertFalse(qs_1.query.sf_params.query_all)
 

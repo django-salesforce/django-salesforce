@@ -292,7 +292,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         if self.soql_trans is not None:
             return self.soql_trans
         if not _alias_map_items and not self.query.alias_map:
-            # empty alias_map is possible due to field expr in Django 1.8
+            # empty alias_map is possible due to field expr
             return {}
         # Unified interface:
         #   alias_map_items = [(lhs, table, join_cols_, rhs),...]

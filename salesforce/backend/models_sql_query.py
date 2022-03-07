@@ -112,7 +112,7 @@ class SalesforceQuery(Query, Generic[_T]):
 
     def has_results(self, using: Optional[str]) -> bool:
         q = self.clone()
-        compiler = q.get_compiler(using=using)  # pylint: disable=no-member
+        compiler = q.get_compiler(using=using)
         return bool(compiler.execute_sql(constants.SINGLE))
 
     def get_count(self, using: str) -> int:
