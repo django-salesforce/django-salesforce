@@ -6,7 +6,10 @@ from typing import Any, cast, Generic, Optional, Sequence, Tuple, Type, TypeVar
 from django.conf import settings
 from django.db.models import Count, Model
 from django.db.models.sql import Query, RawQuery, constants
+import django
 
+from salesforce.backend import DJANGO_40_PLUS
+from salesforce.backend.compiler import SfParams, SQLCompiler
 from salesforce.dbapi.driver import arg_to_soql
 
 _T = TypeVar("_T", bound=Model, covariant=True)
@@ -40,13 +43,6 @@ class SalesforceRawQuery(RawQuery):
 #             yield [row[k] for k in self.get_columns()]
 
 
-class SfParams:  # like an immutable DataClass: clone when updating
-    def __init__(self):
-        self.query_all = False
-        self.all_or_none = None  # type: Optional[bool]
-        self.edge_updates = False
-
-
 class SalesforceQuery(Query, Generic[_T]):
     """
     Override aggregates.
@@ -75,10 +71,22 @@ class SalesforceQuery(Query, Generic[_T]):
     def clone(self) -> 'SalesforceQuery[_T]':
         return cast(SalesforceQuery, Query.clone(self))
 
+    def get_compiler(self, using: Optional[str] = None, connection: Any = None,  # pylint:disable=arguments-differ
+                     elide_empty: bool = True) -> django.db.models.sql.compiler.SQLCompiler:
+        if not DJANGO_40_PLUS:
+            compiler = super().get_compiler(using, connection=connection)
+        else:
+            compiler = super().get_compiler(using, connection=connection,  # pylint:disable=unexpected-keyword-arg
+                                            elide_empty=elide_empty)  # type: ignore[call-arg]
+        if isinstance(compiler, SQLCompiler):
+            return compiler.set_sf_params(self.sf_params)
+        return compiler
+
     def sf(self,
            query_all: Optional[bool] = None,
            all_or_none: Optional[bool] = None,
            edge_updates: Optional[bool] = None,
+           minimal_aliases: Optional[bool] = None
            ) -> 'SalesforceQuery[_T]':
         """
         Set additional parameters for a queryset
@@ -99,6 +107,9 @@ class SalesforceQuery(Query, Generic[_T]):
                 could be unsafe if the queryset is not checked. It is safe to rewrite it to two
                 nested querysets or if it is correct then if can be allowed by `edge_updates`.
                 The default value is False.
+
+            `minimal_aliases`: Fields are compiled to a simple "field_name" if pssible without a dot,
+                not to a "table_alias.field_name".
         """
         clone = self.clone()
         clone.sf_params = copy.copy(self.sf_params)
@@ -108,6 +119,8 @@ class SalesforceQuery(Query, Generic[_T]):
             clone.sf_params.all_or_none = all_or_none
         if edge_updates is not None:
             clone.sf_params.edge_updates = edge_updates
+        if minimal_aliases is not None:
+            clone.sf_params.minimal_aliases = minimal_aliases
         return clone
 
     def has_results(self, using: Optional[str]) -> bool:

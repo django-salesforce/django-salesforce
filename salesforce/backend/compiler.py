@@ -30,6 +30,14 @@ AliasMapItems = List[Tuple[
 ]]
 
 
+class SfParams:  # like an immutable DataClass: clone when updating
+    def __init__(self):
+        self.query_all = False
+        self.all_or_none = None  # type: Optional[bool]
+        self.edge_updates = False
+        self.minimal_aliases = False
+
+
 class SQLCompiler(sql_compiler.SQLCompiler):
     """
     A subclass of the default SQL compiler for the SOQL dialect.
@@ -38,7 +46,12 @@ class SQLCompiler(sql_compiler.SQLCompiler):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.sf_params = SfParams()
         self.root_aliases = []  # type: List[str]
+
+    def set_sf_params(self, sf_params: SfParams) -> 'SQLCompiler':
+        self.sf_params = sf_params
+        return self
 
     def get_from_clause(self) -> Tuple[List[str], List[Any]]:
         """

@@ -106,6 +106,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
            query_all: Optional[bool] = None,
            all_or_none: Optional[bool] = None,
            edge_updates: Optional[bool] = None,
+           minimal_aliases: Optional[bool] = None,
            ) -> 'SalesforceQuerySet[_T]':
         """Set additional parameters for queryset methods with Salesforce.
 
@@ -123,6 +124,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             query_all=query_all,
             all_or_none=all_or_none,
             edge_updates=edge_updates,
+            minimal_aliases=minimal_aliases,
         )
         return clone
 
