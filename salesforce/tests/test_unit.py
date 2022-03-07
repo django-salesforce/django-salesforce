@@ -189,6 +189,9 @@ class TestTopologyCompiler(TestCase):
 
 
 class SfParamsTest(TestCase):
+    # type checking of this test case is currently not possible
+    databases = '__all__'
+
     def test_params_handover_and_isolation(self):
         """Test that sp_params are propagated to the rest of the queryset chain
         but isolated from the previous part.
@@ -199,6 +202,19 @@ class SfParamsTest(TestCase):
         # a value is propagated to the next level, but not to the previous
         self.assertTrue(qs_3.query.sf_params.query_all)
         self.assertFalse(qs_1.query.sf_params.query_all)
+
+    def test_minimal_aliases(self):
+        """Test SOQL with minimal aliases without a table name of the main table"""
+        qs = Contact.objects.filter(first_name='Peter').values('last_name')
+        self.assertEqual(str(qs.query), "SELECT Contact.LastName FROM Contact WHERE Contact.FirstName = 'Peter'")
+
+        expected_sql = "SELECT LastName FROM Contact WHERE FirstName = 'Peter'"
+        qs = Contact.objects.sf(minimal_aliases=True).filter(first_name='Peter').values('last_name')
+        self.assertEqual(str(qs.query), expected_sql)
+        qs = Contact.objects.filter(first_name='Peter').sf(minimal_aliases=True).values('last_name')
+        self.assertEqual(str(qs.query), expected_sql)
+        qs = Contact.objects.filter(first_name='Peter').values('last_name').sf(minimal_aliases=True)
+        self.assertEqual(str(qs.query), expected_sql)
 
 
 class RegisterConversionTest(TestCase):

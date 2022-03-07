@@ -60,7 +60,7 @@ class SalesforceManager(manager.Manager, Generic[_T]):
            query_all: Optional[bool] = None,
            all_or_none: Optional[bool] = None,
            edge_updates: Optional[bool] = None,
-           ) -> 'query.SalesforceQuerySet[_T]':
+           minimal_aliases: Optional[bool] = None) -> 'query.SalesforceQuerySet[_T]':
         # not dry, but explicit due to preferring type check of user code
         qs = self.get_queryset()
         assert isinstance(qs, query.SalesforceQuerySet)
@@ -68,4 +68,5 @@ class SalesforceManager(manager.Manager, Generic[_T]):
             query_all=query_all,
             all_or_none=all_or_none,
             edge_updates=edge_updates,
+            minimal_aliases=minimal_aliases,
         )
