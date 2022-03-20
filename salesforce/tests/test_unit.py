@@ -210,6 +210,19 @@ class SfParamsTest(TestCase):
         self.assertEqual(qs.query.get_compiler('salesforce').sf_params.minimal_aliases, False)
         self.assertEqual(qs.sf(minimal_aliases=True).query.get_compiler('salesforce').sf_params.minimal_aliases, True)
 
+        # test that a normal SOQL is with table aliases
+        qs = Contact.objects.filter(first_name='Peter').values('last_name')
+        self.assertEqual(str(qs.query), "SELECT Contact.LastName FROM Contact WHERE Contact.FirstName = 'Peter'")
+
+        # test that superfluous talbe aliases can be removed by 'minimal_aliases'
+        expected_sql = "SELECT LastName FROM Contact WHERE FirstName = 'Peter'"
+        qs = Contact.objects.sf(minimal_aliases=True).filter(first_name='Peter').values('last_name')
+        self.assertEqual(str(qs.query), expected_sql)
+        qs = Contact.objects.filter(first_name='Peter').sf(minimal_aliases=True).values('last_name')
+        self.assertEqual(str(qs.query), expected_sql)
+        qs = Contact.objects.filter(first_name='Peter').values('last_name').sf(minimal_aliases=True)
+        self.assertEqual(str(qs.query), expected_sql)
+
 
 class RegisterConversionTest(TestCase):
     @staticmethod

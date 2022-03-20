@@ -99,7 +99,18 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                 return sql_field
             pre, field, post = '', sql_field, ''
         tab_name, field_name = field.split('.')
-        ret = "%s%s.%s%s" % (pre, soql_trans[tab_name], field_name, post)
+        if self.sf_params.minimal_aliases:
+            assert len(self.root_aliases) == 1
+            if tab_name == self.root_aliases[0]:
+                trans_tab_name = ''
+            else:
+                trans_root = soql_trans[self.root_aliases[0]]
+                assert soql_trans[tab_name].startswith(trans_root + '.')
+                trans_tab_name = soql_trans[tab_name].replace(trans_root + '.', '', 1)
+        else:
+            trans_tab_name = soql_trans[tab_name]
+        dot = '.' if trans_tab_name else ''
+        ret = "%s%s%s%s%s" % (pre, trans_tab_name, dot, field_name, post)
         if debug_ >= 2:
             print('** sf_fix_field: {!r} -> {!r}'.format(sql_field, ret))
         return ret
