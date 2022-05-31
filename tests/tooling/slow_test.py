@@ -83,6 +83,9 @@ def run():
         'EinsteinAgentSettings',
         # in API 54.0 Spring '22
         'EinsteinDealInsightsSettings',
+        # in API 55.0 Summer '22
+        'IndustriesAutomotiveSettings', 'RelatedListColumnDefinition', 'RelatedListDefinition',
+        'SubscriptionManagementSettings', 'WarrantyLifecycleMgmtSettings',
     }
     problematic_write = {
         # any SalesforceError
