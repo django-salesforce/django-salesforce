@@ -58,11 +58,17 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 
     can_introspect_json_field = False  # Django 3.1+
     supports_deferrable_unique_constraints = False
+    supports_json_field = False
 
     supports_collation_on_charfield = False  # Django 3.2+
     supports_collation_on_textfield = False
     supports_non_deterministic_collations = False
     supports_covering_indexes = False
     supports_expression_indexes = False
+    # django_test_expected_failures = set()  # maybe in the future
+    # django_test_skips = {}
 
-    has_case_insensitive_like = True  # this is opposite to the default in Django 4.1
+    supports_update_conflicts = False  # new in Django 4.1+
+    supports_update_conflicts_with_target = False
+    supports_logical_xor = False
+    has_case_insensitive_like = True  # this is opposite to the default in Django 4.1+
