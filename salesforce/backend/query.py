@@ -19,7 +19,7 @@ from django.db.utils import DEFAULT_DB_ALIAS
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
-from salesforce.backend import compiler, DJANGO_22_PLUS, DJANGO_30_PLUS, DJANGO_40_PLUS
+from salesforce.backend import compiler, DJANGO_22_PLUS, DJANGO_30_PLUS, DJANGO_40_PLUS, DJANGO_41_PLUS
 from salesforce.backend.models_sql_query import SalesforceQuery
 from salesforce.backend.operations import BULK_BATCH_SIZE
 from salesforce.router import is_sf_database
@@ -135,7 +135,16 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
         setattr(query, 'sf_params', self.query.sf_params)
 
     # original Django method '._insert(...)' patched by .patch_insert_query(...)
-    if DJANGO_30_PLUS:
+    if DJANGO_41_PLUS:
+        def _insert(self, objs, fields, returning_fields=None, raw=False, using=None):
+            self._for_write = True
+            if using is None:
+                using = self.db
+            query = models.sql.InsertQuery(self.model)
+            self.patch_insert_query(query)  # patch
+            query.insert_values(fields, objs, raw=raw)
+            return query.get_compiler(using=using).execute_sql(returning_fields)
+    elif DJANGO_30_PLUS:
         def _insert(self, objs, fields, returning_fields=None, raw=False, using=None, ignore_conflicts=False):
             self._for_write = True
             if using is None:

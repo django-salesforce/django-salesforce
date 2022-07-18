@@ -64,3 +64,5 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_non_deterministic_collations = False
     supports_covering_indexes = False
     supports_expression_indexes = False
+
+    has_case_insensitive_like = True  # this is opposite to the default in Django 4.1
