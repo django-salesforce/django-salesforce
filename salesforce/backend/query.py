@@ -13,6 +13,7 @@ import typing  # pylint:disable=unused-import
 
 from django.conf import settings
 from django.db import NotSupportedError, models
+from django.db.models import constants
 from django.db.models import query as models_query, Model
 from django.db.models.sql import where as sql_where
 from django.db.utils import DEFAULT_DB_ALIAS
@@ -82,10 +83,15 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
     def simple_select_related(self, *fields: str) -> NoReturn:  # pylint:disable=no-self-use
         raise NotSupportedError("Obsoleted method .simple_select_related(), use .select_related() instead")
 
-    def bulk_create(self, objs: Iterable[_T], batch_size: Optional[int] = None, ignore_conflicts: bool = False
+    def bulk_create(self, objs: Iterable[_T], batch_size: Optional[int] = None,
+                    ignore_conflicts: bool = False,
+                    update_conflicts: bool = False,
+                    update_fields: Optional[List[str]] = None,
+                    unique_fields: Optional[List[str]] = None,
                     ) -> List[_T]:
         # parameter 'ignore_conflicts=False' is new in Django 2.2
         kwargs = {'ignore_conflicts': ignore_conflicts} if DJANGO_22_PLUS else {}
+        assert not update_conflicts and update_fields is None and unique_fields is None
         if getattr(self.model, '_salesforce_object', '') == 'extended' and not is_sf_database(self.db):
             objs = list(objs)
             for x in objs:
@@ -136,16 +142,21 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
 
     # original Django method '._insert(...)' patched by .patch_insert_query(...)
     if DJANGO_41_PLUS:
-        def _insert(self, objs, fields, returning_fields=None, raw=False, using=None):
+        def _insert(self, objs, fields,
+                    returning_fields=None, raw=False, using=None, on_conflict=None,
+                    update_fields=None, unique_fields=None):
+            assert on_conflict is None or on_conflict == constants.OnConflict.IGNORE  # pylint:disable=no-member
+            assert update_fields is None and unique_fields is None
             self._for_write = True
             if using is None:
                 using = self.db
-            query = models.sql.InsertQuery(self.model)
+            query = models.sql.InsertQuery(self.model, on_conflict=on_conflict)
             self.patch_insert_query(query)  # patch
             query.insert_values(fields, objs, raw=raw)
             return query.get_compiler(using=using).execute_sql(returning_fields)
     elif DJANGO_30_PLUS:
-        def _insert(self, objs, fields, returning_fields=None, raw=False, using=None, ignore_conflicts=False):
+        def _insert(self, objs, fields,  # type: ignore[misc] # pylint:disable=arguments-differ
+                    returning_fields=None, raw=False, using=None, ignore_conflicts=False):
             self._for_write = True
             if using is None:
                 using = self.db
@@ -154,8 +165,8 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             query.insert_values(fields, objs, raw=raw)
             return query.get_compiler(using=using).execute_sql(returning_fields)
     elif DJANGO_22_PLUS:
-        def _insert(self, objs, fields, return_id=False, raw=False,  # type: ignore[misc] # noqa pylint:disable=arguments-differ
-                    using=None, ignore_conflicts=False):
+        def _insert(self, objs, fields,  # type: ignore[misc] # pylint:disable=arguments-differ
+                    return_id=False, raw=False, using=None, ignore_conflicts=False):
             """
             Insert a new record for the given model. This provides an interface to
             the InsertQuery class and is how Model.save() is implemented.
