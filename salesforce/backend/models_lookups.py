@@ -6,7 +6,7 @@ from django.db.models.fields import Field
 from django.db.models import lookups
 
 
-class IsNull(models.lookups.IsNull):
+class IsNull(models.lookups.IsNull):  # pylint:disable=abstract-method
     def override_as_sql(self, compiler, connection):  # pylint:disable=unused-argument
         # it must be relabeled if used for a children rows set
         if compiler.soql_trans is None:
@@ -17,7 +17,7 @@ class IsNull(models.lookups.IsNull):
     setattr(models.lookups.IsNull, 'as_salesforce', override_as_sql)
 
 
-class Range(models.lookups.Range):
+class Range(models.lookups.Range):  # pylint:disable=abstract-method
     def override_as_sql(self, compiler, connection):
         lhs, lhs_params = self.process_lhs(compiler, connection)
         rhs, rhs_params = self.process_rhs(compiler, connection)
@@ -49,7 +49,7 @@ class Count(models.aggregates.Count):
 
 
 @Field.register_lookup
-class NotIn(lookups.In):
+class NotIn(lookups.In):  # pylint:disable=abstract-method
     lookup_name = 'not_in'
 
     def get_rhs_op(self, connection, rhs):
@@ -62,7 +62,7 @@ class NotIn(lookups.In):
 
 
 @Field.register_lookup
-class NotEqual(lookups.Exact):
+class NotEqual(lookups.Exact):  # pylint:disable=abstract-method
     lookup_name = 'not_eq'
 
     def get_rhs_op(self, connection, rhs):
