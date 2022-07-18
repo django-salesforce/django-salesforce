@@ -13,4 +13,4 @@ DATABASES = {
         'NAME': 'db_tmp_salesforce',
     },
 }
-ROOT_URLCONF = None
+ROOT_URLCONF = 'tests.no_urls'
