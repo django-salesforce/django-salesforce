@@ -148,6 +148,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def table_description_cache(self, table: str) -> Dict[str, Any]:
         if table not in self._table_description_cache:
+            if table == 'django_migrations':
+                raise ValueError("The internal table 'django_migrations' is not a normal Model.")
             log.debug('Request API URL: GET sobjects/%s/describe', table)
             response = self.connection.connection.handle_api_exceptions('GET', self.sobjects_prefix, table, 'describe/'
                                                                         )
