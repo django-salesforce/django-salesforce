@@ -204,7 +204,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             if field['defaultValue'] is None:
                 params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
             else:
-                params['default'] = SymbolicModelsName('DefaultedOnCreate', field['defaultValue'])
+                params['default'] = field['defaultValue']
         elif field['defaultValue'] is not None:
             params['default'] = field['defaultValue']
         if field['inlineHelpText']:
