@@ -7,7 +7,6 @@
 # pylint:disable=protected-access,too-many-lines,unused-variable
 
 from decimal import Decimal
-from distutils.util import strtobool  # pylint: disable=no-name-in-module,import-error # venv inst pylint false positiv
 import datetime
 import logging
 import os
@@ -26,7 +25,7 @@ import salesforce
 from salesforce import router
 from salesforce.backend import DJANGO_21_PLUS, DJANGO_22_PLUS
 from salesforce.backend.test_helpers import (  # noqa pylint:disable=unused-import
-    expectedFailure, expectedFailureIf, skip, skipUnless)
+    expectedFailure, expectedFailureIf, skip, skipUnless, strtobool)
 from salesforce.backend.test_helpers import (
     current_user, default_is_sf, sf_alias, uid_version as uid,
     QuietSalesforceErrors, LazyTestMixin)
