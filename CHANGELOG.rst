@@ -15,7 +15,7 @@ experimental.
 
 
 [4.1] 2022-08-05
------------------
+----------------
 * Add: Support for Django 4.1
 * Add: Command ``inspectdb`` can introspect actual default values
   of fields from a ``defaultValueFormula`` if it is a simple constant
