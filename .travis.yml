@@ -22,7 +22,6 @@ jobs:
   include:
     - python: 3.8
       before_install:
-        - ls /usr/bin/python3.[789]
         - python3.8 -V
         - python3.10 -V
       env: TOXENV=docs_style,typing,dj41-py310,dj40-py310,dj30-py38,dj32-py38
