@@ -14,7 +14,7 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[4.1] Unpublished
+[4.1] 2022-08-05
 -----------------
 * Add: Support for Django 4.1
 * Add: Command ``inspectdb`` can introspect actual default values
