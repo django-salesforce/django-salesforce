@@ -20,10 +20,14 @@ script:
   - tox
 jobs:
   include:
+    - python: 3.8
+      before_install:
+        - ls /usr/bin/python3.[789]
+        - python3.8 -V
+        - python3.10 -V
+      env: TOXENV=docs_style,typing,dj41-py310,dj40-py310,dj30-py38,dj32-py38
     - python: 3.7
       before_install:
         - python3.7 -V
         - python3.10 -V
-      env: TOXENV=docs_style,typing,dj41-py310,dj40-py310,dj20-py37,dj22-py37
-    - python: 3.9
-      env: TOXENV=dj30-py39,dj32-py39,no_django-py39,debug_toolbar-dj32-py39
+      env: TOXENV=dj20-py37,dj22-py37,no_django-py310,debug_toolbar-dj32-py37
