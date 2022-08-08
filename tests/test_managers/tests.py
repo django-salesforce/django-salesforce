@@ -19,6 +19,8 @@ class CompatibilityTest(TestCase, LazyTestMixin):
 
             # test again that only one request is used for .save() for a combined queryset
             wrk = Contact.objects.filter(last_name='B')
+            self.assertTrue(hasattr(wrk, 'sf'))
+            self.assertIn("Contact.Account.Name > 'A' AND Contact.LastName = 'B'", str(wrk.query))
             tmp = wrk[0]
             tmp.last_name = 'C'
             with self.lazy_assert_n_requests(1):

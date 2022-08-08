@@ -13,7 +13,6 @@ Use a custom QuerySet to generate SOQL queries and results.
 This module requires a customized package django-stubs (django-salesforce-stubs)
 """
 
-import sys
 from typing import Generic, Optional, TypeVar
 from django.db.models import manager, Model
 from django.db.models.query import QuerySet  # pylint:disable=unused-import
@@ -25,10 +24,6 @@ _T = TypeVar("_T", bound=Model, covariant=True)
 
 
 class SalesforceManager(manager.Manager, Generic[_T]):
-
-    if sys.version_info[:2] < (3, 6):  # Python 3.5 - remove soon
-        # this is a fix for Generic type issue https://github.com/python/typing/issues/498
-        __copy__ = None
 
     def get_queryset(self, _alias: Optional[str] = None) -> 'QuerySet[_T]':
         """
