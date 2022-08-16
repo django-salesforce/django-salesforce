@@ -182,7 +182,7 @@ class QQuery:
         else:
             for row_deep in records:
                 if list(row_deep.keys()) == ['explain']:
-                    yield row_deep['explain']
+                    yield (row_deep['explain'],)
                 else:
                     assert self.is_aggregation == (row_deep['attributes']['type'] == 'AggregateResult')
                     row_flat = self._make_flat(row_deep, path=(), subroots=self.subroots)

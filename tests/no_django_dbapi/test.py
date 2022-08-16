@@ -67,3 +67,14 @@ class CursorTest(unittest.TestCase):
                 cursor.scroll(0, 'absolute')
                 result2 = cursor.fetchall()
                 self.assertEqual(result2, result)
+
+    def test_explain(self) -> None:
+        connection = driver.get_connection('salesforce', settings_dict=settings_dict)
+        cursor = connection.cursor()
+
+        cursor.execute("EXPLAIN SELECT Name FROM Contact")
+        self.assertRegex(cursor.fetchone()[0], r"^{'plans': \[{")  # type: ignore[index]
+        last_detail = list(cursor.fetchall())[-1][0]
+        self.assertEqual(last_detail, " 'sourceQuery': 'SELECT Name FROM Contact'}")
+
+        connection.close()
