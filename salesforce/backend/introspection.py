@@ -15,6 +15,7 @@ import re
 from collections import OrderedDict, namedtuple
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
+from django.conf import settings
 from django.db.backends.base.introspection import (
     BaseDatabaseIntrospection, FieldInfo as BaseFieldInfo, TableInfo,
 )
@@ -226,7 +227,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             params['help_text'] = field['inlineHelpText']
         if field['picklistValues']:
             params['choices'] = [(x['value'], x['label']) for x in field['picklistValues'] if x['active']]
-            if len(repr(params['choices'])) < 4000:
+            max_inspectdb_picklist_picklist_length = getattr(settings, 'SF_MAX_INSPECTDB_PICKLIST_LENGTH', 4000)
+            if len(repr(params['choices'])) < max_inspectdb_picklist_picklist_length:
                 params['max_len'] = max(len(x['value']) for x in field['picklistValues'] if x['active'])
             else:
                 params['ref_comment'] = 'Too long choices skipped'
