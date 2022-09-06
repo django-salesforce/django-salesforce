@@ -57,7 +57,7 @@ class TimeStatistics:
     @staticmethod
     def domain(url: str) -> str:
         match = re.match(r'^(?:https|mock)://([^/]*)/?', url)
-        assert match
+        assert match, "HOST must be including the protocol and :// like 'https://login.salesforce.com'"
         return match.groups()[0]
 
 
