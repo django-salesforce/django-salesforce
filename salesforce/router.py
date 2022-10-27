@@ -12,7 +12,7 @@ Database router for SalesforceModel objects.
 from typing import cast, Optional, Type
 from django.apps import apps
 from django.conf import settings
-from django.db import models
+from django.db import models, DEFAULT_DB_ALIAS
 
 
 def is_sf_database(db: Optional[str], model: Optional[models.Model] = None) -> bool:
@@ -45,6 +45,8 @@ class ModelRouter:
                 return db
         if hasattr(model, '_salesforce_object'):
             return self.sf_alias
+        if model._meta.app_label == 'django_cache':
+            return DEFAULT_DB_ALIAS
         return None
 
     def db_for_write(self, model: models.Model, **hints: models.Model) -> Optional[str]:
@@ -59,6 +61,8 @@ class ModelRouter:
                 return db
         if hasattr(model, '_salesforce_object'):
             return self.sf_alias
+        if model._meta.app_label == 'django_cache':
+            return DEFAULT_DB_ALIAS
         return None
 
     def allow_migrate(self, db: str, app_label: str, model_name: Optional[str] = None, **hints: Type[models.Model]
@@ -70,8 +74,11 @@ class ModelRouter:
             try:
                 model = apps.get_model(app_label, model_name)  # type: Optional[Type[models.Model]]
             except LookupError:
+                # models that exist only in memory without 'models.py'
                 if 'model' in hints and hints['model'].__module__ == '__fake__':
                     return None
+                if 'model' in hints and hints['model']._meta.app_label == 'django_cache':
+                    return db == DEFAULT_DB_ALIAS
                 raise
         else:
             # hints are used with less priority, because many hints are dynamic
@@ -85,7 +92,7 @@ class ModelRouter:
             if not (is_sf_database(db) or db == self.sf_alias):
                 return False
         else:
-            if is_sf_database(db) or self.sf_alias != 'default' and db == self.sf_alias:
+            if is_sf_database(db) or self.sf_alias != DEFAULT_DB_ALIAS and db == self.sf_alias:
                 return False
         # TODO: It is usual that "migrate" is currently disallowed for SF.
         # In the future it can be implemented to do a deep check by
