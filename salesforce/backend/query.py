@@ -12,11 +12,10 @@ from typing import Dict, Generic, Iterable, List, NoReturn, Optional, TYPE_CHECK
 import typing  # pylint:disable=unused-import
 
 from django.conf import settings
-from django.db import NotSupportedError, models
+from django.db import NotSupportedError, models, DEFAULT_DB_ALIAS
 from django.db.models import constants
 from django.db.models import query as models_query, Model
 from django.db.models.sql import where as sql_where
-from django.db.utils import DEFAULT_DB_ALIAS
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
