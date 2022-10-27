@@ -86,6 +86,8 @@ def run():
         # in API 55.0 Summer '22
         'IndustriesAutomotiveSettings', 'RelatedListColumnDefinition', 'RelatedListDefinition',
         'SubscriptionManagementSettings', 'WarrantyLifecycleMgmtSettings',
+        # in API 56.0 Winter '23
+        'MfgServiceConsoleSettings'
     }
     problematic_write = {
         # any SalesforceError
@@ -120,6 +122,8 @@ def run():
         'Layout', 'QuickActionDefinition', 'RemoteProxy', 'ValidationRule',
         'WorkflowFieldUpdate', 'WorkflowRule',
         'QuickActionListItem',
+        # in API 56.0 Winter '23
+        'CustomerDataPlatformSettings', 'OauthOidcSettings',
     }
 
     #  FIELD_INTEGRITY_EXCEPTION

@@ -39,12 +39,9 @@ def run():
                  if isclass(cls) and issubclass(cls, django.db.models.Model)
                  }
     problematic_read = {
-        # These require specific filters (descried in their error messages)
-        'CollaborationGroupRecord', 'ContentFolderMember', 'ContentFolderItem',
-        'ContentDocumentLink', 'Idea', 'IdeaComment', 'UserProfileFeed',
-        'Vote',  # 'OpportunityPartner', 'Product2Feed',
-        # UNKNOWN_EXCEPTION:
-        'TenantUsageEntitlement',
+        # These require specific filters (described in their error messages)
+        # "MALFORMED_QUERY Implementation restriction: .* requires a filter by"
+        'ContentDocumentLink', 'ContentFolderItem', 'ContentFolderMember', 'IdeaComment', 'Vote',
         # special
         'django_migrations',
         }
@@ -76,6 +73,8 @@ def run():
         # since API 41.0 Winter'18.
         # That user account can not be saved because it has an invalid email.
         'User', 'UserLogin',
+        # can't set the VersionData when IsMajorVersion is true.
+        'ContentVersion',
     }
     for tab in sf.introspection.table_list_cache['sobjects']:
         db_table = tab['name']
