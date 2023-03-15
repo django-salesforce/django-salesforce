@@ -8,7 +8,7 @@ from django.db.models import Count, Model
 from django.db.models.sql import Query, RawQuery, constants
 import django
 
-from salesforce.backend import DJANGO_40_PLUS
+from salesforce.backend import DJANGO_40_PLUS, DJANGO_42_PLUS
 from salesforce.backend.compiler import SfParams, SQLCompiler
 from salesforce.dbapi.driver import arg_to_soql
 
@@ -134,6 +134,8 @@ class SalesforceQuery(Query, Generic[_T]):
         """
         # customized because "Count('*')" is not possible with Salesforce and also not "__" in an alias
         obj = self.clone()
+        if DJANGO_42_PLUS:
+            return obj.get_aggregation(using, {"x_sf_count": Count("*")})["x_sf_count"]
         obj.add_annotation(Count('pk'), alias='x_sf_count', is_summary=True)  # pylint: disable=no-member
         number = obj.get_aggregation(using, ['x_sf_count'])['x_sf_count']  # type: Optional[int] # pylint: disable=no-member # noqa
         if number is None:
