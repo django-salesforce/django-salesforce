@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Container, Dict, List, Mapping, Tuple
+from typing import Any, Container, Dict, List, Mapping, Optional, Tuple
 import argparse
 import re
 
@@ -104,8 +104,9 @@ class Command(InspectDBCommand):
         return new_name, field_params, field_notes
 
     # the parameter 'is_view' has been since Django 2.1 and 'is_partition' since Django 2.2
+    # the parameter 'comment' added in Django 4.2
     def get_meta(self, table_name: str, constraints: Any = None, column_to_field_name: Dict[str, str] = None,
-                 is_view: bool = False, is_partition: bool = False) -> List[str]:
+                 is_view: bool = False, is_partition: bool = False, comment: Optional[str] = None) -> List[str]:
         """
         Return a sequence comprising the lines of code necessary
         to construct the inner Meta class for the model corresponding
@@ -117,6 +118,8 @@ class Command(InspectDBCommand):
         if self.tooling_api:
             meta.append("        managed = False")
             meta.append("        sf_tooling_api_model = True")
+        if comment:
+            meta.append(f"        db_table_comment = {comment!r}")
         if self.connection.vendor == 'salesforce':
             for line in self.connection.introspection.get_additional_meta(table_name):
                 meta.append("        " + line)
