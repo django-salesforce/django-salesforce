@@ -17,10 +17,17 @@ from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import # required for activation of lookups
-from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS
+from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS, DJANGO_42_PLUS
 from salesforce.dbapi import DatabaseError
 from salesforce.dbapi.subselect import AGGREGATION_WORDS
 # pylint:disable=no-else-return,too-many-branches,too-many-locals
+
+if DJANGO_42_PLUS:
+    from django.core.exceptions import FullResultSet  # type: ignore[attr-defined] # pylint:disable=ungrouped-imports
+else:
+    class FullResultSet(Exception):  # type: ignore[no-redef]
+        pass
+
 
 AliasMapItems = List[Tuple[
     Optional[str],
@@ -195,8 +202,14 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             # docstring of get_from_clause() for details.
             from_, f_params = self.get_from_clause()
 
-            where, w_params = self.compile(self.where) if self.where is not None else ("", [])
-            having, h_params = self.compile(self.having) if self.having is not None else ("", [])
+            try:
+                where, w_params = self.compile(self.where) if self.where is not None else ("", [])
+            except FullResultSet:
+                where, w_params = "", []
+            try:
+                having, h_params = self.compile(self.having) if self.having is not None else ("", [])
+            except FullResultSet:
+                having, h_params = "", []
             params = []
             result = ['SELECT']
 
@@ -413,6 +426,8 @@ class SalesforceWhereNode(sql_where.WhereNode):
                 sql, params = compiler.compile(child)
             except EmptyResultSet:
                 empty_needed -= 1
+            except FullResultSet:
+                full_needed -= 1
             else:
                 if sql:
 
@@ -432,6 +447,8 @@ class SalesforceWhereNode(sql_where.WhereNode):
             # counts.
             if empty_needed == 0:
                 if self.negated:
+                    if DJANGO_42_PLUS:
+                        raise FullResultSet
                     return '', []
                 else:
                     raise EmptyResultSet
@@ -439,9 +456,13 @@ class SalesforceWhereNode(sql_where.WhereNode):
                 if self.negated:
                     raise EmptyResultSet
                 else:
+                    if DJANGO_42_PLUS:
+                        raise FullResultSet
                     return '', []
         conn = ' %s ' % self.connector
         sql_string = conn.join(result)
+        if DJANGO_42_PLUS and not sql_string:
+            raise FullResultSet
         if sql_string:
             if self.negated:
                 # *** patch 3 (remove) begin

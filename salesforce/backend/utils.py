@@ -11,6 +11,7 @@ from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
 
 from salesforce.backend import DJANGO_30_PLUS
+from salesforce.backend.compiler import FullResultSet
 from salesforce.dbapi.driver import (
     DatabaseError, InternalError, SalesforceWarning, merge_dict,
     register_conversion, arg_to_json)
@@ -282,7 +283,10 @@ class CursorWrapper:
                 sql, params = pks.get_compiler('salesforce').as_sql()
         if not sql:
             # a subquery is necessary in this case
-            where_sql, params = where.as_sql(query.get_compiler('salesforce'), self.db.connection)
+            try:
+                where_sql, params = where.as_sql(query.get_compiler('salesforce'), self.db.connection)
+            except FullResultSet:
+                where_sql, params = "", []
             sql = "SELECT Id FROM {}".format(query.model._meta.db_table)
             if where_sql:
                 sql += " WHERE {}".format(where_sql)
