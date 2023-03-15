@@ -87,7 +87,9 @@ def run():
         'IndustriesAutomotiveSettings', 'RelatedListColumnDefinition', 'RelatedListDefinition',
         'SubscriptionManagementSettings', 'WarrantyLifecycleMgmtSettings',
         # in API 56.0 Winter '23
-        'MfgServiceConsoleSettings'
+        'MfgServiceConsoleSettings',
+        # in API 57.0 spring '23
+        'PaymentsSettings', 'Territory2SupportedObject',
     }
     problematic_write = {
         # any SalesforceError
