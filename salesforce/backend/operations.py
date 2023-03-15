@@ -11,7 +11,6 @@ from typing import Optional
 import itertools
 import warnings
 
-import django.db.backends.utils
 from django.db.backends.base.operations import BaseDatabaseOperations
 from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.exceptions import SalesforceWarning
@@ -91,7 +90,9 @@ class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-pub
     def adapt_decimalfield_value(self, value, max_digits=None, decimal_places=None):
         if hasattr(value, 'default'):  # DefaultedOnCreate
             return value
-        return django.db.backends.utils.format_number(value, max_digits, decimal_places)
+        if value is None:
+            return None
+        return float(value)
 
     def bulk_batch_size(self, fields, objs):
         return BULK_BATCH_SIZE
