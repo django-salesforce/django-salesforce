@@ -20,9 +20,12 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 
     supports_select_for_update_with_limit = False
 
+    # support select combinators:
     supports_select_union = False
     supports_select_intersection = False
     supports_select_difference = False
+
+    supports_aggregate_filter_clause = False
 
     # features for Django 3.0
     can_create_inline_fk = False
@@ -72,3 +75,13 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_update_conflicts_with_target = False
     supports_logical_xor = False
     has_case_insensitive_like = True  # this is opposite to the default in Django 4.1+
+
+    allows_group_by_select_index = False  # new in Django 4.2+
+    schema_editor_uses_clientside_param_binding = False
+    requires_compound_order_by_subquery = False
+    # Does the backend support column and table comments?
+    supports_comments = False
+    # Does the backend support column comments in ADD COLUMN statements?
+    supports_comments_inline = False
+    # Does the backend support unlimited character columns?
+    supports_unlimited_charfield = False

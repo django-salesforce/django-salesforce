@@ -15,7 +15,7 @@ experimental.
 
 
 [4.1.1] Unpublished
-------------------
+-------------------
 * Use API 56.0 Winter'23
 * Add: Support for Djanbo Database caching #315
 * Fix: Configurable SF_MAX_INSPECTDB_PICKLIST_LENGTH #312
