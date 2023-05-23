@@ -14,12 +14,15 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[4.1.1] Unpublished
+[4.2] Unpublished
 -------------------
-* Use API 56.0 Winter'23
-* Add: Support for Djanbo Database caching #315
-* Fix: Configurable SF_MAX_INSPECTDB_PICKLIST_LENGTH #312
-  Some need to introspect huge picklists, some don't.
+* Change: Use with Django 4.2 requires an enterprise license key.
+* Add: Support for Django 4.2
+* Use API 57.0 Spring'24
+* Add: Support for Django Database caching #315
+* Fix: Configurable max introspected pick-list size
+  SF_MAX_INSPECTDB_PICKLIST_LENGTH #312
+  Some people need to introspect huge picklists, some don't want.
 
 
 [4.1] 2022-08-05
