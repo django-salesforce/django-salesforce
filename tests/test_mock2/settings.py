@@ -1,5 +1,5 @@
 from django.utils.crypto import get_random_string
-from salesforce.testrunner.settings import DATABASES  # noqa
+from salesforce.testrunner.settings import DATABASES, DJSF_LICENSE_KEY  # noqa
 
 # DATABASES = {'default': DATABASES['salesforce']}
 SECRET_KEY = get_random_string(length=32)

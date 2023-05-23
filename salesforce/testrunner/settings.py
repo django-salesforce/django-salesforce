@@ -193,6 +193,7 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'  # not important for Salesforce, but for Django warnings
 
+DJSF_LICENSE_KEY = ''  # a dummy default for type checking in simple tests
 try:
     from salesforce.testrunner.local_settings import *  # noqa pylint:disable=unused-wildcard-import,wildcard-import
 except ImportError:
