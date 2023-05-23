@@ -1,7 +1,6 @@
 # django-salesforce
 #
-# by Phil Christensen
-# (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
+# by Hyneck Cernoch and Phil Christensen
 # See LICENSE.md for details
 #
 # pylint:disable=protected-access,too-many-lines,unused-variable
@@ -151,7 +150,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         try:
             contact = Contact.objects.filter(owner=current_sf_user)[0]
             user = contact.owner
-            # This user can be e.g. 'admins@freelancersunion.org.prod001'.
+            # This user can be e.g. 'admins@example.com.prod001'.
             self.assertEqual(user.Username, current_user)
         finally:
             test_contact.delete()

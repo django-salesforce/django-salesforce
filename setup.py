@@ -1,7 +1,6 @@
 # django-salesforce
 #
-# by Phil Christensen
-# (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
+# by Hyneck Cernoch and Phil Christensen
 # See LICENSE.md for details
 #
 
@@ -60,14 +59,14 @@ def autosetup():
         install_requires=['django>=2.0'] + requirements_txt,
 
         # metadata for upload to PyPI
-        author="Freelancers Union",
-        author_email="devs@freelancersunion.org",
+        author="Hynek Cernoch",
+        author_email="hynek@sdb.cz",
         maintainer="Phil Christensen",
         maintainer_email="phil@bubblehouse.org",
         description="a Salesforce backend for Django's ORM",
         long_description=long_description,
         long_description_content_type="text/x-rst",
-        license="MIT",
+        license="AGPL",
         keywords="django salesforce orm backend",
         url="https://github.com/django-salesforce/django-salesforce",
     )
