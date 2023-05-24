@@ -9,6 +9,7 @@ env:
     - secure: "JJGGbExBKyXkAltrc4rRLG56ks20/GfGcfugI9mqjeHgQ7IcDvhnouqAIjfbNlhgclyAkWHwJRs7taaM0T9a9AcEQujs2B0JJYOLQSBGnWJSCbsDspWAdlT92U+PzhnZrDm7apg1iBk/c8KtofBo6DqsTveBocFnYXTjeqbSVuY="
     - secure: "TrsYtntXQWgjrXPFaL3aUPoyPtR7pBVqsRx5dIj0yhrPuZR0L2bFi0MOA8cXflaYucx+xa+PEyrPO6FfLl+ri8I2WiXeDLbXlUC614UW6Od1kCklZ7/gk5wor7RwfEtIAtxh5erljUw2N2O9utkRFBDCuASRaQCqBzMItgcUOhA="
     - secure: "CZWsHsATIIAdvAWoHM1niGa8KGfcDR9p49vr/um6DU2wDWt3SVxOei+Z+X8lvIJs4JXiJHzIo6H4qrqf8qxf3hDWjx4TIERz35+5osAWstLkCAxcaWV8JlomxVI+P8tU7dCgZdBeLkVi1O+H8+B2bAVXdK77gcQkSttGh/ykm48="
+    - secure: "hKRKQDaS4H9h1S67nx2znqAEMuDxFynidXa0pzNHqF3N02caUA/TdHPG7Vp78a9TmNoXAC4V2efEg5JfdqUzyrkJzfDX1rWIYSJq37nAroCBQhnNwKbWCGqgfQm6Sb2tXevYhZwqe2Klt7XRx+7c8wavEsrCYLD4m4KjpQ+sekI="
     - TOX_TESTENV_PASSENV="SF_CONSUMER_KEY SF_CONSUMER_SECRET SF_USER SF_PASSWORD SF_HOST"
 cache:
   directories:
