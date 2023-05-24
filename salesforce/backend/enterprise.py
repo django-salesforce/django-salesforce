@@ -10,7 +10,7 @@ class LicenseError(Exception):
 
 def is_enterprise_license(msg: Optional[str] = None, required: int = 1, key: str = '') -> None:
     """Check that a valid license key for the enterprise version exists"""
-    key = key or getattr(settings, 'DJSF_LICENSE_KEY', '//')
+    key = key or getattr(settings, 'DJSF_LICENSE_KEY', '') or '//'
     text, level_text, signature_text = key.rsplit('/', 2)
     level = int(level_text or 1) if text else 0
     if level < max(required, 1):
