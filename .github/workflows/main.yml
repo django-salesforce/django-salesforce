@@ -2,7 +2,7 @@ name: django-salesforce test
 
 on:
   push:
-    branches: [ actions ]
+    branches: [ actions, main ]
   # pull_request:
   #   branches: [ main ]
 # # prefer to teminate some queued jobs only manually, "max-parallel: 1" works enough
@@ -17,7 +17,7 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        python-version: [3.8, "3.10", 3.6, 3.9]
+        python-version: [3.8, 3.11, "3.10", 3.7, 3.9]
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v2
@@ -42,8 +42,9 @@ jobs:
         SF_HOST: ${{ secrets.SF_HOST }}
 
         TOXENV_38:  "docs_style,typing,clean,dj22-py38,dj32-py38"
+        TOXENV_311: "dj42-py311"
         TOXENV_310: "dj40-py310"
-        TOXENV_36:  "dj20-py36,dj30-py36"
+        TOXENV_37:  "dj20-py37,dj30-py37"
         TOXENV_39:  "no_django-py39,debug_toolbar-dj32-py39"
       run: |
         TOXENV_NAME=$(echo TOXENV_${{ matrix.python-version }} | sed 's/\.//')
