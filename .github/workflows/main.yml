@@ -20,9 +20,9 @@ jobs:
         python-version: [3.8, 3.11, "3.10", 3.7, 3.9]
     timeout-minutes: 20
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install Dependencies, Customize local_settings
@@ -34,7 +34,7 @@ jobs:
         # sed -i -e "s/'id', salesforce/'Id', salesforce/" salesforce/testrunner/example/migrations/0*.py
     - name: Run Tests
       env:
-        TOX_TESTENV_PASSENV: "SF_CONSUMER_KEY SF_CONSUMER_SECRET SF_USER SF_PASSWORD SF_HOST"
+        DJSF_LICENSE_KEY: ${{ secrets.DJSF_LICENSE_KEY }}
         SF_CONSUMER_KEY: ${{ secrets.SF_CONSUMER_KEY }}
         SF_CONSUMER_SECRET: ${{ secrets.SF_CONSUMER_SECRET }}
         SF_USER: ${{ secrets.SF_USER }}
