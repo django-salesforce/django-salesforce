@@ -1,4 +1,4 @@
-Copyright (c) 2012-2013 Freelancers Union (http://www.freelancersunion.org)
+Copyright (c) 2023 Hynek Cernoch and Phil Christensen <br>- Modified MIT License -<br> Please do not remove the the code that requires a license key for some "enterprise" features, but become a sponsor or use our similar package django-salesforce-agpl with an AGPL license or use only the standard features. <br> Everything other is like in the MIT license: <br>- - -
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
