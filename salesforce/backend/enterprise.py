@@ -23,8 +23,9 @@ def is_enterprise_license(msg: Optional[str] = None, required: int = 1, key: str
     # license key is weak or strong. Many easier ways exist how to skip a verification
     # without analyzing this. :-)
 
-    # A legal way to skip the enterprise check is to use django-salesforce-agpl and
-    # accept the restrictive AGPL licence that requires you provide all your Django
+    # A legal way to skip the enterprise check is to use django-salesforce-agpl
+    # <https://github.com/django-salesforce/django-salesforce-agpl>
+    # and accept the restrictive AGPL licence that requires you provide all your Django
     # source code where you use django-salesforce available to all users who could
     # use your project by network (by your web app, by your backend app etc.) and
     # publish it under a compatible license.

@@ -4,6 +4,9 @@ django-salesforce
 .. image:: https://travis-ci.com/django-salesforce/django-salesforce.svg?branch=master
    :target: https://travis-ci.com/django-salesforce/django-salesforce
 
+.. image:: https://github.com/django-salesforce/django-salesforce/actions/workflows/main.yml/badge.svg
+   :target: https://github.com/django-salesforce/django-salesforce/actions/workflows/main.yml
+
 .. image:: https://badge.fury.io/py/django-salesforce.svg
    :target: https://pypi.python.org/pypi/django-salesforce
 
