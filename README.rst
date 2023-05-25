@@ -1,9 +1,6 @@
 django-salesforce
 =================
 
-.. image:: https://travis-ci.com/django-salesforce/django-salesforce.svg?branch=master
-   :target: https://travis-ci.com/django-salesforce/django-salesforce
-
 .. image:: https://github.com/django-salesforce/django-salesforce/actions/workflows/main.yml/badge.svg
    :target: https://github.com/django-salesforce/django-salesforce/actions/workflows/main.yml
 
@@ -52,9 +49,9 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
      the Salesforce REST API Documentation. Key and secret can be created on
      web by:
 
-     - Salesforce Classic > Setup > App Setup > Create > Apps > Connected apps >
+     - SalesForce **Lightning** > Setup > Apps > App Manager > New Connected App or
+       Salesforce **Classic** > Setup > App Setup > Create > Apps > Connected apps >
        New.  
-       or SalesForce Lightning > Setup > Apps > App Manager > New Connected App.
      - Click "Enable OAuth Settings" in API, then select "Access and manage
        your data (api)" from available OAuth Scopes.
      - Other red marked fields must be filled, but are not relevant for Django
