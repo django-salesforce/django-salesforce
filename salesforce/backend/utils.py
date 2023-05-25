@@ -10,12 +10,18 @@ from typing import Any, Callable, Iterable, Iterator, List, Tuple, TypeVar, Unio
 from django.db import models, NotSupportedError
 from django.db.models.sql import subqueries, Query, RawQuery
 
-from salesforce.backend import DJANGO_30_PLUS
-from salesforce.backend.compiler import FullResultSet
+from salesforce.backend import DJANGO_30_PLUS, DJANGO_42_PLUS
 from salesforce.dbapi.driver import (
     DatabaseError, InternalError, SalesforceWarning, merge_dict,
     register_conversion, arg_to_json)
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE
+
+if DJANGO_42_PLUS:
+    from django.core.exceptions import FullResultSet  # type: ignore[attr-defined] # pylint:disable=ungrouped-imports
+else:
+    class FullResultSet(Exception):  # type: ignore[no-redef]
+        pass
+
 
 V = TypeVar('V')
 if not DJANGO_30_PLUS:
