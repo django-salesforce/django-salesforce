@@ -31,7 +31,6 @@ import logging
 import re
 
 import django
-from salesforce.backend import enterprise
 
 DJANGO_21_PLUS = django.VERSION[:2] >= (2, 1)
 DJANGO_22_PLUS = django.VERSION[:2] >= (2, 2)
@@ -52,9 +51,5 @@ if django.VERSION[:2] < (2, 0) or django.VERSION[:2] > max_django and not is_dev
     # New Django development versions are enabled without any restriction, but
     # new stable Django versions must be verified before they are enabled here.
 
-if django.VERSION[:2] == max_django:
-    enterprise.is_enterprise_license(
-        "License key is required for django-saleforce used with the last Django version. "
-        "(read about dual-license)")
 
 log = logging.getLogger(__name__)
