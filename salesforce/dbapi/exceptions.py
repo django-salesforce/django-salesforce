@@ -136,6 +136,10 @@ class SalesforceAuthError(SalesforceError):
     """
 
 
+class LicenseError(OperationalError):
+    pass
+
+
 def prepare_exception(obj: Union[Error, SalesforceWarning],
                       messages: Optional[Union[str, List[str]]] = None,
                       response: Optional[GenResponse] = None,
