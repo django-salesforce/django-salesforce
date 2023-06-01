@@ -20,8 +20,10 @@ the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
 Python 3.6 to 3.11, Django 2.0 to 4.2. (Tested also with Python 3.12 alpha 6)
+
 Use with Django 4.2 currently requires an enteprise license key DJSF_LICENSE_KEY
-available to sponsors, or to accept a very restrictive AGPL license.
+available to sponsors, or to accept an AGPL license if you install our equivalent
+package "django-salesforce-agpl" instead.
 
 
 Quick Start
@@ -29,9 +31,9 @@ Quick Start
 
 Install, configure a Salesforce connection, create a Salesforce model and run.
 
-1. Install django-salesforce: ``pip install django-salesforce``
+1. **Install** django-salesforce: ``pip install django-salesforce``
 
-2. Add a salesforce connection to your ``DATABASES`` setting::
+2. Add a Salesforce **connection** to your ``DATABASES`` **setting**::
 
     'salesforce': {
         'ENGINE': 'salesforce.backend',
@@ -49,15 +51,16 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
      the Salesforce REST API Documentation. Key and secret can be created on
      web by:
 
-     - SalesForce **Lightning** > Setup > Apps > App Manager > New Connected App or
+     - SalesForce **Lightning** > Setup > Apps > App Manager > New Connected App or by
        Salesforce **Classic** > Setup > App Setup > Create > Apps > Connected apps >
        New.  
      - Click "Enable OAuth Settings" in API, then select "Access and manage
        your data (api)" from available OAuth Scopes.
      - Other red marked fields must be filled, but are not relevant for Django
        with password authentication. ("Callback URL" should be a safe URL
-       that maybe doesn't exist, but is under your control and doesn't redirect,
-       for the case that you accidentally activate other OAuth mode later.)
+       that maybe doesn't exist now, but its path is under your control and
+       doesn't redirect. This would be important if you activate other OAuth
+       mode later.)
    * ``USER`` is the username used to connect.
    * ``PASSWORD`` is a concatenation of the user's password and security token.
      Security token can be set by My Settings / Personal / Reset My Security Token
@@ -65,20 +68,8 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
      Security token can be omitted if the local IP address has been
      whitelisted in Security Controls / Network Access.
    * ``HOST`` is ``https://test.salesforce.com`` to access a sandbox, or
-     ``https://login.salesforce.com`` to access production.
-
-   If an error occurs in a request to Salesforce, review the received error message
-   that is exactly copied between braces ``{...}`` from the
-   Salesforce response to a Python exception to assist debugging.
-
-   See also: `Information on settings up Salesforce connected apps
-   <https://help.salesforce.com/apex/HTViewHelpDoc?id=connected_app_create.htm>`_
-   if necessary.
-
-   **Note about permissions**: Administrator rights are only required to run
-   the full suite of unit tests; otherwise, as long as the account has rights to
-   read or modify the chosen object, everything should work properly.
-   Introspection by ``inspectdb`` doesn't require any object permissions.
+     ``https://login.salesforce.com`` to access production or your domain
+     ``https://MyDomainName.my.salesforce.com``.
 
 3. Add ``salesforce.router.ModelRouter`` to your ``DATABASE_ROUTERS``
    setting::
@@ -105,16 +96,51 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
    ``inspectdb --database=salesforce`` in development, otherwise it is
    not important.)
 
+5. Add a setting ``DJSF_LICENSE_KEY = "Your Name or Company / email //our.signature=="``
+   if you need it for Django 4.2 now.
 
-5. Define a model that extends ``salesforce.models.Model`` (alias ``SalesforceModel``)
+6. **Verify** that everything important is configured correctly by running
+   the command ``python manage.py check --database=salesforce``.
+   You get eventualy the important information about problems related to the previous
+   steps. (clearly without tracebacks)
+
+   That is useful again after you define your database model or if you customize your
+   configuration later and e.g. you configure multiple Salesforce databases.
+
+7. Define a **model** that extends ``salesforce.models.Model`` (alias ``SalesforceModel``)
    or export the complete SF schema by ``python manage.py inspectdb --database=salesforce``
-   and simplify it to what you need. The full models file is about 2 MB with 500 models
+   and simplify it to what you need. The full models file is about 1.5 MB with 500 models
    and the export takes 2 minutes, but it is a valid models module that works without
    modification. The output of command ``inspectdb`` can be restricted by a list
    of table_names on the command line, but also ForeignKey fields to omitted models
    must be pruned to get a valid complete small model.
 
-6. **(optional)** To override the default timeout of 15 seconds,
+8. **You're all done!** Just use your model like a normal Django model.
+
+   If an error occurs in a request to Salesforce, review the received error message
+   that is exactly copied between braces ``{...}`` from the
+   Salesforce response to a Python exception to assist debugging.
+
+   See also: `Information on settings up Salesforce connected apps
+   <https://help.salesforce.com/apex/HTViewHelpDoc?id=connected_app_create.htm>`_
+   if necessary.
+
+   **Note about permissions**: Administrator profile are only required to run
+   the full suite of unit tests of this framework; otherwise, as long as
+   the account has rights to read or modify the chosen object, everything
+   should work properly. Introspection by ``inspectdb`` doesn't require any
+   additional object permissions.
+
+
+Optional small features
+-----------------------
+
+-  **Salesforce alias** If you want to use another name for your Salesforce DB
+   connection, define ``SALESFORCE_DB_ALIAS`` in your settings file::
+
+    SALESFORCE_DB_ALIAS = 'salesforce'  # default
+
+-  **Timeout settings** To override the default timeout of 15 seconds,
    define ``SALESFORCE_QUERY_TIMEOUT`` in your settings file.
    It can be one number or better a tuple with a short value for connection
    timeout and a longer value that includes time for running a query.
@@ -122,14 +148,7 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
 
     SALESFORCE_QUERY_TIMEOUT = (4, 15)  # default (connect timeout, data timeout)
 
-7. **(optional)** If you want to use another name for your Salesforce DB
-   connection, define ``SALESFORCE_DB_ALIAS`` in your settings file::
-
-    SALESFORCE_DB_ALIAS = 'salesforce'  # default
-
-8. You're all done! Just use your model like a normal Django model.
-
-9. **(optional)** Create a normal Django ``admin.py`` module for your Salesforce models
+-  **Automatic stupid admin** Create a normal Django ``admin.py`` module for your Salesforce models
    and you can register a minimalistic admin for all omitted Admin classes::
 
     from salesforce.testrunner.example.universal_admin import register_omitted_classes
@@ -142,19 +161,18 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
    hand-writing all admin classes. (Foreign keys to huge tables in the production
    require a customized admin e.g. with search widgets.)
     
-10. **(optional)** By default, the Django ORM connects to all DBs at startup. To delay
+-   **Lazy connect** By default, the Django ORM connects to all DBs at startup. To delay
     SFDC connections until they are actually required, define ``SF_LAZY_CONNECT=True``
     in your settings file. Be careful when using this setting; since it won't fail during
     the application boot, it's possible for a bad password to be sent repeatedly,
     requiring an account reset to fix.
 
-Primary Key
------------
-Salesforce doesn't allow you to define custom primary keys, so django-salesforce
-will add them automatically in all cases. You can override only capitalization and use
-a primary key ``Id`` by configuring ``SF_PK='Id'`` in your project settings
-if you prefer Salesforce capitalized field name conventions instead of Django
-default ``id``.
+-  **Configurable Primary Key**
+   Salesforce doesn't allow you to define custom primary keys, so django-salesforce
+   will add them automatically in all cases. You can override only capitalization and use
+   a primary key ``Id`` by configuring ``SF_PK='Id'`` in your project settings
+   if you prefer Salesforce capitalized field name conventions instead of Django
+   default ``id``.
 
 Advanced usage
 --------------
@@ -168,8 +186,8 @@ Advanced usage
    One way to speed this up is to change the SALESFORCE_DB_ALIAS to point to
    another DB connection (preferably SQLite) during testing using the
    ``TEST`` settings variable. Such simple tests can run without any network
-   access. Django unit tests without SalesforceModel
-   are fast everytimes. Special read only fields that are updated only by SFDC
+   access. Django unit tests without SalesforceModel are fast everytimes.
+   Special read only fields (with ``sf_read_only=...``) that are updated only by SFDC
    e.g. ``last_modified_date`` need more parameters to be possible to save them
    into an alternate database, e.g. by ``auto_now=True`` or to play with
    ``null=True`` or ``default=...``.
@@ -232,15 +250,19 @@ Advanced usage
 
 Foreign Key Support
 -------------------
-Foreign key relationships should work as expected, but mapping
-Salesforce SOQL to a purely-relational mapper is a leaky abstraction. For the
-gory details, see `Foreign Key Support <https://github.com/django-salesforce/django-salesforce/wiki/Foreign-Key-Support>`__
+Foreign key relationships should work as expected, especially relationships
+from child to parents are well supported in querysets, but mapping
+Salesforce SOQL to a purely-relational mapper is a leaky abstraction
+and some knowledge about limitations of SOQL is useful. Some rejected
+queries should be usually rewritten to two simpler queries.
+For the gory details, see
+`Foreign Key Support <https://github.com/django-salesforce/django-salesforce/wiki/Foreign-Key-Support>`__
 on the Django-Salesforce wiki.
 
 Introspection and special attributes of fields
 ----------------------------------------------
 Some Salesforce fields can not be fully used without special attributes, namely
-read-only and default value fields. Further details can be found in
+read-only fields and some default values. Further details can be found in
 `Introspection and Special Attributes of Fields <https://github.com/django-salesforce/django-salesforce/wiki/Introspection-and-Special-Attributes-of-Fields>`__
 
 Caveats
@@ -263,17 +285,25 @@ but for now here are the potential pitfalls and unimplemented operations:
    connection.
 -  **Database Migrations** — ``migrate`` will create new tables only in non-SF
    databases (useful for unit tests); SFDC tables are assumed to already
-   exist with the appropriate permissions.
+   exist with the appropriate permissions. (A very incomplete implementation
+   of migrations in Salesforce has been in a development repository around
+   for two years. I am satisfied for my purposes. Development for better
+   general usability is the main reason why am I trying to get sponsors.)
 
 -  **Unsupported methods**: Queryset methods ``union()``, ``difference()``,
-    ``intersection()`` and ``distinct()``
-    are e.g. not supported because SOQL doesn't support corresponding operators:
-    UNION, EXCEPT, INTERSECT and DISTINCT.
+   ``intersection()`` and ``distinct()``
+   are e.g. not supported because SOQL doesn't support corresponding operators:
+   UNION, EXCEPT, INTERSECT and DISTINCT.
 
 Backwards-incompatible changes
 ------------------------------
 
 The most important:
+
+-  v4.2: Some new features implemented after June 2023 can require a license key
+   (sponsorship) or to accept the AGPL license. (AGPL is fine for exclusive open source
+   contribution or for education, but impossible if you do not share all your
+   source codes.)
 
 -  v4.0: Removed support for Python 3.5
 
