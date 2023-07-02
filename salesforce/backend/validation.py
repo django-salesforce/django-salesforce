@@ -10,6 +10,7 @@ Default validation code.  (like django.db.backends.*.validation)
 from typing import Any, List
 from django.core.management import ManagementUtility
 from django.core import checks
+from django.conf import settings
 from django.db import connections, router as django_router
 from django.db.backends.base.validation import BaseDatabaseValidation
 from requests.exceptions import ConnectionError
@@ -47,7 +48,9 @@ class DatabaseValidation(BaseDatabaseValidation):
                 )
             )
 
-        if not is_sf_database(django_router.db_for_read(SalesforceModel)):
+        maybe_non_sf_test = (getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce') == 'default' and
+                             settings.DATABASES['default']['ENGINE'] != 'salesforce.backend')
+        if not is_sf_database(django_router.db_for_read(SalesforceModel)) and not maybe_non_sf_test:
             issues.append(
                 checks.Warning(
                     "Tables with SalesforceModel are not routed to a Salesforce database",
