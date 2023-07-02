@@ -53,4 +53,4 @@ jobs:
         SF_LAZY_CONNECT = False
         -- end local_settings --
         echo "tox -e ${!TOXENV_NAME}"
-        tox -e ${!TOXENV_NAME}
+        tox -e ${!TOXENV_NAME} --colored yes
