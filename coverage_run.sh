@@ -11,7 +11,7 @@ $COVERAGE run -a $SOURCE manage.py makemigrations
 $COVERAGE run -a $SOURCE manage.py migrate --database=default
 $COVERAGE run -a $SOURCE manage.py check --settings=tests.tooling.settings
 
-for x in dj20-py36 dj22-py38 dj31-py39 dj40-py310; do
+for x in dj20-py37 dj22-py38 dj31-py39 dj40-py310; do
     echo "*** $x ***"
     .tox/${x}/bin/coverage run -a $SOURCE manage.py inspectdb --database=salesforce >/dev/null
     .tox/${x}/bin/coverage run -a $SOURCE manage.py test salesforce
