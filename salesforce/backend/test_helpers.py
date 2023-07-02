@@ -20,7 +20,7 @@ uid_version = 'dj{0}{1}-py{2}{3}'.format(*(django.VERSION[:2] + sys.version_info
 
 sf_alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
 default_is_sf = router.is_sf_database(sf_alias)
-current_user = settings.DATABASES[sf_alias]['USER']
+current_user: str = settings.DATABASES[sf_alias].get('USER', '')
 
 
 def strtobool(val: Union[str, bool]) -> bool:
