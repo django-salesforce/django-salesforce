@@ -88,8 +88,11 @@ def run():
         'SubscriptionManagementSettings', 'WarrantyLifecycleMgmtSettings',
         # in API 56.0 Winter '23
         'MfgServiceConsoleSettings',
-        # in API 57.0 spring '23
+        # in API 57.0 Spring '23
         'PaymentsSettings', 'Territory2SupportedObject',
+        # in API 58.0 Summer '23
+        'ConnectedApplication',  # timeout
+        'LicensingSettings',  # EXTERNAL_OBJECT_EXCEPTION
     }
     problematic_write = {
         # any SalesforceError
@@ -126,6 +129,10 @@ def run():
         'QuickActionListItem',
         # in API 56.0 Winter '23
         'CustomerDataPlatformSettings', 'OauthOidcSettings',
+        # in API 58.0 Summer '23
+        'ExternalClientAppSettings',  # JSON_PARSER_ERROR
+        'FieldMappingField',  # INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST
+        'StaticResource',  # FIELD_INTEGRITY_EXCEPTION
     }
 
     #  FIELD_INTEGRITY_EXCEPTION
