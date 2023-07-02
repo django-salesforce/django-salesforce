@@ -2,12 +2,15 @@ import base64
 import re
 from hashlib import sha256
 from typing import Optional
+import django
 from django.conf import settings
+from salesforce.backend import max_django
 from salesforce.dbapi.exceptions import LicenseError
 
 
-def is_enterprise_license(msg: Optional[str] = None, required: int = 1, key: str = ''  # pylint:disable=too-many-locals
-                          ) -> None:
+def check_enterprise_license(  # pylint:disable=too-many-locals
+        msg: Optional[str] = None, required: int = 1, key: str = ''
+        ) -> None:
     """Check that a valid license key for the enterprise version exists"""
     key = key or getattr(settings, 'DJSF_LICENSE_KEY', '') or '//'
     text, level_text, signature_text = key.rsplit('/', 2)
@@ -44,3 +47,10 @@ def is_enterprise_license(msg: Optional[str] = None, required: int = 1, key: str
         g, f, d, e = g | (bool(b & e & m) << f), f + bool(m & e), d - bool(j & e), e << r
     if g != level or level > 3 or d:
         raise LicenseError("The enterprise licence key is invalid")
+
+
+def check_license_in_latest_django() -> None:
+    if django.VERSION[:2] == max_django:
+        check_enterprise_license(
+            "License key is required for django-saleforce used with the last Django version. "
+            "(read about dual-license)")

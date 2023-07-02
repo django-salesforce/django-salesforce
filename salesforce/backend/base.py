@@ -10,11 +10,10 @@ Salesforce database backend for Django.  (like django,db.backends.*.base)
 
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
-import django
 from django.conf import settings
 from django.db.backends.base.base import BaseDatabaseWrapper
 
-from salesforce.backend import enterprise, max_django
+from salesforce.backend import enterprise
 from salesforce.backend.client import DatabaseClient
 from salesforce.backend.creation import DatabaseCreation
 from salesforce.backend.features import DatabaseFeatures
@@ -97,10 +96,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     @async_unsafe
     def get_new_connection(self, conn_params: Dict[str, Any]) -> Database.RawConnection:
-        if django.VERSION[:2] == max_django:
-            enterprise.is_enterprise_license(
-                "License key is required for django-saleforce used with the last Django version. "
-                "(read about dual-license)")
+        enterprise.check_license_in_latest_django()
         # simulated only a connection interface without connecting really
         return Database.connect(settings_dict=conn_params, alias=self.alias)
 
