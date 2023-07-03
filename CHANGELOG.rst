@@ -16,9 +16,11 @@ experimental.
 
 [4.2] Unpublished
 -------------------
+* Add: Basic diagnostics after installation can be done by command
+  ``python manage.py check --database=salesforce``
 * Change: Use with Django 4.2 requires an enterprise license key.
 * Add: Support for Django 4.2
-* Use API 57.0 Spring'24
+* Use API 58.0 Summer '23
 * Add: Support for Django Database caching #315
 * Fix: Configurable max introspected pick-list size
   SF_MAX_INSPECTDB_PICKLIST_LENGTH #312
