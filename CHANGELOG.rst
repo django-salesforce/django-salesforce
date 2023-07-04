@@ -14,7 +14,7 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[4.2] Unpublished
+[4.2] 2023-07-04
 -------------------
 * Add: Basic diagnostics after installation can be done by command
   ``python manage.py check --database=salesforce``
