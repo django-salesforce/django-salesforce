@@ -2,7 +2,7 @@ name: django-salesforce test
 
 on:
   push:
-    branches: [ actions, main ]
+    branches: [ 'actions*', main ]
   # pull_request:
   #   branches: [ main ]
 # # prefer to teminate some queued jobs only manually, "max-parallel: 1" works enough
