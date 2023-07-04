@@ -16,7 +16,7 @@ import pytz
 from django.conf import settings
 from django.db import connections
 from django.db.models import Q, Avg, Count, Sum, Min, Max, Model, query as models_query
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 
@@ -1255,6 +1255,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         self.assertIn('@', Organization.objects.get().created_by.Username)
 
     @skipUnless(default_is_sf, "depends on Salesforce database.")
+    @override_settings(SALESFORCE_QUERY_TIMEOUT=(4, 30))
     def test_big_soql(self) -> None:
         """Test that a query of length almost 100000 is possible"""
         contact = Contact.objects.all()[0]
