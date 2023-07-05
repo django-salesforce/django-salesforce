@@ -28,6 +28,7 @@ from salesforce.backend.test_helpers import (  # noqa pylint:disable=unused-impo
 from salesforce.backend.test_helpers import (
     current_user, default_is_sf, sf_alias, uid_version as uid,
     QuietSalesforceErrors, LazyTestMixin)
+from salesforce.dbapi.driver import ApiUsage
 from salesforce.dbapi.exceptions import SalesforceWarning
 from salesforce.dbapi.test_helpers import PatchedSfConnection
 from salesforce.models import SalesforceModel
@@ -1278,6 +1279,12 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test EXPLAIN SELECT ..."""
         qs = Contact.objects.all()[:2]
         self.assertRegex(qs.explain(), r"^{'plans': \[{")
+
+    def test_api_usage(self) -> None:
+        """Test that API usage is updated by executing requests"""
+        api_usage: ApiUsage = connections[sf_alias].connection.api_usage
+        self.assertGreater(api_usage.api_usage, 0)
+        self.assertGreater(api_usage.api_limit, 5000)
 
 # ============= Tests that need setUp Lead ==================
 

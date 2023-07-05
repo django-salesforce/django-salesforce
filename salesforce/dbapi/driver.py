@@ -7,6 +7,7 @@ import re
 import sys
 import time
 import warnings
+from dataclasses import dataclass
 from itertools import islice
 from typing import (
     Any, Callable, cast, Dict, Generic, Iterable, Iterator, List, NamedTuple, Optional,
@@ -106,6 +107,7 @@ class RawConnection:
         if not getattr(settings, 'SF_LAZY_CONNECT', 'test' in sys.argv):  # TODO don't use argv
             self.make_session()
         self.debug_info = {}         # type:Dict[str, Any]
+        self.api_usage = ApiUsage(0, 5000)  # default before initialized by a request
 
     # -- public methods
 
@@ -291,6 +293,7 @@ class RawConnection:
             # 204 "No Content" (DELETE)
             # 300 ambiguous items for external ID.
             # 304 "Not Modified" (after conditional HEADER request for metadata),
+            self.api_usage.update(response.headers.get('Sforce-Limit-Info'))
             return response
         # status codes docs (400, 403, 404, 405, 415, 500)
         # https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/errorcodes.htm
@@ -791,6 +794,22 @@ def verbose_error_handler(connection: Connection, cursor: Optional[Cursor[Any]],
                           errorclass: Type[Exception], errorvalue: Exception,  # pylint:disable=unused-argument
                           ) -> None:
     pprint.pprint(errorvalue.__dict__)
+
+
+@dataclass
+class ApiUsage:
+    # see https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/headers_api_usage.htm
+    api_usage: int  # API requests used per last 24 hours
+    api_limit: int  # API requests limit pe 24 hours
+
+    def update(self, sforce_limit_info: Optional[str]) -> None:
+        # example: .update('api-usage=692/5000000')
+        if sforce_limit_info:
+            key, val = sforce_limit_info.split('=')
+            assert key == 'api-usage'
+            api_usage_s, api_limit_s = val.split('/')
+            self.api_usage = int(api_usage_s)
+            self.api_limit = int(api_limit_s)
 
 
 # --- private
