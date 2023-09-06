@@ -61,6 +61,7 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
        that maybe doesn't exist now, but its path is under your control and
        doesn't redirect. This would be important if you activate other OAuth
        mode later.)
+     - SalesForce **Lightning** > Setup > Identity > OAuth and OpenID Connect Settings: Ensure that the "Allow OAuth Username-Password Flows" option is checked. This is important if you use USER/PASSWORD below, and is not the default since Summer '23.
    * ``USER`` is the username used to connect.
    * ``PASSWORD`` is a concatenation of the user's password and security token.
      Security token can be set by My Settings / Personal / Reset My Security Token
