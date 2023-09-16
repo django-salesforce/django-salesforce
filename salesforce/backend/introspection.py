@@ -47,6 +47,7 @@ PROBLEMATIC_OBJECTS = [
     'FlowExecutionErrorEvent',  # new in API 47.0 Winter '20 - missing 'Id'
     'FlowOrchestrationEvent',  # new in API 53.0 Winter '22
     'DataObjectDataChgEvent',  # new in API 55.0 Summer '22 (no 'Id' field)
+    'OrgSharingEvent', 'StatsInvalidationEvent',  # new in API 59.0 Summer '24 (no 'Id' field)
 ]
 
 # this global variable is for `salesforce.management.commands.inspectdb`

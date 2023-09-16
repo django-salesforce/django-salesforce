@@ -93,6 +93,8 @@ def run():
         # in API 58.0 Summer '23
         'ConnectedApplication',  # timeout
         'LicensingSettings',  # EXTERNAL_OBJECT_EXCEPTION
+        # in API 59.0 Winter '24
+        'CommsServiceConsoleSettings',
     }
     problematic_write = {
         # any SalesforceError
