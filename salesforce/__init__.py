@@ -13,13 +13,12 @@ import logging
 
 # Default version of Force.com API.
 # It can be customized by settings.DATABASES['salesforce']['API_VERSION']
-API_VERSION = '58.0'  # Summer '23
-# API_VERSION = '59.0'  # Winter '24
+API_VERSION = '59.0'  # Winter '24
 
 from salesforce.dbapi.exceptions import (  # NOQA pylint:disable=unused-import,useless-import-alias,wrong-import-position
     IntegrityError as IntegrityError, DatabaseError as DatabaseError, SalesforceError as SalesforceError,
 )
 
-__version__ = "4.2"
+__version__ = "5.0"
 
 log = logging.getLogger(__name__)

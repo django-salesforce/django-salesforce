@@ -14,8 +14,14 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
+[5.0] Unpublished
+-----------------
+* Add: Support for Django 5.0
+* Add: Monitoring 'api_usage' from 'Sforce-Limit-Info' API response header #317
+
+
 [4.2] 2023-07-04
--------------------
+----------------
 * Add: Basic diagnostics after installation can be done by command
   ``python manage.py check --database=salesforce``
 * Change: Use with Django 4.2 requires an enterprise license key.
