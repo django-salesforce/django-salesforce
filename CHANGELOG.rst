@@ -14,8 +14,8 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[5.0] Unpublished
------------------
+[5.0] 2023-12-07
+----------------
 * Add: Support for Django 5.0
 * Add: Monitoring 'api_usage' from 'Sforce-Limit-Info' API response header #317
 
