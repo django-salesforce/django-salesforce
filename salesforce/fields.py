@@ -220,9 +220,12 @@ class DecimalField(SfField, models.DecimalField):
 class FloatField(SfField, models.FloatField):
     """FloatField for Salesforce.
 
-    It is Float in Python and the same as DecimalField in the database.
+    It is now really a float type not a Decimal.
     """
-    pass
+    def from_db_value(self, value: Any, expression: Any, connection: Any) -> Any:
+        if str(value) == '' or value is None:
+            return value
+        return float(value)
 
 
 class BooleanField(SfField, models.BooleanField):
