@@ -14,6 +14,13 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
+[5.0.?] not released yet
+------------------------
+* Support for Salesforce API 60.0 Spring '24
+* Change: Values of ``FloatField`` are now really float, not Decimal as previously.
+* Add: FloatField is used by ``inspectdb`` in some metadata with negative decimal places.
+
+
 [5.0] 2023-12-07
 ----------------
 * Add: Support for Django 5.0

@@ -48,6 +48,7 @@ PROBLEMATIC_OBJECTS = [
     'FlowOrchestrationEvent',  # new in API 53.0 Winter '22
     'DataObjectDataChgEvent',  # new in API 55.0 Summer '22 (no 'Id' field)
     'OrgSharingEvent', 'StatsInvalidationEvent',  # new in API 59.0 Summer '24 (no 'Id' field)
+    'EmailBounceEvent',  # new in API 60.0 Spring '24 (no 'Id' field)
 ]
 
 # this global variable is for `salesforce.management.commands.inspectdb`
@@ -79,6 +80,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         'date':                           'DateField',
         'datetime':                       'DateTimeField',
         'double':                         'DecimalField',
+        'float':                          'FloatField',  # specially not to Decimal; used in tooling metadata
         'int':                            'IntegerField',
         'string':                         'CharField',
         'time':                           'TimeField',
@@ -160,7 +162,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             field_list = self._table_description_cache[table]['fields']
             # 'Id' field is sometimes not the first field in tooling metadata SObjects
             id_fields = [x for x in field_list if x['name'] == 'Id']
-            assert len(id_fields) == 1, "Table {!r} must contain one field with name 'Id'".format(table)
+            assert len(id_fields) == 1, "Table {!r} must contain one field named 'Id'".format(table)
             id_field, = id_fields
             assert id_field['type'] == 'id', (
                 "Invalid type of the field 'Id' in table '{}'".format(table))
@@ -268,6 +270,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             optional_kw = {'collation': None} if DJANGO_32_PLUS else {}
             # We prefer "length" over "byteLength" for "internal_size".
             # (because strings have usually: byteLength == 3 * length)
+            if field['type'] == 'double' and field['precision'] == -1 and field['scale'] == -1:
+                # started important in tooling API 60.0 Spring '24 - e.g. tooling.IdeasSettings.half_life
+                field['type'] = 'float'
             result.append(FieldInfo(  # type: ignore[call-arg] # problem with a conditional type
                 field['name'],       # name,
                 field['type'],       # type_code,
