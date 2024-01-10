@@ -5,7 +5,7 @@ for demonstration, with respect to read only fields.
 from django.contrib import admin
 
 
-def register_omitted_classes(models):
+def register_omitted_classes(models) -> None:
     """
     Register classes that don't have an own admin yet.
     Example:
