@@ -19,6 +19,8 @@ experimental.
 * Support for Salesforce API 60.0 Spring '24
 * Change: Values of ``FloatField`` are now really float, not Decimal as previously.
 * Add: FloatField is used by ``inspectdb`` in some metadata with negative decimal places.
+* A license code is required also with the latest LTS version unless you accept
+  the AGPL licence.
 
 
 [5.0] 2023-12-07

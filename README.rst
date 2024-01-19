@@ -21,8 +21,8 @@ traditional database.
 
 Python 3.7 to 3.12, Django 2.0 to 5.0. (Tested also with Python 3.13 alpha 2)
 
-Use with Django 5.0 currently requires an enteprise license key DJSF_LICENSE_KEY
-available to sponsors, or to accept an AGPL license if you install our equivalent
+Use with Django 5.0 or 4.2(LTS) currently requires an enteprise license key DJSF_LICENSE_KEY
+available to sponsors, unless you accept the AGPL license and install our otherwise identical
 package "django-salesforce-agpl" instead.
 
 
@@ -98,7 +98,7 @@ Install, configure a Salesforce connection, create a Salesforce model and run.
    not important.)
 
 5. Add a setting ``DJSF_LICENSE_KEY = "Your Name or Company / email //our.signature=="``
-   if you need it for Django 4.2 now.
+   if you need it for Django 5.0 or 4.2.
 
 6. **Verify** that everything important is configured correctly by running
    the command ``python manage.py check --database=salesforce``.
@@ -301,7 +301,7 @@ Backwards-incompatible changes
 
 The most important:
 
--  v4.2: Some new features implemented after June 2023 can require a license key
+-  v4.2: Some new features or versions implemented after June 2023 can require a license key
    (sponsorship) or to accept the AGPL license. (AGPL is fine for exclusive open source
    contribution or for education, but impossible if you do not share all your
    source codes.)

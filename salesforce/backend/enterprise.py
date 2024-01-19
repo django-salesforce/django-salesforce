@@ -27,7 +27,7 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
 
     # A legal way to skip the enterprise check is to use django-salesforce-agpl
     # <https://github.com/django-salesforce/django-salesforce-agpl>
-    # and accept the restrictive AGPL licence that requires you provide all your Django
+    # and accept the restrictive AGPL license that requires you provide all your Django
     # source code where you use django-salesforce available to all users who could
     # use your project by network (by your web app, by your backend app etc.) and
     # publish it under a compatible license.
@@ -46,11 +46,11 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
     for a in range(q):
         g, f, d, e = g | (bool(b & e & m) << f), f + bool(m & e), d - bool(j & e), e << r
     if g != level or level > 3 or d:
-        raise LicenseError("The enterprise licence key is invalid")
+        raise LicenseError("The enterprise license key is invalid")
 
 
 def check_license_in_latest_django() -> None:
-    if django.VERSION[:2] == max_django:
+    if django.VERSION[:2] in (max_django, (max_django[0] - bool(max_django[1] < 2), 2)):
         check_enterprise_license(
-            "License key is required for django-saleforce used with the last Django version. "
-            "(read about dual-license)")
+            "License key is required for django-saleforce used with the last Django version "
+            "or LTS version. (read about dual-license)")
