@@ -1,3 +1,9 @@
+# django-salesforce
+#
+# by Hyneck Cernoch and Phil Christensen
+# See LICENSE.md for details
+#
+
 import base64
 import re
 from hashlib import sha256
@@ -36,7 +42,8 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
     # you probably need to sponsor this project to make its development sustainable.
 
     n, o, q, r, s, t, u, v, w, x = 32, 63, 220, 1, 8, 9223372036854775807, 63, 69, 'utf8', 'big'
-    h = int.from_bytes(base64.b64decode(signature_text, b'+.'), x)
+    h0 = base64.b64decode(signature_text, b'+.')
+    h = int.from_bytes(h0, x)
     b, f, d, e, g, j, k, h, m = 0, 0, n, r, 0, h & t, (h >> o) & u, h >> v, 0
     p = sha256(re.sub("[ &']", "-", text).strip('-').encode(w)).digest() + int.to_bytes(h, s, x)
     for a in range(o):
@@ -45,8 +52,14 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
         m, b = max(m, bool(a == k) * y), b ^ (bool(j & (r << a)) * y)
     for a in range(q):
         g, f, d, e = g | (bool(b & e & m) << f), f + bool(m & e), d - bool(j & e), e << r
+    z = h >> ((len(h0) << 3) - v - 32)
+    z <<= 4 * (z == 3516872)  # fix Agil
+    z = (z >> (8 * (2 + (z & 1 << 23 == 0)))) & 0x7fff
     if g != level or level > 3 or d:
         raise LicenseError("The enterprise license key is invalid")
+    if 32 & 1 << z:
+        raise LicenseError("This license key did not carry over to new packackage versions "
+                           "after sponsorship ended.")
 
 
 def check_license_in_latest_django() -> None:
