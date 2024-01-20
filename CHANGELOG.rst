@@ -19,8 +19,12 @@ experimental.
 * Support for Salesforce API 60.0 Spring '24
 * Change: Values of ``FloatField`` are now really float, not Decimal as previously.
 * Add: FloatField is used by ``inspectdb`` in some metadata with negative decimal places.
-* A license code is required also with the latest LTS version unless you accept
-  the AGPL licence.
+* Change: A license code is required also in the first half of lifetime of a LTS version
+  unless the AGPL licence is accepted.
+  Django 4.2 LTS will be unlocked together with unlocking 5.0 in August 2024
+  in Django-salesforce 5.1 release.
+* Change: License code validity may not transfer to the next django-salesforce version
+  if sponsorship ended.
 
 
 [5.0] 2023-12-07

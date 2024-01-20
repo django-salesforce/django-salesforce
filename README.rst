@@ -22,8 +22,10 @@ traditional database.
 Python 3.7 to 3.12, Django 2.0 to 5.0. (Tested also with Python 3.13 alpha 2)
 
 Use with Django 5.0 or 4.2(LTS) currently requires an enteprise license key DJSF_LICENSE_KEY
-available to sponsors, unless you accept the AGPL license and install our otherwise identical
-package "django-salesforce-agpl" instead.
+until August 2024 unless you accept the AGPL license and install our otherwise identical
+package "django-salesforce-agpl" instead. The license keys are available to sponsors.
+Both versions will be unlocked automatically in Django-salesforce 5.1 when a key will be
+required for Django 5.1. Use with pre-release Django versions is free.
 
 
 Quick Start

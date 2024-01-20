@@ -63,7 +63,10 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
 
 
 def check_license_in_latest_django() -> None:
-    if django.VERSION[:2] in (max_django, (max_django[0] - bool(max_django[1] < 2), 2)):
+    # example: Django 4.2 LTS will be unlocked together with Django 5.0 in August 2024
+    #          when Django 5.1 and Django-salesforce 5.1 is released.
+    first_half_of_lts_life = django.VERSION[0] == max_django[0] - 1 and django.VERSION[1] == 2 and max_django[1] == 0
+    if django.VERSION[:2] == max_django or first_half_of_lts_life:
         check_enterprise_license(
             "License key is required for django-saleforce used with the last Django version "
-            "or LTS version. (read about dual-license)")
+            "or in the first half of life of the last LTS version. (read about dual-license)")
