@@ -13,4 +13,4 @@ DATABASES = {
         'AUTH': 'salesforce.auth.DynamicAuth',
     }
 }
-INSTALLED_APPS += ('tests.test_dynamic_auth',)
+INSTALLED_APPS += ['tests.test_dynamic_auth']

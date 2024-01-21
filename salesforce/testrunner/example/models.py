@@ -332,7 +332,7 @@ class OpportunityLineItem(SalesforceModel):
 
 
 try:
-    models_template = None  # type: Optional[types.ModuleType]
+    models_template: Optional[types.ModuleType] = None
     from salesforce.testrunner.example import models_template
 except ImportError:
     # this is useful for the case that the model is being rewritten by inspectdb

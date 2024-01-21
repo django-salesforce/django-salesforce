@@ -67,7 +67,7 @@ def refresh(obj: _M) -> _M:
     """Get the same object refreshed from the same db.
     """
     db = obj._state.db
-    qs = type(obj).objects.using(db)  # type: models_query.QuerySet[_M]
+    qs: models_query.QuerySet[_M] = type(obj).objects.using(db)
     return qs.get(pk=obj.pk)
 
 
@@ -618,7 +618,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         try:
             result_count = 2
             with self.lazy_assert_n_requests(2):
-                ret = Account.objects.filter(Name='test' + uid).delete()  # type: Any
+                ret: Any = Account.objects.filter(Name='test' + uid).delete()
             self.assertEqual(ret, (2, {'example.Account': 2}))
             result_count = Account.objects.filter(Name='test' + uid).count()
             self.assertEqual(result_count, 0)
@@ -1307,7 +1307,7 @@ class BasicLeadSOQLTest(TestCase):
             Status='Open',
             Company="Some company, Ltd.",
         )
-        self.objs = []  # type: List[SalesforceModel]
+        self.objs: List[SalesforceModel] = []
         self.test_lead.save()
         # This is only for demonstration that some test can be run even with
         # non SFDC database SALESFORCE_DB_ALIAS, even if the test expects some

@@ -10,4 +10,4 @@ DATABASES['salesforce'].update(HOST='https://nonsense.example.com',
                                CONSUMER_SECRET='.',
                                USER='.',
                                PASSWORD='.')
-INSTALLED_APPS += ('tests.test_lazy_connect',)
+INSTALLED_APPS += ['tests.test_lazy_connect']
