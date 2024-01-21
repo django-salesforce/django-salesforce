@@ -5,7 +5,7 @@
 #
 
 """
-Salesforce database backend for Django.  (like django,db.backends.*.base)
+Salesforce database backend for Django.  (like 'django.db.backends.*.base')
 """
 
 from typing import Any, Dict, Optional, TYPE_CHECKING
@@ -113,10 +113,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         """
         Return a fake cursor for accessing the Salesforce API with SOQL.
         """
-        return CursorWrapper(self)
+        return CursorWrapper(self.create_cursor(), self)
 
     def create_cursor(self, name: Optional[str] = None) -> 'ProtoCursor':
         row_type = {'dict': dict, 'list': list, None: None}[name]
+        self.sf_session  # to connect
         return self.connection.cursor(row_type=row_type)
 
     @property

@@ -1,5 +1,11 @@
 """
-CursorWrapper (like django.db.backends.utils)
+CursorWrapper (like 'django.db.backends.utils' and a half of driver)
+
+It does not inherit from it because e.g.:
+- transactions are not supported
+- it is not useful to close connection or rollback after error
+
+but some functionality can be moved to the driver and not duplicated
 """
 import decimal
 import logging
@@ -123,17 +129,17 @@ class CursorWrapper:
     """
 
     # pylint:disable=too-many-instance-attributes,too-many-public-methods
-    def __init__(self, db):
+    def __init__(self, cursor, db) -> None:
         """
         Connect to the Salesforce API.
         """
+        self.cursor = cursor
         self.db = db
         self.query = None
         self.session = db.sf_session  # this creates a TCP connection if doesn't exist
         self.rowcount = None
         self.first_row = None
         self.lastrowid = None  # not moved to driver because INSERT is implemented here
-        self.cursor = self.db.connection.cursor()
 
     def __enter__(self):
         return self
