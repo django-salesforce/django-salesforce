@@ -19,6 +19,7 @@ from django.db.models import fields
 from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-import
 from django.db import models
 
+from salesforce.backend import DJANGO_50_PLUS
 from salesforce.defaults import DEFAULTED_ON_CREATE, DefaultedOnCreate, BaseDefault
 
 
@@ -110,6 +111,8 @@ class SfField(models.Field):
         self.sf_namespace = ''
         if kwargs.get('default') is DEFAULTED_ON_CREATE:
             kwargs['default'] = DefaultedOnCreate(internal_type=self.get_internal_type())
+        if 'db_default' in kwargs and not DJANGO_50_PLUS:
+            del kwargs['db_default']
         super().__init__(*args, **kwargs)
 
     def get_attname_column(self) -> Tuple[str, str]:

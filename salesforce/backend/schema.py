@@ -38,3 +38,6 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
     def create_model(self, model):
         log.info("Skipped in SchemaEditor: create_model %s", model)
+
+    # def prepare_default(self, value):    # TODO
+    #     return self.quote_value(value)

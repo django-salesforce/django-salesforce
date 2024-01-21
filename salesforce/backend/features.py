@@ -85,3 +85,5 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_comments_inline = False
     # Does the backend support unlimited character columns?
     supports_unlimited_charfield = False
+
+    # requires_literal_defaults = True  # TODO

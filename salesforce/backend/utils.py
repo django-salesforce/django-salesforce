@@ -11,12 +11,13 @@ import decimal
 import logging
 import warnings
 from itertools import islice
-from typing import Any, Callable, Iterable, Iterator, List, Tuple, TypeVar, Union, overload
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union, overload
 
 from django.db import models, NotSupportedError
+from django.db.models import expressions as db_expressions
 from django.db.models.sql import subqueries, Query, RawQuery
 
-from salesforce.backend import DJANGO_30_PLUS, DJANGO_42_PLUS
+from salesforce.backend import DJANGO_30_PLUS, DJANGO_42_PLUS, DJANGO_50_PLUS
 from salesforce.dbapi.driver import (
     DatabaseError, InternalError, SalesforceWarning, merge_dict,
     register_conversion, arg_to_json)
@@ -104,15 +105,18 @@ def extract_values_inner(row, query):
             if hasattr(value, 'default'):
                 warnings.warn(
                     "The field '{}.{}' has been saved again with DEFAULTED_ON_CREATE value. "
-                    "It is better to set a real value to it or to refresh it from the database "
-                    "or restrict updated fields explicitly by 'update_fields='."
+                    "It is better to use 'db_default=...' in Django >= 5.0 "
+                    "or to set a real value to it "
+                    "or to refresh it from the database after .save() "
+                    "or to restrict updated fields explicitly by 'update_fields='."
                     .format(field.model._meta.object_name, field.name),
                     SalesforceWarning
                 )
                 continue
         elif isinstance(query, subqueries.InsertQuery):
             value = getattr(row, field.attname)
-            if (sf_read_only & NOT_CREATEABLE) != 0 or hasattr(value, 'default'):
+            if ((sf_read_only & NOT_CREATEABLE) != 0 or hasattr(value, 'default') or
+                    value is None and getattr(field, 'db_default', None) is not None):
                 continue  # skip not createable or DEFAULTED_ON_CREATE
         else:
             raise InternalError('invalid query type')
@@ -241,6 +245,15 @@ class CursorWrapper:
             self.cursor.rowcount = 0
         self.rowcount = self.cursor.rowcount
 
+    def our_fix_default(self, obj_json_data: Dict[str, Any]) -> None:
+        if DJANGO_50_PLUS:
+            # sql, params = obj_json_data[name].as_sql(self.query.get_compiler('salesforce'), self.db)
+            ignore_names = [
+                name for name, val in obj_json_data.items()
+                if isinstance(val, db_expressions.DatabaseDefault)]  # type: ignore[attr-defined] # ok DJANGO_50_PLUS
+            for name in ignore_names:
+                del obj_json_data[name]
+
     def execute_insert(self, query):
         table = query.model._meta.db_table
         if table == 'django_migrations':
@@ -250,10 +263,13 @@ class CursorWrapper:
         if len(post_data) == 1:
             # single object
             post_data = post_data[0]
+            self.our_fix_default(post_data)
             return self.handle_api_exceptions('POST', obj_url, json=post_data)
         if self.db.connection.composite_type == 'sobject-collections':
             # SObject Collections
             records = [merge_dict(x, type_=table) for x in post_data]
+            for item in records:
+                self.our_fix_default(item)
             all_or_none = query.sf_params.all_or_none
             ret = self.db.connection.sobject_collections_request('POST', records, all_or_none=all_or_none)
             self.lastrowid = ret
@@ -336,6 +352,7 @@ class CursorWrapper:
             return self.execute_tooling_update(query)
         table = query.model._meta.db_table
         post_data = extract_values(query)
+        self.our_fix_default(post_data)  # probably not necessary
         pks = self.get_pks_from_query(query)
         log.debug('UPDATE %s(%s)%r', table, pks, post_data)
         if not pks:
