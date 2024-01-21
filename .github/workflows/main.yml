@@ -45,7 +45,7 @@ jobs:
         TOXENV_311: "dj50-py311,dj42-py311"
         TOXENV_310: "dj40-py310"
         TOXENV_37:  "dj20-py37,dj30-py37"
-        TOXENV_39:  "no_django-py39,debug_toolbar-dj32-py39"
+        TOXENV_39:  "no_django-py39,debug_toolbar-dj42-py39"
       run: |
         TOXENV_NAME=$(echo TOXENV_${{ matrix.python-version }} | sed 's/\.//')
         cat > salesforce/testrunner/local_settings.py <<'-- end local_settings --'

@@ -115,11 +115,3 @@ class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-pub
         # A wildcard search is better than a search of '\\%' or '\\_', see #254
         return str(x)
         # return str(x).replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
-
-
-def DefaultedOnCreate(*args, **kwargs):
-    import salesforce.defaults  # pylint:disable=import-outside-toplevel
-    warnings.warn("Deprecated: the object DefaultedOnCreate should be imported from "
-                  "salesforce.fields or salesforce.defaults or salesforce.models, "
-                  "but not from salesforce.backend.operations")
-    return salesforce.defaults.DefaultedOnCreate(*args, **kwargs)
