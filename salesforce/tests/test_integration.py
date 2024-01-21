@@ -22,7 +22,7 @@ from django.utils.crypto import get_random_string
 
 import salesforce
 from salesforce import router
-from salesforce.backend import DJANGO_21_PLUS, DJANGO_22_PLUS
+from salesforce.backend import DJANGO_21_PLUS, DJANGO_22_PLUS, DJANGO_50_PLUS
 from salesforce.backend.test_helpers import (  # noqa pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless, strtobool)
 from salesforce.backend.test_helpers import (
@@ -327,7 +327,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         finally:
             contact.delete()
 
-    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    @skipUnless(default_is_sf and DJANGO_50_PLUS, "Default database should be any Salesforce.")
     def test_default_specified_by_sf(self) -> None:
         """Verify insert of object with a field with default value on create by SF.
 

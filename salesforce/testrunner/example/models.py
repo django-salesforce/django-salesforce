@@ -11,6 +11,7 @@ import django
 from django.conf import settings
 
 from salesforce import models
+from salesforce.backend import DJANGO_50_PLUS
 if not getattr(settings, 'SF_EXAMPLE_EXTENDED_MODELS', False):
     from salesforce.models import SalesforceModel as SalesforceModelParent
 else:
@@ -138,9 +139,11 @@ class Contact(SalesforceModel):
     # problematic with migrations in the future because it is not serializable.
     # It can be replaced by normal function.
     if not getattr(settings, 'SF_EXAMPLE_SIMPLE_DEFAULTS', False):
+        kw_owner = {('db_default' if DJANGO_50_PLUS else 'default'): models.DEFAULTED_ON_CREATE}
         owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                                  default=models.DefaultedOnCreate(User),
-                                  related_name='contact_owner_set')
+                                  related_name='contact_owner_set', blank=True,
+                                  **kw_owner
+                                  )
     if getattr(settings, 'SF_EXAMPLE_CUSTOM_INSTALLED', False):
         vs = models.DecimalField(custom=True, unique=True, max_digits=10, decimal_places=0, blank=True, null=True)
 
@@ -195,9 +198,9 @@ class Lead(SalesforceModel):
     # Deleted object can be found only in querysets with "query_all" SF method.
     IsDeleted = models.BooleanField(default=False, sf_read_only=models.READ_ONLY)
     if not getattr(settings, 'SF_EXAMPLE_SIMPLE_DEFAULTS', False):
+        kw_owner = {('db_default' if DJANGO_50_PLUS else 'default'): models.DEFAULTED_ON_CREATE}
         owner = models.ForeignKey(User, on_delete=models.DO_NOTHING,
-                                  default=models.DefaultedOnCreate(User),
-                                  related_name='lead_owner_set')
+                                  related_name='lead_owner_set', **kw_owner)
     last_modified_by = models.ForeignKey(User, on_delete=models.DO_NOTHING, null=True,
                                          sf_read_only=models.READ_ONLY,
                                          related_name='lead_lastmodifiedby_set')

@@ -63,11 +63,8 @@ class DebugToolbarAdminTest(TestCase):
         count_deleted, _ = Lead.objects.filter(Company='test_' + uid).delete()
         self.assertEqual(count_deleted, 1)
 
-    @expectedFailure
-    # A form with ForeignKey with DefaultedOnCreate fails, because the web widget requires
-    # o concrete foreign key value and the object will be not saved.
     def test_defaulted_foreignkey_create(self):
         resp = self.client.post('/admin/example/contact/add/', dict(last_name='test_' + uid))
         self.assertEqual(resp.status_code, 302, "Object not created")
-        count_deleted, _ = Contact.objects.filter(Company='test_' + uid).delete()
+        count_deleted, _ = Contact.objects.filter(name='test_' + uid).delete()
         self.assertEqual(count_deleted, 1)

@@ -1,11 +1,12 @@
 from salesforce import models
 
 
-class Lead(models.SalesforceModel):
-    LastName = models.CharField(max_length=80)
-    Name = models.CharField(max_length=121, sf_read_only=models.READ_ONLY)
-    Company = models.CharField(max_length=255)
-    Status = models.CharField(max_length=100, default='Open')
+class Case(models.Model):
+    subject = models.CharField(db_column='Subject', max_length=255, blank=True, null=True)
+    status = models.CharField(db_column='Status', max_length=255, default='New', blank=True, null=True,
+                              choices=[('On Hold', 'On Hold'), ('Closed', 'Closed'), ('New', 'New')])
+    origin = models.CharField(db_column='Origin', max_length=255, verbose_name='Case Origin', blank=True, null=True,
+                              choices=[('Email', 'Email'), ('Phone', 'Phone'), ('Web', 'Web')])
 
-    def __str__(self):
-        return self.Name
+    class Meta(models.Model.Meta):
+        db_table = 'Case'
