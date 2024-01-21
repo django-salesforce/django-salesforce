@@ -21,7 +21,7 @@ from django.db.backends.base.introspection import (
 from django.utils.text import camel_case_to_spaces
 from django.db.backends.utils import CursorWrapper as _Cursor  # for typing
 
-from salesforce.backend import DJANGO_22_PLUS, DJANGO_32_PLUS
+from salesforce.backend import DJANGO_22_PLUS, DJANGO_32_PLUS, DJANGO_50_PLUS
 import salesforce.fields
 
 log = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     def __init__(self, conn: Any) -> None:
         BaseDatabaseIntrospection.__init__(self, conn)
-        self._table_names = set()  # type: Set[str]
+        self._table_names: Set[str] = set()
         self._table_list_cache = None  # type: Optional[Dict[str, Any]]
         self._table_description_cache = {}  # type: Dict[str, Dict[str, Any]]
         self._converted_lead_status = None  # type: Optional[str]
@@ -222,8 +222,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
             default = None
         if default is not None:
             params['default'] = default
-        elif field['defaultedOnCreate'] and field['createable']:
-            params['default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
+        elif field['defaultedOnCreate'] and field['createable'] and DJANGO_50_PLUS:
+            params['db_default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
+            params['blank'] = True
 
         if field['inlineHelpText']:
             params['help_text'] = field['inlineHelpText']
