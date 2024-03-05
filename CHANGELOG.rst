@@ -14,8 +14,8 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[5.0.1] not released yet
-------------------------
+[5.0.1] 2024-03-04
+------------------
 * Add: Support for ``db_default`` field option in Django 5.0. It allows a seamless
   support of the ``defaultedOnCreate`` counterpart in Salesforce.
 * Add: Support for Salesforce API 60.0 Spring '24.
