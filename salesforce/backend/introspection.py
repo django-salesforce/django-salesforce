@@ -49,6 +49,7 @@ PROBLEMATIC_OBJECTS = [
     'DataObjectDataChgEvent',  # new in API 55.0 Summer '22 (no 'Id' field)
     'OrgSharingEvent', 'StatsInvalidationEvent',  # new in API 59.0 Summer '24 (no 'Id' field)
     'EmailBounceEvent',  # new in API 60.0 Spring '24 (no 'Id' field)
+    'MLEngagementEvent',  # new in API 61.0 Summer '24 (no 'Id' field)
 ]
 
 # this global variable is for `salesforce.management.commands.inspectdb`
