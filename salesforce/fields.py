@@ -109,6 +109,7 @@ class SfField(models.Field):
         self.sf_read_only = kwargs.pop('sf_read_only', 0)
         self.sf_custom = kwargs.pop('custom', None)
         self.sf_namespace = ''
+        self.sf_formula = kwargs.pop('sf_formula', None)
         if kwargs.get('default') is DEFAULTED_ON_CREATE:
             kwargs['default'] = DefaultedOnCreate(internal_type=self.get_internal_type())
         if 'db_default' in kwargs and not DJANGO_50_PLUS:

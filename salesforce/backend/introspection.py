@@ -226,6 +226,8 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
         elif field['defaultedOnCreate'] and field['createable'] and DJANGO_50_PLUS:
             params['db_default'] = SymbolicModelsName('DEFAULTED_ON_CREATE')
             params['blank'] = True
+        elif field['calculatedFormula']:
+            params['sf_formula'] = field['calculatedFormula']
 
         if field['inlineHelpText']:
             params['help_text'] = field['inlineHelpText']
