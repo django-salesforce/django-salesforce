@@ -26,7 +26,7 @@ from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-w
 # from django.db.models import CASCADE, PROTECT, SET_NULL, SET, DO_NOTHING
 
 from salesforce.defaults import DefaultedOnCreate, DEFAULTED_ON_CREATE
-from salesforce.fields import (  # pylint:disable=useless-import-alias
+from salesforce.fields import (
     SalesforceAutoField as SalesforceAutoField, SF_PK, SfField, ForeignKey as ForeignKey)
 from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
 from salesforce.fields import (  # noqa pylint:disable=useless-import-alias  # for other modules, but unused here

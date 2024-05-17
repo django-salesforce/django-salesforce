@@ -13,6 +13,12 @@ but a new feature can be referred by a test name if not documented yet.
 Some items here can be marked as "internal": not ready enough or
 experimental.
 
+[5.0.2] not released yet
+------------------------
+* Fix: Compile correctly: .filter(related_model__field__in=...)
+* Fix: Prepare tests for Salesforce API 61.0 Summer '24
+* Add: Introspect fields of type Formula
+
 
 [5.0.1] 2024-03-04
 ------------------
