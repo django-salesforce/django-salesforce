@@ -85,7 +85,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         """Translate the field name from sql join "alias.name" to SOQL tree "object_1.object_2...name"."""
         # debug_: 1 = print what is not recompiled, 2 = print everything
         soql_trans = self.query_topology()
-        if '(' in sql_field:
+        if '(' in sql_field and not re.match(r'^[A-Za-z0-9_.]+ IN \(', sql_field):
             match = re.match(r'^([A-Z_]+\()(\w+\.\w+)(\) (?:\w+|[!<>=]+ %s|LIKE %s))$', sql_field)
             if not match or match.group(1)[:-1] not in AGGREGATION_WORDS:
                 if debug_:
