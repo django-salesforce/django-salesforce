@@ -19,7 +19,6 @@ import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import #
 from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS, DJANGO_42_PLUS
 from salesforce.backend.utils import FullResultSet
 from salesforce.dbapi import DatabaseError
-from salesforce.dbapi.subselect import AGGREGATION_WORDS
 # pylint:disable=no-else-return,too-many-branches,too-many-locals
 
 AliasMapItems = List[Tuple[
@@ -85,20 +84,29 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         """Translate the field name from sql join "alias.name" to SOQL tree "object_1.object_2...name"."""
         # debug_: 1 = print what is not recompiled, 2 = print everything
         soql_trans = self.query_topology()
-        if '(' in sql_field and not re.match(r'^[A-Za-z0-9_.]+ IN \(', sql_field):
-            match = re.match(r'^([A-Z_]+\()(\w+\.\w+)(\) (?:\w+|[!<>=]+ %s|LIKE %s))$', sql_field)
-            if not match or match.group(1)[:-1] not in AGGREGATION_WORDS:
-                if debug_:
-                    print("** sf_fix_field: Can not recompile sql: {!r}".format(sql_field))
-                return sql_field
-            pre, field, post = match.groups()
+        if sql_field.startswith('('):
+            return sql_field  # compiled and fixed yet
+        elif re.match(r'[\w.]+$', sql_field) and len(sql_field.split('.')) == 2:
+            pre, field, post = '', sql_field, ''  # very easy fix for a simple 'select' field
+        elif sql_field.startswith('COUNT(Id)') and re.match(r'^COUNT\(Id\)(?: \w+)?$', sql_field, re.ASCII):
+            return sql_field  # not necessary to fix
         else:
-            if len(sql_field.split('.')) != 2:
+            match = re.match(r'^((?:\w+\()*)'     # optional some nested functions with one parameter
+                             r'((?:\w+\.)*\w+)'   # table.field
+                             r'('
+                             r'\)*'               # optional closing parentheses of functions
+                             # alias or operator with a placeholder %s of a parameter or 'IN (...'
+                             r'(?: (?:\w+|[!<>=]+ %s|LIKE %s|!?= null|(?:NOT )?IN \(.*))?)$',
+                             sql_field, re.ASCII)
+            if match:
+                pre, field, post = match.groups()
+                ok = len(field.rstrip('.Type').split('.')) == 2
+            if not match or not ok:
                 if debug_:
-                    print("** sf_fix_field: Can not recompile sql: {!r}".format(sql_field))
+                    print("** sf_fix_field: Can not recompile unexpected sql: {!r}".format(sql_field))
                 return sql_field
-            pre, field, post = '', sql_field, ''
-        tab_name, field_name = field.split('.')
+        # fix the field
+        tab_name, field_name = field.split('.', 1)
         if self.sf_params.minimal_aliases:
             assert len(self.root_aliases) == 1
             if tab_name == self.root_aliases[0]:
@@ -154,8 +162,8 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             return cursor.fetchone()
 
         # The MULTI case.
-        result = iter(lambda: cursor.fetchmany(chunk_size),
-                      self.connection.features.empty_fetchmany_value)  # type: Iterable[Any]
+        result: Iterable[Any] = iter(lambda: cursor.fetchmany(chunk_size),
+                                     self.connection.features.empty_fetchmany_value)
         if not chunked_fetch and not self.connection.features.can_use_chunked_reads:
             # If we are using non-chunked reads, we return the same data
             # structure as normally, but ensure it is all read into memory
@@ -220,13 +228,13 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             out_cols = []
             col_idx = 1
             for _, (s_sql, s_params), alias in self.select + extra_select:
+                s_sql = self.sf_fix_field(s_sql)
                 if alias:
                     # fixed by removing 'AS'
                     s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
                 elif with_col_aliases:
                     s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
                     col_idx += 1
-                s_sql = self.sf_fix_field(s_sql)
                 params.extend(s_params)
                 out_cols.append(s_sql)
 
