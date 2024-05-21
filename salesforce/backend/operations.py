@@ -23,10 +23,10 @@ Default database operations, with unquoted names.
 
 class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-public-methods
     # undefined abstract methods:
-    #       date_extract_sql, date_interval_sql,     date_trunc_sql,  datetime_cast_date_sql
-    #   datetime_extract_sql,                    datetime_trunc_sql,
-    #                                                time_trunc_sql,  datetime_cast_time_sql;
-    #   no_limit_value,   regex_lookup
+    #    datetime_cast_date_sql, datetime_cast_time_sql, date_interval_sql,
+    #    datetime_trunc_sql,
+    #    time_trunc_sql
+    #    no_limit_value,   regex_lookup
     #
     # pylint:disable=abstract-method,no-self-use,unused-argument
 
@@ -115,3 +115,48 @@ class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-pub
         # A wildcard search is better than a search of '\\%' or '\\_', see #254
         return str(x)
         # return str(x).replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+
+    # --- implement SOQL Date Functions supported by Salesforce
+    # https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_date_functions.htm
+
+    def date_extract_sql(self, lookup_type, sql, params):
+        assert not params, "Parameters are not supported in this function"
+        if lookup_type == 'year':
+            return f"FISCAL_YEAR({sql})", params
+        elif lookup_type == 'quarter':
+            return f"FISCAL_QUARTER({sql})", params
+        elif lookup_type == 'month':
+            return f"FISCAL_MONTH({sql})", params
+        elif lookup_type == 'day':
+            return f"DAY_IN_MONTH({sql})", params
+        elif lookup_type == "week":
+            return f"WEEK_IN_YEAR({sql})", params
+        elif lookup_type == "week_day":
+            return f"DAY_IN_WEEK({sql})", params  # Sunday=1, Saturday=7
+        raise ValueError(f"Unsupported extract type: {lookup_type!r} in Salesforce")
+
+    def datetime_extract_sql(self, lookup_type, sql, params, tzname):
+        if lookup_type == 'year':
+            return f"FISCAL_YEAR(convertTimezone({sql}))", params
+        elif lookup_type == 'quarter':
+            return f"FISCAL_QUARTER(convertTimezone({sql}))", params
+        elif lookup_type == 'month':
+            return f"FISCAL_MONTH(convertTimezone({sql}))", params
+        elif lookup_type == 'day':
+            return f"DAY_IN_MONTH(convertTimezone({sql}))", params
+        elif lookup_type == "week":
+            return f"WEEK_IN_YEAR(convertTimezone({sql}))", params
+        elif lookup_type == "week_day":
+            return f"DAY_IN_WEEK(convertTimezone({sql}))", params  # Sunday=1, Saturday=7
+        elif lookup_type == 'hour':
+            return f"HOUR_IN_DAY(convertTimezone({sql}))", params
+        raise ValueError(f"Unsupported extract type {lookup_type!r} in Salesforce")
+
+    # # This would require much more code elsewhere
+    # def datetime_cast_date_sql(self, sql, params, tzname):
+    #     return f"DAY_ONLY(convertTimezone({sql}))", params
+
+    # def datetime_trunc_sql(self, lookup_type, sql, params, tzname):
+    #     if lookup_type == 'day':
+    #         return f"DAY_ONLY(convertTimezone({sql}))", params
+    #     raise ValueError(f"Unsupported truncate type {lookup_type!r} in Salesforce")
