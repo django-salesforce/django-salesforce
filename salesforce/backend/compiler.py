@@ -28,6 +28,10 @@ AliasMapItems = List[Tuple[
     str
 ]]
 
+objects_needing_minimal_aliases = [
+    'ContentDocumentLink', 'ContentFolderItem', 'ContentFolderMember', 'IdeaComment', 'Vote'
+]
+
 
 class SfParams:  # like an immutable DataClass: clone when updating
     def __init__(self):
@@ -107,7 +111,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                 return sql_field
         # fix the field
         tab_name, field_name = field.split('.', 1)
-        if self.sf_params.minimal_aliases:
+        if self.sf_params.minimal_aliases or tab_name in objects_needing_minimal_aliases:
             assert len(self.root_aliases) == 1
             if tab_name == self.root_aliases[0]:
                 trans_tab_name = ''
