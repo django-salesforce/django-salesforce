@@ -190,8 +190,9 @@ class TestTopologyCompiler(TestCase):
 
 class QueryTest(TestCase):
     def test_where_related_in(self):
-        soql = str(TestModel.objects.filter(contact__name__in=('a', 'b')).values('pk').query)
-        expected = "SELECT django_Test__c.Id FROM django_Test__c WHERE django_Test__c.Contact__r.Name IN ('a', 'b')"
+        qs = TestModel.objects.filter(contact__name__in=('a', 'b')).values('pk')
+        soql = qs.query.get_compiler('salesforce').as_sql()[0]
+        expected = "SELECT django_Test__c.Id FROM django_Test__c WHERE django_Test__c.Contact__r.Name IN (%s, %s)"
         self.assertEqual(soql, expected)
 
 
