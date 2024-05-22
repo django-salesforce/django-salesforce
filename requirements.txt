@@ -1,4 +1,4 @@
 pytz>=2012c
-requests>=2.4.0
+requests>=2.32.0
 # Django requirement is specified in setup.py,
 # because pip doesn't accept double requirement in tests.
