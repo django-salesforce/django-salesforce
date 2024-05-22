@@ -9,7 +9,8 @@ from unittest import TestCase
 from django.db.models import Q
 from salesforce.backend.operations import BULK_BATCH_SIZE
 from salesforce.backend.query import SalesforceQuerySet
-from salesforce.testrunner.example.models import Account, Campaign, Contact, Lead, Opportunity, Product, Test
+from salesforce.testrunner.example.models import (Account, Campaign, Contact, Lead, Opportunity, Product, Test,
+                                                  ContentDocument)
 from salesforce.tests.test_integration import sf_tables
 
 
@@ -37,6 +38,7 @@ class CleanTests(TestCase):
             qs_delete(Lead.objects.filter(LastName__startswith='UnitTest')),
             qs_delete(Opportunity.objects.filter(name__in=('test op', 'Example Opportunity'))),
             qs_delete(Product.objects.filter(Name__startswith='test ')),
+            qs_delete(ContentDocument.objects.filter(title='some file.txt')),
         ]
         if 'django_Test__c' in sf_tables():
             ret.append(qs_delete(Test.objects.all()))

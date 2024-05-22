@@ -448,3 +448,46 @@ class CampaignMember(SalesforceModel):
 # this model will be removed to test removing in migrations
 class DeletedObject(SalesforceModel):
     pass
+
+
+# models for work with file attachments of objects
+
+class ContentDocument(models.Model):
+    owner_id = models.CharField(max_length=18, sf_read_only=models.NOT_CREATEABLE)
+    title = models.CharField(max_length=255, sf_read_only=models.NOT_CREATEABLE)
+    latest_published_version = models.ForeignKey('ContentVersion', models.DO_NOTHING, sf_read_only=models.READ_ONLY,
+                                                 blank=True, null=True)
+    description = models.TextField(sf_read_only=models.NOT_CREATEABLE, blank=True, null=True)
+    content_size = models.IntegerField(sf_read_only=models.READ_ONLY, blank=True, null=True)
+    file_type = models.CharField(max_length=20, sf_read_only=models.READ_ONLY, blank=True, null=True)
+    file_extension = models.CharField(max_length=40, sf_read_only=models.READ_ONLY, blank=True, null=True)
+
+
+class ContentDocumentLink(models.Model):
+    linked_entity_id = models.CharField(max_length=18, sf_read_only=models.NOT_UPDATEABLE)
+    content_document = models.ForeignKey(ContentDocument, models.DO_NOTHING, sf_read_only=models.NOT_UPDATEABLE)
+    share_type = models.CharField(max_length=40, blank=True, null=True,
+                                  choices=[('V', 'Viewer'), ('C', 'Collaborator'), ('I', 'Inferred')])
+    visibility = models.CharField(max_length=40, blank=True, null=True,
+                                  choices=[('AllUsers', 'All Users'), ('InternalUsers', 'Standard Users'),
+                                           ('SharedUsers', 'Shared Users')])
+
+
+class ContentVersion(models.Model):
+    content_document = models.ForeignKey(ContentDocument, models.DO_NOTHING, sf_read_only=models.NOT_UPDATEABLE)
+    content_url = models.URLField(blank=True, null=True)
+    version_number = models.CharField(max_length=20, sf_read_only=models.READ_ONLY, blank=True, null=True)
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    path_on_client = models.CharField(max_length=500, sf_read_only=models.NOT_UPDATEABLE, blank=True, null=True)
+    owner_id = models.CharField(max_length=18, db_default=models.DEFAULTED_ON_CREATE, blank=True)
+    file_type = models.CharField(max_length=20, sf_read_only=models.READ_ONLY)
+    version_data = models.TextField(blank=True, null=True)
+    content_size = models.IntegerField(sf_read_only=models.READ_ONLY, blank=True, null=True)
+    file_extension = models.CharField(max_length=40, sf_read_only=models.READ_ONLY, blank=True, null=True)
+    origin = models.CharField(max_length=40, sf_read_only=models.NOT_UPDATEABLE, default='C',
+                              choices=[('C', 'Content'), ('H', 'Chatter')])
+    content_location = models.CharField(max_length=40, sf_read_only=models.NOT_UPDATEABLE, default='S',
+                                        choices=[('S', 'Salesforce'), ('E', 'External'),
+                                                 ('L', 'Social Customer Service')])
+    version_data_url = models.CharField(max_length=255, sf_read_only=models.READ_ONLY, blank=True, null=True)
