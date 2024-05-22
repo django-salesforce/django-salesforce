@@ -3,14 +3,16 @@ from typing import Optional
 
 import django
 from django.test import TestCase
+from salesforce.backend.test_helpers import current_user
 from salesforce.models import SalesforceModel
-from salesforce.testrunner.example.models import Contact, ContentDocumentLink, ContentVersion, ContentDocument
+from salesforce.testrunner.example.models import Contact, ContentDocumentLink, ContentVersion, ContentDocument, User
 
 
 def create_content_document_link(original_filename: str, attachment_body: bytes,
                                  related_object: SalesforceModel, owner_id: Optional[str] = None
                                  ) -> ContentDocumentLink:
-    kwargs = {'owner_id': owner_id} if owner_id else {}
+    if owner_id is None:
+        owner_id = User.objects.get(Username=current_user).pk
     blob = b64encode(attachment_body).decode('ascii')
     c_version = ContentVersion.objects.create(
         content_location='S',  # document is where: S: in Salesforce, E: outside of Salesforce, L: on a Social Netork
@@ -18,9 +20,9 @@ def create_content_document_link(original_filename: str, attachment_body: bytes,
         origin='C',            # C: Content Origin, H: Chatter Origin
         title=original_filename,
         version_data=blob,
-        **kwargs
+        owner_id=owner_id,
     )
-    c_version = ContentVersion.objects.get(id=c_version.id)  # refresh fields after creation
+    c_version = ContentVersion.objects.get(pk=c_version.pk)  # refresh fields after creation
     c_doc_link = ContentDocumentLink.objects.create(
         content_document=c_version.content_document,
         linked_entity_id=related_object.pk,

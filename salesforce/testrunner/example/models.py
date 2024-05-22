@@ -480,7 +480,7 @@ class ContentVersion(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     path_on_client = models.CharField(max_length=500, sf_read_only=models.NOT_UPDATEABLE, blank=True, null=True)
-    owner_id = models.CharField(max_length=18, db_default=models.DEFAULTED_ON_CREATE, blank=True)
+    owner = models.ForeignKey(User, models.DO_NOTHING, db_default=models.DEFAULTED_ON_CREATE, blank=True)
     file_type = models.CharField(max_length=20, sf_read_only=models.READ_ONLY)
     version_data = models.TextField(blank=True, null=True)
     content_size = models.IntegerField(sf_read_only=models.READ_ONLY, blank=True, null=True)
