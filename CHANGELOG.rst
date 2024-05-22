@@ -15,9 +15,15 @@ experimental.
 
 [5.0.2] not released yet
 ------------------------
-* Fix: Compile correctly: .filter(related_model__field__in=...)
+* Change: Removed the old Python 3.7
+* Add: Support for date and datetime lookup by year, quarter, month, day, week_day, hour
+  e.g. group this year by month:
+  .filter(date__year=2024).value('date__month').annotate(total=Sum('amount'))
+* Add: The method .sf(minimal_aliases=True) is not necessary
+  for ContentDocumentLink .filter(...); #259
+* Fix: Compile correctly: .filter(related_model__field__in=...) Fix #302
 * Fix: Prepare tests for Salesforce API 61.0 Summer '24
-* Add: Introspect fields of type Formula
+* Add: Introspect Salesforce fields of type Formula to sf_formula="..." parameter
 
 
 [5.0.1] 2024-03-04
