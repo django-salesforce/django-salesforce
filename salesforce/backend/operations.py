@@ -152,11 +152,5 @@ class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-pub
             return f"HOUR_IN_DAY(convertTimezone({sql}))", params
         raise ValueError(f"Unsupported extract type {lookup_type!r} in Salesforce")
 
-    # # This would require much more code elsewhere
-    # def datetime_cast_date_sql(self, sql, params, tzname):
-    #     return f"DAY_ONLY(convertTimezone({sql}))", params
-
-    # def datetime_trunc_sql(self, lookup_type, sql, params, tzname):
-    #     if lookup_type == 'day':
-    #         return f"DAY_ONLY(convertTimezone({sql}))", params
-    #     raise ValueError(f"Unsupported truncate type {lookup_type!r} in Salesforce")
+    def datetime_cast_date_sql(self, sql, params, tzname):
+        return f"DAY_ONLY(convertTimezone({sql}))", params
