@@ -22,11 +22,10 @@ Default database operations, with unquoted names.
 
 
 class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-public-methods
-    # undefined abstract methods:
-    #    datetime_cast_date_sql, datetime_cast_time_sql, date_interval_sql,
-    #    datetime_trunc_sql,
-    #    time_trunc_sql
-    #    no_limit_value,   regex_lookup
+    # undefined abstract methods:  (these methods can not be implemented by SOQL)
+    #    datetime_cast_time_sql, date_interval_sql,
+    #    datetime_trunc_sql,     time_trunc_sql,
+    #    regex_lookup
     #
     # pylint:disable=abstract-method,no-self-use,unused-argument
 
@@ -115,6 +114,9 @@ class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-pub
         # A wildcard search is better than a search of '\\%' or '\\_', see #254
         return str(x)
         # return str(x).replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
+
+    def no_limit_value(self) -> Optional[int]:
+        return None
 
     # --- implement SOQL Date Functions supported by Salesforce
     # https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_date_functions.htm

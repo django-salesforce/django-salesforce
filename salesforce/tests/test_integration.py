@@ -1249,6 +1249,10 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')
         self.assertEqual(Contact.objects.using(None)._db, alias)
 
+    def test_with_offst(self) -> None:
+        list(Contact.objects.all()[1:2])
+        list(Contact.objects.all()[2000:])
+
     @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_dynamic_fields(self) -> None:
         """Test that fields can be copied dynamically from other model"""
