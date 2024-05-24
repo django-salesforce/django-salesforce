@@ -1,5 +1,10 @@
 """
 Lookups  (like django.db.models.lookups, django.db.models.aggregates.Count)
+
+Every overridden class here must be registered either:
+- registered by '@Field.register_lookup' if the parent class is registered
+or must be
+- setattr(parent_class, 'as_salesforce', overridden_class)  if the parent class is not registered
 """
 from django.db import models
 from django.db.models.fields import Field
@@ -67,3 +72,15 @@ class NotEqual(lookups.Exact):  # pylint:disable=abstract-method
 
     def get_rhs_op(self, connection, rhs):
         return '!= %s' % rhs
+
+
+class YearLookup(lookups.YearLookup):
+    def override_as_sql(self, compiler, connection):
+        sql, params = self.as_sql(compiler, connection)
+        lhs, *rest = sql.split(' ', 1)
+        if rest == ["BETWEEN %s AND %s"]:
+            lhs = compiler.sf_fix_field(lhs)
+            sql = f"({lhs} >= %s AND {lhs} <= %s)"
+        return sql, params
+
+    setattr(lookups.YearLookup, 'as_salesforce', override_as_sql)
