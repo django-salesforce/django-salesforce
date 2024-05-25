@@ -9,6 +9,7 @@ Generate queries using the SOQL dialect.  (like django.db.models.sql.compiler an
 """
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import re
+import warnings
 from django.core.exceptions import EmptyResultSet
 from django.db import NotSupportedError
 from django.db.models.sql import compiler as sql_compiler, where as sql_where, constants, datastructures
@@ -19,6 +20,7 @@ import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import #
 from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS, DJANGO_42_PLUS
 from salesforce.backend.utils import FullResultSet
 from salesforce.dbapi import DatabaseError
+from salesforce.dbapi.exceptions import SalesforceWarning
 # pylint:disable=no-else-return,too-many-branches,too-many-locals
 
 AliasMapItems = List[Tuple[
@@ -86,11 +88,11 @@ class SQLCompiler(sql_compiler.SQLCompiler):
 
     def sf_fix_field(self, sql_field: str, debug_: int = 0) -> str:
         """Translate the field name from sql join "alias.name" to SOQL tree "object_1.object_2...name"."""
-        # debug_: 1 = print what is not recompiled, 2 = print everything
+        # debug_: 1 = print what is recompiled
         soql_trans = self.query_topology()
         if sql_field.startswith('('):
             return sql_field  # compiled and fixed yet
-        elif re.match(r'[\w.]+$', sql_field) and len(sql_field.split('.')) == 2:
+        if re.match(r'[\w.]+$', sql_field) and len(sql_field.split('.')) == 2:
             pre, field, post = '', sql_field, ''  # very easy fix for a simple 'select' field
         elif sql_field.startswith('COUNT(Id)') and re.match(r'^COUNT\(Id\)(?: \w+)?$', sql_field, re.ASCII):
             return sql_field  # not necessary to fix
@@ -106,8 +108,8 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                 pre, field, post = match.groups()
                 ok = len(field.rstrip('.Type').split('.')) == 2
             if not match or not ok:
-                if debug_:
-                    print("** sf_fix_field: Can not recompile unexpected sql: {!r}".format(sql_field))
+                warnings.warn("sf_fix_field: Can not recompile unexpected sql: {!r}".format(sql_field),
+                              SalesforceWarning)
                 return sql_field
         # fix the field
         tab_name, field_name = field.split('.', 1)
@@ -123,7 +125,8 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             trans_tab_name = soql_trans[tab_name]
         dot = '.' if trans_tab_name else ''
         ret = "%s%s%s%s%s" % (pre, trans_tab_name, dot, field_name, post)
-        if debug_ >= 2:
+
+        if debug_:
             print('** sf_fix_field: {!r} -> {!r}'.format(sql_field, ret))
         return ret
 
