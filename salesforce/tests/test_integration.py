@@ -1244,6 +1244,11 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         list(qs2)
         qs = Attachment.objects.filter(parent__in=Test.objects.filter(contact__last_name='Johnson'))
         list(qs)
+        # test the '__range' lookup
+        qs = Test.objects.filter(contact__name__range=('a', 'b')).values('pk').sf(minimal_aliases=True)
+        expect_sql = "SELECT Id FROM django_Test__c WHERE (Contact__r.Name >= 'a' AND Contact__r.Name <= 'b')"
+        list(qs)
+        self.assertEqual(str(qs.query), expect_sql)
 
     def test_using_none(self) -> None:
         alias = getattr(settings, 'SALESFORCE_DB_ALIAS', 'salesforce')

@@ -29,9 +29,8 @@ class Range(models.lookups.Range):  # pylint:disable=abstract-method
         assert rhs == ('%s', '%s')
         assert len(rhs_params) == 2
         params = lhs_params + [rhs_params[0]] + lhs_params + [rhs_params[1]]
-        # The symbolic parameters %s are again substituted by %s. The real
-        # parameters will be passed finally directly to CursorWrapper.execute
-        return '(%s >= %s AND %s <= %s)' % (lhs, rhs[0], lhs, rhs[1]), params
+        lhs = compiler.sf_fix_field(lhs)
+        return f'({lhs} >= %s AND {lhs} <= %s)', params
 
     setattr(models.lookups.Range, 'as_salesforce', override_as_sql)
 
