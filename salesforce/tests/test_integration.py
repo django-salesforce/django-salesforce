@@ -58,10 +58,9 @@ def sf_tables() -> List[str]:
     return _sf_tables
 
 
-# The field name 'id' or 'Id' must be never used in Python code in tests that
-# should work with both variants of SF_PK. The universale name 'pk' should be
-# used insted.
-# The name 'Id' should be used in SQL code, but the name 'id' would work just as well.
+# The field name 'id' or 'Id' in these universal tests that should work with
+# both variants of SF_PK. The name 'pk' is prefered here.
+# The name 'Id' is used in SQL code, but the name 'id' would work just as well.
 
 def refresh(obj: _M) -> _M:
     """Get the same object refreshed from the same db.
@@ -112,7 +111,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_raw_translations(self) -> None:
         """Read a Contact raw and translate it to Lead fields."""
         contact = Contact.objects.all()[0]
-        # `translation` dictionary keys must be lowercase now
+        # `translation` dictionary key is lowercase
         false_lead_raw = list(Lead.objects.raw(
             "SELECT Id, LastName FROM Contact WHERE Id=%s", params=[contact.pk],
             translations={'lastname': 'Company'}))
@@ -270,7 +269,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                 with QuietSalesforceErrors(sf_alias):
                     duplicate.save()
             except salesforce.backend.base.SalesforceError as exc:
-                # TODO uncovered line, baybe bug
+                # TODO uncovered line, maybe bug
                 self.assertEqual(exc.data[0]['errorCode'], 'DUPLICATE_VALUE')  # type: ignore
             else:
                 self.assertRaises(salesforce.backend.base.SalesforceError, duplicate.save)
@@ -290,11 +289,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
                 new_u.delete()
             if new_e:
                 new_e.delete()
-
-        # this had fail, therefore moved at the end and itemized for debugging
-        # qs = User.objects.exclude(apex_email_notification=None)
-        # print(qs.query.get_compiler('salesforce').as_sql())
-        # list(qs)
         list(User.objects.exclude(apex_email_notification=None))
 
     def test_update_date(self) -> None:
@@ -509,8 +503,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         if not triggers:
             self.skipTest("No object with milisecond resolution found.")
         self.assertTrue(isinstance(triggers[0].PreviousFireTime, datetime.datetime))
-        # The reliability of this is only 99.9%, therefore it is commented out.
-        # self.assertNotEqual(trigger.PreviousFireTime.microsecond, 0)
+        if all(trigger.PreviousFireTime.microsecond == 0 for trigger in triggers):
+            self.skipTest("Miliseconds == 0; That is possible with probability 0.1%, not error")
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_time_field(self) -> None:
@@ -803,7 +797,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
     def test_cursor_execute_fetch(self) -> None:
         """Get results by cursor.execute(...); fetchone(), fetchmany(), fetchall()
         """
-        # TODO hy: fix for concurrency
         sql = "SELECT Id, LastName, FirstName, OwnerId FROM Contact LIMIT 2"
         cursor = connections[sf_alias].cursor()
         cursor.execute(sql)
@@ -1052,11 +1045,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             for x in objects:
                 x.delete()
 
-    # This should not be implemented due to Django conventions.
-    # def test_raw_aggregate(self):
-    #    # raises "TypeError: list indices must be integers, not str"
-    #    list(Contact.objects.raw("select Count() from Contact"))
-
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_only_fields(self) -> None:
         """Verify that access to "only" fields doesn't require a request, but others do.
@@ -1116,9 +1104,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
 
     def test_incomplete_raw(self) -> None:
         """Test that omitted model fields can be queried by dot."""
-        # with self.lazy_assert_n_requests(2):  # problem - Why too much requests?
-        # raw query must contain the primary key (with the right capitalization, currently)
-        with self.lazy_assert_n_requests(1):  # TODO why two requests?
+        with self.lazy_assert_n_requests(1):
             ret = list(Contact.objects.raw("select Id from Contact where FirstName != '' limit 2000"))
         with self.lazy_assert_n_requests(1):
             last_name = ret[0].last_name
@@ -1142,14 +1128,10 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             qs = Lead.objects.filter(pk=test_lead.pk,
                                      owner__Username=current_user,
                                      last_modified_by__Username=current_user)
-            # Verify that a coplicated analysis is not performed on old Django
-            # so that the query can be at least somehow simply compiled to SOQL
-            # without exceptions, in order to prevent regressions.
             sql, params = qs.query.get_compiler('salesforce').as_sql()
-            # Verify expected filters in SOQL compiled by new Django
-            self.assertIn('Lead.Owner.Username = %s', sql)
-            self.assertIn('Lead.LastModifiedBy.Username = %s', sql)
-            # verify validity for SFDC, verify results
+            sql_parts = set(sql.split(' WHERE (')[1].rstrip(')').split(' AND '))
+            self.assertEqual(sql_parts,
+                             {'Lead.Id = %s', 'Lead.Owner.Username = %s', 'Lead.LastModifiedBy.Username = %s'})
             refreshed_lead = qs.get()
             self.assertEqual(refreshed_lead.pk, test_lead.pk)
         finally:
@@ -1222,7 +1204,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         try:
             qs = Contact.objects.filter(opportunity_roles__opportunity__name='test op')
             self.assertEqual(list(qs), 2 * [contact])
-            # self.assertEqual([x.pk for x in qs], 2 * [oppo.pk])
         finally:
             oc2.delete()
             oc.delete()
