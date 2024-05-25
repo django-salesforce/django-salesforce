@@ -437,6 +437,8 @@ class Campaign(SalesforceModel):
     name = models.CharField(max_length=80)
     number_sent = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Num Sent', blank=True, null=True)
     parent = models.ForeignKey('Campaign', on_delete=models.DO_NOTHING, blank=True, null=True)
+    start_date = models.DateField(blank=True, null=True)
+    created_date = models.DateTimeField(sf_read_only=models.READ_ONLY, auto_now_add=True)
 
 
 class CampaignMember(SalesforceModel):

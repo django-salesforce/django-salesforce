@@ -15,7 +15,7 @@ from typing import Any, cast, List, TypeVar
 import pytz
 from django.conf import settings
 from django.db import connections
-from django.db.models import Q, Avg, Count, Sum, Min, Max, Model, query as models_query
+from django.db.models import Q, Avg, Count, Sum, Min, Max, Model, query as models_query, functions
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -1285,6 +1285,32 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         api_usage: ApiUsage = connections[sf_alias].connection.api_usage
         self.assertGreater(api_usage.api_usage, 0)
         self.assertGreater(api_usage.api_limit, 5000)
+
+    def test_extract_date(self) -> None:
+        campaign = Campaign.objects.create(name='test something', number_sent=3)
+        try:
+            # group datetime by year
+            list(Campaign.objects.values('created_date__year').annotate(total=Sum('number_sent')))
+            # filter datetime last year
+            list(Campaign.objects.filter(created_date__year=2023, number_sent__gte=100))
+            # filter date last year and group by month
+            list(Campaign.objects.filter(start_date__year=2023).values('start_date__month').annotate(cnt=Count('pk')))
+            # filter datetatetime by month
+            list(Campaign.objects.filter(created_date__month=1))
+            # filter datetatetime by quarter
+            list(Campaign.objects.filter(created_date__quarter=1))
+            # group by date from a DateTime field
+            list(Campaign.objects.values(c_date=functions.TruncDate('created_date')).annotate(cnt=Count('start_date')))
+            # example group by all possible type of datetime lookup expressions
+            list(Campaign.objects.values('start_date__year', 'start_date__month', 'start_date__day',
+                                         'start_date__week', 'start_date__week_day',
+                                         'start_date__quarter').annotate(total=Count('pk')))
+            list(Campaign.objects.values('created_date__year', 'created_date__month', 'created_date__day',
+                                         'created_date__week', 'created_date__week_day',
+                                         'created_date__hour', 'created_date__quarter').annotate(total=Count('pk')))
+        finally:
+            campaign.delete()
+
 
 # ============= Tests that need setUp Lead ==================
 
