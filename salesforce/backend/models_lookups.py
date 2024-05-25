@@ -13,11 +13,10 @@ from django.db.models import lookups
 
 class IsNull(models.lookups.IsNull):  # pylint:disable=abstract-method
     def override_as_sql(self, compiler, connection):  # pylint:disable=unused-argument
-        # it must be relabeled if used for a children rows set
-        if compiler.soql_trans is None:
-            compiler.get_from_clause()
-        sql, params = compiler.compile(self.lhs.relabeled_clone(compiler.soql_trans))
-        return ('%s %s null' % (sql, ('=' if self.rhs else '!='))), params
+        # it will be relabeled later by sf_fix_field() to prevent a problematic double relabel
+        lhs, params = self.process_lhs(compiler, connection)
+        operator = '=' if self.rhs else '!='
+        return f"{lhs} {operator} null", params
 
     setattr(models.lookups.IsNull, 'as_salesforce', override_as_sql)
 
