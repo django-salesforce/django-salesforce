@@ -32,7 +32,6 @@ import re
 
 import django
 
-DJANGO_21_PLUS = django.VERSION[:2] >= (2, 1)
 DJANGO_22_PLUS = django.VERSION[:2] >= (2, 2)
 DJANGO_30_PLUS = django.VERSION[:2] >= (3, 0)
 DJANGO_31_PLUS = django.VERSION[:2] >= (3, 1)
@@ -43,8 +42,8 @@ DJANGO_42_PLUS = django.VERSION[:2] >= (4, 2)
 DJANGO_50_PLUS = django.VERSION[:2] >= (5, 0)
 max_django = (5, 0)
 is_dev_version = django.VERSION[3:] and re.match('(alpha|beta|rc)', django.VERSION[3])
-if django.VERSION[:2] < (2, 0) or django.VERSION[:2] > max_django and not is_dev_version:
-    raise ImportError("Django version between 2.0 and 5.0 is required "
+if django.VERSION[:2] < (2, 1) or django.VERSION[:2] > max_django and not is_dev_version:
+    raise ImportError("Django version between 2.1 and 5.0 is required "
                       "for this django-salesforce.")
     # Usually three or more blocking issues can be expected by every
     # new major Django version. Strict check before support is better.

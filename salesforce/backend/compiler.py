@@ -17,7 +17,7 @@ from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import # required for activation of lookups
-from salesforce.backend import DJANGO_21_PLUS, DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS, DJANGO_42_PLUS
+from salesforce.backend import DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS, DJANGO_42_PLUS
 from salesforce.backend.utils import FullResultSet
 from salesforce.dbapi import DatabaseError
 from salesforce.dbapi.exceptions import SalesforceWarning
@@ -201,10 +201,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             extra_select, order_by, group_by = self.pre_sql_setup()
             if with_limits and self.query.low_mark == self.query.high_mark:
                 return '', ()
-            if DJANGO_21_PLUS:
-                distinct_fields, distinct_params = self.get_distinct()
-            else:
-                distinct_fields = self.get_distinct()  # type: ignore[assignment] # noqa
+            distinct_fields, distinct_params = self.get_distinct()
 
             # This must come after 'select', 'ordering', and 'distinct' -- see
             # docstring of get_from_clause() for details.
@@ -222,15 +219,12 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             result = ['SELECT']
 
             if self.query.distinct:
-                if DJANGO_21_PLUS:
-                    distinct_result, distinct_params = self.connection.ops.distinct_sql(
-                        distinct_fields,
-                        distinct_params,
-                    )
-                    result += distinct_result
-                    params += distinct_params
-                else:
-                    result.append(self.connection.ops.distinct_sql(distinct_fields))
+                distinct_result, distinct_params = self.connection.ops.distinct_sql(
+                    distinct_fields,
+                    distinct_params,
+                )
+                result += distinct_result
+                params += distinct_params
 
             out_cols = []
             col_idx = 1
@@ -278,7 +272,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
                         self.query.explain_info.format,    # type: ignore[attr-defined]
                         **self.query.explain_info.options  # type: ignore[attr-defined]
                     ))
-            elif DJANGO_21_PLUS:
+            else:
                 if self.query.explain_query:
                     result.insert(0, self.connection.ops.explain_query_prefix(
                         self.query.explain_format,
@@ -406,7 +400,7 @@ class SQLCompiler(sql_compiler.SQLCompiler):
 
 class SalesforceWhereNode(sql_where.WhereNode):
 
-    # patched "django.db.models.sql.where.WhereNode.as_sql" from Django 2.0, 2.1
+    # patched "django.db.models.sql.where.WhereNode.as_sql" from Django 2.1
     # pylint:disable=no-else-return,no-else-raise,too-many-branches,too-many-locals,unused-argument
     def as_salesforce(self, compiler: sql_compiler.SQLCompiler, connection) -> Tuple[str, List[Any]]:
         """

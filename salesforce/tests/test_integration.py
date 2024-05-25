@@ -22,7 +22,7 @@ from django.utils.crypto import get_random_string
 
 import salesforce
 from salesforce import router
-from salesforce.backend import DJANGO_21_PLUS, DJANGO_22_PLUS, DJANGO_50_PLUS
+from salesforce.backend import DJANGO_22_PLUS, DJANGO_50_PLUS
 from salesforce.backend.test_helpers import (  # noqa pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless, strtobool)
 from salesforce.backend.test_helpers import (
@@ -970,8 +970,7 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         values_list = Contact.objects.values_list('pk', 'first_name', 'last_name')[:2]
         self.assertEqual(len(values_list), 2)
         v0 = values[0]
-        # it is a list in Django 2.1, but a tuple in Django 2.0
-        self.assertEqual(list(values_list[0]), [v0['pk'], v0['first_name'], v0['last_name']])
+        self.assertEqual(values_list[0], (v0['pk'], v0['first_name'], v0['last_name']))
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
     def test_double_delete(self) -> None:
@@ -1282,7 +1281,6 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         """Test queryset with empty slice - if high/low limits equals"""
         self.assertEqual(len(Contact.objects.all()[1:1]), 0)
 
-    @skipUnless(DJANGO_21_PLUS, "Method .explain() is only in Django >= 2.1")
     @skipUnless(default_is_sf, "depends on Salesforce database.")
     def test_select_explan(self) -> None:
         """Test EXPLAIN SELECT ..."""

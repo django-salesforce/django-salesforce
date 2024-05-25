@@ -10,7 +10,7 @@ django-salesforce
 .. image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue.svg
    :target: https://www.python.org/
 
-.. image:: https://img.shields.io/badge/Django-2.0%2C%202.1%2C%202.2%20%7C%203.0%2C%203.1%20%2C%203.2%20%7C%204.0%2C%204.1%2C%204.2%20%7C%205.0-blue.svg
+.. image:: https://img.shields.io/badge/Django-2.1%2C%202.2%20%7C%203.0%2C%203.1%20%2C%203.2%20%7C%204.0%2C%204.1%2C%204.2%20%7C%205.0-blue.svg
    :target: https://www.djangoproject.com/
 
 This library allows you to load, edit and query the objects in any Salesforce instance
@@ -19,7 +19,7 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 3.8 to 3.12, Django 2.0 to 5.0. (Tested also with Python 3.13b1)
+Python 3.8 to 3.12, Django 2.1 to 5.0. (Tested also with Python 3.13b1)
 
 Use with Django 5.0 or 4.2(LTS) currently requires an enteprise license key DJSF_LICENSE_KEY
 until August 2024 unless you accept the AGPL license and install our otherwise identical
@@ -303,10 +303,10 @@ Backwards-incompatible changes
 
 The last most important:
 
+-  v5.0.2: Removed support for Python 3.7 and Django 2.0
+
 -  v4.2: Some new features or versions implemented after June 2023 can require a license key
    (sponsorship) or to accept the AGPL license. (AGPL is fine for exclusive open source
    contribution or for education, but impossible if you do not share all your
    source codes.)
    Removed support for Python 3.6
-
--  v4.0: Removed support for Python 3.5

@@ -16,6 +16,11 @@ experimental.
 [5.0.2] not released yet
 ------------------------
 * Change: Removed the old Python 3.7
+* Change: Removed the code for Django 2.0
+* Fixed many bugs in the query compiler in edge cases:...
+* Add: The query compiler is much more precise. Most of unsupported queries will
+  write a warning before they are incorrectly compiled.
+  No regression is known that a previously correct query would write a warning.
 * Add: Support for date and datetime lookup by year, quarter, month, day, week_day, hour
   e.g. group this year by month:
   .filter(date__year=2024).value('date__month').annotate(total=Sum('amount'))
