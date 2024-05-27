@@ -193,6 +193,14 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'  # not important for Salesforce, but for Django warnings
 
+# Django Debug Toolbar >= 4.4.0
+# Django changes the DEBUG setting to False when running tests.
+# By default the Django Debug Toolbar is installed because DEBUG is set to True.
+# For most cases, you need to avoid installing the toolbar when running tests.
+# If you feel this check is in error, you can set
+# `DEBUG_TOOLBAR_CONFIG['IS_RUNNING_TESTS'] = False` to bypass this check.
+DEBUG_TOOLBAR_CONFIG = {'IS_RUNNING_TESTS': False}
+
 DJSF_LICENSE_KEY = os.environ.get('DJSF_LICENSE_KEY', '')  # configure for enterprise features
 try:
     from salesforce.testrunner.local_settings import *  # noqa pylint:disable=unused-wildcard-import,wildcard-import
