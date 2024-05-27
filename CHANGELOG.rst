@@ -14,8 +14,8 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[5.0.2] not released yet
-------------------------
+[5.0.2] 2024-05-27
+------------------
 The main new features are in the improved query compiler
 
 * Remove: the old Python 3.7
