@@ -352,7 +352,6 @@ class CursorWrapper:
             return self.execute_tooling_update(query)
         table = query.model._meta.db_table
         post_data = extract_values(query)
-        self.our_fix_default(post_data)  # probably not necessary
         pks = self.get_pks_from_query(query)
         log.debug('UPDATE %s(%s)%r', table, pks, post_data)
         if not pks:
