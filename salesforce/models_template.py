@@ -21,6 +21,10 @@ Dynamic Models created by selection from
 
 
 """
+from salesforce.models import (  # NOQA pylint:disable=unused-import
+        NOT_UPDATEABLE as NOT_UPDATEABLE, NOT_CREATEABLE as NOT_CREATEABLE,
+        READ_ONLY as READ_ONLY, DO_NOTHING as DO_NOTHING,
+)
 from salesforce.models import *  # NOQA pylint:disable=unused-wildcard-import,wildcard-import
 from salesforce.backend.indep import LazyField
 import salesforce

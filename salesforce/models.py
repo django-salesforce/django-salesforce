@@ -28,7 +28,8 @@ from django.db.models import PROTECT, DO_NOTHING  # NOQA pylint:disable=unused-w
 from salesforce.defaults import DefaultedOnCreate, DEFAULTED_ON_CREATE
 from salesforce.fields import (
     SalesforceAutoField as SalesforceAutoField, SF_PK, SfField, ForeignKey as ForeignKey)
-from salesforce.fields import NOT_UPDATEABLE, NOT_CREATEABLE, READ_ONLY
+from salesforce.fields import (NOT_UPDATEABLE as NOT_UPDATEABLE, NOT_CREATEABLE as NOT_CREATEABLE,
+                               READ_ONLY as READ_ONLY)
 from salesforce.fields import (  # noqa pylint:disable=useless-import-alias  # for other modules, but unused here
     AutoField as AutoField, BigIntegerField as BigIntegerField, BooleanField as BooleanField,
     CharField as CharField, DateField as DateField, DateTimeField as DateTimeField,

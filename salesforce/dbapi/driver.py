@@ -24,10 +24,11 @@ from salesforce.auth import SalesforceAuth
 from salesforce.dbapi.common import get_max_retries, get_thread_connections, time_statistics as time_statistics
 from salesforce.dbapi.common import settings  # i.e. django.conf.settings
 from salesforce.dbapi.exceptions import (  # NOQA pylint: disable=unused-import
-    Error, InterfaceError as InterfaceError, DatabaseError as DatabaseError, DataError, OperationalError,
-    IntegrityError, InternalError, ProgrammingError, NotSupportedError, SalesforceError as SalesforceError,
-    SalesforceWarning, warn_sf,
-    FakeReq, FakeResp, GenResponse)
+    Error as Error, InterfaceError as InterfaceError, DatabaseError as DatabaseError, DataError as DataError,
+    OperationalError as OperationalError, IntegrityError as IntegrityError, InternalError as InternalError,
+    ProgrammingError as ProgrammingError, NotSupportedError as NotSupportedError,
+    SalesforceError as SalesforceError, SalesforceWarning as SalesforceWarning,
+    warn_sf, FakeReq, FakeResp, GenResponse)
 from salesforce.dbapi.subselect import QQuery, _TRow
 
 try:
