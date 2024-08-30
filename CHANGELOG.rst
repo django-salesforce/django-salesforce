@@ -13,10 +13,11 @@ but a new feature can be referred by a test name if not documented yet.
 Some items here can be marked as "internal": not ready enough or
 experimental.
 
-[...] Unpublished
------------------
+[5.1] 2024-08-31 ?
+------------------
 * The cursor rollback() method only reports a message that rollback does nothing only
   if settings.DATABASES['salesforce']['OPTIONS']['WARNING_ON_ROLLBACK'] == True
+
 
 [5.0.2] 2024-05-27
 ------------------

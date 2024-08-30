@@ -15,7 +15,7 @@ from salesforce.dbapi.exceptions import LicenseError
 
 
 def check_enterprise_license(  # pylint:disable=too-many-locals
-        msg: Optional[str] = None, required: int = 1, key: str = ''
+        msg: Optional[str] = None, required: int = 1, key: str = '', lts: bool = False
         ) -> None:
     """Check that a valid license key for the enterprise version exists"""
     key = key or getattr(settings, 'DJSF_LICENSE_KEY', '') or '//'
@@ -57,16 +57,22 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
     z = (z >> (8 * (2 + (z & 1 << 23 == 0)))) & 0x7fff
     if g != level or level > 3 or d:
         raise LicenseError("The enterprise license key is invalid")
-    if 32 & 1 << z:
+    if (8192 if lts else 9760) & 1 << z:
         raise LicenseError("This license key did not carry over to new packackage versions "
                            "after sponsorship ended.")
 
 
 def check_license_in_latest_django() -> None:
-    # example: Django 4.2 LTS will be unlocked together with Django 5.0 in August 2024
-    #          when Django 5.1 and Django-salesforce 5.1 is released.
-    first_half_of_lts_life = django.VERSION[0] == max_django[0] - 1 and django.VERSION[1] == 2 and max_django[1] == 0
-    if django.VERSION[:2] == max_django or first_half_of_lts_life:
+    # see:
+    #   https://github.com/django-salesforce/django-salesforce/wiki/Release-cycle-and-Licenses
+    # Django 5.0 is free in Django-salesforce 5.1
+    # Django 4.2 LTS starts to be free with Django-salesforce 5.2
+    last_django = django.VERSION[:2] == max_django
+    protected_lts = (django.VERSION[1] == 2 and django.VERSION[0] == max_django[0] - 1 and
+                     (max_django[1] == 1 or max_django[1] == 0 and django.VERSION[2:3] > [15]))
+    is_dev_version = django.VERSION[3:] and re.match('(alpha|beta|rc)', django.VERSION[3])
+    if (last_django or protected_lts) and not is_dev_version:
         check_enterprise_license(
             "License key is required for django-saleforce used with the last Django version "
-            "or in the first half of life of the last LTS version. (read about dual-license)")
+            "or in the first half of life of the last LTS version. (read about dual-license)",
+            lts=protected_lts)
