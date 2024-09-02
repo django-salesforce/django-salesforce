@@ -36,8 +36,7 @@ def get_tagged_version():
 def autosetup():
     from setuptools import setup, find_packages
 
-    with open(relative_path('requirements.txt'), 'r', newline=None) as f:
-        requirements_txt = f.read().split("\n")
+    sf_development = os.path.isfile('.djsf_development')
 
     with open(relative_path('README.rst'), 'r', newline=None) as f:
         long_description = f.read()
@@ -56,7 +55,11 @@ def autosetup():
         # setuptools won't auto-detect Git managed files without this
         setup_requires=[] if not with_git else ["setuptools_git >= 0.4.2"],
 
-        install_requires=['django>=2.1'] + requirements_txt,
+        install_requires=[
+            'django>=2.1' + (',<5.2' if not sf_development else ''),
+            'pytz>=2012c',
+            'requests>=2.32.0',
+        ],
 
         # metadata for upload to PyPI
         author="Hynek Cernoch",

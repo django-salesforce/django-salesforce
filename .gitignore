@@ -22,4 +22,5 @@ tests/inspectdb/dependent_model/models_template.py
 tests/tooling/models.py
 venv
 .env
+.djsf_development
 tests/x_*/

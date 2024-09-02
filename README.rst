@@ -19,7 +19,7 @@ for most uses. It works by integrating with the Django ORM, allowing access to
 the objects in your SFDC instance (Salesforce .com) as if they were in a
 traditional database.
 
-Python 3.8 to 3.12, Django 2.1 to 5.1. (Tested also with Python 3.13b1)
+Python 3.8 to 3.12, Django 2.1 to 5.1. (Tested also with Python 3.13rc1)
 
 Use with Django 5.1 or 4.2(LTS) requires currently an enteprise license key
 DJSF_LICENSE_KEY unless you accept the AGPL license and install our otherwise identical
