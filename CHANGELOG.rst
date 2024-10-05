@@ -13,10 +13,17 @@ but a new feature can be referred by a test name if not documented yet.
 Some items here can be marked as "internal": not ready enough or
 experimental.
 
-[5.1] 2024-08-31 ?
+[5.1] 2024-1%-08 ?
 ------------------
-* The cursor rollback() method only reports a message that rollback does nothing only
-  if settings.DATABASES['salesforce']['OPTIONS']['WARNING_ON_ROLLBACK'] == True
+* Add: Support for Django 5.1
+* Change: The cursor rollback() method log messages are silenced by default
+  because they are mostly anoying in tests. They can be enabled again if
+  ``settings.DATABASES['salesforce']['OPTIONS']['WARNING_ON_ROLLBACK'] == True``
+* Changes where users will not know a difference:
+  * Refactored the backend.query to use consistent data types internally.
+  * Checked a development version of Django is really used by "tox -e djdev"
+  * Fix introspection for Salesforce API 62.0 Winter '25
+    (skip introspection of ...Event object that is not a table)
 
 
 [5.0.2] 2024-05-27

@@ -24,7 +24,7 @@ Python 3.8 to 3.12, Django 2.1 to 5.1. (Tested also with Python 3.13rc1)
 Use with Django 5.1 or 4.2(LTS) requires currently an enteprise license key
 DJSF_LICENSE_KEY unless you accept the AGPL license and install our otherwise identical
 package "django-salesforce-agpl" instead. The license keys are available to sponsors.
-Both versions will be unlocked automatically in Django-salesforce 5.2 when a key will be
+Both versions will be free automatically in Django-salesforce 5.2 when a key will be
 required for Django 5.2. Use with pre-release Django versions is free.
 
 
