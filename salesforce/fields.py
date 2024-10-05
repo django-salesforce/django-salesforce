@@ -116,6 +116,14 @@ class SfField(models.Field):
             del kwargs['db_default']
         super().__init__(*args, **kwargs)
 
+    def deconstruct(self) -> Tuple[Any, Any, Any, Any]:
+        name, path, args, kwargs = super().deconstruct()
+        if self.name:
+            _, column = self.get_attname_column()
+            if '__' in column:
+                kwargs.setdefault('db_column', column)
+        return name, path, args, kwargs
+
     def get_attname_column(self) -> Tuple[str, str]:
         """
         Get the database column name automatically in most cases.
