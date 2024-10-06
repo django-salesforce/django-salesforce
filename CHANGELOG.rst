@@ -13,17 +13,17 @@ but a new feature can be referred by a test name if not documented yet.
 Some items here can be marked as "internal": not ready enough or
 experimental.
 
-[5.1] 2024-1%-08 ?
+[5.1] 2024-10-08 ?
 ------------------
 * Add: Support for Django 5.1
 * Change: The cursor rollback() method log messages are silenced by default
   because they are mostly anoying in tests. They can be enabled again if
   ``settings.DATABASES['salesforce']['OPTIONS']['WARNING_ON_ROLLBACK'] == True``
 * Changes where users will not know a difference:
+
   * Refactored the backend.query to use consistent data types internally.
   * Checked a development version of Django is really used by "tox -e djdev"
-  * Fix introspection for Salesforce API 62.0 Winter '25
-    (skip introspection of ...Event object that is not a table)
+  * Fix introspection for Salesforce API 62.0 Winter '25 (skip introspection of ...Event object that is not a table)
 
 
 [5.0.2] 2024-05-27
@@ -33,6 +33,7 @@ The main new features are in the improved query compiler
 * Remove: the old Python 3.7
 * Remove: the code for Django 2.0
 * Fix: many issues in the query compiler in edge cases:
+
   - fix a query with offset, but without a limit (NotImplementedError)
   - fix a '__range' lookup on a field of custom foreign key object (SalesforceError)
   - fix a '=null' lookup.  It worked probably always correctly, but the old implementation was different from  standard lookups. It made it impossible to distinguish it from unsupported queries

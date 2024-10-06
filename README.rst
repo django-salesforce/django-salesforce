@@ -10,7 +10,7 @@ django-salesforce
 .. image:: https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue.svg
    :target: https://www.python.org/
 
-.. image:: https://img.shields.io/badge/Django-2.1%2C%202.2%20%7C%203.0%2C%203.1%20%2C%203.2%20%7C%204.0%2C%204.1%2C%204.2%20%7C%205.0-blue.svg
+.. image:: https://img.shields.io/badge/Django-2.1%2C%202.2%20%7C%203.0%2C%203.1%20%2C%203.2%20%7C%204.0%2C%204.1%2C%204.2%20%7C%205.0%20%2C%205.0-blue.svg
    :target: https://www.djangoproject.com/
 
 This library allows you to load, edit and query the objects in any Salesforce instance
@@ -24,8 +24,10 @@ Python 3.8 to 3.12, Django 2.1 to 5.1. (Tested also with Python 3.13rc1)
 Use with Django 5.1 or 4.2(LTS) requires currently an enteprise license key
 DJSF_LICENSE_KEY unless you accept the AGPL license and install our otherwise identical
 package "django-salesforce-agpl" instead. The license keys are available to sponsors.
-Both versions will be free automatically in Django-salesforce 5.2 when a key will be
-required for Django 5.2. Use with pre-release Django versions is free.
+Use with a pre-release Django version is free.
+
+.. Both versions will be free automatically in Django-salesforce 5.2 when a key will be
+.. required for Django 5.2. Use with pre-release Django versions is free. see more in wiki
 
 
 Quick Start
