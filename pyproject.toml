@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-salesforce"
+dynamic = [
+    "version",
+    "dependencies"
+]
+requires-python = ">= 3.8"
+authors = [{name = "Hynek Cernoch", email="hynek@sdb.cz"}]
+maintainers = [{name = "Phil Christensen", email="phil@bubblehouse.org"}]
+description = "a Salesforce backend for Django's ORM"
+readme = "README.rst"
+license = {text = "MIT (or AGPL)"}
+keywords = ["django", "salesforce", "orm", "backend"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Framework :: Django",
+    "Programming Language :: Python"
+]
+
+[project.urls]
+Homepage = "https://github.com/django-salesforce/django-salesforce"
+Funding = "https://github.com/sponsors/hynekcer"
+Tracker = "https://github.com/django-salesforce/django-salesforce/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "salesforce.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["salesforce**"]
+exclude = ["salesforce.testrunner.example.migrations"]
