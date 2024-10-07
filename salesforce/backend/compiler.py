@@ -231,8 +231,11 @@ class SQLCompiler(sql_compiler.SQLCompiler):
             for _, (s_sql, s_params), alias in self.select + extra_select:
                 s_sql = self.sf_fix_field(s_sql)
                 if alias:
-                    # fixed by removing 'AS'
-                    s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
+                    # fixed by removing 'AS' for aggregate
+                    # alias is sometimes used in Django 5.2 also for normal fiels
+                    # in a non trivial compiler, but such alias must be ignored
+                    if s_sql.endswith(')'):
+                        s_sql = '%s %s' % (s_sql, self.connection.ops.quote_name(alias))
                 elif with_col_aliases:
                     s_sql = '%s AS %s' % (s_sql, 'Col%d' % col_idx)
                     col_idx += 1
