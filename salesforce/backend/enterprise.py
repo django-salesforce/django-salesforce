@@ -65,11 +65,13 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
 def check_license_in_latest_django() -> None:
     # see:
     #   https://github.com/django-salesforce/django-salesforce/wiki/Release-cycle-and-Licenses
-    # Django 5.0 is free in Django-salesforce 5.1
-    # Django 4.2 LTS starts to be free with Django-salesforce 5.2
+    # Django 5.0 is free in Django-salesforce >= 5.1
+    # Django 5.1 is free in Django-salesforce >= 5.2
+    # Django 5.2 LTS < 5.2.15 will free with Django-salesforce 6.0
+    # and all versions of Django 5.2 will be free in Django-salesforce 6.2
     last_django = django.VERSION[:2] == max_django
     protected_lts = (django.VERSION[1] == 2 and django.VERSION[0] == max_django[0] - 1 and
-                     (max_django[1] == 1 or max_django[1] == 0 and django.VERSION[2:3] > [15]))
+                     (max_django[1] == 1 or max_django[1] == 0 and django.VERSION[2:3] >= [15]))
     is_dev_version = django.VERSION[3:] and re.match('(alpha|beta|rc)', django.VERSION[3])
     if (last_django or protected_lts) and not is_dev_version:
         check_enterprise_license(
