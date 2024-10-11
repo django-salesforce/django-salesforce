@@ -13,8 +13,14 @@ but a new feature can be referred by a test name if not documented yet.
 Some items here can be marked as "internal": not ready enough or
 experimental.
 
-[5.1] 2024-10-08 ?
-------------------
+[5.1.1] Unpublished
+-------------------
+* Remove: the old Python 3.8
+* Remove: the old Django 2.1
+* Fix: query set with Django 5.2alpha
+
+[5.1] 2024-10-09
+----------------
 * Add: Support for Django 5.1
 * Change: The cursor rollback() method log messages are silenced by default
   because they are mostly anoying in tests. They can be enabled again if

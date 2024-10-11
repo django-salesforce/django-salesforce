@@ -6,7 +6,6 @@ from typing import List, Optional, Tuple
 from django.conf import settings
 from django.test import TestCase
 from salesforce import SalesforceError
-from salesforce.backend import DJANGO_22_PLUS
 from salesforce.backend.test_helpers import default_is_sf, skipUnless, expectedFailure
 from salesforce.testrunner.example.models import Campaign, CampaignMember, Contact
 
@@ -36,7 +35,6 @@ class BulkUpdateTest(TestCase):
         if SF_EXAMPLE_CUSTOM_INSTALLED and not Contact.objects.update(vs=None) >= 9:
             Contact.objects.bulk_create([Contact(last_name='sf_test {}'.format(i)) for i in range(9)])
 
-    @skipUnless(DJANGO_22_PLUS, "bulk_update() does not exist before Django 2.2.")
     @skipUnless(SF_EXAMPLE_CUSTOM_INSTALLED, "requires Salesforce customization")
     @skipUnless(default_is_sf, "depends on Salesforce database.")
     def setUp(self) -> None:

@@ -58,7 +58,6 @@ from salesforce.dbapi import driver
 from salesforce.dbapi.common import TimeStatistics
 from salesforce.dbapi.driver import SfSession
 from salesforce.dbapi.exceptions import DatabaseError
-from salesforce.backend import DJANGO_22_PLUS
 from salesforce.backend.test_helpers import sf_alias
 
 AnyResponse = Union[requests.models.Response, 'MockResponse']
@@ -264,10 +263,7 @@ class MockTestCase(SimpleTestCase):
     """
     Test case that uses recorded requests/responses instead of network
     """
-    if DJANGO_22_PLUS:
-        databases = {'salesforce'}  # type: Union[Set[str], str]
-    else:
-        allow_database_queries = True
+    databases = {'salesforce'}  # type: Union[Set[str], str]
 
     def setUp(self) -> None:
         # pylint:disable=protected-access

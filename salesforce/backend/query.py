@@ -18,7 +18,7 @@ from django.db.models.sql import where as sql_where
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
-from salesforce.backend import compiler, DJANGO_22_PLUS, DJANGO_30_PLUS, DJANGO_40_PLUS, DJANGO_41_PLUS
+from salesforce.backend import compiler, DJANGO_30_PLUS, DJANGO_40_PLUS, DJANGO_41_PLUS
 from salesforce.backend.models_sql_query import SalesforceQuery
 from salesforce.backend.operations import BULK_BATCH_SIZE
 from salesforce.router import is_sf_database
@@ -87,15 +87,13 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
                     update_fields: Optional[List[str]] = None,
                     unique_fields: Optional[List[str]] = None,
                     ) -> List[_T]:
-        # parameter 'ignore_conflicts=False' is new in Django 2.2
-        kwargs = {'ignore_conflicts': ignore_conflicts} if DJANGO_22_PLUS else {}
         assert not update_conflicts and update_fields is None and unique_fields is None
         if getattr(self.model, '_salesforce_object', '') == 'extended' and not is_sf_database(self.db):
             objs = list(objs)
             for x in objs:
                 if x.pk is None:
                     x.pk = get_sf_alt_pk()
-        return super().bulk_create(objs, batch_size=batch_size, **kwargs)
+        return super().bulk_create(objs, batch_size=batch_size, ignore_conflicts=ignore_conflicts)
 
     def bulk_update(self, objs: Iterable[Model], fields: 'typing.Collection[str]',  # pylint:disable=arguments-differ
                     batch_size: Optional[int] = None, all_or_none: bool = None):
@@ -162,7 +160,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             self.patch_insert_query(query)  # patch
             query.insert_values(fields, objs, raw=raw)
             return query.get_compiler(using=using).execute_sql(returning_fields)
-    elif DJANGO_22_PLUS:
+    else:
         def _insert(self, objs, fields,  # type: ignore[misc] # pylint:disable=arguments-differ
                     return_id=False, raw=False, using=None, ignore_conflicts=False):
             """
@@ -173,16 +171,6 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             if using is None:
                 using = self.db
             query = models.sql.InsertQuery(self.model, ignore_conflicts=ignore_conflicts)
-            self.patch_insert_query(query)  # patch
-            query.insert_values(fields, objs, raw=raw)
-            return query.get_compiler(using=using).execute_sql(return_id)
-    else:
-        def _insert(self, objs, fields, return_id=False,  # type: ignore[misc] # pylint:disable=arguments-differ
-                    raw=False, using=None):
-            self._for_write = True
-            if using is None:
-                using = self.db
-            query = models.sql.InsertQuery(self.model)
             self.patch_insert_query(query)  # patch
             query.insert_values(fields, objs, raw=raw)
             return query.get_compiler(using=using).execute_sql(return_id)

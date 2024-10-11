@@ -21,7 +21,7 @@ from django.db.backends.base.introspection import (
 from django.utils.text import camel_case_to_spaces
 from django.db.backends.utils import CursorWrapper as _Cursor  # for typing
 
-from salesforce.backend import DJANGO_22_PLUS, DJANGO_32_PLUS, DJANGO_50_PLUS
+from salesforce.backend import DJANGO_32_PLUS, DJANGO_50_PLUS
 import salesforce.fields
 
 log = logging.getLogger(__name__)
@@ -174,19 +174,9 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
 
     # -- standard methods
 
-    if DJANGO_22_PLUS:
-
-        def identifier_converter(self, name: str) -> str:
-            """A conversion to the identifier for the purposes of comparison."""
-            return name.lower()
-
-    else:
-
-        def table_name_converter(self, name: str) -> str:  # pylint:disable=no-self-use
-            return name.lower()
-
-        def column_name_converter(self, name: str) -> str:  # pylint:disable=no-self-use
-            return name.lower()
+    def identifier_converter(self, name: str) -> str:
+        """A conversion to the identifier for the purposes of comparison."""
+        return name.lower()
 
     def get_table_list(self, cursor: _Cursor) -> List[TableInfo]:
         "Returns a list of table names in the current database."

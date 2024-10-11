@@ -56,7 +56,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # setting for Oracle, while Salesforce saves nulls as empty strings not vice
     # versa.
 
-    supports_partial_indexes = False  # Django 2.2+
+    supports_partial_indexes = False
     supports_table_check_constraints = False
 
     can_introspect_json_field = False  # Django 3.1+

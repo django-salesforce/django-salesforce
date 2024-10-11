@@ -103,10 +103,9 @@ class Command(InspectDBCommand):
             new_name, field_params, field_notes = super().normalize_col_name(col_name, used_column_names, is_relation)
         return new_name, field_params, field_notes
 
-    # the parameter 'is_view' has been since Django 2.1 and 'is_partition' since Django 2.2
     # the parameter 'comment' added in Django 4.2
-    def get_meta(self, table_name: str, constraints: Any = None, column_to_field_name: Dict[str, str] = None,
-                 is_view: bool = False, is_partition: bool = False, comment: Optional[str] = None) -> List[str]:
+    def get_meta(self, table_name: str, constraints: Any, column_to_field_name: Dict[str, str],
+                 is_view: bool, is_partition: bool, comment: Optional[str] = None) -> List[str]:
         """
         Return a sequence comprising the lines of code necessary
         to construct the inner Meta class for the model corresponding

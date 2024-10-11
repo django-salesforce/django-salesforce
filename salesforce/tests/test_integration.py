@@ -22,7 +22,7 @@ from django.utils.crypto import get_random_string
 
 import salesforce
 from salesforce import router
-from salesforce.backend import DJANGO_22_PLUS, DJANGO_50_PLUS
+from salesforce.backend import DJANGO_50_PLUS
 from salesforce.backend.test_helpers import (  # noqa pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless, strtobool)
 from salesforce.backend.test_helpers import (
@@ -1423,8 +1423,7 @@ class BasicLeadSOQLTest(TestCase):
         count_deleted2 = Lead.objects.filter(IsDeleted=True, LastName="Unittest General").query_all().count()
         self.assertGreaterEqual(count_deleted2, count_deleted)
 
-        if DJANGO_22_PLUS:
-            self.test_lead.pk = None
+        self.test_lead.pk = None
         self.test_lead.save()  # save anything again to be cleaned finally
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
