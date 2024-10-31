@@ -282,9 +282,6 @@ class SalesforcePasswordAuth(StaticGlobalAuth):
         url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
 
         log.info("authentication to %s as %s", settings_dict['HOST'], settings_dict['USER'])
-        if settings_dict['HOST'] not in self._session.adapters:
-            # a repeated mount to the same prefix would cause a warning about unclosed SSL socket
-            self._session.mount(settings_dict['HOST'], HTTPAdapter(max_retries=get_max_retries()))
         auth_params = {
             'grant_type':    'password',
             'client_id':     settings_dict['CONSUMER_KEY'],
@@ -293,7 +290,11 @@ class SalesforcePasswordAuth(StaticGlobalAuth):
             'password':      settings_dict['PASSWORD'],
         }
         time_statistics.update_callback(url, self.ping_connection)
-        response = self._session.post(url, data=auth_params)
+        try:
+            response = self._session.post(url, data=auth_params, timeout=3)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as exc:
+            log.info(f"Login: network error db={self.db_alias}: {exc}")
+            response = self._session.post(url, data=auth_params, timeout=6)
         return self.checked_auth_response(response)
 
     def ping_connection(self) -> None:
