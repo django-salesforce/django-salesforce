@@ -19,11 +19,11 @@ class Test(unittest.TestCase):
 
 class OAuthTest(unittest.TestCase):
 
-    def validate_oauth(self, settings_dict):
+    def validate_oauth(self, auth_dict):
         for key in ('access_token', 'id', 'instance_url', 'issued_at', 'signature'):
-            if key not in settings_dict:
+            if key not in auth_dict:
                 self.fail("Missing %s key in returned oauth data." % key)
-            elif not settings_dict[key]:
+            elif not auth_dict[key]:
                 self.fail("Empty value for %s key in returned oauth data." % key)
 
     def test_token_renewal(self):
@@ -33,6 +33,8 @@ class OAuthTest(unittest.TestCase):
 
         auth_obj = auth.SalesforcePasswordAuth(sf_alias, settings_dict=settings_dict,
                                                _session=_session)
+        if settings_dict.get('AUTH') == 'salesforce.auth.SimpleSfPasswordAuth':
+            auth_obj.del_token()
         auth_obj.get_auth()
         self.validate_oauth(auth.oauth_data[sf_alias])
         old_data = auth.oauth_data
