@@ -135,6 +135,8 @@ def run():
         'ExternalClientAppSettings',  # JSON_PARSER_ERROR
         'FieldMappingField',  # INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST
         'StaticResource',  # FIELD_INTEGRITY_EXCEPTION
+        # in API 63.0 Spring '25
+        'IncidentMgmtSettings',  # JSON_PARSER_ERROR
     }
 
     #  FIELD_INTEGRITY_EXCEPTION

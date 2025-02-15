@@ -51,6 +51,7 @@ PROBLEMATIC_OBJECTS = [
     'EmailBounceEvent',  # new in API 60.0 Spring '24 (no 'Id' field)
     'MLEngagementEvent',  # new in API 61.0 Summer '24 (no 'Id' field)
     'EvaluationJobResultEvent',  # new in API 62.0 Winter '25 (no 'Id' field)
+    'AnalyticsTaskStatusEvent',  # new in API 63.0 Spring '25 (no 'Id' field)
 ]
 
 # this global variable is for `salesforce.management.commands.inspectdb`
