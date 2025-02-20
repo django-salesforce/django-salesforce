@@ -12,16 +12,22 @@ import re
 import warnings
 from django.core.exceptions import EmptyResultSet
 from django.db import NotSupportedError
-from django.db.models.sql import compiler as sql_compiler, where as sql_where, constants, datastructures
+from django.db.models.sql import compiler as sql_compiler, where as sql_where, datastructures
+from django.db.models.sql.constants import CURSOR, GET_ITERATOR_CHUNK_SIZE, MULTI, NO_RESULTS, SINGLE
 from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import # required for activation of lookups
-from salesforce.backend import DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS, DJANGO_42_PLUS
+from salesforce.backend import DJANGO_30_PLUS, DJANGO_31_PLUS, DJANGO_40_PLUS, DJANGO_42_PLUS, DJANGO_52_PLUS
 from salesforce.backend.utils import FullResultSet
 from salesforce.dbapi import DatabaseError
 from salesforce.dbapi.exceptions import SalesforceWarning
 # pylint:disable=no-else-return,too-many-branches,too-many-locals
+
+if DJANGO_52_PLUS:
+    from django.db.models.sql.constants import ROW_COUNT  # type: ignore[attr-defined]
+else:
+    ROW_COUNT = "row count"
 
 AliasMapItems = List[Tuple[
     Optional[str],
@@ -132,9 +138,9 @@ class SQLCompiler(sql_compiler.SQLCompiler):
 
     # patched and simplified the parend method  # pylint:disable=no-else-return
     def execute_sql(self,
-                    result_type: str = constants.MULTI,
+                    result_type: str = MULTI,
                     chunked_fetch: bool = False,
-                    chunk_size: int = constants.GET_ITERATOR_CHUNK_SIZE
+                    chunk_size: int = GET_ITERATOR_CHUNK_SIZE
                     ) -> Any:
         """
         Run the query against the database and returns the result(s). The
@@ -148,12 +154,13 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         is needed, as the filters describe an empty set. In that case, None is
         returned, to avoid any unnecessary database interaction.
         """
+        result_type = result_type or NO_RESULTS
         try:
             sql, params = self.as_sql()
             if not sql:
                 raise EmptyResultSet
         except EmptyResultSet:
-            if result_type == constants.MULTI:
+            if result_type == MULTI:
                 return iter([])
             else:
                 return
@@ -165,8 +172,21 @@ class SQLCompiler(sql_compiler.SQLCompiler):
         if not result_type or result_type == 'cursor':
             return cursor
 
-        if result_type == constants.SINGLE:
-            return cursor.fetchone()
+        if result_type == ROW_COUNT:
+            try:
+                return cursor.rowcount
+            finally:
+                cursor.close()
+        if result_type == CURSOR:
+            # Give the caller the cursor to process and close.
+            return cursor
+        if result_type == SINGLE:
+            val = cursor.fetchone()
+            cursor.close()
+            return val
+        if result_type == NO_RESULTS:
+            cursor.close()
+            return
 
         # The MULTI case.
         result: Iterable[Any] = iter(lambda: cursor.fetchmany(chunk_size),
