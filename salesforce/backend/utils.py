@@ -362,12 +362,15 @@ class CursorWrapper:
         obj_url = self.db.connection.rest_api_url('sobjects', table, '', relative=True)
         if len(pks) == 1:
             # single request
+            self.our_fix_default(post_data)
             ret = self.handle_api_exceptions('PATCH', obj_url + pks[0], json=post_data)
             self.rowcount = 1
             return ret
         if self.db.connection.composite_type == 'sobject-collections':
             # SObject Collections
             records = [merge_dict(post_data, id=pk, type_=table) for pk in pks]
+            for item in records:
+                self.our_fix_default(item)
             all_or_none = query.sf_params.all_or_none
             ret = self.db.connection.sobject_collections_request('PATCH', records, all_or_none=all_or_none)
             self.lastrowid = ret
