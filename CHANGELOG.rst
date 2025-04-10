@@ -13,8 +13,9 @@ but a new feature can be referred by a test name if not documented yet.
 Some items here can be marked as "internal": not ready enough or
 experimental.
 
+
 [5.2] Unpublished
--------------------
+-----------------
 * Remove: the old Python 3.8 code
 * Remove: the old Django 2.1 code
 * Fix: queryset with Django 5.2
@@ -24,6 +25,7 @@ experimental.
 * Fix: Stable field names for custom fields in a local database #250
 * Fix: Recovery from some possible network issue in Login
 * Update: Salesforce API 63.0 Spring '25
+
 
 [5.1] 2024-10-09
 ----------------

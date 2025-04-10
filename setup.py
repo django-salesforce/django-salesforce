@@ -5,7 +5,7 @@ import setuptools
 sf_development = os.path.isfile('.djsf_development')
 setuptools.setup(
     install_requires=[
-        'django>=2.2' + (',<5.2' if not sf_development else ''),
+        'django>=2.2' + (',<6.0' if not sf_development else ''),
         'pytz>=2012c',
         'requests>=2.32.0',
     ],

@@ -30,7 +30,7 @@ jobs:
         python${{ matrix.python-version }} -V
         pip install --upgrade pip
         pip install tox
-        touch .djsf_development
+        # touch .djsf_development
         # this should be used only for a capitalized primary key 'Id' with migrations
         # sed -i -e "s/'id', salesforce/'Id', salesforce/" salesforce/testrunner/example/migrations/0*.py
     - name: Run Tests
