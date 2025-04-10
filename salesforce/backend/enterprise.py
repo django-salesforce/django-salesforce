@@ -57,7 +57,7 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
     z = (z >> (8 * (2 + (z & 1 << 23 == 0)))) & 0x7fff
     if g != level or level > 3 or d:
         raise LicenseError("The enterprise license key is invalid")
-    if (8192 if lts else 9760) & 1 << z:
+    if (484896 if lts else 484896) & 1 << z:
         raise LicenseError("This license key did not carry over to new packackage versions "
                            "after sponsorship ended.")
 

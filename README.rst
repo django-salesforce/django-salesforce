@@ -305,7 +305,7 @@ Backwards-incompatible changes
 
 The last most important:
 
--  v5.1.1: Removed support for Python 3.8 and Django 2.1
+-  v5.2: Removed support for Python 3.8 and Django 2.1
 -  v5.0.2: Removed support for Python 3.7 and Django 2.0
 
 -  v4.2: Some new features or versions implemented after June 2023 can require a license key
