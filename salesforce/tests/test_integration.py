@@ -321,7 +321,8 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
         finally:
             contact.delete()
 
-    @skipUnless(default_is_sf and DJANGO_50_PLUS, "Default database should be any Salesforce.")
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    @skipUnless(DJANGO_50_PLUS, "Django >= 5.0 is required for the test.")
     def test_default_specified_by_sf(self) -> None:
         """Verify insert of object with a field with default value on create by SF.
 
@@ -410,16 +411,19 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             test_lead.delete()
 
     @skipUnless(default_is_sf, "Default database should be any Salesforce.")
-    def test_double_save(self) -> None:
-        """Double save without refresh of an object with a DEFAULTED_ON_CREATE
-        field should not cause a problem.
+    def test_double_save_default(self) -> None:
+        """Double save without refresh of a field with default=DEFAULTED_ON_CREATE
+
+        This should write a warning but not cause a problem.
         """
         oppo = Opportunity(name='test op', stage='Prospecting', close_date=datetime.date.today())
         try:
             oppo.save()
-            with self.assertWarns(SalesforceWarning):
+            with self.assertWarns(SalesforceWarning) as cm:
                 # should save a DEFAULTED_ON_CREATE field 'probability' on update, but with warning
                 oppo.save()
+                message = cm.warnings[0].message
+                self.assertIn("saved again with DEFAULTED_ON_CREATE value", message.args[0])
 
             oppo.save(update_fields=['name', 'stage'])
             with self.assertWarns(SalesforceWarning):
@@ -430,6 +434,18 @@ class BasicSOQLRoTest(TestCase, LazyTestMixin):
             oppo.save()
         finally:
             oppo.delete()
+
+    @skipUnless(default_is_sf, "Default database should be any Salesforce.")
+    @skipUnless(DJANGO_50_PLUS, "Django >= 5.0 is required for db_default fields")
+    def test_double_save_db_default(self) -> None:
+        """Double save without refresh of a field with db_default=DEFAULTED_ON_CREATE
+        """
+        contact = Contact(last_name='sf_test')
+        try:
+            contact.save()
+            contact.save()
+        finally:
+            contact.delete()
 
     def test_delete(self) -> None:
         """Create a lead record, then delete it, and make sure it's gone.
