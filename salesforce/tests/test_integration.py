@@ -22,7 +22,7 @@ from django.utils.crypto import get_random_string
 
 import salesforce
 from salesforce import router
-from salesforce.backend import DJANGO_50_PLUS
+from salesforce.backend import DJANGO_50_PLUS, DJANGO_60_PLUS
 from salesforce.backend.test_helpers import (  # noqa pylint:disable=unused-import
     expectedFailure, expectedFailureIf, skip, skipUnless, strtobool)
 from salesforce.backend.test_helpers import (
@@ -1413,6 +1413,9 @@ class BasicLeadSOQLTest(TestCase):
     def test_query_all_deleted(self) -> None:
         """Test query for deleted objects (queryAll resource).
         """
+        if DJANGO_60_PLUS:
+            # the refresh of values with DEFAULTED_ON_CREATE is important in Django 6.0
+            self.test_lead = refresh(self.test_lead)
         self.test_lead.delete()
         # TODO optimize counting because this can load thousands of records
         count_deleted = Lead.objects.db_manager(sf_alias).query_all(
