@@ -11,7 +11,7 @@ import itertools
 import warnings
 
 from django.db.backends.base.operations import BaseDatabaseOperations
-from salesforce.backend import DJANGO_41_PLUS
+from salesforce.backend import DJANGO_41_PLUS, DJANGO_60_PLUS
 from salesforce.dbapi.exceptions import SalesforceWarning
 
 BULK_BATCH_SIZE = 200
@@ -40,13 +40,21 @@ class DatabaseOperations(BaseDatabaseOperations):  # pylint:disable=too-many-pub
         return name
 
     def fetch_returned_insert_columns(self, cursor, returning_params):
+        # this is for Django >=3.0,<6.0 but I use it also for 6.0
         return (cursor.lastrowid,)
 
-    def fetch_returned_insert_rows(self, cursor):
-        return [(x,) for x in cursor.lastrowid]
+    if DJANGO_60_PLUS:
+        def fetch_returned_rows(self, cursor, returning_params):
+            return [(x,) for x in cursor.lastrowid]
 
-    def return_insert_columns(self, fields):
-        return '', ()  # dummy result
+        def returning_columns(self, fields):
+            return '', ()  # dummy result
+    else:
+        def fetch_returned_insert_rows(self, cursor):
+            return [(x,) for x in cursor.lastrowid]
+
+        def return_insert_columns(self, fields):
+            return '', ()  # dummy result
 
     def max_in_list_size(self) -> Optional[int]:
         # A non-zero return value of max_in_list_size() should be never used

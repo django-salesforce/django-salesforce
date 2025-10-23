@@ -18,7 +18,7 @@ from django.db.models.sql.where import AND
 from django.db.transaction import TransactionManagementError
 
 import salesforce.backend.models_lookups   # noqa pylint:disable=unused-import # required for activation of lookups
-from salesforce.backend import DJANGO_40_PLUS, DJANGO_42_PLUS, DJANGO_52_PLUS
+from salesforce.backend import DJANGO_40_PLUS, DJANGO_42_PLUS, DJANGO_52_PLUS, DJANGO_60_PLUS
 from salesforce.backend.utils import FullResultSet
 from salesforce.dbapi import DatabaseError
 from salesforce.dbapi.exceptions import SalesforceWarning
@@ -522,7 +522,10 @@ class SQLInsertCompiler(sql_compiler.SQLInsertCompiler, SQLCompiler):  # type: i
             if not self.returning_fields:
                 return []
             if self.connection.features.can_return_rows_from_bulk_insert and len(self.query.objs) > 1:
-                return self.connection.ops.fetch_returned_insert_rows(cursor)
+                if DJANGO_60_PLUS:
+                    return self.connection.ops.fetch_returned_rows(cursor, self.returning_params)
+                else:
+                    return self.connection.ops.fetch_returned_insert_rows(cursor)
             if self.connection.features.can_return_columns_from_insert:
                 assert len(self.query.objs) == 1
                 return [self.connection.ops.fetch_returned_insert_columns(cursor, self.returning_params)]
