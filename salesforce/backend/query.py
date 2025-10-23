@@ -18,7 +18,7 @@ from django.db.models.sql import where as sql_where
 import django
 
 from salesforce.backend.indep import get_sf_alt_pk
-from salesforce.backend import compiler, DJANGO_30_PLUS, DJANGO_40_PLUS, DJANGO_41_PLUS
+from salesforce.backend import compiler, DJANGO_40_PLUS, DJANGO_41_PLUS
 from salesforce.backend.models_sql_query import SalesforceQuery
 from salesforce.backend.operations import BULK_BATCH_SIZE
 from salesforce.router import is_sf_database
@@ -150,7 +150,7 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             self.patch_insert_query(query)  # patch
             query.insert_values(fields, objs, raw=raw)
             return query.get_compiler(using=using).execute_sql(returning_fields)
-    elif DJANGO_30_PLUS:
+    else:
         def _insert(self, objs, fields,  # type: ignore[misc] # pylint:disable=arguments-differ
                     returning_fields=None, raw=False, using=None, ignore_conflicts=False):
             self._for_write = True
@@ -160,20 +160,6 @@ class SalesforceQuerySet(models_query.QuerySet, Generic[_T]):
             self.patch_insert_query(query)  # patch
             query.insert_values(fields, objs, raw=raw)
             return query.get_compiler(using=using).execute_sql(returning_fields)
-    else:
-        def _insert(self, objs, fields,  # type: ignore[misc] # pylint:disable=arguments-differ
-                    return_id=False, raw=False, using=None, ignore_conflicts=False):
-            """
-            Insert a new record for the given model. This provides an interface to
-            the InsertQuery class and is how Model.save() is implemented.
-            """
-            self._for_write = True
-            if using is None:
-                using = self.db
-            query = models.sql.InsertQuery(self.model, ignore_conflicts=ignore_conflicts)
-            self.patch_insert_query(query)  # patch
-            query.insert_values(fields, objs, raw=raw)
-            return query.get_compiler(using=using).execute_sql(return_id)
     _insert.alters_data = True  # type: ignore[attr-defined]  # noqa
     _insert.queryset_only = False  # type: ignore[attr-defined]  # noqa
 

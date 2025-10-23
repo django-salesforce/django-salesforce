@@ -11,13 +11,13 @@ import decimal
 import logging
 import warnings
 from itertools import islice
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple, TypeVar, Union, overload
+from typing import Any, Dict, Iterable, Iterator, List, Tuple, TypeVar
 
 from django.db import models
 from django.db.models import expressions as db_expressions
 from django.db.models.sql import subqueries, Query, RawQuery
 
-from salesforce.backend import DJANGO_30_PLUS, DJANGO_42_PLUS, DJANGO_50_PLUS
+from salesforce.backend import DJANGO_42_PLUS, DJANGO_50_PLUS
 from salesforce.dbapi.driver import (
     DatabaseError, SalesforceWarning, merge_dict,
     register_conversion, arg_to_json)
@@ -31,34 +31,6 @@ else:
 
 
 V = TypeVar('V')
-if not DJANGO_30_PLUS:
-    # a "do nothing" stub for Django < 3.0, where is no decorator @async_unsafe
-    F = TypeVar('F', bound=Callable)
-    F2 = TypeVar('F2', bound=Callable)
-
-    @overload
-    def async_unsafe(message: F) -> F:
-        ...
-
-    @overload
-    def async_unsafe(message: str) -> Callable[[F2], F2]:
-        ...
-
-    def async_unsafe(message: Union[F, str]) -> Union[F, Callable[[F2], F2]]:
-        def decorator(func: F2) -> F2:
-            return func
-
-        # If the message is actually a function, then be a no-arguments decorator.
-        if callable(message):
-            func = message
-            message = 'You cannot call this from an async context - use a thread or sync_to_async.'
-            return decorator(func)
-        return decorator
-else:
-
-    from django.utils.asyncio import (  # type: ignore[import,no-redef] # noqa pylint:disable=unused-import,ungrouped-imports
-        async_unsafe
-    )
 
 log = logging.getLogger(__name__)
 

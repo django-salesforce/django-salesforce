@@ -9,7 +9,6 @@ from django.test.utils import override_settings
 
 from .models import Account, Contact, Unreal
 from tests.test_mock.mocksf import MockJsonRequest, MockRequest, MockTestCase  # mock
-from salesforce.backend import DJANGO_30_PLUS
 from salesforce.dbapi.exceptions import SalesforceError
 
 
@@ -36,7 +35,6 @@ class TestMock(MockTestCase):
     @override_settings(SF_MOCK_MODE='playback')
     def test_simple_crud_replay(self) -> None:
         """Replay the recorded commands and verify that also requests are exactly repeated"""
-        optional_sql = '+LIMIT+21' if DJANGO_30_PLUS else ''
         self.mock_add_expected([
             MockJsonRequest(
                 "POST mock:///services/data/v51.0/sobjects/Account",
@@ -45,7 +43,7 @@ class TestMock(MockTestCase):
                 status_code=201),
             MockJsonRequest(
                 "GET mock:///services/data/v51.0/query/?q=SELECT+Account.Id%2C+Account.Name%2C+Account.OwnerId+"
-                "FROM+Account+WHERE+Account.Id+%3D+%27001M000001FgVKlIAN%27" + optional_sql,
+                "FROM+Account+WHERE+Account.Id+%3D+%27001M000001FgVKlIAN%27+LIMIT+21",
                 resp='{"totalSize":1,"done":true,"records":['
                 '{"attributes":{"type":"Account","url":"/services/data/v51.0/sobjects/Account/001M000001FgVKlIAN"},'
                 '"Id":"001M000001FgVKlIAN","Name":"a","OwnerId":"005M0000007whduIAA"}]}'),

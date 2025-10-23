@@ -2,7 +2,6 @@
 Database features  (like django.db.backends.*.features)
 """
 from django.db.backends.base.features import BaseDatabaseFeatures
-from salesforce.backend import DJANGO_30_PLUS
 
 
 class DatabaseFeatures(BaseDatabaseFeatures):
@@ -30,12 +29,8 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     # features for Django 3.0
     can_create_inline_fk = False
 
-    if DJANGO_30_PLUS:
-        can_return_columns_from_insert = True
-        can_return_rows_from_bulk_insert = True
-    else:
-        can_return_id_from_insert = True
-        can_return_ids_from_bulk_insert = True
+    can_return_columns_from_insert = True
+    can_return_rows_from_bulk_insert = True
 
     # TODO These options are the only from Django 2.2 that can be useful
     #      for something implemented here in future: Atomic, SFDX

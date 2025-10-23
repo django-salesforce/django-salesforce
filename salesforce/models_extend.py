@@ -24,7 +24,6 @@ from typing import Any, Generic, TYPE_CHECKING
 from django.db import models, router
 from django.db.backends.base.base import BaseDatabaseWrapper as DatabaseWrapper
 
-from salesforce.backend import DJANGO_30_PLUS
 from salesforce.backend.indep import get_sf_alt_pk
 from salesforce.models import *  # NOQA; pylint:disable=wildcard-import,unused-wildcard-import
 from salesforce.models import SalesforceAutoField, SalesforceModelBase, SF_PK, _T
@@ -96,10 +95,8 @@ else:
             if not isinstance(self.pk, str):
                 raise ValueError("The primary key value is not assigned correctly")
 
-        if DJANGO_30_PLUS:
-
-            def _do_insert(self, manager, using, fields, returning_fields, raw):  # pylint:disable=redefined-outer-name
-                # the check "is_sf_database(using)" is used for something unexpected
-                if self.pk and not is_sf_database(using):
-                    returning_fields = []
-                return super()._do_insert(manager, using, fields, returning_fields, raw)
+        def _do_insert(self, manager, using, fields, returning_fields, raw):  # pylint:disable=redefined-outer-name
+            # the check "is_sf_database(using)" is used for something unexpected
+            if self.pk and not is_sf_database(using):
+                returning_fields = []
+            return super()._do_insert(manager, using, fields, returning_fields, raw)

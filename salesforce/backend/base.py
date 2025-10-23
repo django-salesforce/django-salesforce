@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from django.conf import settings
 from django.db.backends.base.base import BaseDatabaseWrapper
+from django.utils.asyncio import async_unsafe
 
 from salesforce.backend import enterprise
 from salesforce.backend.client import DatabaseClient
@@ -22,7 +23,7 @@ from salesforce.backend.operations import DatabaseOperations
 from salesforce.backend.introspection import DatabaseIntrospection
 from salesforce.backend.schema import DatabaseSchemaEditor
 # from django.db.backends.signals import connection_created
-from salesforce.backend.utils import CursorWrapper, async_unsafe
+from salesforce.backend.utils import CursorWrapper
 from salesforce.dbapi import driver as Database
 from salesforce.dbapi.driver import IntegrityError, DatabaseError, SalesforceError  # NOQA pylint:disable=unused-import
 

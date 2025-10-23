@@ -7,8 +7,6 @@ from typing import Dict
 import os
 import re
 import unittest
-from salesforce.backend import DJANGO_30_PLUS
-from salesforce.backend.test_helpers import expectedFailureIf
 
 
 def relative_path(path: str) -> str:
@@ -87,7 +85,6 @@ class ExportedModelTest(unittest.TestCase):
         line = self.match_line('    created_by = ', classes_texts['Opportunity'])
         self.assertNotIn('Master Detail Relationship', line)
 
-    @expectedFailureIf(not DJANGO_30_PLUS)
     def test_one_to_one_field_introspection(self) -> None:
         """Test that OneToOneField is correctly introspected"""
         self.assertTrue(any(('= models.OneToOneField(' in text) for text in classes_texts.values()))
