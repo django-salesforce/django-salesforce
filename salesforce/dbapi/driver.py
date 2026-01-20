@@ -869,7 +869,7 @@ def quoted_string_literal(txt: str) -> str:
     """
     try:
         return "'%s'" % (txt.replace("\\", "\\\\").replace("'", "\\'"),)
-    except TypeError:
+    except (TypeError, AttributeError):
         raise NotSupportedError("Cannot quote %r objects: %r" % (type(txt), txt))
 
 

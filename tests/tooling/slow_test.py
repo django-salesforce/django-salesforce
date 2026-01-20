@@ -136,7 +136,8 @@ def run():
         'FieldMappingField',  # INVALID_OR_NULL_FOR_RESTRICTED_PICKLIST
         'StaticResource',  # FIELD_INTEGRITY_EXCEPTION
         # in API 63.0 Spring '25
-        'IncidentMgmtSettings',  # JSON_PARSER_ERROR
+        'CommerceSettings', 'IncidentMgmtSettings',  # JSON_PARSER_ERROR (because everything is readonly)
+        # in API 66.0 Spring '26
     }
 
     #  FIELD_INTEGRITY_EXCEPTION

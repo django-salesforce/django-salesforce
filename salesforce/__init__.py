@@ -13,8 +13,8 @@ import logging
 
 # Default version of Force.com API.
 # It can be customized by settings.DATABASES['salesforce']['API_VERSION']
-# API_VERSION = '63.0'  # Spring '25
 API_VERSION = '65.0'  # Winter '26
+# API_VERSION = '66.0'  # Spring '26  (enable after Feb 20, 2026)
 
 from salesforce.dbapi.exceptions import (  # NOQA pylint:disable=unused-import,useless-import-alias,wrong-import-position
     IntegrityError as IntegrityError, DatabaseError as DatabaseError, SalesforceError as SalesforceError,

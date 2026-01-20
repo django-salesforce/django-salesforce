@@ -44,6 +44,8 @@ def run():
         'ContentDocumentLink', 'ContentFolderItem', 'ContentFolderMember', 'IdeaComment', 'Vote',
         # special
         'django_migrations',
+        # requires 'ContentVersionId' in the query (API 66.0 Spring '26)
+        'ContentVersionRenditionContent',
         }
     problematic_write = {
         # Cannot modify managed objects
