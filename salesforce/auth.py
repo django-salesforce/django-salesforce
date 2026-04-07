@@ -262,7 +262,7 @@ class DynamicAuth(SalesforceAuth):
 
 # === second, third, fourth... subclass levels
 
-# --- Pasword
+# --- Password
 
 class SalesforcePasswordAuth(StaticGlobalAuth):
     """
@@ -635,6 +635,45 @@ class RefreshTokenAuth(StaticGlobalAuth):
         response = requests.post(url, data=data, headers=headers)
         auth_data = self.checked_auth_response(response)
         return auth_data
+
+
+class SalesforceClientCredentialsAuth(StaticGlobalAuth):
+    """
+    Attaches "OAuth 2.0 Salesforce Client Credentials authentication" to the `requests` Session
+
+    Static auth data are cached thread safely between threads. Thread safety
+    is provided by the ancestor class.
+    """
+
+    required_fields = ['HOST', 'CONSUMER_KEY', 'CONSUMER_SECRET']
+
+    def authenticate(self) -> Dict[str, str]:
+        """
+        Authenticate to the Salesforce API with the provided credentials (password).
+        """
+        settings_dict = self.settings_dict
+        url = ''.join([settings_dict['HOST'], '/services/oauth2/token'])
+
+        log.info("authentication to %s", settings_dict['HOST'])
+        auth_params = {
+            'grant_type':    'client_credentials',
+            'client_id':     settings_dict['CONSUMER_KEY'],
+            'client_secret': settings_dict['CONSUMER_SECRET'],
+        }
+        time_statistics.update_callback(url, self.ping_connection)
+        try:
+            response = self._session.post(url, data=auth_params, timeout=3)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as exc:
+            log.info(f"Login: network error db={self.db_alias}: {exc}")
+            response = self._session.post(url, data=auth_params, timeout=6)
+        return self.checked_auth_response(response)
+
+    def ping_connection(self) -> None:
+        try:
+            self._session.get(self.settings_dict['HOST'], timeout=1.0)
+        except requests.exceptions.RequestException:
+            pass
+
 
 
 # -- special internal auth (for tests)
