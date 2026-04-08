@@ -57,7 +57,7 @@ def check_enterprise_license(  # pylint:disable=too-many-locals
     z = (z >> (8 * (2 + (z & 1 << 23 == 0)))) & 0x7fff
     if g != level or level > 3 or d:
         raise LicenseError("The enterprise license key is invalid")
-    if (484896 if (lts and level <= 1) else 484896) & 1 << z:
+    if (2615072 if (lts and level <= 1) else 2615072) & 1 << z:
         raise LicenseError("This license key did not carry over to new packackage versions "
                            "after sponsorship ended.")
 
@@ -71,7 +71,7 @@ def check_license_in_latest_django() -> None:
     # and all versions of Django 5.2 will be free in Django-salesforce 6.2
     last_django = django.VERSION[:2] == max_django
     protected_lts = (django.VERSION[1] == 2 and django.VERSION[0] == max_django[0] - 1 and
-                     (max_django[1] == 1 or max_django[1] == 0 and django.VERSION[2:3] >= [15]))
+                     (max_django[1] == 1 or max_django[1] == 0 and django.VERSION[2:3] >= (15,)))
     is_dev_version = django.VERSION[3:] and re.match('(alpha|beta|rc)', django.VERSION[3])
     if (last_django or protected_lts) and not is_dev_version:
         check_enterprise_license(
