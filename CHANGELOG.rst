@@ -14,8 +14,18 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[5.2] Unpublished
+[6.0] Unpublished
 -----------------
+* Add: Support for Django 6.0
+* Add: implement v.6.0 variants of new Django Database backend API functions
+* Add: Authentication by "client_credentials" flow with
+  salesforce.auth.SalesforceClientCredentialsAuth #344
+* Remove: code for the old Django 2.2 - 3.1
+* Update: Salesforce API 66.0 Spring '26
+
+
+[5.2] 2025-04-11
+----------------
 * Remove: the old Python 3.8 code
 * Remove: the old Django 2.1 code
 * Fix: queryset with Django 5.2

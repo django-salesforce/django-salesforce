@@ -67,8 +67,9 @@ def check_license_in_latest_django() -> None:
     #   https://github.com/django-salesforce/django-salesforce/wiki/Release-cycle-and-Licenses
     # Django 5.0 is free in Django-salesforce >= 5.1
     # Django 5.1 is free in Django-salesforce >= 5.2
-    # Django 5.2 LTS < 5.2.15 will free with Django-salesforce 6.0
-    # and all versions of Django 5.2 will be free in Django-salesforce 6.2
+    # Django 5.2 LTS < 5.2.15 is free with Django-salesforce 6.0
+    # Django 6.0 will be free in Django-salesforce >= 6.1
+    # All versions of Django 5.2 will be free in Django-salesforce 6.2
     last_django = django.VERSION[:2] == max_django
     protected_lts = (django.VERSION[1] == 2 and django.VERSION[0] == max_django[0] - 1 and
                      (max_django[1] == 1 or max_django[1] == 0 and django.VERSION[2:3] >= (15,)))
