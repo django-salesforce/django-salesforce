@@ -14,8 +14,8 @@ Some items here can be marked as "internal": not ready enough or
 experimental.
 
 
-[6.0] Unpublished
------------------
+[6.0] 2026-04-09
+----------------
 * Add: Support for Django 6.0
 * Add: implement v.6.0 variants of new Django Database backend API functions
 * Add: Authentication by "client_credentials" flow with
